@@ -6,6 +6,7 @@ windows and adjoint sources
 import copy
 
 from .config import Config
+from .data_gather import Gatherer
 
 class BobTheBuilder():
     """
@@ -17,22 +18,38 @@ class BobTheBuilder():
         self.synthetic = synthetic
         self.event = event
 
+    def gather_data(self):
+        """
+        call on data_gatherer to populate data space
+        """
+        gatherer = Gatherer(cfg=self.cfg,ds=)
+        gatherer.gather_all()
+        self.G = gatherer
+
+
+    def _choose_pyflex_config(self):
+        """
+        custom configuration for pyflex
+        """
+        if not isinstance(self.cfg.pyflex_config,list):
+            cfgdict = {"default":[.08,15.,1.,.8,.7,4.,0.,1.,2.,3.,10.],
+                       "UAF":[.18,4.,1.5,.71,.7,2.,0.,3.,2.,2.5,12.],
+                       "NZ":[]}
+            CD = cfgdict[self.cfg.pyflex_config]
+        else:
+            CD = self.cfg.pyflex_config
+
+        return pyflex.Config(min_period=self.cfg.min_period,
+            max_period=self.cfg.max_period,stalta_waterlevel=CD[0],
+            tshift_acceptance_level=CD[1],dlna_acceptance_level=CD[2],
+            cc_acceptance_level=CD[3],c_0=CD[4],c_1=CD[5],c_2=CD[6],c_3a=CD[7],
+            c_3b=CD[8],c_4a=CD[9],c_4b=CD[10]
+            )
+
     def run_pyflex(self):
         """
         use pyflex to grab windows
-
         """
-        
-        CD = choose_config("pyflex",PD)
-        config = pyflex.Config(min_period=PD["bounds"][0],
-                               max_period=PD["bounds"][1],
-                               stalta_waterlevel=CD[0],
-                               tshift_acceptance_level=CD[1],
-                               dlna_acceptance_level=CD[2],
-                               cc_acceptance_level=CD[3],
-                               c_0=CD[4],c_1=CD[5],c_2=CD[6],c_3a=CD[7],
-                               c_3b=CD[8],c_4a=CD[9],c_4b=CD[10])
-
         pf_event = pyflex.Event(latitude=event.origins[0].latitude,
                                 longitude=event.origins[0].longitude,
                                 depth_in_m=event.origins[0].depth,

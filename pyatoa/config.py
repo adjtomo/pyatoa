@@ -75,26 +75,7 @@ class Config():
         """
         """
 
-    def _generate_pyflex_config(self):
-        """
-        easy way to quickly generate a pyflex config file
-        """
-        import pyflex
-        if not isinstance(self.pyflex_config,list):
-            cfgdict = {"default":[.08,15.,1.,.8,.7,4.,0.,1.,2.,3.,10.],
-                       "UAF":[.18,4.,1.5,.71,.7,2.,0.,3.,2.,2.5,12.],
-                       "NZ":[]}
-            CD = cfgdict[pyflex_config]
 
-        config = pyflex.Config(min_period=PD["bounds"][0],
-                               max_period=PD["bounds"][1],
-                               stalta_waterlevel=CD[0],
-                               tshift_acceptance_level=CD[1],
-                               dlna_acceptance_level=CD[2],
-                               cc_acceptance_level=CD[3],
-                               c_0=CD[4],c_1=CD[5],c_2=CD[6],c_3a=CD[7],
-                               c_3b=CD[8],c_4a=CD[9],c_4b=CD[10])
-        
 
 
     def _write_to_pyasdf(self,ds):
