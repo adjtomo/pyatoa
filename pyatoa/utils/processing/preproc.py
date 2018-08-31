@@ -5,7 +5,7 @@ format for use in analysis
 import numpy as np
 from obspy import Stream
 
-def zero_pad_stream(st,pad_length_in_seconds):
+def _zero_pad_stream(st,pad_length_in_seconds):
     """zero pad the data of a stream, change the starttime to reflect the change
     """
     for tr in st:

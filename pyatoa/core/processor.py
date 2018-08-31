@@ -5,8 +5,8 @@ windows and adjoint sources
 """
 import copy
 
-from .config import Config
-from .data_gather import Gatherer
+from pyatoa.core.config import Config
+from pyatoa.utisl.gathering.data_gatherer import Gatherer
 
 class Processer():
     """
@@ -22,7 +22,7 @@ class Processer():
         """
         call on data_gatherer to populate data space
         """
-        gatherer = Gatherer(cfg=self.cfg,ds=None)
+        gatherer = Gatherer(cfg=self.cfg,ds=self.ds)
         gatherer.gather_all(station_code)
-        self.gatherer = gatherer
-        if isinstance(ds,pyasdf.ASDFDataSet):
+
+    def run_pyflex

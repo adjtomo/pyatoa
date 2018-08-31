@@ -1,13 +1,15 @@
 """
-Class used to fetch data via internal pathways. Mostly a container for functions
-small number of attributes to ease in the fetching process
+Class used to fetch data via internal pathways. Smart enough to know if an
+event sits too close to a separation in files and can accomodate accordingly.
+Hardcoded directory structure and synthetic file name format.
 """
 import os
 import glob
 import copy
 
-from obspy import Stream, read
+from obspy import Stream, Inventory, read, read_inventory
 
+from pyatoa import logger
 from pyatoa.utils.operations.calculations import overlapping_days
 from pyatoa.utils.operations.conversions import ascii_to_mseed
 
@@ -48,14 +50,40 @@ class Fetcher():
         net,sta,_,_ = station_code.split('.')
         return self.ds.waveforms['{n}_{s}'.format(n=net, s=sta)][tag]
 
+    def fetch_response(self, station_code, paths_to_responses=None):
+        """
+        fetch station xml from given internal pathing
+        """
+        if not paths_to_responses:
+            paths_to_responses = self.config.paths['responses']
+
+        net, sta, loc, cha = station_code.split('.')
+        dir_structure = '{sta}.{net}'
+        file_template = 'RESP.{net}.{sta}.{loc}.{cha}'
+
+        for path_ in paths_to_responses:
+            if not os.path.exists(path_):
+                continue
+            fid = os.path.join(path_, dir_structure, file_template)
+            inv = None
+            for filepath in glob.glob(fid.format(
+                                            net=net, sta=sta, cha=cha,loc=loc)):
+                logger.info("response found at {}".format(filepath))
+                if inv is None:
+                    inv = read_inventory(filepath)
+                inv += read_inventory(filepath)
+            if inv is not None:
+                return inv
+        else:
+            raise FileNotFoundError("No response found for given paths")
 
     def fetch_by_directory(self, station_code, paths_to_waveforms=None):
         """
         waveform directory structure is hardcoded in here, we assume that
         data is saved as miniseeds in the following directory structure
 
-        path/to/data/{YEAR}/{NETWORK}/{STATION}/{CHANNEL}*/*.mseed
-        e.g. path/to/data/2017/NZ/OPRZ/HHZ.D/NZ.OPRZ.10.HHZ.D.mseed
+        path/to/data/{YEAR}/{NETWORK}/{STATION}/{CHANNEL}*/{FID}
+        e.g. path/to/data/2017/NZ/OPRZ/HHZ.D/NZ.OPRZ.10.HHZ.D
 
         :return:
         """
@@ -63,49 +91,41 @@ class Fetcher():
             raise AttributeError("'origintime' must be specified")
         if not paths_to_waveforms:
             paths_to_waveforms = self.config.paths['waveforms']
-        net, sta, loc, cha = station_code.split('.')
 
-        # hardcoded directory structure and file naming schema
+        net, sta, loc, cha = station_code.split('.')
         dir_structure = '{year}/{net}/{sta}/{cha}*'
         file_template = '{net}.{sta}.{loc}.{cha}*{year}.{jday:0>3}'
-
+        jdays = overlapping_days(origin_time=self.origintime,
+                                 startpad=self.startpad,
+                                 endpad=self.endpad
+                                 )
         for path_ in paths_to_waveforms:
             if not os.path.exists(path_):
                 continue
-            st = Stream()
             full_path = os.path.join(path_, dir_structure, file_template)
-
-            # check if the event origin is close to midnight
-            jdays = overlapping_days(origin_time=self.origintime,
-                                     startpad=self.startpad,
-                                     endpad=self.endpad
-                                     )
             pathlist = []
             for jday in jdays:
                 pathlist.append(full_path.format(net=net, sta=sta, cha=cha,
                                                  loc=loc, jday=jday,
-                                                 year=self.origintime.year
-                                                 ))
+                                                 year=self.origintime.year)
+                                                 )
+            st = Stream()
             for fid in pathlist:
                 for filepath in glob.glob(fid):
                     st += read(filepath)
-            if len(st) > 0:
+                    logger.info("stream from directory from {}".format(
+                        filepath))
+            if len(st) > 0: # is this necessary?
                 st.merge()
                 st.trim(starttime=self.origintime-self.startpad,
                         endtime=self.origintime+self.endpad
-                    )
-                break
+                        )
+                return st
         else:
-            raise FileNotFoundError("No data found for given paths")
-
-        return st
+            raise FileNotFoundError("No waveforms found for given directories")
 
     def fetch_by_event(self, station_code, paths_to_waveforms=None):
         """
-        TODO: tries to read as mseed before converting from ascii, structure
-        TODO: should be that we don't convert so try to convert first before
-        TODO: trying to read to save some time
-
         Synthetic data is saved by event code, give a hardcoded search path
         to get to the data. If data hasn't been converted to miniseed format,
         call on a conversion to convert from SPECFEM3D native ascii format
@@ -115,38 +135,36 @@ class Fetcher():
         """
         if self.origintime is None:
             raise AttributeError("'origintime' must be specified")
-        if not paths_to_waveforms:
+        if paths_to_waveforms is None:
             paths_to_waveforms = []
             for path_ in self.config.paths['waveforms']:
                 paths_to_waveforms.append(os.path.join(path_, 'SPECFEM3D'))
         net, sta, _, cha = station_code.split('.')
         cmp = cha[-1]
 
-        # hardcoded SPECFEM3D filename output template
-        filename_template = '{net}.{sta}.*.sem{cmp}*'
+        st = None
+        SPECFEM_fid_template = '{net}.{sta}.*{cmp}.semv*'
         for path_ in paths_to_waveforms:
             if not os.path.exists(path_):
                 continue
-            st = Stream()
-            import ipdb;ipdb.set_trace()
             full_path = os.path.join(path_, self.config.model_number,
-                                     self.config.event_id, filename_template)
+                                     self.config.event_id, SPECFEM_fid_template)
+            st = Stream()
             for filepath in glob.glob(
-                    full_path.format(net=net, sta=sta, cmp=cmp)):
+                                full_path.format(net=net, sta=sta, cmp=cmp)):
                 try:
-                    st += read(filepath)
-                except TypeError:
                     st += ascii_to_mseed(filepath,self.origintime)
-            if len(st) > 0:
+                except UnicodeDecodeError:
+                    st += read(filepath)
+                logger.info("stream by event from {}".format(filepath))
+            if (st is not None) and (len(st) > 0):
                 st.merge()
                 st.trim(starttime=self.origintime - self.startpad,
                         endtime=self.origintime + self.endpad
                         )
-                break
+                return st
         else:
-            raise FileNotFoundError("No data found for given paths")
-
-        return st
+            raise FileNotFoundError("No event found for given paths")
 
     def obs_waveform_fetch(self, station_code):
         """
@@ -154,11 +172,15 @@ class Fetcher():
         local pathways
         :return:
         """
-        net, sta, _, _ = station_code.split('.')
-        try:
-            return asdf_waveform_fetch(station_code, tag='observed')
-        except KeyError:
-            return fetch_by_directory(station_code)
+        if self.ds is not None:
+            try:
+                return self.asdf_waveform_fetch(station_code, tag='observed')
+            except KeyError:
+                st_obs = self.fetch_by_directory(station_code)
+                self.ds.add_waveforms(waveform=st_obs,tag='observed')
+                return st_obs
+        else:
+            return self.fetch_by_directory(station_code)
 
     def syn_waveform_fetch(self, station_code):
         """
@@ -168,10 +190,32 @@ class Fetcher():
         :param station_code:
         :return:
         """
-        net, sta, _, _ = station_code.split('.')
-        try:
-            return asdf_waveform_fetch(station_code,
-                                        tag='synthetics_{}'.format(
-                                            self.config.model_number))
-        except KeyError:
-            return fetch_by_event(station_code)
+        if self.ds is not None:
+            try:
+                return self.asdf_waveform_fetch(
+                    station_code,tag='synthetics_{}'.format(
+                    self.config.model_number))
+            except KeyError:
+                st_syn = self.fetch_by_event(station_code)
+                self.ds.add_waveforms(waveform=st_syn,tag='synthetic_{}'.format(
+                                                    self.config.model_number))
+                return st_syn
+        else:
+            return self.fetch_by_event(station_code)
+
+    def station_fetch(self, station_code):
+        """
+        grab station response information, search internally first
+        """
+        if self.ds is not None:
+            try:
+                return self.asdf_station_fetch(station_code)
+            except KeyError:
+                inv = self.fetch_response(station_code)
+                ds.add_stationxml(self.inv)
+                return inv
+        else:
+            return self.fetch_response(station_code)
+
+
+
