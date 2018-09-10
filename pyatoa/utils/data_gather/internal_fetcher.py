@@ -102,10 +102,6 @@ class Fetcher():
 
     def fetch_by_event(self, station_code, paths_to_waveforms=None):
         """
-        TODO: tries to read as mseed before converting from ascii, structure
-        TODO: should be that we don't convert so try to convert first before
-        TODO: trying to read to save some time
-
         Synthetic data is saved by event code, give a hardcoded search path
         to get to the data. If data hasn't been converted to miniseed format,
         call on a conversion to convert from SPECFEM3D native ascii format

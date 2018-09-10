@@ -106,6 +106,20 @@ class Config():
     def _generate_pyflex_config(self):
         """
         allow for dictionary lookup of pyflex config, or manual set
+        ++PYFLEX (Maggi et al. 2009)
+        i  Standard Tuning Parameters:
+        0: water level for STA/LTA (short term average/long term average)
+        1: time lag acceptance level
+        2: amplitude ratio acceptance level (dlna)
+        3: normalized cross correlation acceptance level
+        i  Fine Tuning Parameters
+        4: c_0 = for rejection of internal minima
+        5: c_1 = for rejection of short windows
+        6: c_2 = for rejection of un-prominent windows
+        7: c_3a = for rejection of multiple distinct arrivals
+        8: c_3b = for rejection of multiple distinct arrivals
+        9: c_4a = for curtailing windows w/ emergent starts and/or codas
+        10:c_4b = for curtailing windows w/ emergent starts and/or codas
         :return:
         """
         cfg_dict = {"default": [.08, 15., 1., .8, .7, 4., 0., 1., 2., 3., 10.],
