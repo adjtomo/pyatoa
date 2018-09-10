@@ -44,6 +44,7 @@ class TestDataGatherMethods(unittest.TestCase):
             paths_to_waveforms=['/Users/chowbr/Documents/subduction/seismic',
             '/seis/prj/fwi/bchow/seismic','/geonet/seismic'],
             paths_to_responses=['/seis/prj/fwi/bchow/seed/RESPONSE'],
+            path_to_faults=['']
             model_number=0
                         )
         origintime = UTCDateTime('2018-02-18T07:43:48.127644Z')
@@ -57,7 +58,7 @@ class TestDataGatherMethods(unittest.TestCase):
 
     def test_data_gatherer():
         import logging
-        from pyatoa.config import Config
+        from pyatoa.core.config import Config
         from pyatoa.utils.gathering.data_gatherer import Gatherer
         logger = logging.getLogger("pyatoa")
         logger.setLevel(logging.DEBUG)

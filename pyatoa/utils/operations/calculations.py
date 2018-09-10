@@ -28,3 +28,12 @@ def overlapping_days(origin_time, startpad=20, endpad=200):
         return [origin_time.julday, (origin_time+endpad*2).julday]
     else:
         return [origin_time.julday]
+
+
+def normalize_a_to_b(array,a=0,b=1):
+    """normalize an array from zero to one for easy plotting
+    """
+    array = np.array(array)
+    z = ((b-a) * (array-array.min()) / (array.max()-array.min())) + a
+
+    return z

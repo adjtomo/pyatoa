@@ -12,6 +12,8 @@ class Config():
                  unit_output='DISP', pyflex_config='UAF',
                  adj_src_type='multitaper_misfit', paths_to_waveforms=None,
                  paths_to_responses=None, path_to_pyasdf=None,
+                 path_to_faults=None, path_to_moment_tensors=None,
+                 path_to_gcmt_ndk=None,
                  verbose=False, log=False):
         """
         Configuration file for pyatoa
@@ -62,9 +64,12 @@ class Config():
         self.adj_src_type = adj_src_type
         self.verbose = verbose
         self.log = log
-        self.paths = {"waveforms":paths_to_waveforms,
-                      "responses":paths_to_responses,
-                      "pyasdf":path_to_pyasdf
+        self.paths = {"waveforms": paths_to_waveforms,
+                      "responses": paths_to_responses,
+                      "pyasdf": path_to_pyasdf,
+                      "faults": path_to_faults,
+                      "moment_tensors": path_to_moment_tensors,
+                      "gcmt_ndk": path_to_gcmt_ndk
                       }
         self._generate_component_list()
 

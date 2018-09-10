@@ -11,12 +11,13 @@ def _zero_pad_stream(st,pad_length_in_seconds):
     for tr in st:
         array = tr.data
         pad_width = pad_length_in_seconds * tr.stats.sampling_rate
-        tr.data = np.pad(array,pad_width,mode='constant')
+        tr.data = np.pad(array, pad_width, mode='constant')
         tr.stats.starttime -= pad_length_in_seconds
     return st
 
-def preprocess(st,inv=None,resample=50,pad_length_in_seconds=20,output="VEL",
-               filter=False):
+
+def preproc(st, inv=None, resample=50, pad_length_in_seconds=20,
+               output="VEL", filter=False):
     """
     preprocess waveform data
     """
@@ -26,9 +27,7 @@ def preprocess(st,inv=None,resample=50,pad_length_in_seconds=20,output="VEL",
     st.taper(max_percentage=0.05)
     if inv:
         st.attach_response(inv)
-        st.remove_response(output=output,
-                                      water_level=60,
-                                      plot=False)
+        st.remove_response(output=output, water_level=60, plot=False)
         st.detrend("linear")
         st.detrend("demean")
         st.taper(max_percentage=0.05)
@@ -39,5 +38,9 @@ def preprocess(st,inv=None,resample=50,pad_length_in_seconds=20,output="VEL",
         elif output == "ACC":
             st.differentiate(method="gradient")
         st.taper(max_percentage=0.05)
-    st = zero_pad_stream(st,pad_length_in_seconds)
+    st = _zero_pad_stream(st, pad_length_in_seconds)
+    if filter:
+        st.filter('bandpass', freqmin=filter[0], freqmax=filter[1], corners=4,
+                  zerophase=True)
     return st
+

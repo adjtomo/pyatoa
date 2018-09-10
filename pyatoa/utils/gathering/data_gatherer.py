@@ -19,12 +19,10 @@ class Gatherer():
         self.config = copy.deepcopy(config)
         self.ds = ds
         self.event = None
-        self.st_obs = None
-        self.st_syn = None
-        self.inv = None
-        self.fetcher = Fetcher(config=self.config,ds=self.ds,event=self.event,
-                                startpad=startpad,endpad=endpad)
-        self.getter = Getter(config=self.config,startpad=startpad,endpad=endpad)
+        self.fetcher = Fetcher(config=self.config,ds=self.ds,startpad=startpad,
+                               endpad=endpad)
+        self.getter = Getter(config=self.config, startpad=startpad,
+                             endpad=endpad)
 
     def _gather_event(self):
         """
@@ -59,7 +57,7 @@ class Gatherer():
         except FileNotFoundError:
             st_obs = self.getter.waveform_get(station_code)
         st_syn = self.fetcher.syn_waveform_fetch(station_code)
-        return self.st_obs + self.st_syn
+        return st_obs, st_syn
 
     def gather_all(self, station_code):
         """
@@ -68,21 +66,29 @@ class Gatherer():
         if self.event is None:
             self._gather_event()
         inv = self._gather_station(station_code)
-        st = self._gather_waveforms(station_code)
-        return st, inv, self.event
+        st_obs, st_syn = self._gather_waveforms(station_code)
+        return st_obs, st_syn, inv, self.event
 
-    def write_to_pyasdf(self,ds):
+    def gather_moment_tensor(self):
         """
-        save station, event information and raw waveforms into pyasdf
+        get moment tensor information
+        :return:
         """
-        if self.event is not None:
-            ds.add_quakeml(self.event)
-        if self.inv is not None:
-            ds.add_stationxml(self.inv)
-        if self.st_obs is not None:
+        moment_tensor = self.fetcher.geonet_moment_tensor_fetch()
+        gcmt = self.gcmt_fetch()
 
-        if self.st_syn is not None:
-
+    # def write_to_pyasdf(self,ds):
+    #     """
+    #     save station, event information and raw waveforms into pyasdf
+    #     """
+    #     if self.event is not None:
+    #         ds.add_quakeml(self.event)
+    #     if self.inv is not None:
+    #         ds.add_stationxml(self.inv)
+    #     if self.st_obs is not None:
+    #
+    #     if self.st_syn is not None:
+    #
 
 
 

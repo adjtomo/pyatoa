@@ -48,10 +48,14 @@ def stf_convolve(st,half_duration,window="bartlett",time_shift=False):
         tr.data = data_out
     return new_st
 
-def tshift_halfdur(event_id):
-    """get the absolute time shift between centroid time and hypocenter time to
-    shift the synthetic seismogram into absolute time using the equation
+
+def timeshift_halfduration(event_id):
+    """
+    get the absolute time shift between centroid time and hypocenter time to
+    shift the synthetic seismogram into absolute time using the equation:
+
     t_abs = t_pde + time shift + t_syn
+
     also get the half duration from the GCMT solution
     """
     MT = getdata.get_GCMT_solution(event_id)

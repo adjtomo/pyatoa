@@ -75,4 +75,7 @@ class Getter():
         st = self.waveform_get(station_code)
         return event,inv,st
 
+    def gcmt_get(self):
+
+
 

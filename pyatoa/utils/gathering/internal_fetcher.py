@@ -4,10 +4,12 @@ event sits too close to a separation in files and can accomodate accordingly.
 Hardcoded directory structure and synthetic file name format.
 """
 import os
+import csv
 import glob
 import copy
 
-from obspy import Stream, Inventory, read, read_inventory
+from obspy import Stream, Inventory, read, read_events, read_inventory, \
+    UTCDateTime
 
 from pyatoa import logger
 from pyatoa.utils.operations.calculations import overlapping_days
@@ -140,18 +142,18 @@ class Fetcher():
             for path_ in self.config.paths['waveforms']:
                 paths_to_waveforms.append(os.path.join(path_, 'SPECFEM3D'))
         net, sta, _, cha = station_code.split('.')
-        cmp = cha[-1]
+        comp = cha[-1]
 
         st = None
-        SPECFEM_fid_template = '{net}.{sta}.*{cmp}.semv*'
+        specfem_fid_template = '{net}.{sta}.*{cmp}.semv*'
         for path_ in paths_to_waveforms:
             if not os.path.exists(path_):
                 continue
             full_path = os.path.join(path_, self.config.model_number,
-                                     self.config.event_id, SPECFEM_fid_template)
+                                     self.config.event_id, specfem_fid_template)
             st = Stream()
             for filepath in glob.glob(
-                                full_path.format(net=net, sta=sta, cmp=cmp)):
+                                full_path.format(net=net, sta=sta, cmp=comp)):
                 try:
                     st += ascii_to_mseed(filepath,self.origintime)
                 except UnicodeDecodeError:
@@ -216,6 +218,86 @@ class Fetcher():
                 return inv
         else:
             return self.fetch_response(station_code)
+
+    def geonet_moment_tensor_fetch(self):
+        """
+        fetch moment tensor information from an internal csv file, only relevant
+        to my new zealand tomography problem
+        :return:
+        """
+        if self.config.paths["moment_tensors"] is None:
+            return
+        with open(self.config.paths["moment_tensors"]) as f:
+            reader = csv.reader(f)
+            for i, row in enumerate(reader):
+                if i == 0:
+                    tags = row
+                if self.config.event_id == row[0]:
+                    values = []
+                    for t, v in zip(tags, row):
+                        if (t == "Date") or (t == "PublicID"):
+                            values.append(v)
+                        else:
+                            values.append(float(v))
+
+                    moment_tensor = dict(zip(tags, values))
+                    return moment_tensor
+
+    def gcmt_fetch(self):
+        """
+        fetch global centroid moment tensor information from internal ndk files,
+
+        :return:
+        """
+        if self.config.paths["gcmt_ndk"] is None:
+            return
+
+        month_dict = {1: "jan", 2: "feb", 3: "mar", 4: "apr", 5: "may",
+                      6: "jun", 7: "jul", 8: "aug",9: "sep", 10: "oct",
+                      11: "nov", 12: "dec"}
+        moment_tensor = self.geonet_moment_tensor_fetch()
+        mw = moment_tensor["Mw"]
+        date = UTCDateTime(moment_tensor["Date"])
+        year = str(date.year)
+        month = month_dict[date.month]
+
+        fid = "{m}{y}.ndk".format(m=month, y=year[2:])
+        fpath = os.path.join(self.config.paths["gcmt_ndk"], "GCMT", year, fid)
+        try:
+            cat = read_events(fpath)
+        except FileNotFoundError:
+            # import HTTPerror to be able to catch it
+            from urllib.error import HTTPError
+            try:
+                cat = read_events(
+                    "https://www.ldeo.columbia.edu/~gcmt/projects/CMT/""
+                    "catalog/NEW_MONTHLY/{y}/{fid}".format(y=year, fid=fid)
+                    )
+            except HTTPError:
+                cat = read_events(
+                    "http://www.ldeo.columbia.edu/~gcmt/projects/CMT/"
+                    "catalog/NEW_QUICK/qcmt.ndk"
+                )
+
+        cat_filt = cat.filter("time > {}".format(str(date - 60)),
+                              "time < {}".format(str(date + 60)),
+                              "magnitude >= {}".format(mw - .5),
+                              "magnitude <= {}".format(mw + .5)
+                              )
+        if not len(cat_filt):
+            raise FileNotFoundError("No events found")
+        elif len(cat_filt) > 1:
+            print("{} events found, choose from list:".format(len(cat_filt)))
+            print("{0}\n{1}".format(moment_tensor, cat_filt))
+            choice = int(input("Event number (index from 0): "))
+            return cat_filt[choice]
+        else:
+            return cat_filt[0]
+
+
+
+
+
 
 
 

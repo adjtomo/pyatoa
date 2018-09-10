@@ -25,7 +25,31 @@ def distribute_dataless(path_to_response,inventory):
                 pass
             for cha in sta:
                 inv_temp = inv.select(network=net.code, station=sta.code,
-                    location=cha.location_code, channel=cha.code)
-                inv_temp.write(full_template.format(STA=sta.code, NET=net.code,
-                    LOC=cha.location_code, CHA=cha.code), format='STATIONXML'
+                                      location=cha.location_code,
+                                      channel=cha.code)
+                inv_temp.write(full_template.format(
+                    STA=sta.code, NET=net.code, LOC=cha.location_code,
+                    CHA=cha.code),
+                    format='STATIONXML'
                     )
+
+
+def create_window_dictionary(window):
+    """
+    HDF5 doesnt play nice with nonstandard objects in dictionaries, e.g.
+    nested dictionaries, UTCDateTime objects. So remake the pyflex window
+    json dictionary into something that will sit well in a pyasdf object
+    """
+    win_dict = window._get_json_content()
+
+    # change UTCDateTime objects into strings
+    win_dict['absolute_endtime'] = str(win_dict['absolute_endtime'])
+    win_dict['absolute_starttime'] = str(win_dict['absolute_starttime'])
+    win_dict['time_of_first_sample'] = str(win_dict['time_of_first_sample'])
+
+    phase_arrivals = win_dict['phase_arrivals']
+    for phase in phase_arrivals:
+        win_dict['phase_arrival_{}'.format(phase['name'])] = phase['time']
+    win_dict.pop('phase_arrivals')
+
+    return win_dict
