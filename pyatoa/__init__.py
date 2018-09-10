@@ -1,14 +1,18 @@
 #!/usr/bin/env python
+import logging
 
-class PyatoaError(Exception):
-    """
-    Generic Pyatoa error
-    """
-    pass
+# set up logging (copied from pyflex)
+logger = logging.getLogger("pyatoa")
+logger.setLevel(logging.WARNING)
+# Prevent propagating to higher loggers.
+logger.propagate = 0
+# Console log handler.
+ch = logging.StreamHandler()
+# Add formatter
+FORMAT = "[%(asctime)s] - %(name)s - %(levelname)s: %(message)s"
+formatter = logging.Formatter(FORMAT)
+ch.setFormatter(formatter)
+logger.addHandler(ch)
 
 
-class PyatoaWarning(UserWarning):
-    """
-    Generic Pyatoa warning
-    """
-    pass
+

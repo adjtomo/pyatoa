@@ -10,8 +10,8 @@ import pyflex
 from obspy.signal.filter import envelope
 
 
-from .config import Config
-from .data_gather import Gatherer
+from pyatoa.core.config import Config
+from pyatoa.utisl.gathering.data_gatherer import Gatherer
 
 class Processer():
     """
@@ -107,3 +107,6 @@ class Processer():
                                                          parameters=winnDixie)
 
         return windows, staltas, PD
+        gatherer = Gatherer(cfg=self.cfg,ds=self.ds)
+        gatherer.gather_all(station_code)
+

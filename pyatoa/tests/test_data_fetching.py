@@ -39,15 +39,37 @@ class TestDataGatherMethods(unittest.TestCase):
     def test_internal_fetcher():
         from obspy import UTCDateTime
         from pyatoa.config import Config
-        from pyatoa.utils.data_gather.internal_fetcher import Fetcher
+        from pyatoa.utils.gathering.internal_fetcher import Fetcher
         config = Config(event_id='2018p130600',
-            paths_to_waveforms=['/Users/chowbr/Documents/subduction/seismic/'],
+            paths_to_waveforms=['/Users/chowbr/Documents/subduction/seismic',
+            '/seis/prj/fwi/bchow/seismic','/geonet/seismic'],
+            paths_to_responses=['/seis/prj/fwi/bchow/seed/RESPONSE'],
             model_number=0
                         )
         origintime = UTCDateTime('2018-02-18T07:43:48.127644Z')
         fetcher = Fetcher(config, origintime=origintime)
+        inv = fetcher.fetch_response('NZ.MRZ.*.HH?')
+        inv = fetcher.fetch_response('XX.RD01.*.HH?')
+
+        st = fetcher.fetch_by_event('NZ.MRZ.*.HH?')
         st = fetcher.fetch_by_event('XX.RD01.*.HH?')
         st = fetcher.fetch_by_directory('XX.RD01.*.HH?')
+
+    def test_data_gatherer():
+        import logging
+        from pyatoa.config import Config
+        from pyatoa.utils.gathering.data_gatherer import Gatherer
+        logger = logging.getLogger("pyatoa")
+        logger.setLevel(logging.DEBUG)
+        config = Config(event_id='2018p130600',
+            paths_to_waveforms=['/Users/chowbr/Documents/subduction/seismic',
+            '/seis/prj/fwi/bchow/seismic','/geonet/seismic'],
+            paths_to_responses=['/seis/prj/fwi/bchow/seed/RESPONSE'],
+            model_number=0
+                        )
+        gatherer = Gatherer(config)
+        gatherer.gather_all('NZ.MRZ.*.HH?')
+
 
 if __name__ == "__main__":
     test_external_getter()

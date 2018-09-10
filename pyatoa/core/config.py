@@ -11,7 +11,7 @@ class Config():
                  max_period=30, filter_corners=4, rotate_to_rtz=True,
                  unit_output='DISP', pyflex_config='UAF',
                  adj_src_type='multitaper_misfit', paths_to_waveforms=None,
-                 path_to_pyasdf=None,
+                 paths_to_responses=None, path_to_pyasdf=None,
                  verbose=False, log=False):
         """
         Configuration file for pyatoa
@@ -45,8 +45,8 @@ class Config():
             min_period=10,max_period=30,rotate_to_rtz=True,unit_output="DISP",
             pyflex_config='UAF',adj_src_type='multitaper_misfit',verbose=True,
             log=True,
-            paths_to_waveforms=['/Users/chowbr/Documents/subduction/seismic/'],
-            paths_to_synthetics=['/Users/chowbr/Documents/subduction/seismic/SPECFEM3D']
+            paths_to_waveforms=['/Users/chowbr/Documents/subduction/seismic',
+                '/seis/prj/fwi/bchow/seismic','/geonet/seismic'],
             )
         """
         if model_number is not None:
@@ -63,6 +63,7 @@ class Config():
         self.verbose = verbose
         self.log = log
         self.paths = {"waveforms":paths_to_waveforms,
+                      "responses":paths_to_responses,
                       "pyasdf":path_to_pyasdf
                       }
         self._generate_component_list()
@@ -81,17 +82,15 @@ class Config():
                     "\tUnit Output:           {uo}\n"
                     "\tPyflex Config:         {pc}\n"
                     "\tAdjoint Source Type:   {at}\n"
-                    "\tPaths to waveforms:    {p1}\n"
-                    "\tPaths to synthetics:   {p2}\n"
-                    "\tPath to PyASDF:        {p3}\n"
+                    "\tPaths to waveforms:    {pw}\n"
+                    "\tPath to PyASDF:        {pp}\n"
                     )
         return template.format(ei=self.event_id, f1=self.min_period,
                                f2=self.max_period, fc=self.filter_corners,
                                rr=self.rotate_to_rtz, uo=self.unit_output,
                                pc=self.pyflex_config, at=self.adj_src_type,
-                               p1=self.paths['waveforms'],
-                               p2=self.paths['synthetics'],
-                               p3=self.paths['pyasdf']
+                               pw=self.paths['waveforms'],
+                               pp=self.paths['pyasdf']
                                )
 
     def _generate_component_list(self):

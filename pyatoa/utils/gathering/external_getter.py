@@ -1,5 +1,5 @@
 """
-Wrapper class used to quickly interact with obspy fdsn Client.
+Wrapper class used to quickly interact with obspy fdsn Client, based on configs.
 Defaults are set up for local earthquake trace lengths taken from GeoNet fdsn
 webservice.
 """
@@ -8,8 +8,8 @@ from obspy.clients.fdsn import Client
 
 
 class Getter():
-    def __init__(self, config=None, client="GEONET", event_id = None,
-                startpad=20, endpad=200):
+    def __init__(self, config=None, client="GEONET", event_id=None,
+                 startpad=20, endpad=200):
         self.config = copy.deepcopy(config)
         if self.config is not None:
             self.event_id = self.config.event_id
@@ -33,19 +33,20 @@ class Getter():
         self.origintime = event.origins[0].time
         return event
 
-    def station_get(self,station_code):
+    def station_get(self, station_code, level='response'):
         """
-        return station information with response
+        return station information with level dependent on call, defaults to
+        retrieving response information
         """
         if self.Client is None:
             self.Client = Client(self.client)
         net,sta,loc,cha = station_code.split('.')
         return self.Client.get_stations(network=net, station=sta, location=loc,
             channel=cha, starttime=self.origintime-self.startpad,
-            endtime=self.origintime+self.endpad, level="response"
+            endtime=self.origintime+self.endpad, level=level
             )
 
-    def waveform_get(self,station_code):
+    def waveform_get(self, station_code):
         """
         call for obspy to download data. for some reason obspy can return traces
         with varying sample lengths, so 10 second cushion and then trim after
@@ -63,7 +64,7 @@ class Getter():
                 endtime=self.origintime+self.endpad)
         return st
 
-    def get_all(self,station_code):
+    def get_all(self, station_code):
         """
         convenience function for retrieving station, inventory and receiver
         :param station_code:
