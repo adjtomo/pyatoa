@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import logging
 
+
 # set up logging (copied from pyflex)
 logger = logging.getLogger("pyatoa")
 logger.setLevel(logging.WARNING)
@@ -15,4 +16,5 @@ ch.setFormatter(formatter)
 logger.addHandler(ch)
 
 
-
+from pyatoa.core.config import Config # NOQA
+from pyatoa.core.processor import Processor # NOQA

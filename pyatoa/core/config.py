@@ -6,7 +6,10 @@ import os
 import warnings
 
 
-class Config():
+class Config:
+    """
+    Configuration class that controls all the functionalities inside pyatoa
+    """
     def __init__(self, model_number=None, event_id=None, min_period=10,
                  max_period=30, filter_corners=4, rotate_to_rtz=True,
                  unit_output='DISP', pyflex_config='UAF',
@@ -179,5 +182,4 @@ class Config():
                     }
         ds.add_auxiliary_data(data_type="Configs", data=np.array([True]),
                               path='{}', parameters=par_dict)
-
 

@@ -11,8 +11,11 @@ from pyatoa.utils.data_gather.external_getter import Getter
 from pyatoa.utils.data_gather.internal_fetcher import Fetcher
 
 class TestDataGatherMethods(unittest.TestCase):
-
     def setUpClass(cls):
+        """
+        set up the classls
+        :return:
+        """
         cls.test_data_path  = os.path.join(os.path.abspath(
             os.path.dirname(__file__)), 'test_data', '')
 
@@ -58,18 +61,36 @@ class TestDataGatherMethods(unittest.TestCase):
 
     def test_data_gatherer():
         import logging
+        from importlib import reload
         from pyatoa.core.config import Config
         from pyatoa.utils.gathering.data_gatherer import Gatherer
         logger = logging.getLogger("pyatoa")
         logger.setLevel(logging.DEBUG)
-        config = Config(event_id='2018p130600',
+        config = Config(event_id='2013p613824',
             paths_to_waveforms=['/Users/chowbr/Documents/subduction/seismic',
             '/seis/prj/fwi/bchow/seismic','/geonet/seismic'],
             paths_to_responses=['/seis/prj/fwi/bchow/seed/RESPONSE'],
             model_number=0
                         )
         gatherer = Gatherer(config)
+        gatherer.gather_moment_tensor()
         gatherer.gather_all('NZ.MRZ.*.HH?')
+
+    def test_workflow():
+        import logging
+        from pyatoa import Config, Processor
+        logger = logging.getLogger("pyatoa")
+        logger.setLevel(logging.DEBUG)
+        config = Config(event_id='2018p130600',
+            min_period=9,
+            paths_to_waveforms=['/Users/chowbr/Documents/subduction/seismic',
+            '/seis/prj/fwi/bchow/seismic','/geonet/seismic'],
+            paths_to_responses=['/seis/prj/fwi/bchow/seed/RESPONSE'],
+            model_number=0
+                        )
+        proc = Processor(config,ds=None)
+        proc.gather_data('NZ.BKZ.10.HH?')
+        proc.preprocess()
 
 
 if __name__ == "__main__":

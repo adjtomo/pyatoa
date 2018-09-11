@@ -1,4 +1,6 @@
-"""misfit visualization tool to be called through adjointBuilder
+#!/usr/bin/env python3
+"""
+misfit visualization tool to be called through adjointBuilder
 produces a basemap with beachball and all available stations as well as the
 relevant station highlighted. important information annotated (e.g.
 misift information, distance, BAz etc.)

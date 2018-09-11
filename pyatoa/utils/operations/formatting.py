@@ -53,3 +53,47 @@ def create_window_dictionary(window):
     win_dict.pop('phase_arrivals')
 
     return win_dict
+
+
+def moment_tensor_list_to_objects(mtlist):
+    """
+    UNFINISHED
+    event objects fetched by obspy do not natively come with any moment tensor
+    or nodal plane information, that is stored separately in a .csv file
+    located on github. For the tomography problem we need this information, so
+    this functino will append information from the .csv file onto the obspy
+    event object so that all the information can be located in a single object
+    :param event:
+    :param geonet_moment_tensor_list:
+    :return:
+    """
+    from obspy.core.event import ResourceIdentifier
+    import obspy.core.event.source as eventcore
+
+    id_template = "smi:local/geonetcsv/{0}/{1}".format(mtlist['PublicID'],'{}')
+    if len(mtlist) != 32:
+        print("geonet moment tensor list does not have the correct number"
+              "of requisite components, should have 32")
+        return
+    nodal_plane_1 = eventcore.NodalPlane(strike=mtlist['strike1'],
+                                         dip=mtlist['dip1'],
+                                         rake=mtlist['rake1']
+                                         )
+    nodal_plane_2 = eventcore.NodalPlane(strike=mtlist['strike2'],
+                                         dip=mtlist['dip2'],
+                                         rake=mtlist['rake2']
+                                         )
+    nodal_planes = eventcore.NodalPlanes(nodal_plane_1, nodal_plane_2,
+                                         preferred_plane=1)
+    moment_tensor = eventcore.MomentTensor(
+        resource_id=id_template.format('momenttensor'),
+        derived_origin_id=id_template.format('origin#ristau'),
+        scalar_moment=mtlist['Mo']*1E-7
+        )
+
+    focal_mechanism = eventcore.FocalMechanism(
+        resource_id=ResourceIdentifier(
+            "smi:local/geonetcsv/{}/focal_mechanism".format(mtlist['PublicID'])
+            ),
+        nodal_planes=nodal_planes, moment_tensor=moment_tensor
+        )

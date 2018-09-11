@@ -29,12 +29,12 @@ def set_pyflex_configuration(config, inv, event):
     pf_station = pyflex.Station(latitude=inv[0][0].latitude,
                                 longitude=inv[0][0].longitude
                                 )
-    if event is None:
-        pf_event = pyflex.Event(latitude=event.origins[0].latitude,
-                                longitude=event.origins[0].longitude,
-                                depth_in_m=event.origins[0].depth,
-                                origin_time=event.origins[0].time
-                                )
+    pf_event = pyflex.Event(latitude=event.origins[0].latitude,
+                            longitude=event.origins[0].longitude,
+                            depth_in_m=event.origins[0].depth,
+                            origin_time=event.origins[0].time
+                            )
+
     return pf_config, pf_event, pf_station
 
 

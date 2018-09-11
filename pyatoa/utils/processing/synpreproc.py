@@ -5,8 +5,12 @@ are comparable to realworld observations
 import numpy as np
 from scipy import signal
 
-def stf_convolve(st,half_duration,window="bartlett",time_shift=False):
-    """convolve source time function with a stream, time shift if needed
+from pyatoa import logger
+from pyatoa.utils.gathering.grab_auxiliaries import gcmt_and_geonet_mt
+
+
+def stf_convolve(st, half_duration, window="bartlett", time_shift=False):
+    """convolve sou rce time function with a stream, time shift if needed
     :type st: obspy.stream
     :param st: stream object containing traces of data
     :type half_duration: float
@@ -15,22 +19,9 @@ def stf_convolve(st,half_duration,window="bartlett",time_shift=False):
     :param window: window type to return
     :type time_shift: float
     :param time_shift: change the starttime
-    ========================================
-    boxcar, triang, blackman, hamming, hann,
-    bartlett, flattop, parzen, bohman,
-    blackmanharris, nuttall, barthann,
-    kaiser (needs beta),
-    gaussian (needs standard deviation),
-    general_gaussian (needs power, width),
-    slepian (needs width),
-    chebwin (needs attenuation),
-    exponential (needs decay scale),
-    tukey (needs taper fraction)
-    NOTE: bartlett window is a triangle that touches 0
-    ========================================
     :return new_st:
     """
-    npts = st[0].stats.npts
+    logger.info("convolving synthetic data with {} window".format(window))
     sampling_rate = st[0].stats.sampling_rate
     half_duration_in_samples = round(half_duration * sampling_rate)
     stf = signal.get_window(window=window,
@@ -43,35 +34,18 @@ def stf_convolve(st,half_duration,window="bartlett",time_shift=False):
     st_out = st.copy()
     for tr in st_out:
         if time_shift:
-            tr.stats.starttime = tr.stats.starttime + time_shift
-        data_out = np.convolve(tr.data,stf,mode="same")
+            tr.stats.starttime += time_shift
+        data_out = np.convolve(tr.data, stf, mode="same")
         tr.data = data_out
-    return new_st
+    return st_out
 
 
-def timeshift_halfduration(event_id):
+def half_duration_from_m0(moment):
     """
-    get the absolute time shift between centroid time and hypocenter time to
-    shift the synthetic seismogram into absolute time using the equation:
-
-    t_abs = t_pde + time shift + t_syn
-
-    also get the half duration from the GCMT solution
+    empirical formula for half duration used by Harvard CMT, stated in 
+    Daheln and Tromp (1998, p.178). moment has units of Nm
+    :param half_duration: 
+    :return: 
     """
-    MT = getdata.get_GCMT_solution(event_id)
-    CMTSOLUTIONPATH = (pathnames()['kupedata'] +
-                            'CMTSOLUTIONS/{}CMTSOLUTION'.format(event_id))
-    CMTSOLUTION = read_events(CMTSOLUTIONPATH)
-
-    CMTSOLUTION_time = CMTSOLUTION[0].origins[0].time
-    CENTROID_time = [i.time for i in MT.origins
-                                        if i.origin_type == "centroid"][0]
-
-    time_shift = abs(CMTSOLUTION_time - CENTROID_time)
-
-    # half duration
-    moment_tensor = MT.focal_mechanisms[0].moment_tensor
-    half_duration = (moment_tensor.source_time_function['duration'])/2
-
-    return time_shift, half_duration
+    return 2.4E-6 * moment**(1/3)
 
