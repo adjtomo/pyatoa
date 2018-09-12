@@ -13,6 +13,7 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.basemap import Basemap
 from obspy.imaging.beachball import beach
 
+from pyatoa.utils.gathering.grab_auxiliaries import _hardcode_paths
 from pyatoa.utils.operations.source_receiver import gcd_and_baz
 from pyatoa.utils.operations.calculations import myround
 
@@ -111,14 +112,14 @@ def populate_basemap(m, lats, lons, names=None, nets=None):
     colordict = {"NZ": 'k', "XX": 'k', "X?": 'gray'}
     edgedict = {"NZ": '-', "XX": '--', "X?": '--'}
     edgestyle = '-'
-    if nets:
+    if nets is not None:
         colors, edgestyle = [], []
         for net in nets:
             colors.append(colordict[net])
             edgestyle.append(edgedict[net])
     m.scatter(x,y, marker='v', color='w', edgecolor='k', linestyle=edgestyle,
               s=60, zorder=5)
-    if names:
+    if names is not None:
         for n_, x_, y_ in zip(names, x, y):
             plt.annotate(n_, xy=(x_, y_), xytext=(x_, y_), zorder=6, fontsize=7,
                          bbox=dict(facecolor='w', edgecolor='k',
@@ -160,7 +161,7 @@ def annotate_information(m, event_id, event, inv=None):
 
 def generate_map(config, event, inv,
                  map_corners=[-42.5007,-36.9488,172.9998,179.5077],
-                 show_faults=False):
+                 show_faults=False, **kwargs):
     """
     TODO: change map corners to reflect the new mesh created in August
 
@@ -173,34 +174,39 @@ def generate_map(config, event, inv,
     :param corners: values for map corners to set bounds
      e.g. [lat_bot,lat_top,lon_left,lon_right]
     """
+    figsize = kwargs.get("figsize", (10, 9.4))
+    dpi = kwargs.get("dpi", 100)
+    show = kwargs.get("show", True)
+    save = kwargs.get("save", False)
+
+    f = plt.figure(figsize=figsize, dpi=dpi)
     m = initiate_basemap(map_corners=map_corners)
     annotate_information(m, config.event_id, event, inv)
     if show_faults:
-        plot_hikurangi_trench(m,
-            os.path.join(config.paths['faults'], "hikurangiTrenchCoords.npz")
+        plot_hikurangi_trench(m, os.path.join(_hardcode_paths()['faults'],
+                                              "hikurangiTrenchCoords.npz")
                               )
-        plot_active_faults(m,
-            os.path.join(config.paths['faults'], "onshoreFaultCoords.npz")
+        plot_active_faults(m, os.path.join(_hardcode_paths()['faults'],
+                                           "onshoreFaultCoords.npz")
                            )
-        plot_active_faults(m,
-            os.path.join(config.paths['faults'], "offshoreFaultCoords.npz")
+        plot_active_faults(m, os.path.join(_hardcode_paths()['faults'],
+                                           "offshoreFaultCoords.npz")
                            )
 
-    stationfile = (pathnames()['stationxml'] + 
-                                    'COORDINATE/masterlist/masterlist.npz')    
+    stationfile = '/Users/chowbr/Documents/subduction/data/STATIONXML/COORDINATE/masterlist/masterlist.npz'
     stationlist = np.load(stationfile)
 
-    populate_basemap(m,lats=stationlist['LAT'],
-                       lons=stationlist['LON'],
-                       nets=stationlist['NET'])    
-    scalelon,scalelat = 178.75,-37.2
-    m.drawmapscale(scalelon,scalelat,scalelon,scalelat,100,
-                                                yoffset=0.01*(m.ymax-m.ymin))
+    populate_basemap(m, lats=stationlist['LAT'], lons=stationlist['LON'],
+                     nets=stationlist['NET'])
+    scalelon, scalelat = 178.75,-37.2
+    m.drawmapscale(scalelon, scalelat, scalelon, scalelat, 100,
+                   yoffset=0.01 * (m.ymax-m.ymin)
+                   )
+    if show:
+        plt.show()
+    if save:
+        plt.savefig(save)
 
     return m
 
-    return m
-
-
-if __name__ == "__main__":
 

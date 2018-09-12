@@ -78,9 +78,11 @@ class TestDataGatherMethods(unittest.TestCase):
 
     def test_workflow():
         import logging
+        import pyasdf
         from pyatoa import Config, Processor
         logger = logging.getLogger("pyatoa")
         logger.setLevel(logging.DEBUG)
+        ds = pyasdf.ASDFDataSet("testasdf.h5")
         config = Config(event_id='2018p130600',
             min_period=9,
             paths_to_waveforms=['/Users/chowbr/Documents/subduction/seismic',
@@ -88,10 +90,22 @@ class TestDataGatherMethods(unittest.TestCase):
             paths_to_responses=['/seis/prj/fwi/bchow/seed/RESPONSE'],
             model_number=0
                         )
-        proc = Processor(config,ds=None)
-        proc.gather_data('NZ.BKZ.10.HH?')
-        proc.preprocess()
+        proc = Processor(config,ds=ds)
+        sta = 'NZ.BKZ.10.HH?'
+        proc.populate(sta)
 
+        f = window_maker(st_obs=proc.crate.st_obs, st_syn=proc.crate.st_syn,
+                         windows=proc.crate.windows, staltas=proc.crate.staltas,
+                         adj_srcs=proc.crate.adj_srcs,
+                         stalta_wl=proc.config.pyflex_config[0],
+                         unit_output=proc.config.unit_output,
+                         config=proc.config, figsize=(11.69, 8.27), dpi=100,
+                         show=show
+                         )
+        m = generate_map(config=proc.config, event=proc.crate.event,
+                         inv=proc.crate.inv, show_faults=True,
+                         show=show, figsize=(11.69, 8.27), dpi=100
+                         )
 
 if __name__ == "__main__":
     test_external_getter()

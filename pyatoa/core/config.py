@@ -69,7 +69,6 @@ class Config:
         self.log = log
         self.paths = {"waveforms": paths_to_waveforms,
                       "responses": paths_to_responses,
-                      "pyasdf": path_to_pyasdf,
                       "faults": path_to_faults,
                       "moment_tensors": path_to_moment_tensors,
                       "gcmt_ndk": path_to_gcmt_ndk
@@ -81,25 +80,22 @@ class Config:
         string representation of class Config for print statements
         :return:
         """
-        template = ("Config class\n"
-                    "\tEvent ID:              {ei}\n"
-                    "\tMinimum Filter Period: {f1}\n"
-                    "\tMaximum Filter Period: {f2}\n"
-                    "\tFilter Corners:        {fc}\n"
-                    "\tRotate to RTZ:         {rr}\n"
-                    "\tUnit Output:           {uo}\n"
-                    "\tPyflex Config:         {pc}\n"
-                    "\tAdjoint Source Type:   {at}\n"
-                    "\tPaths to waveforms:    {pw}\n"
-                    "\tPath to PyASDF:        {pp}\n"
-                    )
-        return template.format(ei=self.event_id, f1=self.min_period,
-                               f2=self.max_period, fc=self.filter_corners,
-                               rr=self.rotate_to_rtz, uo=self.unit_output,
-                               pc=self.pyflex_config, at=self.adj_src_type,
-                               pw=self.paths['waveforms'],
-                               pp=self.paths['pyasdf']
-                               )
+        return ("Config class\n"
+                "\tEvent ID:              {ei}\n"
+                "\tMinimum Filter Period: {f1}\n"
+                "\tMaximum Filter Period: {f2}\n"
+                "\tFilter Corners:        {fc}\n"
+                "\tRotate to RTZ:         {rr}\n"
+                "\tUnit Output:           {uo}\n"
+                "\tPyflex Config:         {pc}\n"
+                "\tAdjoint Source Type:   {at}\n"
+                "\tPaths to waveforms:    {pw}\n"
+                ).format(ei=self.event_id, f1=self.min_period,
+                         f2=self.max_period, fc=self.filter_corners,
+                         rr=self.rotate_to_rtz, uo=self.unit_output,
+                         pc=self.pyflex_config, at=self.adj_src_type,
+                         pw=self.paths['waveforms']
+                         )
 
     def _generate_component_list(self):
         """
@@ -150,35 +146,36 @@ class Config:
             for path_ in self.paths.values():
                 for p in path_:
                     if not os.path.exists(p):
-                        warnings.warn("path '{}' does not exist".format(P2W),
+                        warnings.warn("path '{}' does not exist".format(p),
                                       UserWarning)
         if self.unit_output not in ['DISP', 'VEL', 'ACC']:
             warnings.warn("'unit_output' must be 'DISP','VEL' or 'ACC'",
                           UserWarning)
 
-    def write_to_txt_file(self,filename):
+    def write_to_txt_file(self, filename):
         """
         write out conf file to text file
         :param filename:
         :return:
         """
 
-    def write_to_pyasdf(self,ds):
+    def write_to_pyasdf(self, ds):
         """
         save the config values as a dictionary in the pyasdf data format
         for easy lookback
         """
+        import numpy as np
         from obspy import UTCDateTime
-        par_dict = {"time":UTCDateTime(),
-                    "model_number":self.model_number,
-                    "event_id":self.event_id,
-                    "min_period":self.min_period,
-                    "max_period":self.max_period,
-                    "filter_corners":self.filter_corners,
-                    "rotate_to_rtz":self.rotate_to_rtz,
-                    "unit_output":self.unit_output,
-                    "pyflex_config":self.pyflex_config,
-                    "adj_src_type":self.adj_src_type
+        par_dict = {"time": UTCDateTime(),
+                    "model_number": self.model_number,
+                    "event_id": self.event_id,
+                    "min_period": self.min_period,
+                    "max_period": self.max_period,
+                    "filter_corners": self.filter_corners,
+                    "rotate_to_rtz": self.rotate_to_rtz,
+                    "unit_output": self.unit_output,
+                    "pyflex_config": self.pyflex_config,
+                    "adj_src_type": self.adj_src_type
                     }
         ds.add_auxiliary_data(data_type="Configs", data=np.array([True]),
                               path='{}', parameters=par_dict)

@@ -34,14 +34,13 @@ class Gatherer:
         get event information, check internally first
         """
         if self.event is not None:
-            return
-        if self.ds is not None:
+            return self.event
+        elif self.ds is not None:
             try:
                 self.event = self.fetcher.asdf_event_fetch()
-                logger.info("event fetched from pyasdf dataset")
             except IndexError:
                 self.event = self.getter.event_get()
-                ds.add_quakeml(self.event)
+                self.ds.add_quakeml(self.event)
                 logger.info("event got from external, added to pyasdf dataset")
         else:
             self.event = self.getter.event_get()
@@ -78,13 +77,6 @@ class Gatherer:
                                                            )
         return geonet_moment_tensor, time_shift, half_duration
 
-    def gather_momtens(self):
-        """
-        gather geonet moment tensor from internal pathway, calculate the half
-        duration using empirical scaling
-        :return:
-        """
-
     def gather_station(self, station_code):
         """
         get station information, check internally first.
@@ -92,7 +84,11 @@ class Gatherer:
         try:
             return self.fetcher.station_fetch(station_code)
         except FileNotFoundError:
-            return self.getter.station_get(station_code)
+            inv = self.getter.station_get(station_code)
+            import ipdb;ipdb.set_trace()
+            if self.ds is not None:
+                self.ds.add_stationxml(inv)
+            return
 
     def gather_observed(self, station_code):
         """
@@ -102,6 +98,8 @@ class Gatherer:
             st_obs = self.fetcher.obs_waveform_fetch(station_code)
         except FileNotFoundError:
             st_obs = self.getter.waveform_get(station_code)
+            if self.ds is not None:
+                self.ds.add_waveforms(waveform=st_obs, tag='observed')
         return st_obs
 
     def gather_synthetic(self, station_code):
@@ -120,6 +118,8 @@ class Gatherer:
             st_obs = self.fetcher.obs_waveform_fetch(station_code)
         except FileNotFoundError:
             st_obs = self.getter.waveform_get(station_code)
+            if self.ds is not None:
+                self.ds.add_waveforms(waveform=st_obs, tag='observed')
         st_syn = self.fetcher.syn_waveform_fetch(station_code)
         return st_obs, st_syn
 
@@ -134,18 +134,6 @@ class Gatherer:
         return st_obs, st_syn, inv, self.event
 
 
-    # def write_to_pyasdf(self,ds):
-    #     """
-    #     save station, event information and raw waveforms into pyasdf
-    #     """
-    #     if self.event is not None:
-    #         ds.add_quakeml(self.event)
-    #     if self.inv is not None:
-    #         ds.add_stationxml(self.inv)
-    #     if self.st_obs is not None:
-    #
-    #     if self.st_syn is not None:
-    #
 
 
 

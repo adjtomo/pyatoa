@@ -14,8 +14,8 @@ from pyatoa.utils.operations.calculations import overlapping_days
 from pyatoa.utils.operations.conversions import ascii_to_mseed
 
 
-class Fetcher():
-    def __init__(self, config, ds=None, origintime = None, startpad=20,
+class Fetcher:
+    def __init__(self, config, ds=None, origintime=None, startpad=20,
                  endpad=200):
         self.config = copy.deepcopy(config)
         self.ds = ds
@@ -37,7 +37,7 @@ class Fetcher():
         return station information from pyasdf
         :return:
         """
-        net,sta,_,_ = station_code.split('.')
+        net, sta, _, _ = station_code.split('.')
         return self.ds.waveforms['{n}_{s}'.format(n=net, s=sta)].StationXML
 
     def asdf_waveform_fetch(self, station_code, tag):
@@ -47,7 +47,7 @@ class Fetcher():
         :param tag:
         :return:
         """
-        net,sta,_,_ = station_code.split('.')
+        net, sta, _, _ = station_code.split('.')
         return self.ds.waveforms['{n}_{s}'.format(n=net, s=sta)][tag]
 
     def fetch_response(self, station_code, paths_to_responses=None):
@@ -68,9 +68,9 @@ class Fetcher():
             inv = None
             for filepath in glob.glob(fid.format(
                                             net=net, sta=sta, cha=cha,loc=loc)):
-                logger.info("response found at {}".format(filepath))
                 if inv is None:
                     inv = read_inventory(filepath)
+                    logger.info("response found at {}".format(filepath))
                 inv += read_inventory(filepath)
             if inv is not None:
                 return inv
@@ -142,7 +142,6 @@ class Fetcher():
         net, sta, _, cha = station_code.split('.')
         comp = cha[-1]
 
-        st = None
         specfem_fid_template = '{net}.{sta}.*{cmp}.semv*'
         for path_ in paths_to_waveforms:
             if not os.path.exists(path_):
@@ -157,7 +156,7 @@ class Fetcher():
                 except UnicodeDecodeError:
                     st += read(filepath)
                 logger.info("stream fetched by event {}".format(filepath))
-            if (st is not None) and (len(st) > 0):
+            if len(st) > 0:
                 st.merge()
                 st.trim(starttime=self.origintime - self.startpad,
                         endtime=self.origintime + self.endpad
@@ -173,11 +172,12 @@ class Fetcher():
         :return:
         """
         if self.ds is not None:
+            tag = "observed"
             try:
-                return self.asdf_waveform_fetch(station_code, tag='observed')
+                return self.asdf_waveform_fetch(station_code, tag=tag)
             except KeyError:
                 st_obs = self.fetch_by_directory(station_code)
-                self.ds.add_waveforms(waveform=st_obs,tag='observed')
+                self.ds.add_waveforms(waveform=st_obs, tag=tag)
                 return st_obs
         else:
             return self.fetch_by_directory(station_code)
@@ -191,14 +191,12 @@ class Fetcher():
         :return:
         """
         if self.ds is not None:
+            tag = "synthetic_{}".format(self.config.model_number)
             try:
-                return self.asdf_waveform_fetch(
-                    station_code,tag='synthetics_{}'.format(
-                    self.config.model_number))
+                return self.asdf_waveform_fetch(station_code, tag=tag)
             except KeyError:
                 st_syn = self.fetch_by_event(station_code)
-                self.ds.add_waveforms(waveform=st_syn,tag='synthetic_{}'.format(
-                                                    self.config.model_number))
+                self.ds.add_waveforms(waveform=st_syn, tag=tag)
                 return st_syn
         else:
             return self.fetch_by_event(station_code)
@@ -210,9 +208,9 @@ class Fetcher():
         if self.ds is not None:
             try:
                 return self.asdf_station_fetch(station_code)
-            except KeyError:
+            except AttributeError:
                 inv = self.fetch_response(station_code)
-                ds.add_stationxml(self.inv)
+                self.ds.add_stationxml(inv)
                 return inv
         else:
             return self.fetch_response(station_code)

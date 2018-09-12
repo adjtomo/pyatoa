@@ -6,40 +6,30 @@ windows and adjoint sources
 import copy
 import warnings
 
+import obspy
 import pyflex
+import pyadjoint
 import numpy as np
 from obspy.signal.filter import envelope
 
 from pyatoa import logger
 from pyatoa.utils.gathering.data_gatherer import Gatherer
+from pyatoa.utils.operations.source_receiver import gcd_and_baz
 from pyatoa.utils.operations.formatting import create_window_dictionary
 from pyatoa.utils.processing.preproc import preproc, trimstreams
-from pyatoa.utils.processing.synpreproc import stf_convolve, half_duration_from_m0
+from pyatoa.utils.processing.synpreproc import stf_convolve, \
+    half_duration_from_m0
 from pyatoa.utils.configurations.external_configurations import \
     set_pyflex_configuration, set_pyadjoint_configuration
 from pyatoa.utils.gathering.grab_auxiliaries import grab_geonet_moment_tensor
 
+
 class Crate:
     """
-    an internal storage class that Processor can dump information into
+    an internal storage class that Processor can dump information into to keep
+    clutter out of the Processor class
     """
-    def __init__(self):
-        self.station_code = None
-        self.st_obs = None
-        self.st_syn = None
-        self.inv = None
-        self.event = None
-        self.moment_tensor = None
-        self.windows = None
-        self.staltas = None
-        self.adj_srcs = None
-
-    def set_station(self, station_code):
-        """
-        reset all parameters in the crate for a new station
-        :param station_code:
-        :return:
-        """
+    def __init__(self, station_code=None):
         self.station_code = station_code
         self.st_obs = None
         self.st_syn = None
@@ -49,6 +39,32 @@ class Crate:
         self.windows = None
         self.staltas = None
         self.adj_srcs = None
+
+        self.eventflag = False
+        self.stobsflag = False
+        self.stsynflag = False
+        self.invflag = False
+        self.obsprocessflag = False
+        self.synprocessflag = False
+        self.syntheticdataflag = False
+        self.pyflexflag = False
+        self.pyadjointflag = False
+
+    def _checkflags(self):
+        """
+        sort through the crate and figure out what's in there
+        :return:
+        """
+        self.stobsflag = isinstance(self.st_obs, obspy.Stream)
+        if self.stobsflag:
+            self.obsprocessflag = hasattr(self.st_obs[0].stats, "processing")
+        self.stsynflag = isinstance(self.st_syn, obspy.Stream)
+        if self.stsynflag:
+            self.synprocessflag = hasattr(self.st_syn[0].stats, "processing")
+        self.invflag = isinstance(self.inv, obspy.Inventory)
+        self.eventflag = isinstance(self.event, obspy.core.event.Event)
+        self.pyflexflag = isinstance(self.windows, dict)
+        self.pyadjointflag = isinstance(self.adj_srcs, dict)
 
 
 class Processor:
@@ -61,38 +77,33 @@ class Processor:
         self.gatherer = None
         self.crate = Crate()
 
-        self.eventflag = False
-        self.stobsflag = False
-        self.stsynflag = False
-        self.invflag = False
-        self.dataprocessflag = False
-        self.syntheticdataflag = False
-        self.pyflexflag = False
-        self.pyadjointflag = False
-
     def __str__(self):
         """
         print statement for processor class
         :return:
         """
-        template = ("Processor class\n"
-                    "\tData Gathering:\n"
-                    "\t\tEvent:                     {ev}\n"
-                    "\t\tInventory:                 {iv}\n"
-                    "\t\tStation Code:              {sc}\n"
-                    "\t\tObserved Stream:           {os}\n"
-                    "\t\tSynthetic Stream:          {ss}\n"
-                    "\tData Preprocessed:           {pr}\n"
-                    "\tSynthetic Data Shifted:      {sy}\n"
-                    "\tPyflex run:                  {pf}\n"
-                    "\tPyadjoint run:               {pa}\n"
-                    )
-        return template.format(ev=self.eventflag, sc=self.crate.station_code,
-                               os=self.stobsflag, ss=self.stsynflag,
-                               iv=self.invflag, pr=self.dataprocessflag,
-                               sy=self.syntheticdataflag, pf=self.pyflexflag,
-                               pa=self.pyadjointflag
-                               )
+        self.crate._checkflags()
+        return ("Processor class\n"
+                "\tData Gathering:\n"
+                "\t\tEvent:                     {event}\n"
+                "\t\tInventory:                 {inventory}\n"
+                "\t\tObserved Stream:           {obsstream}\n"
+                "\t\tSynthetic Stream:          {synstream}\n"
+                "\tObs Data Preprocessed:       {obsproc}\n"
+                "\tSyn Data Preprocessed:       {synproc}\n"
+                "\tSynthetic Data Shifted:      {synshift}\n"
+                "\tPyflex runned:               {pyflex}\n"
+                "\tPyadjoint runned:            {pyadjoint}\n"
+                ).format(event=self.crate.eventflag,
+                         obsstream=self.crate.stobsflag,
+                         synstream=self.crate.stsynflag,
+                         inventory=self.crate.invflag,
+                         obsproc=self.crate.obsprocessflag,
+                         synproc=self.crate.synprocessflag,
+                         synshift=self.crate.syntheticdataflag,
+                         pyflex=self.crate.pyflexflag,
+                         pyadjoint=self.crate.pyadjointflag
+                         )
 
     def gather_data(self, station_code):
         """
@@ -100,7 +111,7 @@ class Processor:
         possibility to check flags to see where data gathering failed
         """
         try:
-            self.crate.set_station(station_code)
+            self.crate.station_code = station_code
             if self.gatherer is None:
                 logger.info("initiating gatherer")
                 gatherer = Gatherer(config=self.config, ds=self.ds)
@@ -111,14 +122,11 @@ class Processor:
                 self.crate.event = self.gatherer.event
             else:
                 self.crate.event = self.gatherer.gather_event()
-            self.eventflag = True
             self.crate.inv = self.gatherer.gather_station(station_code)
-            self.invflag = True
             self.crate.st_obs = self.gatherer.gather_observed(station_code)
-            self.stobsflag = True
             self.crate.st_syn = self.gatherer.gather_synthetic(station_code)
-            self.stsynflag = True
-        except Exception:
+        except Exception as e:
+            print(e)
             return
 
     def preprocess(self):
@@ -126,20 +134,23 @@ class Processor:
         preprocess observed and synthetic data
         :return:
         """
+        logger.info("preprocessing observation data")
+        if self.config.rotate_to_rtz:
+            _, baz = gcd_and_baz(self.crate.event, self.crate.inv)
         self.crate.st_obs = preproc(self.crate.st_obs, inv=self.crate.inv,
                                     resample=5, pad_length_in_seconds=20,
-                                    output="VEL",
-                                    filter=[self.config.min_period,
-                                            self.config.max_period]
+                                    output="VEL", back_azimuth=baz,
+                                    filterbounds=[self.config.min_period,
+                                                  self.config.max_period]
                                     )
         self.crate.st_syn = preproc(self.crate.st_syn, resample=5,
                                     pad_length_in_seconds=20, output="VEL",
-                                    filter=[self.config.min_period,
-                                            self.config.max_period]
+                                    back_azimuth=baz,
+                                    filterbounds=[self.config.min_period,
+                                                  self.config.max_period]
                                     )
         self.crate.st_obs, self.crate.st_syn = trimstreams(self.crate.st_obs,
                                                            self.crate.st_syn)
-        self.dataprocessflag = True
 
     def shift_synthetic(self):
         """
@@ -155,7 +166,6 @@ class Processor:
                                          window="bartlett",
                                          time_shift=False
                                          )
-        self.syntheticdataflag = True
 
     def run_pyflex(self):
         """
@@ -179,7 +189,6 @@ class Processor:
                 min_period=self.config.min_period
                 )
             staltas[COMP] = stalta
-
             logger.info("{0} window(s) found for component {1}".format(
                 len(window), COMP)
                 )
@@ -188,31 +197,30 @@ class Processor:
                 continue
             else:
                 windows[COMP] = window
+        # TODO: should this be an exception?
         if empties == len(self.config.component_list):
-            # TODO: should this be an exception?
             warnings.warn("Empty windows", UserWarning)
 
+        self.crate.windows = windows
+        self.crate.staltas = staltas
+
         if self.ds is not None:
-            for COMP in self.config.component_list.keys():
+            for COMP in windows.keys():
                 for i, window in enumerate(windows[COMP]):
-                    internalpath = "{net}_{sta}_{comp}_{num}_{mod}".format(
+                    internalpath = "{mod}/{net}_{sta}_{comp}_{num}".format(
                         evid=self.config.component_list,
                         net=self.crate.st_obs[0].stats.network,
                         sta=self.crate.st_obs[0].stats.station,
                         comp=COMP, mod=self.config.model_number, num=i)
-                    win_dict = create_window_dictionary(window)
+                    wind_dict = create_window_dictionary(window)
                     with warnings.catch_warnings():
                         warnings.simplefilter("ignore")
-                        # auxiliary data requires a data object, give it a bool;
-                        # auxi's love bools
+                        # auxiliary needs data, give it a bool; auxis love bools
                         self.ds.add_auxiliary_data(data=np.array([True]),
                                                    data_type="MisfitWindows",
                                                    path=internalpath,
-                                                   parameters=win_dict
+                                                   parameters=wind_dict
                                                    )
-
-        self.crate.windows = windows
-        self.crate.staltas = staltas
 
     def run_pyadjoint(self):
         """
@@ -221,18 +229,21 @@ class Processor:
         lists, with each list containing the [left_window,right_window] where
         each window argument is given in seconds
         """
-        logger.info("Running pyAdjoint for type [{}] ".format(
+        if self.crate.windows is None:
+            warnings.warn("windows must be collected before pyadjoint can run")
+            return
+
+        logger.info("Running pyAdjoint for type {} ".format(
             self.config.adj_src_type)
             )
         pa_config = set_pyadjoint_configuration(config=self.config)
-        delta = self.crate.st_obs[0].stats.delta
 
         adjoint_sources = {}
         for key in self.crate.windows:
-            # collect all windows into a single list object
             adjoint_windows = []
             for win in self.crate.windows[key]:
-                adj_win = [win.left * delta, win.right * delta]
+                adj_win = [win.left * self.crate.st_obs[0].stats.delta,
+                           win.right * self.crate.st_obs[0].stats.delta]
                 adjoint_windows.append(adj_win)
 
             adj_src = pyadjoint.calculate_adjoint_source(
@@ -243,43 +254,54 @@ class Processor:
                 plot=False
                 )
             adjoint_sources[key] = adj_src
-
             if self.ds:
-                logger.info("Saving adj src [{}] to PyASDF".format(key))
+                logger.info("Saving adjoint source {} to PyASDF".format(key))
                 with warnings.catch_warnings():
                     warnings.simplefilter("ignore")
-                    adj_src.write_to_asdf(PD["dataset"], time_offset=0)
-
+                    adj_src.write_to_asdf(self.ds, time_offset=0)
         self.crate.adj_srcs = adjoint_sources
 
-    def process(self, station_code):
+    def populate(self, station_code):
         """
-        run through the pyatoa process for a single station
+        convenience function to run through the pyatoa process
         :return:
         """
-        self.crate.set_station(station_code)
-        self.gather_data()
+        self.gather_data(station_code)
+        self.preprocess()
+        self.shift_synthetic()
+        self.run_pyflex()
+        self.run_pyadjoint()
 
-
-
-
-
-
-    def plot_waveforms(self, *args, **kwargs):
+    def plot_wav(self, show=True, *args, **kwargs):
         """
 
         :param args:
         :param kwargs:
         :return:
         """
+        from pyatoa.visuals.plot_waveforms import window_maker
+        f = window_maker(st_obs=self.crate.st_obs, st_syn=self.crate.st_syn,
+                         windows=self.crate.windows, staltas=self.crate.staltas,
+                         adj_srcs=self.crate.adj_srcs,
+                         stalta_wl=self.config.pyflex_config[0],
+                         unit_output=self.config.unit_output,
+                         config=self.config, figsize=(11.69, 8.27), dpi=100,
+                         show=show
+                         )
 
-    def plot_map(self, *args, **kwargs):
+    def plot_map(self, show=True, save=False, *args, **kwargs):
         """
 
         :param args:
         :param kwargs:
         :return:
         """
+        from pyatoa.visuals.plot_map import generate_map
+        m = generate_map(config=self.config, event=self.crate.event,
+                         inv=self.crate.inv, show_faults=True,
+                         show=show, figsize=(11.69, 8.27), dpi=100
+                         )
+
 
 
 

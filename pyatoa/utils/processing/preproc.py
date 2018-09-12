@@ -41,11 +41,10 @@ def trimstreams(st_a, st_b):
 
 
 def preproc(st, inv=None, resample=5, pad_length_in_seconds=20,
-            output="VEL", filter=False):
+            output="VEL", back_azimuth=None, filterbounds=None, water_level=60):
     """
     preprocess waveform data
     """
-    logger.info("ignoring FutureWarnings due to obspy trace warnings")
     warnings.filterwarnings("ignore", category=FutureWarning)
 
     st.resample(resample)
@@ -54,7 +53,9 @@ def preproc(st, inv=None, resample=5, pad_length_in_seconds=20,
     st.taper(max_percentage=0.05)
     if inv:
         st.attach_response(inv)
-        st.remove_response(output=output, water_level=60, plot=False)
+        st.remove_response(output=output, water_level=water_level, plot=False)
+        import matplotlib.pyplot as plt; plt.show()
+        logger.info("removing response with water level {}".format(water_level))
         st.detrend("linear")
         st.detrend("demean")
         st.taper(max_percentage=0.05)
@@ -65,13 +66,17 @@ def preproc(st, inv=None, resample=5, pad_length_in_seconds=20,
         elif output == "ACC":
             st.differentiate(method="gradient")
         st.taper(max_percentage=0.05)
+    if back_azimuth is not None:
+        st.rotate(method="NE->RT", back_azimuth=back_azimuth)
+        logger.info("rotating NE->RT by {} degrees".format(back_azimuth))
     st = _zero_pad_stream(st, pad_length_in_seconds)
-    logger.info("zero padding by {}s".format(pad_length_in_seconds))
-    if filter:
-        st.filter('bandpass', freqmin=1/filter[1], freqmax=1/filter[0],
-                  corners=4, zerophase=True)
-        logger.info("filtering stream at {}s to {}s".format(
-            filter[0],filter[1])
-        )
+    logger.info("zero padding front and back by {}s".format(
+        pad_length_in_seconds))
+    if filterbounds is not None:
+        st.filter('bandpass', freqmin=1/filterbounds[1],
+                  freqmax=1/filterbounds[0], corners=4, zerophase=True)
+        logger.info("filtering stream at {}s to {}s".format(filterbounds[0],
+                                                            filterbounds[1])
+                    )
     return st
 

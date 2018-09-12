@@ -6,8 +6,10 @@ webservice.
 import copy
 from obspy.clients.fdsn import Client
 
+from pyatoa import logger
 
-class Getter():
+
+class Getter:
     def __init__(self, config=None, client="GEONET", event_id=None,
                  startpad=20, endpad=200):
         self.config = copy.deepcopy(config)
@@ -40,11 +42,13 @@ class Getter():
         """
         if self.Client is None:
             self.Client = Client(self.client)
-        net,sta,loc,cha = station_code.split('.')
+        net, sta, loc, cha = station_code.split('.')
         return self.Client.get_stations(network=net, station=sta, location=loc,
-            channel=cha, starttime=self.origintime-self.startpad,
-            endtime=self.origintime+self.endpad, level=level
-            )
+                                        channel=cha,
+                                        starttime=self.origintime-self.startpad,
+                                        endtime=self.origintime+self.endpad,
+                                        level=level
+                                        )
 
     def waveform_get(self, station_code):
         """
@@ -55,13 +59,15 @@ class Getter():
         """
         if self.Client is None:
             self.Client = Client(self.client)
-        net,sta,loc,cha = station_code.split('.')
+        net, sta, loc, cha = station_code.split('.')
         st = self.Client.get_waveforms(network=net, station=sta, location=loc,
-            channel=cha, starttime=self.origintime-(self.startpad+10),
-            endtime=self.origintime+(self.endpad+10)
-            )
+                                       channel=cha, starttime=self.origintime-(
+                                                            self.startpad+10),
+                                       endtime=self.origintime+(self.endpad+10)
+                                       )
         st.trim(starttime=self.origintime-self.startpad,
                 endtime=self.origintime+self.endpad)
+        logger.info("stream got external {}".format(station_code))
         return st
 
     def get_all(self, station_code):
@@ -73,7 +79,7 @@ class Getter():
         event = self.event_get()
         inv = self.station_get(station_code)
         st = self.waveform_get(station_code)
-        return event,inv,st
+        return event, inv, st
 
 
 

@@ -28,6 +28,8 @@ def _hardcode_paths():
         return
 
     paths = {"faults": os.path.join(datafolder, "FAULTS", ''),
+             "stations": os.path.join(datafolder, "STATIONXML", "COORDINATE",
+                                      "masterlist", "masterlist.npz"),
              "geonet_mt": os.path.join(datafolder, "GEONET", "data",
                                        "moment-tensor",
                                        "GeoNet_CMT_solutions.csv"),
@@ -56,6 +58,8 @@ def grab_geonet_moment_tensor(event_id):
                         values.append(UTCDateTime(v))
                     elif t == "PublicID":
                         values.append(v)
+                    elif t == "Mo":
+                        values.append(float(v)*1E-7)  # dyne*cm to N*m
                     else:
                         values.append(float(v))
 

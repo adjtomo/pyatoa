@@ -86,19 +86,7 @@ def setup_plot(number_of, twax=True):
     return axes, twaxes
 
 
-def create_component_list(st):
-    """figure out if NEZ or RTZ components for proper list iteration
-    """
-    complist = []
-    for tr in st:
-        complist.append(tr.get_id()[-1])
-    complist = list(set(complist))
-    complist.sort()
-
-    return complist
-
-
-def window_maker(st_obs, st_syn, **kwargs):
+def window_maker(st_obs, st_syn, config, **kwargs):
     """plot streams and windows. assumes you have N observation traces and
     N synthetic traces for a 2N length stream object
 
@@ -106,27 +94,27 @@ def window_maker(st_obs, st_syn, **kwargs):
     # !!! same axis object, normalize them both -1 to 1 and remove the
     # !!! mean of the adjoint source to set everything onto 0
     """
+    dpi = kwargs.get("dpi", 100)
+    figsize = kwargs.get("figsize", (11.69, 8.27))  #A4
     windows = kwargs.get("windows", None)
     staltas = kwargs.get("staltas", None)
-    adj_src = kwargs.get("adj_src", None)
+    adj_srcs = kwargs.get("adj_srcs", None)
     stalta_wl = kwargs.get("stalta_wl", None)
     unit_output = kwargs.get("unit_output", None)
-    config = kwargs.get("config", None)
-    station_code = kwargs.get("station_code", None)
+    show = kwargs.get("show", False)
+    save = kwargs.get("save", None)
 
-    number_of_traces = len(st_obs)//2
-    middle_trace = number_of_traces//2
+    middle_trace = len(st_obs)//2
     unit_dict = {"DISP": "displacement [m]", "VEL": "velocity [m/s]",
                  "ACC": "acceleration [m/s^2]"}
 
-    axes, twaxes = setup_plot(number_of=number_of_traces, twax=True)
+    f = plt.figure(figsize=figsize, dpi=dpi)
+    axes, twaxes = setup_plot(number_of=len(st_obs), twax=True)
     t = np.linspace(0, st_obs[0].stats.endtime-st_obs[0].stats.starttime,
                     len(st_obs[0].data))
-    complist = create_component_list(st_obs)
 
     z = 5
-    for i, comp in enumerate(complist):
-        # distribute data
+    for i, comp in enumerate(config.component_list):
         obs = st_obs.select(component=comp)
         syn = st_syn.select(component=comp)
         a1, = axes[i].plot(t, obs[0].data, 'k', zorder=z,
@@ -160,14 +148,14 @@ def window_maker(st_obs, st_syn, **kwargs):
                     axes[i].annotate(s=anno_str, xy=(twindow[10], ymax*0.5),
                                      zorder=z-1, fontsize=7)
 
-                if adj_src is not None:
-                    _adj_src = normalize_a_to_b(
-                        adj_src[comp].adjoint_source, -1, 1)
+                if adj_srcs is not None:
+                    _adj_src = normalize_a_to_b(adj_srcs[comp].adjoint_source,
+                                                a=-1, b=1)
                     _adj_src = detrend(_adj_src, type="constant")
                     t3, = twaxes[i].plot(t, _adj_src[::-1], 'g', alpha=0.5,
                                          linestyle='-.',
                                          label="Adjoint Source, Misfit={:.4f}".
-                                         format(adj_src[comp].misfit)
+                                         format(adj_srcs[comp].misfit)
                                          )
                     lines_for_legend += [t3]
             except KeyError:
@@ -189,12 +177,15 @@ def window_maker(st_obs, st_syn, **kwargs):
             format_axis(AX)
         align_yaxis(axes[i], twaxes[i])
 
-    axes[0].set_title("{e} {s} [{b0},{b1}]".format(e=config.event_id,
-                                             s=station.code.split('.')[1],
-                                             b0=config.min_period,
-                                             b1=config.max_period
-                                             )
-                      )
+    axes[0].set_title("{e} {n}.{s} [{b0},{b1}]".format(
+        e=config.event_id, n=st_obs[0].stats.network, s=st_obs[0].stats.station,
+        b0=config.min_period, b1=config.max_period)
+                     )
     axes[-1].set_xlabel("time [s]")
+    if save:
+        plt.savefig(save, figsize=figsize, dpi=dpi)
+    if show:
+        plt.show()
 
-    return axes, twaxes
+    plt.close()
+    return f

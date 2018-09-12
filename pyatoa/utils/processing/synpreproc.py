@@ -6,7 +6,6 @@ import numpy as np
 from scipy import signal
 
 from pyatoa import logger
-from pyatoa.utils.gathering.grab_auxiliaries import gcmt_and_geonet_mt
 
 
 def stf_convolve(st, half_duration, window="bartlett", time_shift=False):
@@ -21,15 +20,16 @@ def stf_convolve(st, half_duration, window="bartlett", time_shift=False):
     :param time_shift: change the starttime
     :return new_st:
     """
-    logger.info("convolving synthetic data with {} window".format(window))
     sampling_rate = st[0].stats.sampling_rate
     half_duration_in_samples = round(half_duration * sampling_rate)
     stf = signal.get_window(window=window,
-                            Nx=(half_duration_in_samples * 2) -1)
+                            Nx=(half_duration_in_samples * 2) - 1)
+    logger.info("convolving synthetic data with "
+                "{0} window of duration {1:.2f}".format(window, half_duration))
 
     # make sure window touches 0 at the end
     if stf[-1] != 0:
-        stf = np.append(stf,0)
+        stf = np.append(stf, 0)
     stf *= (2/len(stf))
     st_out = st.copy()
     for tr in st_out:

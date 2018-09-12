@@ -97,3 +97,77 @@ def moment_tensor_list_to_objects(mtlist):
             ),
         nodal_planes=nodal_planes, moment_tensor=moment_tensor
         )
+
+    def write_to_asdf(adjoint_source, ds, time_offset, coordinates=None):
+        """
+        !!! Stolen and modified from Pyadjoint source code
+
+        Writes the adjoint source to an ASDF file.
+        Note: For now it is assumed SPECFEM will be using the adjoint source
+        :param ds: The ASDF data structure read in using pyasdf.
+        :type ds: str
+        :param time_offset: The temporal offset of the first sample in seconds.
+            This is required if using the adjoint source as input to SPECFEM.
+        :type time_offset: float
+        :param coordinates: If given, the coordinates of the adjoint source.
+            The 'latitude', 'longitude', and 'elevation_in_m' of the adjoint
+            source must be defined.
+        :type coordinates: list
+        .. rubric:: SPECFEM
+        SPECFEM requires one additional parameter: the temporal offset of the
+        first sample in seconds. The following example sets the time of the
+        first sample in the adjoint source to ``-10``.
+        >>> adj_src.write_to_asdf(ds, time_offset=-10,
+        ...               coordinates={'latitude':19.2,
+        ...                            'longitude':13.4,
+        ...                            'elevation_in_m':2.0})
+        """
+        # Import here to not have a global dependency on pyasdf
+        from pyasdf.exceptions import NoStationXMLForStation
+
+        # Convert the adjoint source to SPECFEM format
+        l = len(self.adjoint_source)
+        specfem_adj_source = np.empty((l, 2))
+        specfem_adj_source[:, 0] = np.linspace(0, (l - 1) * self.dt, l)
+        specfem_adj_source[:, 1] = time_offset
+        specfem_adj_source[:, 1] = self.adjoint_source[::-1]
+
+        tag = "%s_%s_%s" % (self.network, self.station, self.component)
+        min_period = self.min_period
+        max_period = self.max_period
+        component = self.component
+        station_id = "%s.%s" % (self.network, self.station)
+
+        if coordinates:
+            # If given, all three coordinates must be present
+            if {"latitude", "longitude", "elevation_in_m"}.difference(
+                    set(coordinates.keys())):
+                raise ValueError(
+                    "'latitude', 'longitude', and 'elevation_in_m'"
+                    " must be given")
+        else:
+            try:
+                coordinates = ds.waveforms[
+                    "%s.%s" % (self.network, self.station)].coordinates
+            except NoStationXMLForStation:
+                raise ValueError("Coordinates must either be given "
+                                 "directly or already be part of the "
+                                 "ASDF file")
+
+        # Safeguard against funny types in the coordinates dictionary
+        latitude = float(coordinates["latitude"])
+        longitude = float(coordinates["longitude"])
+        elevation_in_m = float(coordinates["elevation_in_m"])
+
+        parameters = {"dt": self.dt, "misfit_value": self.misfit,
+                      "adjoint_source_type": self.adj_src_type,
+                      "min_period": min_period, "max_period": max_period,
+                      "latitude": latitude, "longitude": longitude,
+                      "elevation_in_m": elevation_in_m,
+                      "station_id": station_id, "component": component,
+                      "units": "m"}
+
+        # Use pyasdf to add auxiliary data to the ASDF file
+        ds.add_auxiliary_data(data=specfem_adj_source,
+                              data_type="AdjointSource", path=tag,
+                                parameters=parameters)
