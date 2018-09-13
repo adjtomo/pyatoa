@@ -85,7 +85,6 @@ class Gatherer:
             return self.fetcher.station_fetch(station_code)
         except FileNotFoundError:
             inv = self.getter.station_get(station_code)
-            import ipdb;ipdb.set_trace()
             if self.ds is not None:
                 self.ds.add_stationxml(inv)
             return

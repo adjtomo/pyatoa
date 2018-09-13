@@ -28,8 +28,8 @@ def _hardcode_paths():
         return
 
     paths = {"faults": os.path.join(datafolder, "FAULTS", ''),
-             "stations": os.path.join(datafolder, "STATIONXML", "COORDINATE",
-                                      "masterlist", "masterlist.npz"),
+             "stations": os.path.join(datafolder, "STATIONXML", "MASTER",
+                                      "master_inventory.xml"),
              "geonet_mt": os.path.join(datafolder, "GEONET", "data",
                                        "moment-tensor",
                                        "GeoNet_CMT_solutions.csv"),

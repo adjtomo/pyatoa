@@ -208,7 +208,7 @@ class Fetcher:
         if self.ds is not None:
             try:
                 return self.asdf_station_fetch(station_code)
-            except AttributeError:
+            except KeyError:
                 inv = self.fetch_response(station_code)
                 self.ds.add_stationxml(inv)
                 return inv
