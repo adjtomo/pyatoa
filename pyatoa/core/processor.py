@@ -2,6 +2,7 @@
 """
 Invoke Pyadjoint and Pyflex on observed and synthetic data to generate misfit
 windows and adjoint sources
+TODO: create a moment tensor object that can be attached to the event object
 """
 import copy
 import warnings
@@ -26,10 +27,36 @@ from pyatoa.utils.gathering.grab_auxiliaries import grab_geonet_moment_tensor
 
 class Crate:
     """
-    an internal storage class that Processor can dump information into to keep
-    clutter out of the Processor class
+    An internal storage class for clutter-free rentention of data for individual
+    stations. Simple flagging system for quick glances at workflow progress.
+
+    Mid-level object that is called and manipulated by the Processor class.
     """
     def __init__(self, station_code=None):
+        """
+        :type station_code: str
+        :param station_code: Station code following SEED naming convention.
+            This must be in the form NN.SSSS.LL.CCC (N=network, S=station,
+            L=location, C=channel). Allows for wildcard naming. By default
+            the pyatoa workflow wants three orthogonal components in the N/E/Z
+            coordinate system. Example station code: NZ.OPRZ.10.HH?
+        :type st_obs: obspy.core.stream.Stream
+        :param st_obs: Stream object containing waveforms of observations
+        :type st_syn: obspy.core.stream.Stream
+        :param st_syn: Stream object containing waveforms of observations
+        :type inv: obspy.core.inventory.Inventory
+        :param inv: Inventory that should only contain the station of interest,
+            it's relevant channels, and response information
+        :type event: obspy.core.event.Event
+        :param event: An event object containing relevant earthquake information
+        :type windows: dict of pyflex.Window objects
+        :param windows: misfit windows calculated by Pyflex, stored in a
+            dictionary based on component naming
+        :type adj_srcs: dict of pyadjoint.AdjointSource objects
+        :param adj_srcs: adjoint source waveforms stored in dictionaries
+        :type *flag: bool
+        :param *_flag: if * is present in the Crate, or if * has been processed
+        """
         self.station_code = station_code
         self.st_obs = None
         self.st_syn = None
@@ -40,38 +67,56 @@ class Crate:
         self.staltas = None
         self.adj_srcs = None
 
-        self.eventflag = False
-        self.stobsflag = False
-        self.stsynflag = False
-        self.invflag = False
-        self.obsprocessflag = False
-        self.synprocessflag = False
-        self.syntheticdataflag = False
-        self.pyflexflag = False
-        self.pyadjointflag = False
+        self.event_flag = False
+        self.st_obs_flag = False
+        self.st_syn_flag = False
+        self.inv_flag = False
+        self.obs_process_flag = False
+        self.syn_process_flag = False
+        self.syn_shift_flag = False
+        self.pyflex_flag = False
+        self.pyadjoint_flag = False
 
     def _checkflags(self):
         """
-        sort through the crate and figure out what's in there
-        :return:
+        Update flags based on what is available in the crate.
         """
-        self.stobsflag = isinstance(self.st_obs, obspy.Stream)
-        if self.stobsflag:
-            self.obsprocessflag = hasattr(self.st_obs[0].stats, "processing")
-        self.stsynflag = isinstance(self.st_syn, obspy.Stream)
-        if self.stsynflag:
-            self.synprocessflag = hasattr(self.st_syn[0].stats, "processing")
-        self.invflag = isinstance(self.inv, obspy.Inventory)
-        self.eventflag = isinstance(self.event, obspy.core.event.Event)
-        self.pyflexflag = isinstance(self.windows, dict)
-        self.pyadjointflag = isinstance(self.adj_srcs, dict)
+        self.st_obs_flag = isinstance(self.st_obs, obspy.Stream)
+        if self.st_obs_flag:
+            self.obsprocess_flag = hasattr(self.st_obs[0].stats, "processing")
+        self.st_syn_flag = isinstance(self.st_syn, obspy.Stream)
+        if self.st_syn_flag:
+            self.syn_process_flag = hasattr(self.st_syn[0].stats, "processing")
+        self.inv_flag = isinstance(self.inv, obspy.Inventory)
+        self.event_flag = isinstance(self.event, obspy.core.event.Event)
+        self.pyflex_flag = isinstance(self.windows, dict)
+        self.pyadjoint_flag = isinstance(self.adj_srcs, dict)
 
 
 class Processor:
     """
-    wrapper to contain all the adjoint source creation functionalities
+    Core object within Pyatoa.
+
+    Workflow management function that internally calls on all other objects
+    within the package in order to gather, process and analyze waveform data.
+
     """
     def __init__(self, config, ds=None):
+        """
+        If no pyasdf dataset is given in the initiation of the processor, all
+        data fetching will happen via given pathways in the config file,
+        or through external getting via FDSN pathways
+
+        :type config: pyatoa.core.config.Config
+        :param config: configuration object that contains necessary parameters
+            to run through the Pyatoa workflow
+        :type ds: pyasdf.asdf_data_set.ASDFDataSet
+        :param ds: ASDF data set from which to read and write data
+        :type gatherer: pyatoa.utils.gathering.data_gatherer.Gatherer
+        :param gatherer: gathering function used to get and fetch data
+        :type crate: pyatoa.core.processor.Crate
+        :param crate: Crate to hold all your information
+        """
         self.config = copy.deepcopy(config)
         self.ds = ds
         self.gatherer = None
@@ -79,8 +124,7 @@ class Processor:
 
     def __str__(self):
         """
-        print statement for processor class
-        :return:
+        Print statement shows available information inside the workflow.
         """
         self.crate._checkflags()
         return ("Processor class\n"
@@ -94,36 +138,66 @@ class Processor:
                 "\tSynthetic Data Shifted:      {synshift}\n"
                 "\tPyflex runned:               {pyflex}\n"
                 "\tPyadjoint runned:            {pyadjoint}\n"
-                ).format(event=self.crate.eventflag,
-                         obsstream=self.crate.stobsflag,
-                         synstream=self.crate.stsynflag,
-                         inventory=self.crate.invflag,
-                         obsproc=self.crate.obsprocessflag,
-                         synproc=self.crate.synprocessflag,
-                         synshift=self.crate.syntheticdataflag,
-                         pyflex=self.crate.pyflexflag,
-                         pyadjoint=self.crate.pyadjointflag
+                ).format(event=self.crate.event_flag,
+                         obsstream=self.crate.st_obs_flag,
+                         synstream=self.crate.st_syn_flag,
+                         inventory=self.crate.inv_flag,
+                         obsproc=self.crate.obs_process_flag,
+                         synproc=self.crate.syn_process_flag,
+                         synshift=self.crate.syn_shift_flag,
+                         pyflex=self.crate.pyflex_flag,
+                         pyadjoint=self.crate.pyadjoint_flag
                          )
+
+    def _launch_gatherer(self, reset=False):
+        """
+        Initiates gatherer class, should only need to be done once per asdf
+        dataset. Option given to reset and reinstantiate gatherer object.
+
+        :param reset: bool
+        :return: if True, launch a new gatherer regardless of whether one exists
+        """
+        if (self.gatherer is None) or reset:
+            logger.info("initiating gatherer")
+            gatherer = Gatherer(config=self.config, ds=self.ds)
+            self.gatherer = gatherer
+
+    def _reset(self):
+        """
+        To avoid user interaction with the Crate class.
+        Convenience function to instantiate a new Crate, and hence start the
+        workflow from the start without losing your event or gatherer.
+        """
+        self.crate = Crate()
 
     def gather_data(self, station_code):
         """
-        call on data_gatherer to populate data space, catch on exception,
-        possibility to check flags to see where data gathering failed
+        Launch a gatherer object and gather event, station and waveform
+        information given a station code. Fills the crate based on information
+        most likely to be available (we expect an event to be available more
+        often than waveform data).
+        Catches general exceptions along the way, stops gathering if errors.
+
+        :type station_code: str
+        :param station_code: Station code following SEED naming convention.
+            This must be in the form NN.SSSS.LL.CCC (N=network, S=station,
+            L=location, C=channel). Allows for wildcard naming. By default
+            the pyatoa workflow wants three orthogonal components in the N/E/Z
+            coordinate system. Example station code: NZ.OPRZ.10.HH?
         """
         try:
+            self._launch_gatherer()
             self.crate.station_code = station_code
-            if self.gatherer is None:
-                logger.info("initiating gatherer")
-                gatherer = Gatherer(config=self.config, ds=self.ds)
-                self.gatherer = gatherer
-
-            logger.info("gathering source, receiver and waveform data")
+            logger.info("gathering event information")
             if self.gatherer.event is not None:
                 self.crate.event = self.gatherer.event
             else:
                 self.crate.event = self.gatherer.gather_event()
+            logger.info("gathering station information")
             self.crate.inv = self.gatherer.gather_station(station_code)
+            logger.info("gathering observation waveforms")
             self.crate.st_obs = self.gatherer.gather_observed(station_code)
+            logger.info("gathering synthetic waveforms")
             self.crate.st_syn = self.gatherer.gather_synthetic(station_code)
         except Exception as e:
             print(e)
@@ -131,8 +205,7 @@ class Processor:
 
     def preprocess(self):
         """
-        preprocess observed and synthetic data
-        :return:
+        Preprocess observed and synthetic data in place on waveforms in crate.
         """
         logger.info("preprocessing observation data")
         if self.config.rotate_to_rtz:
@@ -143,6 +216,7 @@ class Processor:
                                     filterbounds=[self.config.min_period,
                                                   self.config.max_period]
                                     )
+        logger.info("preprocessing synthetic data")
         self.crate.st_syn = preproc(self.crate.st_syn, resample=5,
                                     pad_length_in_seconds=20, output="VEL",
                                     back_azimuth=baz,
@@ -154,9 +228,14 @@ class Processor:
 
     def shift_synthetic(self):
         """
-        put synthetic data into the correct origin time.
-        !!!TODO: determine how important half duration and time shift are
-        :return:
+        TODO: determine how important half duration and time shift are
+        TODO: move the guts of this function into synpreproc.py (?)
+
+        Put synthetic data into the correct origin time given a GeoNet moment
+        tensor list retrieved from the GeoNet moment tensor CSV file.
+
+        Convolve the synthetic waveforms in place with a shape function
+        (default is a bartlett, which is basically a triangle function)
         """
         self.crate.moment_tensor = grab_geonet_moment_tensor(
             self.config.event_id)
@@ -166,10 +245,13 @@ class Processor:
                                          window="bartlett",
                                          time_shift=False
                                          )
+        self.crate.syn_shift_flag = True  # TODO: make this flag change smarter
 
     def run_pyflex(self):
         """
-        call pyflex module to calculate best fitting misfit windows
+        Call Pyflex to calculate best fitting misfit windows given observation
+        and synthetic data in the crate. Return dictionaries of window objects,
+        as well as STA/LTA traces, to the crate. If a pyasdf dataset is 
         """
         pf_config, pf_event, pf_station = set_pyflex_configuration(
             config=self.config, inv=self.crate.inv, event=self.crate.event
@@ -229,7 +311,9 @@ class Processor:
         lists, with each list containing the [left_window,right_window] where
         each window argument is given in seconds
         """
-        if self.crate.windows is None:
+        if (self.crate.windows is None) or (isinstance(self.crate.windows, dict)
+                                            and not len(self.crate.windows)
+                                            ):
             warnings.warn("windows must be collected before pyadjoint can run")
             return
 
@@ -280,14 +364,14 @@ class Processor:
         :return:
         """
         from pyatoa.visuals.plot_waveforms import window_maker
-        f = window_maker(st_obs=self.crate.st_obs, st_syn=self.crate.st_syn,
-                         windows=self.crate.windows, staltas=self.crate.staltas,
-                         adj_srcs=self.crate.adj_srcs,
-                         stalta_wl=self.config.pyflex_config[0],
-                         unit_output=self.config.unit_output,
-                         config=self.config, figsize=(11.69, 8.27), dpi=100,
-                         show=show
-                         )
+        window_maker(st_obs=self.crate.st_obs, st_syn=self.crate.st_syn,
+                     windows=self.crate.windows, staltas=self.crate.staltas,
+                     adj_srcs=self.crate.adj_srcs,
+                     stalta_wl=self.config.pyflex_config[0],
+                     unit_output=self.config.unit_output,
+                     config=self.config, figsize=(11.69, 8.27), dpi=100,
+                     show=show
+                     )
 
     def plot_map(self, show=True, save=False, *args, **kwargs):
         """
@@ -297,10 +381,10 @@ class Processor:
         :return:
         """
         from pyatoa.visuals.plot_map import generate_map
-        m = generate_map(config=self.config, event=self.crate.event,
-                         inv=self.crate.inv, show_faults=True,
-                         show=show, figsize=(11.69, 8.27), dpi=100
-                         )
+        generate_map(config=self.config, event=self.crate.event,
+                     inv=self.crate.inv, show_faults=True,
+                     show=show, figsize=(11.69, 8.27), dpi=100
+                     )
 
 
 

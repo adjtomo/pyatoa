@@ -54,7 +54,7 @@ def build_colormap(array):
     return colormap
 
 
-def plot_hikurangi_trench(m, path):
+def plot_hikurangi_trench(m, path_):
     """trace the hikurangi trench on a basemap object 'm'
     """
     trenchcoords = np.load(path)
@@ -71,7 +71,7 @@ def plot_hikurangi_trench(m, path):
     m.plot(xprimenew, yprimenew, '--', linewidth=1.25, color='k', zorder=2)
 
 
-def plot_active_faults(m, path):
+def plot_active_faults(m, path_):
     """plot onshore and offshore fault coordinate files
     """
     active_faults = np.load(path)
@@ -80,7 +80,7 @@ def plot_active_faults(m, path):
     faults = active_faults['FAULT']
 
     for i in range(faults.min(), faults.max()+1, 1):
-        indices = np.where(faults==i)
+        indices = np.where(faults == i)
         x, y = m(lons[indices], lats[indices])
         m.plot(x, y, '--', linewidth=0.5, color='k', zorder=2, alpha=0.25)
 
@@ -225,15 +225,10 @@ def generate_map(config, event, inv,
     if show_faults:
         warnings.warn("Plotting active faults takes some time, "
                       "please be patient", UserWarning)
-        plot_hikurangi_trench(m, os.path.join(_hardcode_paths()['faults'],
-                                              "hikurangiTrenchCoords.npz")
-                              )
-        plot_active_faults(m, os.path.join(_hardcode_paths()['faults'],
-                                           "onshoreFaultCoords.npz")
-                           )
-        plot_active_faults(m, os.path.join(_hardcode_paths()['faults'],
-                                           "offshoreFaultCoords.npz")
-                           )
+        plot_hikurangi_trench(m, "./fault_coordinates/hikurangi_trench.npz")
+        for path_ in ["./fault_coordinates/north_island_550_641_onshore.npz",
+                      "./fault_coordinates/north_island_550_641_offshore.npz"]:
+            plot_active_faults(m, path_)
 
     plot_stations(m, inv=background_inv, event=event, annotate_names=False,
                   color_by_network=False)

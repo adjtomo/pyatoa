@@ -128,12 +128,13 @@ class Config:
         cfg_dict = {"default": [.08, 15., 1., .8, .7, 4., 0., 1., 2., 3., 10.],
                     "UAF": [.18, 4., 1.5, .71, .7, 2., 0., 3., 2., 2.5, 12.]
                     }
-        if type(self.pyflex_config) == str:
+        if isinstance(self.pyflex_config, str):
             self.pyflex_config = cfg_dict[self.pyflex_config]
-        elif type(self.pyflex_config) == list and len(self.pyflex_config) != 11:
+        elif isinstance(self.pyflex_config, list) and \
+                len(self.pyflex_config) != 11:
             warnings.warn("given 'pyflex_config' is not correct length",
                           UserWarning)
-        elif type(self.pyflex_config) != list:
+        elif not isinstance(self.pyflex_config, list):
             warnings.warn("'pyflex_config' must be type 'str' or 'list",
                           UserWarning)
 
@@ -142,7 +143,7 @@ class Config:
         just make sure that some of the configuration parameters are set proper
         :return:
         """
-        if self.paths['waveforms'] is not None:
+        if len(self.paths):
             for path_ in self.paths.values():
                 for p in path_:
                     if not os.path.exists(p):

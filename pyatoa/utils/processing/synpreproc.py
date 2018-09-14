@@ -25,7 +25,9 @@ def stf_convolve(st, half_duration, window="bartlett", time_shift=False):
     stf = signal.get_window(window=window,
                             Nx=(half_duration_in_samples * 2) - 1)
     logger.info("convolving synthetic data with "
-                "{0} window of duration {1:.2f}".format(window, half_duration))
+                "{0} window of half duration {1:.2f}s".format(window,
+                                                              half_duration)
+                )
 
     # make sure window touches 0 at the end
     if stf[-1] != 0:
