@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 """
-Configuration for pyatoa runs
+Configuration object for Pyatoa.
+
+Fed into the processor class for workflow management, and also used for
+information sharing between objects and functions.
 """
 import os
 import warnings
@@ -8,44 +11,68 @@ import warnings
 
 class Config:
     """
-    Configuration class that controls all the functionalities inside pyatoa
+    Configuration class that controls functionalities inside pyatoa
     """
     def __init__(self, model_number=None, event_id=None, min_period=10,
                  max_period=30, filter_corners=4, rotate_to_rtz=True,
                  unit_output='DISP', pyflex_config='UAF',
                  adj_src_type='multitaper_misfit', paths_to_waveforms=None,
-                 paths_to_responses=None, path_to_pyasdf=None,
-                 path_to_faults=None, path_to_moment_tensors=None,
-                 path_to_gcmt_ndk=None,
-                 verbose=False, log=False):
+                 paths_to_responses=None):
         """
-        Configuration file for pyatoa
-
         Allows the user to control the parameters of the packages called within
         pyatoa, as well as control where the outputs (i.e. pyasdf and plots) are
         sent after processing occurs
 
         :type model_number: str
-        :param model_number: iteration number
+        :param model_number: model iteration number for annotations and tags
         :type event_id: str
-        :param event_id: unique event identifier
-        :param minimum_filter_period:
-        :param maximum_filter_period:
-        :param rotate_to_rtz:
-        :param unit_output:
-        :param pyflex_config:
-        :param adjoint_src_type:
-        :param plot_waveform:
-        :param plot_map:
-        :param plot_faults_on_map:
-        :param show_plots:
-        :param save_plots:
-        :param save_pyasdf:
-        :param save_adj_src_separate:
-        :param verbose:
-        :param log:
+        :param event_id: unique event identifier for data gathering, annotations
+        :type: min_period: float
+        :param min_period: minimum bandpass filter period
+        :type max_period: float
+        :param max_period: maximum bandpass filter period
+        :type filter_corners: int
+        :param filter_corners: filter steepness for obspy filter
+        :type rotate_to_rtz: bool
+        :param rotate_to_rtz: components from NEZ to RTZ
+        :type unit_output: str
+        :param unit_output: units of stream, to be fed into preprocessor for
+            instrument response removal. Available: 'DISP', 'VEL', 'ACC'
+        :type pyflex_config: (list of floats) or str
+        :param pyflex_config: values to be fed into the pyflex config object.
+            Can give dictionary key for presets: 'default', and 'UAF'
+            or give a manual entry list of floats with the following format:
+            i  Standard Tuning Parameters:
+            0: water level for STA/LTA (short term average/long term average)
+            1: time lag acceptance level
+            2: amplitude ratio acceptance level (dlna)
+            3: normalized cross correlation acceptance level
+            i  Fine Tuning Parameters
+            4: c_0 = for rejection of internal minima
+            5: c_1 = for rejection of short windows
+            6: c_2 = for rejection of un-prominent windows
+            7: c_3a = for rejection of multiple distinct arrivals
+            8: c_3b = for rejection of multiple distinct arrivals
+            9: c_4a = for curtailing windows w/ emergent starts and/or codas
+            10:c_4b = for curtailing windows w/ emergent starts and/or codas
+        :type adjoint_src_type: str
+        :param adjoint_src_type: method of misfit quantification specified by
+            Pyadjoint.
+            Available: 'waveform', 'cc_traveltime_misfit', 'multitaper_misfit'
+            (http://krischer.github.io/pyadjoint/adjoint_sources/index.html)
+        :type paths_to_waveforms: list of str
+        :param paths_to_waveforms: any absolute paths for Pyatoa to search for
+            waveforms in. If path does not exist, it will automatically be
+            skipped. Allows for work on multiple machines, by giving multiple
+            paths for the same set of data, without needing to change config.
+            Waveforms must be saved in a specific directory structure with a
+            specific naming scheme
+        :type paths_to_responses: list of str
+        :param paths_to_responses: any absolute paths for Pyatoa to search for
+            responses in.
 
-        example call for config
+
+        Example call:
         config = Config(model_number=0,event_id='2014p240655',
             min_period=10,max_period=30,rotate_to_rtz=True,unit_output="DISP",
             pyflex_config='UAF',adj_src_type='multitaper_misfit',verbose=True,
@@ -65,13 +92,8 @@ class Config:
         self.pyflex_config = pyflex_config
         self._generate_pyflex_config()
         self.adj_src_type = adj_src_type
-        self.verbose = verbose
-        self.log = log
         self.paths = {"waveforms": paths_to_waveforms,
                       "responses": paths_to_responses,
-                      "faults": path_to_faults,
-                      "moment_tensors": path_to_moment_tensors,
-                      "gcmt_ndk": path_to_gcmt_ndk
                       }
         self._generate_component_list()
 
@@ -81,20 +103,22 @@ class Config:
         :return:
         """
         return ("Config class\n"
-                "\tEvent ID:              {ei}\n"
-                "\tMinimum Filter Period: {f1}\n"
-                "\tMaximum Filter Period: {f2}\n"
-                "\tFilter Corners:        {fc}\n"
-                "\tRotate to RTZ:         {rr}\n"
-                "\tUnit Output:           {uo}\n"
-                "\tPyflex Config:         {pc}\n"
-                "\tAdjoint Source Type:   {at}\n"
-                "\tPaths to waveforms:    {pw}\n"
-                ).format(ei=self.event_id, f1=self.min_period,
-                         f2=self.max_period, fc=self.filter_corners,
-                         rr=self.rotate_to_rtz, uo=self.unit_output,
-                         pc=self.pyflex_config, at=self.adj_src_type,
-                         pw=self.paths['waveforms']
+                "\tEvent ID:              {event_id}\n"
+                "\tMinimum Filter Period: {min_period\n"
+                "\tMaximum Filter Period: {max_period}\n"
+                "\tFilter Corners:        {corner}\n"
+                "\tRotate to RTZ:         {rotate}\n"
+                "\tUnit Output:           {output}\n"
+                "\tPyflex Config:         {pyflex}\n"
+                "\tAdjoint Source Type:   {adjoint}\n"
+                "\tPaths to waveforms:    {paths_to_wavs}\n"
+                "\tPaths to responses:    {paths_to_resp}"
+                ).format(event_did=self.event_id, min_period=self.min_period,
+                         max_period=self.max_period, corner=self.filter_corners,
+                         rotate=self.rotate_to_rtz, output=self.unit_output,
+                         pyflex=self.pyflex_config, adjoint=self.adj_src_type,
+                         paths_to_wavs=self.paths['waveforms'],
+                         paths_to_resp=self.paths['responses']
                          )
 
     def _generate_component_list(self):
@@ -108,7 +132,8 @@ class Config:
 
     def _generate_pyflex_config(self):
         """
-        allow for dictionary lookup of pyflex config, or manual set
+        Allow for dictionary lookup of pyflex config, or manual set
+
         ++PYFLEX (Maggi et al. 2009)
         i  Standard Tuning Parameters:
         0: water level for STA/LTA (short term average/long term average)
@@ -123,7 +148,6 @@ class Config:
         8: c_3b = for rejection of multiple distinct arrivals
         9: c_4a = for curtailing windows w/ emergent starts and/or codas
         10:c_4b = for curtailing windows w/ emergent starts and/or codas
-        :return:
         """
         cfg_dict = {"default": [.08, 15., 1., .8, .7, 4., 0., 1., 2., 3., 10.],
                     "UAF": [.18, 4., 1.5, .71, .7, 2., 0., 3., 2., 2.5, 12.]

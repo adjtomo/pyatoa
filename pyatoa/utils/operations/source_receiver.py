@@ -1,10 +1,22 @@
-"""functions used in determining source receiver information
+"""
+Functions used in determining source receiver information
 """
 
 
 def gcd_and_baz(event, inv):
-    """calculate great circle distance and backazimuth values for a given
+    """
+    Calculate great circle distance and backazimuth values for a given
     station and event configuration
+
+    :type event: obspy.core.event.Event
+    :param event: event object
+    :type inv: obspy.core.inventory.Inventory
+    :param inv: inventory object, assumed only 1 station which takes up the
+        initial index of the inventory
+    :rtype gcdist: float
+    :return gcdist: great circle distance in km
+    :rtype baz: float
+    :return baz: backazimuth in degrees
     """
     from obspy.geodetics import gps2dist_azimuth
     gcdist, _, baz = gps2dist_azimuth(lat1=event.preferred_origin().latitude,
@@ -17,7 +29,8 @@ def gcd_and_baz(event, inv):
 
 def theoretical_p_arrival(source_depth_in_km, distance_in_degrees,
                           model='iasp91'):
-    """calculate theoreitcal arrivals
+    """
+    calculate theoretical arrivals
     """
     from obspy.taup import TauPyModel
     model = TauPyModel(model=model)
@@ -29,8 +42,6 @@ def parse_inventory(inv, event=None):
     """
     return information from an inventory object. check data availability based
     on event origin time and return only the available stations
-    :param inv:
-    :return:
     """
     network_codes, station_codes, latitudes, longitudes, starts, ends =\
         [], [], [], [], [], []

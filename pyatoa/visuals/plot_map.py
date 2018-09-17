@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """
-misfit visualization tool to be called through adjointBuilder
-produces a basemap with beachball and all available stations as well as the
-relevant station highlighted. important information annotated (e.g.
-misift information, distance, BAz etc.)
+Map making functionalities
+
+Produces a basemap of target region with beachball representing event,
+all available stations with data for the given origin time, relevant station
+highlighted, connecting line between station and event, and important
+information annotated (e.g. misift information, distance, BAz etc.)
 """
-import os
 import warnings
 
 import numpy as np
@@ -30,20 +31,28 @@ mpl.rcParams['axes.linewidth'] = 2
 
 def place_scalebar(m, map_corners):
     """
-    put the scale bar in the corner at a reasonable distance from each edge
-    :param m:
-    :return:
-    map_corners [lat_bot,lat_top,lon_left,lon_right]
+    Put the scale bar in the corner at a reasonable distance from each edge
+
+    :type m: Basemap
+    :param m: basemap object
+    :type map_corners: list of floats
+    :param map_corners: [lat_bot,lat_top,lon_left,lon_right]
     """
     # scale set for bottom right-hand corner
     latscale = map_corners[0] + (map_corners[1] - map_corners[0]) * 0.94  # up
-    lonscale = map_corners[2] + (map_corners[3] - map_corners[2]) * 0.875 # left
+    lonscale = map_corners[2] + (map_corners[3] - map_corners[2]) * 0.875  # lft
     m.drawmapscale(lonscale, latscale, lonscale, latscale, 100,
                    yoffset=0.01 * (m.ymax-m.ymin))
 
 
 def build_colormap(array):
-    """build a custom range colormap
+    """
+    Build a custom range colormap, hardcoded colormap. Round values before.
+
+    :type array: numpy.array
+    :param array: array to build colormap from
+    :rtype colormap: matplotlib.cm.ScalarMappable
+    :return colormap: custom colormap
     """
     vmax = myround(np.nanmax(array), base=1, choice='up')
     vmin = myround(np.nanmin(array), base=1, choice='down')
@@ -55,7 +64,13 @@ def build_colormap(array):
 
 
 def plot_hikurangi_trench(m, path_):
-    """trace the hikurangi trench on a basemap object 'm'
+    """
+    Trace the hikurangi trench from a coordinate file
+
+    :type m: Basemap
+    :param m: basemap object
+    :type path_: str
+    :param path_: pathway to hikurangi trench coordinates
     """
     trenchcoords = np.load(path)
     lats = trenchcoords['LAT']
@@ -72,9 +87,15 @@ def plot_hikurangi_trench(m, path_):
 
 
 def plot_active_faults(m, path_):
-    """plot onshore and offshore fault coordinate files
     """
-    active_faults = np.load(path)
+    Plot onshore and offshore fault coordinate files taken from GeoNet
+
+    :type m: Basemap
+    :param m: basemap object
+    :type path_: str
+    :param path_: pathway to hikurangi trench coordinates
+    """
+    active_faults = np.load(path_)
     lats = active_faults['LAT']
     lons = active_faults['LON']
     faults = active_faults['FAULT']
@@ -87,8 +108,13 @@ def plot_active_faults(m, path_):
 
 def event_beachball(m, moment_tensor):
     """
-    plot event beachball on basemap 'm' object for a given geonet moment tensor
-    list, read in the from the GeoNet moment tensor csv file
+    Plot event beachball for a given geonet moment tensor list,
+    read in the from the GeoNet moment tensor csv file.
+
+    :type m: Basemap
+    :param m: basemap object
+    :type moment_tensor: dict
+    :param moment_tensor: a row from the GeoNet moment tensor csv file
     """
     eventx, eventy = m(moment_tensor['Longitude'], moment_tensor['Latitude'])
     focal_mechanism = [moment_tensor['strike2'], moment_tensor['dip2'],
@@ -100,15 +126,23 @@ def event_beachball(m, moment_tensor):
     ax.add_collection(b)
 
 
-def plot_stations(m, inv, event=None, **kwargs):
+def plot_stations(m, inv,  **kwargs):
     """
-    fill map with stations based on station availability and network
+    Fill map with stations based on station availability and network
+
+    :type m: Basemap
+    :param m: basemap object
+    :type inv: obspy.core.inventory.Inventory
+    :param inv: inventory containing relevant network and stations
+    :type annotate_names: bool
+    :param annotate_names: whether or not station names should placed nearby
+    :type color_by_network: bool
+    :param color_by_network: decided the coloring of different networks
     """
     annotate_names = kwargs.get("annotate_names", False)
     color_by_network = kwargs.get("color_by_network", False)
 
-    network_codes, station_codes, latitudes, longitudes = parse_inventory(
-        inv, event)
+    network_codes, station_codes, latitudes, longitudes = parse_inventory(inv)
 
     x, y = m(longitudes, latitudes)
 
@@ -132,7 +166,17 @@ def plot_stations(m, inv, event=None, **kwargs):
 
 
 def annotate_srcrcv_information(m, event, inv, config):
-    """annotate event information into hard coded map area
+    """
+    Annotate event receiver information into hard coded map area
+
+    :type m: Basemap
+    :param m: basemap object
+    :type event: obspy.core.event.Event
+    :param event: event object
+    :type inv: obspy.core.inventory.Inventory
+    :param inv: inventory containing relevant network and stations
+    :type config: pyatoa.core.config.Config
+    :param config: configuration object to steal information from
     """
     event.origins[0].time.precision = 0
     gcdist, baz = gcd_and_baz(event, inv)
@@ -157,10 +201,13 @@ def annotate_srcrcv_information(m, event, inv, config):
 def connect_source_receiver(m, event, inv):
     """
     draw a dashed line connecting the station and receiver, highlight station
-    :param m:
-    :param event:
-    :param inv:
-    :return:
+
+    :type m: Basemap
+    :param m: basemap object
+    :type event: obspy.core.event.Event
+    :param event: event object
+    :type inv: obspy.core.inventory.Inventory
+    :param inv: inventory containing relevant network and stations
     """
     event_x, event_y = m(event.preferred_origin().longitude,
                          event.preferred_origin().latitude)
@@ -173,7 +220,12 @@ def connect_source_receiver(m, event, inv):
 
 def initiate_basemap(map_corners):
     """
-    set up local map
+    set up the basemap object in the same way each time
+
+    :type map_corners: list of floats
+    :param map_corners: [lat_bot,lat_top,lon_left,lon_right]
+    :rtype m: Basemap
+    :return m: basemap object
     """
     continent_color = 'w'
     lake_color = 'w'
@@ -196,25 +248,45 @@ def initiate_basemap(map_corners):
 
 
 def generate_map(config, event, inv,
-                 map_corners=[-42.5007,-36.9488,172.9998,179.5077],
-                 show_faults=False, **kwargs):
+                 map_corners=[-42.5007,-36.9488,172.9998,179.5077], **kwargs):
     """
     TODO: change map corners to reflect the new mesh created in August
+    TODO: make map_corners a dictionary to keep it less ambiguous?
+
 
     initiate and populate a basemap object for New Zealands north island.
     Functionality to manually ignore stations based on user quality control
     Takes station coordinates and coloring from npz files
     Choice to annotate two stations which correspond to waveforms
     Calls beachball and trench tracer to populate basemap
-    :type corners: list of floats
-    :param corners: values for map corners to set bounds
-     e.g. [lat_bot,lat_top,lon_left,lon_right]
-     TODO: make map_corners a dictionary to keep it less ambiguous?
+
+    :type config: pyatoa.core.config.Config
+    :param config: configuration object that contains necessary parameters
+        to run through the Pyatoa workflow
+    :type event: obspy.core.event.Event
+    :param event: event object
+    :type inv: obspy.core.inventory.Inventory
+    :param inv: inventory containing relevant network and stations
+    :type map_corners: list of floats
+    :param map_corners: [lat_bot,lat_top,lon_left,lon_right]
+    :type show: bool
+    :param show: show the plot once generated, defaults to False
+    :type save: str
+    :param save: absolute filepath and filename if figure should be saved
+    :type show_faults: bool
+    :param show_faults: whether or not to plot faults on map, plotting takes
+        extra time compared to no faults
+    :rtype f: matplotlib figure
+    :return f: figure object
+    :rtype m: Basemap
+    :return m: basemap object
     """
+
     figsize = kwargs.get("figsize", (10, 9.4))
     dpi = kwargs.get("dpi", 100)
     show = kwargs.get("show", True)
-    save = kwargs.get("save", False)
+    save = kwargs.get("save", None)
+    show_faults = kwargs.get("show_faults", False)
 
     f = plt.figure(figsize=figsize, dpi=dpi)
     m = initiate_basemap(map_corners=map_corners)
@@ -236,10 +308,10 @@ def generate_map(config, event, inv,
     connect_source_receiver(m, event, inv)
     annotate_srcrcv_information(m, event, inv, config)
 
+    if save:
+        plt.savefig(save, figsize=figsize, dpi=dpi)
     if show:
         plt.show()
-    if save:
-        plt.savefig(save)
 
     return f, m
 

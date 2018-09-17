@@ -1,6 +1,8 @@
-"""misfit visualization tool to be called through adjointBuilder
-produces waveform plots for a stream object and plots misfit windows
-outputted by pyflex
+"""
+Waveform plotting functionality
+
+Produces waveform plots from stream objects and plots misfit windows
+outputted by pyflex as well as adjoint sources from pyadjoint
 """
 import numpy as np
 import matplotlib as mpl
@@ -8,6 +10,7 @@ import matplotlib.pyplot as plt
 from scipy.signal import detrend
 
 from pyatoa.utils.operations.calculations import normalize_a_to_b
+from pyatoa.visuals.plot_utils import align_yaxis, pretty_grids, format_axis
 
 mpl.rcParams['font.size'] = 12
 mpl.rcParams['lines.linewidth'] = 1.25
@@ -15,51 +18,16 @@ mpl.rcParams['lines.markersize'] = 10
 mpl.rcParams['axes.linewidth'] = 2
 
 
-def align_yaxis(ax1, ax2):
-    """
-    adjust ax2 ylimit so that v2 in ax2 is aligned to v1 in ax1
-    """
-    ymin_a1, ymax_a1 = ax1.get_ylim()
-    ymin_a2, ymax_a2 = ax2.get_ylim()
-
-    _, y1 = ax1.transData.transform((0, (ymax_a1+ymin_a1)/2))
-    _, y2 = ax2.transData.transform((0, (ymax_a2+ymin_a2)/2))
-    inv = ax2.transData.inverted()
-    _, dy = inv.transform((0, 0)) - inv.transform((0, y1-y2))
-    ax2.set_ylim(ymin_a2+dy, ymax_a2+dy)
-
-
-def pretty_grids(input_ax):
-    """
-    standard plot skeleton formatting
-    """
-    input_ax.set_axisbelow(True)
-    input_ax.tick_params(which='both', direction='in', top=True, right=True)
-    input_ax.minorticks_on()
-    input_ax.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
-    for axis_ in ['major', 'minor']:
-        input_ax.grid(which=axis_, linestyle=':', linewidth='0.5', color='k',
-                      alpha=0.25)
-
-
-def format_axis(input_ax):
-    """
-    sit the tick marks away from the plot edges to prevent overlapping when
-    multiple subplots are stacked atop one another, and for general gooood looks
-    will check if the plot is two sided (e.g. waveforms) or only positive
-    """
-    ymin, ymax = input_ax.get_ylim()
-    maxvalue = max([abs(_) for _ in input_ax.get_ylim()])
-    percentover = maxvalue * 0.125
-    if abs(round(ymin/ymax)) != 0:
-        bounds = (-1*(maxvalue+percentover), (maxvalue+percentover))
-    else: # elif abs(round(ymin/ymax)) == 0:
-        bounds = (-0.05,1.05)
-    input_ax.set_ylim(bounds)
-
-
 def setup_plot(number_of, twax=True):
-    """dynamically set up plots according to number of files
+    """
+    Dynamically set up plots according to number_of given
+
+    :type number_of: int
+    :param number_of: number of subplots t ogenerate using gridspec
+    :type twax: bool
+    :param twax: whether or not twin x axes are required
+    :rtype (tw)axes: matplotlib axes
+    :return (tw)axes: axis objects
     """
     nrows, ncols = number_of, 1
     height_ratios = [1] * number_of
@@ -87,12 +55,17 @@ def setup_plot(number_of, twax=True):
 
 
 def window_maker(st_obs, st_syn, config, **kwargs):
-    """plot streams and windows. assumes you have N observation traces and
+    """
+    Plot streams and windows. assumes you have N observation traces and
     N synthetic traces for a 2N length stream object
 
-    # !!! real hacky way of putting sta/lta and adjoint source on the
-    # !!! same axis object, normalize them both -1 to 1 and remove the
-    # !!! mean of the adjoint source to set everything onto 0
+    NOTE: real hacky way of putting sta/lta and adjoint source on the
+    same axis object, normalize them both -1 to 1 and remove the
+    mean of the adjoint source to set everything onto 0
+
+    :type st_*: obspy.stream.Stream
+    :param st_*: stream object to plot
+    :type config: pyatoa.core.config.Config
     """
     dpi = kwargs.get("dpi", 100)
     figsize = kwargs.get("figsize", (11.69, 8.27))  #A4

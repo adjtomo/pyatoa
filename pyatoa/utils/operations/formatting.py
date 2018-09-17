@@ -1,12 +1,12 @@
 """
-pyatoa relies on data structure being ordered and consistent throughout all the
+Pyatoa relies on data structure being ordered and consistent throughout all the
 various bits of data required. functions here will aid in reshaping data
 into the correct formats
 """
 import os
 
 
-def distribute_dataless(path_to_response,inventory):
+def distribute_dataless(path_to_response, inv):
     """
     Response files written through obspy come out as a single object, but pyatoa
     will look for response information from individual components and individual
@@ -39,6 +39,11 @@ def create_window_dictionary(window):
     HDF5 doesnt play nice with nonstandard objects in dictionaries, e.g.
     nested dictionaries, UTCDateTime objects. So remake the pyflex window
     json dictionary into something that will sit well in a pyasdf object
+
+    :type window: pyflex.Window
+    :param window: misfit window calcualted by pyflex
+    :rtype win_dict: dict
+    :return win_dict: formatted dictionary of values for pyasdf auxiliary data
     """
     win_dict = window._get_json_content()
 
@@ -97,6 +102,7 @@ def moment_tensor_list_to_objects(mtlist):
             ),
         nodal_planes=nodal_planes, moment_tensor=moment_tensor
         )
+
 
 def write_to_asdf(adjoint_source, ds, time_offset, coordinates=None):
     """

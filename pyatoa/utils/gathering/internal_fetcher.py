@@ -1,6 +1,10 @@
+#!/usr/bin/env python3
 """
 Class used to fetch data via internal pathways. Smart enough to know if an
-event sits too close to a separation in files and can accomodate accordingly.
+event sits too close to a separation in files (i.e. midnight for waveforms)
+and accomodates accordingly. Also will save any fetched data into a Pyasdf
+dataset if given.
+
 Hardcoded directory structure and synthetic file name format.
 """
 import os
@@ -17,42 +21,88 @@ from pyatoa.utils.operations.conversions import ascii_to_mseed
 class Fetcher:
     def __init__(self, config, ds=None, origintime=None, startpad=20,
                  endpad=200):
+        """
+        :type config: pyatoa.core.config.Config
+        :param config: configuration object that contains necessary parameters
+            to run through the Pyatoa workflow
+        :type ds: pyasdf.asdf_data_set.ASDFDataSet
+        :param ds: dataset for internal data searching and saving
+        :type origintime: obspy.core.UTCDateTime
+        :param origintime: event origin time for event picking
+        :type startpad: int
+        :param startpad: padding in seconds before the origin time of an event
+            for waveform fetching, to be fed into lower level functions.
+        :type endpad: int
+        :param endpad: padding in seconds after the origin time of an event
+            for wavefomr fetching.
+        """
         self.config = copy.deepcopy(config)
         self.ds = ds
         self.startpad = startpad
         self.endpad = endpad
         self.origintime = origintime
 
-    def asdf_event_fetch(self):
+    def _asdf_event_fetch(self):
         """
         return event information from pyasdf
-        :return:
+
+        :rtype event: obspy.core.event.Event
+        :return event: event object
         """
         event = self.ds.events[0]
         self.origintime = event.origins[0].time
         return event
 
-    def asdf_station_fetch(self, station_code):
+    def _asdf_station_fetch(self, station_code):
         """
-        return station information from pyasdf
-        :return:
+        return station information from pyasdf based on station tag
+
+        :type station_code: str
+        :param station_code: Station code following SEED naming convention.
+            This must be in the form NN.SSSS.LL.CCC (N=network, S=station,
+            L=location, C=channel). Allows for wildcard naming. By default
+            the pyatoa workflow wants three orthogonal components in the N/E/Z
+            coordinate system. Example station code: NZ.OPRZ.10.HH?
+        :rtype: obspy.core.inventory.network.Network
+        :return: network containing relevant station information
         """
         net, sta, _, _ = station_code.split('.')
         return self.ds.waveforms['{n}_{s}'.format(n=net, s=sta)].StationXML
 
-    def asdf_waveform_fetch(self, station_code, tag):
+    def _asdf_waveform_fetch(self, station_code, tag):
         """
         return stream based on tags from pyasdf
-        :param station_code:
-        :param tag:
-        :return:
+
+        :type station_code: str
+        :param station_code: Station code following SEED naming convention.
+            This must be in the form NN.SSSS.LL.CCC (N=network, S=station,
+            L=location, C=channel). Allows for wildcard naming. By default
+            the pyatoa workflow wants three orthogonal components in the N/E/Z
+            coordinate system. Example station code: NZ.OPRZ.10.HH?
+        :type tag: str
+        :param tag: internal asdf tag labelling waveforms
+        :rtype: obspy.core.stream.Stream
+        :return: waveform contained in a stream
         """
         net, sta, _, _ = station_code.split('.')
         return self.ds.waveforms['{n}_{s}'.format(n=net, s=sta)][tag]
 
-    def fetch_response(self, station_code, paths_to_responses=None):
+    def _fetch_response(self, station_code, paths_to_responses=None):
         """
-        fetch station xml from given internal pathing
+        Fetch station xml from given internal pathing. Search through all
+        paths given until corresponding inventories are found or until nothing
+        is found
+
+        :type station_code: str
+        :param station_code: Station code following SEED naming convention.
+            This must be in the form NN.SSSS.LL.CCC (N=network, S=station,
+            L=location, C=channel). Allows for wildcard naming. By default
+            the pyatoa workflow wants three orthogonal components in the N/E/Z
+            coordinate system. Example station code: NZ.OPRZ.10.HH?
+        :type paths_to_responses: list of str
+        :param paths_to_responses: absolute pathways for response file locations
+        :rtype inv: obspy.core.inventory.Inventory
+        :return inv: inventory containing relevant network and stations
         """
         if not paths_to_responses:
             paths_to_responses = self.config.paths['responses']
@@ -77,15 +127,24 @@ class Fetcher:
         else:
             raise FileNotFoundError("No response found for given paths")
 
-    def fetch_by_directory(self, station_code, paths_to_waveforms=None):
+    def _fetch_by_directory(self, station_code, paths_to_waveforms=None):
         """
-        waveform directory structure is hardcoded in here, we assume that
-        data is saved as miniseeds in the following directory structure
+        waveform directory structure formatting is hardcoded in here, it is
+        assumed that data is saved as miniseeds in the following structure:
 
         path/to/data/{YEAR}/{NETWORK}/{STATION}/{CHANNEL}*/{FID}
         e.g. path/to/data/2017/NZ/OPRZ/HHZ.D/NZ.OPRZ.10.HHZ.D
 
-        :return:
+        :type station_code: str
+        :param station_code: Station code following SEED naming convention.
+            This must be in the form NN.SSSS.LL.CCC (N=network, S=station,
+            L=location, C=channel). Allows for wildcard naming. By default
+            the pyatoa workflow wants three orthogonal components in the N/E/Z
+            coordinate system. Example station code: NZ.OPRZ.10.HH?
+        :type paths_to_waveforms: list of str
+        :param paths_to_waveforms: absolute pathways for mseed file locations
+        :rtype stream: obspy.core.stream.Stream
+        :return stream: stream object containing relevant waveforms
         """
         if self.origintime is None:
             raise AttributeError("'origintime' must be specified")
@@ -115,7 +174,7 @@ class Fetcher:
                     st += read(filepath)
                     logger.info("stream fetched from directory {}".format(
                         filepath))
-            if len(st) > 0: # is this necessary?
+            if len(st) > 0:  # is this necessary?
                 st.merge()
                 st.trim(starttime=self.origintime-self.startpad,
                         endtime=self.origintime+self.endpad
@@ -124,14 +183,24 @@ class Fetcher:
         else:
             raise FileNotFoundError("No waveforms found for given directories")
 
-    def fetch_by_event(self, station_code, paths_to_waveforms=None):
+    def _fetch_by_event(self, station_code, paths_to_waveforms=None):
         """
-        Synthetic data is saved by event code, give a hardcoded search path
-        to get to the data. If data hasn't been converted to miniseed format,
-        call on a conversion to convert from SPECFEM3D native ascii format
-        :param station_code:
-        :param paths_to_waveforms:
-        :return:
+        Synthetic data is saved by event id and model number,
+        give a hardcoded search path to get to the data.
+        If data hasn't been converted to miniseed format,
+        call on a conversion function to get from SPECFEM3D-native ascii to
+        an obspy stream object in miniseed format
+
+        :type station_code: str
+        :param station_code: Station code following SEED naming convention.
+            This must be in the form NN.SSSS.LL.CCC (N=network, S=station,
+            L=location, C=channel). Allows for wildcard naming. By default
+            the pyatoa workflow wants three orthogonal components in the N/E/Z
+            coordinate system. Example station code: NZ.OPRZ.10.HH?
+        :type paths_to_waveforms: list of str
+        :param paths_to_waveforms: absolute pathways for mseed file locations
+        :rtype stream: obspy.core.stream.Stream
+        :return stream: stream object containing relevant waveforms
         """
         if self.origintime is None:
             raise AttributeError("'origintime' must be specified")
@@ -167,53 +236,76 @@ class Fetcher:
 
     def obs_waveform_fetch(self, station_code):
         """
-        grab observation data, search internally via pyasdf, and then via
-        local pathways
-        :return:
+        Main waveform fetching function for observation data
+
+        :type station_code: str
+        :param station_code: Station code following SEED naming convention.
+            This must be in the form NN.SSSS.LL.CCC (N=network, S=station,
+            L=location, C=channel). Allows for wildcard naming. By default
+            the pyatoa workflow wants three orthogonal components in the N/E/Z
+            coordinate system. Example station code: NZ.OPRZ.10.HH?
+        :rtype: obspy.core.stream.Stream
+        :return: stream object containing relevant waveforms
         """
         if self.ds is not None:
             tag = "observed"
             try:
-                return self.asdf_waveform_fetch(station_code, tag=tag)
+                return self._asdf_waveform_fetch(station_code, tag=tag)
             except KeyError:
-                st_obs = self.fetch_by_directory(station_code)
+                st_obs = self._fetch_by_directory(station_code)
                 self.ds.add_waveforms(waveform=st_obs, tag=tag)
                 return st_obs
         else:
-            return self.fetch_by_directory(station_code)
+            return self._fetch_by_directory(station_code)
 
     def syn_waveform_fetch(self, station_code):
         """
-        if synthetics are freshly generated from specfem, they should
-        be placed into a folder separated by event id. check if they are
-        already saved into a pyasdf dataset first
-        :param station_code:
-        :return:
+        If synthetics are freshly generated from specfem, they should
+        be placed into a folders separated by event id and model iteration.
+        Check if they are already saved into a pyasdf dataset first
+
+        :type station_code: str
+        :param station_code: Station code following SEED naming convention.
+            This must be in the form NN.SSSS.LL.CCC (N=network, S=station,
+            L=location, C=channel). Allows for wildcard naming. By default
+            the pyatoa workflow wants three orthogonal components in the N/E/Z
+            coordinate system. Example station code: NZ.OPRZ.10.HH?
+        :rtype: obspy.core.stream.Stream
+        :return: stream object containing relevant waveforms
         """
         if self.ds is not None:
             tag = "synthetic_{}".format(self.config.model_number)
             try:
-                return self.asdf_waveform_fetch(station_code, tag=tag)
+                return self._asdf_waveform_fetch(station_code, tag=tag)
             except KeyError:
-                st_syn = self.fetch_by_event(station_code)
+                st_syn = self._fetch_by_event(station_code)
                 self.ds.add_waveforms(waveform=st_syn, tag=tag)
                 return st_syn
         else:
-            return self.fetch_by_event(station_code)
+            return self._fetch_by_event(station_code)
 
     def station_fetch(self, station_code):
         """
-        grab station response information, search internally first
+        Main station fetching function for observation data
+
+        :type station_code: str
+        :param station_code: Station code following SEED naming convention.
+            This must be in the form NN.SSSS.LL.CCC (N=network, S=station,
+            L=location, C=channel). Allows for wildcard naming. By default
+            the pyatoa workflow wants three orthogonal components in the N/E/Z
+            coordinate system. Example station code: NZ.OPRZ.10.HH?
+        :rtype: obspy.core.inventory.Inventory
+        :return: inventory containing relevant network and stations
         """
         if self.ds is not None:
             try:
-                return self.asdf_station_fetch(station_code)
+                return self._asdf_station_fetch(station_code)
             except KeyError:
-                inv = self.fetch_response(station_code)
+                inv = self._fetch_response(station_code)
                 self.ds.add_stationxml(inv)
                 return inv
         else:
-            return self.fetch_response(station_code)
+            return self._fetch_response(station_code)
 
 
 

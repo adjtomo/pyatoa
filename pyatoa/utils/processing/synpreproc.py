@@ -9,8 +9,10 @@ from pyatoa import logger
 
 
 def stf_convolve(st, half_duration, window="bartlett", time_shift=False):
-    """convolve sou rce time function with a stream, time shift if needed
-    :type st: obspy.stream
+    """
+    Convolve source time function with a stream, time shift if needed
+
+    :type st: obspy.stream.Stream
     :param st: stream object containing traces of data
     :type half_duration: float
     :param half_duration: half duration of stf in seconds
@@ -18,7 +20,8 @@ def stf_convolve(st, half_duration, window="bartlett", time_shift=False):
     :param window: window type to return
     :type time_shift: float
     :param time_shift: change the starttime
-    :return new_st:
+    :rtype st_out: obspy.stream.Stream
+    :return st_out: stream object with data convolved with stf
     """
     sampling_rate = st[0].stats.sampling_rate
     half_duration_in_samples = round(half_duration * sampling_rate)
@@ -44,10 +47,13 @@ def stf_convolve(st, half_duration, window="bartlett", time_shift=False):
 
 def half_duration_from_m0(moment):
     """
-    empirical formula for half duration used by Harvard CMT, stated in 
-    Daheln and Tromp (1998, p.178). moment has units of Nm
-    :param half_duration: 
-    :return: 
+    Empirical formula for half duration used by Harvard CMT, stated in
+    Daheln and Tromp (1998, p.178).
+
+    :type moment: float
+    :param moment: seismic moment in N*m
+    :rtype: float
+    :return: empirically scaled half duration
     """
     return 2.4E-6 * moment**(1/3)
 

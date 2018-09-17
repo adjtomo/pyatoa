@@ -9,7 +9,15 @@ from pyatoa import logger
 
 
 def _zero_pad_stream(st, pad_length_in_seconds):
-    """zero pad the data of a stream, change the starttime to reflect the change
+    """
+    zero pad the data of a stream, change the starttime to reflect the change
+
+    :type st: obspy.stream.Stream
+    :param st: stream to be zero padded
+    :type pad_length_in_seconds: int
+    :param pad_length_in_seconds: length of padding front and back
+    :rtype st: obspy.stream.Stream
+    :return st: stream with zero padded data object
     """
     for tr in st:
         array = tr.data
@@ -20,7 +28,14 @@ def _zero_pad_stream(st, pad_length_in_seconds):
 
 
 def trimstreams(st_a, st_b):
-    """trim streams to common start and end times
+    """
+    Trim two streams to common start and end times, do some basic preprocessing
+    before trimming.
+
+    :type st_?: obspy.stream.Stream
+    :param st_?: streams to be trimmed
+    :rtype st_?: obspy.stream.Stream
+    :return st_?: trimmed streams
     """
     st_trimmed = st_a.copy() + st_b.copy()
     start_set, end_set = 0, 1E10
@@ -43,7 +58,26 @@ def trimstreams(st_a, st_b):
 def preproc(st, inv=None, resample=5, pad_length_in_seconds=20,
             output="VEL", back_azimuth=None, filterbounds=None, water_level=60):
     """
-    preprocess waveform data
+    Preprocess waveform data
+
+    :type st: obspy.stream.Stream
+    :param st: stream object to process
+    :type inv: obspy.core.inventory.Inventory
+    :param inv: inventory containing relevant network and stations
+    :type resample: int
+    :param resample: sampling rate to resample to in Hz
+    :type pad_length_in_seconds: int
+    :param pad_length_in_seconds: length of padding front and back
+    :type output: str
+    :param output: output of response removal, available: 'DISP', 'VEL', 'ACC'
+    :type back_azimuth: float
+    :param back_azimuth: back azimuth in degrees
+    :type filterbounds: list of float
+    :param filterbounds: (min period, max_period)
+    :type water_level: int
+    :param water_level: water level for response removal
+    :rtype st: obspy.stream.Stream
+    :return st: preprocessed stream object
     """
     warnings.filterwarnings("ignore", category=FutureWarning)
 

@@ -1,7 +1,16 @@
 #!/usr/bin/env python3
 """
-Invoke Pyadjoint and Pyflex on observed and synthetic data to generate misfit
-windows and adjoint sources
+Main workflow components of Pyatoa.
+Processor is the central workflow control object. It calls on mid and low level
+classes to gather data, and then runs these through Pyflex for misfit window
+identification, and then into Pyadjoint for misfit quantification. Config class
+required to set the necessary parameters
+
+Crate class is a simple data storage object which is easily emptied and filled
+such that the processor can remain relatively high level and not get bogged down
+by excess storage requirements. Crate also feeds flags to the processor to
+signal which processes have already occurred in the workflow.
+
 TODO: create a moment tensor object that can be attached to the event object
 """
 import copy
@@ -210,6 +219,8 @@ class Processor:
         logger.info("preprocessing observation data")
         if self.config.rotate_to_rtz:
             _, baz = gcd_and_baz(self.crate.event, self.crate.inv)
+        else:
+            baz = None
         self.crate.st_obs = preproc(self.crate.st_obs, inv=self.crate.inv,
                                     resample=5, pad_length_in_seconds=20,
                                     output="VEL", back_azimuth=baz,
@@ -251,7 +262,26 @@ class Processor:
         """
         Call Pyflex to calculate best fitting misfit windows given observation
         and synthetic data in the crate. Return dictionaries of window objects,
-        as well as STA/LTA traces, to the crate. If a pyasdf dataset is 
+        as well as STA/LTA traces, to the crate. If a pyasdf dataset is present,
+        save misfit windows in as auxiliary data.
+        If no misfit windows are found for a given station, throw a warning
+        because pyadjoint won't run.
+        Pyflex configuration is given by the config as a list of values with
+        the following descriptions:
+
+        i  Standard Tuning Parameters:
+        0: water level for STA/LTA (short term average/long term average)
+        1: time lag acceptance level
+        2: amplitude ratio acceptance level (dlna)
+        3: normalized cross correlation acceptance level
+        i  Fine Tuning Parameters
+        4: c_0 = for rejection of internal minima
+        5: c_1 = for rejection of short windows
+        6: c_2 = for rejection of un-prominent windows
+        7: c_3a = for rejection of multiple distinct arrivals
+        8: c_3b = for rejection of multiple distinct arrivals
+        9: c_4a = for curtailing windows w/ emergent starts and/or codas
+        10:c_4b = for curtailing windows w/ emergent starts and/or codas
         """
         pf_config, pf_event, pf_station = set_pyflex_configuration(
             config=self.config, inv=self.crate.inv, event=self.crate.event
@@ -306,10 +336,16 @@ class Processor:
 
     def run_pyadjoint(self):
         """
-        !!! Not in the PyAdjoint docs:
-        in pyadjoint.calculate_adjoint_source: window needs to be a list of
-        lists, with each list containing the [left_window,right_window] where
-        each window argument is given in seconds
+        Run pyadjoint on observation and synthetic data given misfit windows
+        calculated by pyflex. Method for caluculating misfit set in config,
+        pyadjoint config set in external configurations. Returns a dictionary
+        of adjoint sources based on component. Saves resultant dictionary into
+        the crate, as well as to a pyasdf dataset if given.
+
+        NOTE: This is not in the PyAdjoint docs, but in
+        pyadjoint.calculate_adjoint_source, the window needs to be a list of
+        lists, with each list containing the [left_window,right_window];
+        each window argument should be given in units of time (seconds)
         """
         if (self.crate.windows is None) or (isinstance(self.crate.windows, dict)
                                             and not len(self.crate.windows)
@@ -345,45 +381,62 @@ class Processor:
                     adj_src.write_to_asdf(self.ds, time_offset=0)
         self.crate.adj_srcs = adjoint_sources
 
-    def populate(self, station_code):
+    def plot_wav(self, **kwargs):
         """
-        convenience function to run through the pyatoa process
-        :return:
-        """
-        self.gather_data(station_code)
-        self.preprocess()
-        self.shift_synthetic()
-        self.run_pyflex()
-        self.run_pyadjoint()
-
-    def plot_wav(self, show=True, *args, **kwargs):
-        """
-
-        :param args:
-        :param kwargs:
-        :return:
+        Waveform plots for all given components of the crate.
+        If specific components are not given (e.g. adjoint source waveform),
+        they are omitted from the final plot. Plotting should be dynamic, i.e.
+        if only 2 components are present in the streams, only two subplots
+        should be generated in the figure.
+        :type show: bool
+        :param show: show the plot once generated, defaults to False
+        :type save: str
+        :param save: absolute filepath and filename if figure should be saved
+        :type figsize: tuple of floats
+        :param figsize: length and width of the figure
+        :type dpi: int
+        :param dpi: dots per inch of the figure
         """
         from pyatoa.visuals.plot_waveforms import window_maker
+        show = kwargs.get("show", False)
+        save = kwargs.get("save", None)
+        figsize = kwargs.get("figsize", (11.69, 8.27))
+        dpi = kwargs.get("dpi", 100)
+
         window_maker(st_obs=self.crate.st_obs, st_syn=self.crate.st_syn,
                      windows=self.crate.windows, staltas=self.crate.staltas,
                      adj_srcs=self.crate.adj_srcs,
                      stalta_wl=self.config.pyflex_config[0],
                      unit_output=self.config.unit_output,
-                     config=self.config, figsize=(11.69, 8.27), dpi=100,
-                     show=show
+                     config=self.config, figsize=figsize, dpi=dpi, show=show
                      )
 
-    def plot_map(self, show=True, save=False, *args, **kwargs):
+    def plot_map(self, **kwargs):
         """
-
-        :param args:
-        :param kwargs:
-        :return:
+        Map plot showing a map of the given target region. All stations that
+        show data availability (according to the station master list) are
+        plotted as open markers. Event is plotted as a beachball if a moment
+        tensor is given, station of interest highlighted, both are connected
+        with a dashed line.
+        Source receier information plotted in lower right hand corner of map.
+        :type show: bool
+        :param show: show the plot once generated, defaults to False
+        :type save: str
+        :param save: absolute filepath and filename if figure should be saved
+        :type figsize: tuple of floats
+        :param figsize: length and width of the figure
+        :type dpi: int
+        :param dpi: dots per inch of the figuren:
         """
         from pyatoa.visuals.plot_map import generate_map
+        show = kwargs.get("show", False)
+        save = kwargs.get("save", None)
+        figsize = kwargs.get("figsize", (11.69, 8.27))
+        dpi = kwargs.get("dpi", 100)
+
         generate_map(config=self.config, event=self.crate.event,
                      inv=self.crate.inv, show_faults=True,
-                     show=show, figsize=(11.69, 8.27), dpi=100
+                     show=show, figsize=figsize, dpi=dpi, save=save
                      )
 
 

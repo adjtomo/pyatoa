@@ -1,20 +1,28 @@
 """
-pyflex and pyadjoint require configuration files to run, functions here will
-set them and return the necessary parameters
+Pyflex and Pyadjoint require configuration objects to run; functions here will
+set them properly and return the necessary parameters so that these
+packages can run properly
 """
-import pyflex
-import pyadjoint
 
 
 def set_pyflex_configuration(config, inv, event):
     """
     TODO check if pyflex config has been set and don't do it again?
-    :param config:
-    :param pyflex_config:
-    :param station:
-    :param event:
-    :return:
+    :type config: pyatoa.core.config.Config
+    :param config: config object which sets the values of pyflex config
+    :type inv: obspy.core.inventory.Inventory
+    :param inv: inventory containing station of interest
+    :type event: obspy.core.event.Event
+    :param event: event information for relevant earthquake
+    :rtype pf_config: pyflex.Config
+    :return pf_config: a pyflex configuration object which helps run pyflex
+    :rtype pf_station: pyflex.Station
+    :return pf_station: pyflex station object specificying location
+    :rtype pf_event pyflex.Event
+    :return pf_event: pyflex event object specifyin event location and time
     """
+    import pyflex
+
     pf_config = pyflex.Config(
         min_period=config.min_period, max_period=config.max_period,
         stalta_waterlevel=config.pyflex_config[0],
@@ -40,11 +48,12 @@ def set_pyflex_configuration(config, inv, event):
 
 def set_pyadjoint_configuration(config):
     """
-
-    :param config:
-    :param adj_src_type:
-    :return:
+    :type config: pyatoa.core.config.Config
+    :param config: config object which sets the pyadjoint type
+    :rtype cfgout: pyadjoint.Config*
+    :return cfgout: properly set pyadjoint configuration object
     """
+    import pyadjoint
 
     if config.adj_src_type == "waveform":
         cfgout = pyadjoint.ConfigWaveForm(min_period=config.min_period,
@@ -68,3 +77,4 @@ def set_pyadjoint_configuration(config):
     else:
         raise KeyError("adjoint source type incorrectly specified")
     return cfgout
+

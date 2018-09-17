@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 """
 Wrapper class used to quickly interact with obspy fdsn Client, based on configs.
 Defaults are set up for local earthquake trace lengths taken from GeoNet fdsn
@@ -12,6 +14,22 @@ from pyatoa import logger
 class Getter:
     def __init__(self, config=None, client="GEONET", event_id=None,
                  startpad=20, endpad=200):
+        """
+        :type config: pyatoa.core.config.Config
+        :param config: configuration object that contains necessary parameters
+            to run through the Pyatoa workflow
+        :type client: str
+        :param client: FDSN client for data getting
+        :type event_id: str
+        :param event_id: unique event identifier
+        :type startpad: int
+        :param startpad: padding in seconds before the origin time of an event
+            for waveform fetching, to be fed into lower level functions.
+        :type endpad: int
+        :param endpad: padding in seconds after the origin time of an event
+            for wavefomr fetching.
+        """
+
         self.config = copy.deepcopy(config)
         if self.config is not None:
             self.event_id = self.config.event_id
@@ -26,8 +44,10 @@ class Getter:
 
     def event_get(self):
         """
-        return event information parameters pertaining to a given eventid
-        :return:
+        return event information parameters pertaining to a given event id
+
+        :rtype event: obspy.core.event.Event
+        :return event: event object
         """
         if self.Client is None:
             self.Client = Client(self.client)
@@ -39,6 +59,9 @@ class Getter:
         """
         return station information with level dependent on call, defaults to
         retrieving response information
+
+        :rtype: obspy.core.inventory.Inventory
+        :return: inventory containing relevant network and stations
         """
         if self.Client is None:
             self.Client = Client(self.client)
@@ -52,10 +75,12 @@ class Getter:
 
     def waveform_get(self, station_code):
         """
-        call for obspy to download data. for some reason obspy can return traces
+        Call for obspy to download data. For some reason obspy can return traces
         with varying sample lengths, so 10 second cushion and then trim after
         retrieval to make sure traces are the same length
-        :return:
+
+        :rtype stream: obspy.core.stream.Stream
+        :return stream: waveform contained in a stre
         """
         if self.Client is None:
             self.Client = Client(self.client)
