@@ -92,7 +92,7 @@ class Crate:
         """
         self.st_obs_flag = isinstance(self.st_obs, obspy.Stream)
         if self.st_obs_flag:
-            self.obsprocess_flag = hasattr(self.st_obs[0].stats, "processing")
+            self.obs_process_flag = hasattr(self.st_obs[0].stats, "processing")
         self.st_syn_flag = isinstance(self.st_syn, obspy.Stream)
         if self.st_syn_flag:
             self.syn_process_flag = hasattr(self.st_syn[0].stats, "processing")
@@ -108,7 +108,6 @@ class Processor:
 
     Workflow management function that internally calls on all other objects
     within the package in order to gather, process and analyze waveform data.
-
     """
     def __init__(self, config, ds=None):
         """
@@ -426,7 +425,7 @@ class Processor:
         :type figsize: tuple of floats
         :param figsize: length and width of the figure
         :type dpi: int
-        :param dpi: dots per inch of the figuren:
+        :param dpi: dots per inch of the figure
         """
         from pyatoa.visuals.plot_map import generate_map
         show = kwargs.get("show", False)

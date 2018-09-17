@@ -95,9 +95,9 @@ class TestDataGatherMethods(unittest.TestCase):
             model_number=0
                         )
         proc = Processor(config,ds=ds)
-        sta = 'NZ.BKZ.10.HH?'
-        sta = 'XX.RD01.10.HH?'
-        proc.populate(sta)
+        # sta = 'NZ.BKZ.10.HH?'
+        sta = 'XX.RD04.10.HH?'
+        proc.gather_data(sta)
 
         f = window_maker(st_obs=proc.crate.st_obs, st_syn=proc.crate.st_syn,
                          windows=proc.crate.windows, staltas=proc.crate.staltas,

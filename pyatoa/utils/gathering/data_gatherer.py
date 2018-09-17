@@ -40,8 +40,8 @@ class Gatherer:
         self.config = copy.deepcopy(config)
         self.ds = ds
         self.event = None
-        self.fetcher = Fetcher(config=self.config,ds=self.ds,startpad=startpad,
-                               endpad=endpad)
+        self.fetcher = Fetcher(config=self.config, ds=self.ds,
+                               startpad=startpad, endpad=endpad)
         self.getter = Getter(config=self.config, startpad=startpad,
                              endpad=endpad)
 
@@ -57,7 +57,7 @@ class Gatherer:
             return self.event
         elif self.ds is not None:
             try:
-                self.event = self.fetcher.asdf_event_fetch()
+                self.event = self.fetcher._asdf_event_fetch()
             except IndexError:
                 self.event = self.getter.event_get()
                 self.ds.add_quakeml(self.event)
@@ -155,58 +155,3 @@ class Gatherer:
         :return: stream object containing relevant waveforms
         """
         return self.fetcher.syn_waveform_fetch(station_code)
-
-    def gather_waveforms(self, station_code):
-        """
-        get waveform as obspy streams, check internally first.
-
-        :type station_code: str
-        :param station_code: Station code following SEED naming convention.
-            This must be in the form NN.SSSS.LL.CCC (N=network, S=station,
-            L=location, C=channel). Allows for wildcard naming. By default
-            the pyatoa workflow wants three orthogonal components in the N/E/Z
-            coordinate system. Example station code: NZ.OPRZ.10.HH?
-        :rtype: obspy.core.stream.Stream
-        :return: stream object containing relevant waveforms
-        """
-        try:
-            st_obs = self.fetcher.obs_waveform_fetch(station_code)
-        except FileNotFoundError:
-            st_obs = self.getter.waveform_get(station_code)
-            if self.ds is not None:
-                self.ds.add_waveforms(waveform=st_obs, tag='observed')
-        st_syn = self.fetcher.syn_waveform_fetch(station_code)
-        return st_obs, st_syn
-
-    def gather_all(self, station_code):
-        """
-        convenience function gather event, station and waveform data in one go
-        """
-        if self.event is None:
-            self.gather_event()
-        inv = self.gather_station(station_code)
-        st_obs, st_syn = self.gather_waveforms(station_code)
-        return st_obs, st_syn, inv, self.event
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
