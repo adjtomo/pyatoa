@@ -181,7 +181,9 @@ class Fetcher:
                         )
                 return st
         else:
-            raise FileNotFoundError("No waveforms found for given directories")
+            raise FileNotFoundError(
+                "No waveforms found for {} for given directories".format(
+                    station_code))
 
     def _fetch_by_event(self, station_code, paths_to_waveforms=None):
         """
@@ -232,7 +234,9 @@ class Fetcher:
                         )
                 return st
         else:
-            raise FileNotFoundError("No event found for given paths")
+            raise FileNotFoundError(
+                "No waveforms for {} found for given event".format(
+                    station_code))
 
     def obs_waveform_fetch(self, station_code):
         """
@@ -300,7 +304,7 @@ class Fetcher:
         if self.ds is not None:
             try:
                 return self._asdf_station_fetch(station_code)
-            except KeyError:
+            except (KeyError, AttributeError):
                 inv = self._fetch_response(station_code)
                 self.ds.add_stationxml(inv)
                 return inv

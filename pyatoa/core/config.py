@@ -16,14 +16,14 @@ class Config:
     def __init__(self, model_number=None, event_id=None, min_period=10,
                  max_period=30, filter_corners=4, rotate_to_rtz=True,
                  unit_output='DISP', pyflex_config='UAF',
-                 adj_src_type='multitaper_misfit', paths_to_waveforms=None,
-                 paths_to_responses=None):
+                 adj_src_type='multitaper_misfit', raw_sampling_rate=None,
+                 paths_to_waveforms=None, paths_to_responses=None):
         """
         Allows the user to control the parameters of the packages called within
         pyatoa, as well as control where the outputs (i.e. pyasdf and plots) are
         sent after processing occurs
 
-        :type model_number: str
+        :type model_number: int
         :param model_number: model iteration number for annotations and tags
         :type event_id: str
         :param event_id: unique event identifier for data gathering, annotations
@@ -55,11 +55,16 @@ class Config:
             8: c_3b = for rejection of multiple distinct arrivals
             9: c_4a = for curtailing windows w/ emergent starts and/or codas
             10:c_4b = for curtailing windows w/ emergent starts and/or codas
-        :type adjoint_src_type: str
-        :param adjoint_src_type: method of misfit quantification specified by
+        :type adj_src_type: str
+        :param adj_src_type: method of misfit quantification specified by
             Pyadjoint.
             Available: 'waveform', 'cc_traveltime_misfit', 'multitaper_misfit'
             (http://krischer.github.io/pyadjoint/adjoint_sources/index.html)
+        :type raw_sampling_rate: float
+        :param raw_sampling_rate: waveform streams are saved in raw format
+            for later access, but fetched data is usually very high sampling
+            rate (e.g. 100Hz for HH? stations). This tag sets the raw sampling
+            rate of the saved data, useful for saving space.
         :type paths_to_waveforms: list of str
         :param paths_to_waveforms: any absolute paths for Pyatoa to search for
             waveforms in. If path does not exist, it will automatically be
@@ -92,6 +97,7 @@ class Config:
         self.pyflex_config = pyflex_config
         self._generate_pyflex_config()
         self.adj_src_type = adj_src_type
+        self.raw_sampling_rate = raw_sampling_rate
         self.paths = {"waveforms": paths_to_waveforms,
                       "responses": paths_to_responses,
                       }

@@ -55,8 +55,7 @@ def trimstreams(st_a, st_b):
     return st_a, st_b
 
 
-def preproc(st, inv=None, resample=5, pad_length_in_seconds=20,
-            output="VEL", back_azimuth=None, filterbounds=None, water_level=60):
+def preproc(st, inv=None, **kwargs):
     """
     Preprocess waveform data
 
@@ -76,10 +75,19 @@ def preproc(st, inv=None, resample=5, pad_length_in_seconds=20,
     :param filterbounds: (min period, max_period)
     :type water_level: int
     :param water_level: water level for response removal
+    :type corners: int
+    :param corners: value of the filter corners, i.e. steepness of filter edge
     :rtype st: obspy.stream.Stream
     :return st: preprocessed stream object
     """
     warnings.filterwarnings("ignore", category=FutureWarning)
+    resample = kwargs.get("resample", 5)
+    pad_length_in_seconds = kwargs.get("pad_length_in_seconds", 20)
+    output = kwargs.get("output", "VEL").upper()
+    back_azimuth = kwargs.get("back_azimuth", None)
+    filter_bounds = kwargs.get("filter_bounds", (10,30))
+    water_level = kwargs.get("water_level", 60)
+    corners = kwargs.get("corners", 4)
 
     st.resample(resample)
     st.detrend("linear")
@@ -106,11 +114,12 @@ def preproc(st, inv=None, resample=5, pad_length_in_seconds=20,
     st = _zero_pad_stream(st, pad_length_in_seconds)
     logger.info("zero padding front and back by {}s".format(
         pad_length_in_seconds))
-    if filterbounds is not None:
-        st.filter('bandpass', freqmin=1/filterbounds[1],
-                  freqmax=1/filterbounds[0], corners=4, zerophase=True)
-        logger.info("filtering stream at {}s to {}s".format(filterbounds[0],
-                                                            filterbounds[1])
-                    )
+    if filter_bounds is not None:
+        st.filter('bandpass', freqmin=1/filter_bounds[1],
+                  freqmax=1/filter_bounds[0], corners=corners, zerophase=True)
+        msg = "filtering streams at {t0}s to {t1}s with a {c} corner {f} filter"
+        logger.info(msg.format(t0=filter_bounds[0], t1=filter_bounds[1],
+                               c=corners, f="Butterworth"))
+
     return st
 

@@ -66,8 +66,6 @@ def grab_geonet_moment_tensor(event_id):
                         values.append(UTCDateTime(v))
                     elif t == "PublicID":
                         values.append(v)
-                    elif t == "Mo":
-                        values.append(float(v)*1E-7)  # dyne*cm to N*m
                     else:
                         values.append(float(v))
 
@@ -146,24 +144,6 @@ def grab_gcmt_moment_tensor(datetime, magnitude):
     else:
         logger.info("gcmt event found matching criteria")
         return cat_filt[0]
-
-
-def gcmt_and_geonet_mt(event_id):
-    """
-    Convenience function to grab both gcmt and geonet moment tensor information
-
-    :type event_id: str
-    :param event_id: unique event identifier
-    :rtype gcmt_moment_tensor: obspy.core.event.Event
-    :return event: event object for given earthquake
-    :rtype geonet_moment_tensor: dict
-    :return geonet_moment_tensor: dictionary created from rows of csv file
-    """
-    geonet_moment_tensor = grab_geonet_moment_tensor(event_id)
-    gcmt_moment_tensor = grab_gcmt_moment_tensor(geonet_moment_tensor["Date"],
-                                                 geonet_moment_tensor["Mw"]
-                                                 )
-    return gcmt_moment_tensor, geonet_moment_tensor
 
 
 def timeshift_halfduration(gcmt_event, geonet_list):

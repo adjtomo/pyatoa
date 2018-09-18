@@ -24,11 +24,13 @@ from obspy.signal.filter import envelope
 
 from pyatoa import logger
 from pyatoa.utils.gathering.data_gatherer import Gatherer
-from pyatoa.utils.operations.source_receiver import gcd_and_baz
-from pyatoa.utils.operations.formatting import create_window_dictionary
+from pyatoa.utils.operations.source_receiver import gcd_and_baz, \
+    generate_focal_mechanism
+from pyatoa.utils.operations.formatting import create_window_dictionary, \
+    write_adj_src_to_asdf
 from pyatoa.utils.processing.preproc import preproc, trimstreams
-from pyatoa.utils.processing.synpreproc import stf_convolve, \
-    half_duration_from_m0
+from pyatoa.utils.processing.synpreproc import stf_convolve
+
 from pyatoa.utils.configurations.external_configurations import \
     set_pyflex_configuration, set_pyadjoint_configuration
 from pyatoa.utils.gathering.grab_auxiliaries import grab_geonet_moment_tensor
@@ -71,7 +73,6 @@ class Crate:
         self.st_syn = None
         self.inv = None
         self.event = None
-        self.moment_tensor = None
         self.windows = None
         self.staltas = None
         self.adj_srcs = None
@@ -88,14 +89,23 @@ class Crate:
 
     def _checkflags(self):
         """
-        Update flags based on what is available in the crate.
+        Update flags based on what is available in the crate. The 3 in the
+        stream process flags comes from the 2 steps taken before preprocessing,
+        downsampling and trimming
         """
         self.st_obs_flag = isinstance(self.st_obs, obspy.Stream)
         if self.st_obs_flag:
-            self.obs_process_flag = hasattr(self.st_obs[0].stats, "processing")
+            self.obs_process_flag = (
+                    hasattr(self.st_obs[0].stats, "processing") and
+                    len(self.st_obs[0].stats.processing) >= 3
+            )
+
         self.st_syn_flag = isinstance(self.st_syn, obspy.Stream)
         if self.st_syn_flag:
-            self.syn_process_flag = hasattr(self.st_syn[0].stats, "processing")
+            self.syn_process_flag = (
+                    hasattr(self.st_syn[0].stats, "processing") and
+                    len(self.st_syn[0].stats.processing) >= 3
+            )
         self.inv_flag = isinstance(self.inv, obspy.Inventory)
         self.event_flag = isinstance(self.event, obspy.core.event.Event)
         self.pyflex_flag = isinstance(self.windows, dict)
@@ -135,8 +145,8 @@ class Processor:
         Print statement shows available information inside the workflow.
         """
         self.crate._checkflags()
-        return ("Processor class\n"
-                "\tData Gathering:\n"
+        return ("PROCESSOR\n"
+                "\tCRATE\n"
                 "\t\tEvent:                     {event}\n"
                 "\t\tInventory:                 {inventory}\n"
                 "\t\tObserved Stream:           {obsstream}\n"
@@ -178,6 +188,46 @@ class Processor:
         """
         self.crate = Crate()
 
+    @property
+    def event(self):
+        return self.crate.event
+
+    @property
+    def st(self):
+        return self.crate.st_syn + self.crate.st_obs
+
+    @property
+    def st_obs(self):
+        return self.crate.st_obs
+
+    @property
+    def st_syn(self):
+        return self.crate.st_syn
+
+    @property
+    def inv(self):
+        return self.crate.inv
+
+    @property
+    def windows(self):
+        return self.crate.windows
+
+    @property
+    def adj_srcs(self):
+        return sefl.crate.adj_srcs
+
+    def launch(self):
+        """
+        Initiate the prerequisite parts of the processor class.
+        :return:
+        """
+        self._launch_gatherer()
+        if self.gatherer.event is not None:
+            self.crate.event = self.gatherer.event
+        else:
+            logger.info("gathering event information")
+            self.crate.event = self.gatherer.gather_event()
+
     def gather_data(self, station_code):
         """
         Launch a gatherer object and gather event, station and waveform
@@ -194,13 +244,10 @@ class Processor:
             coordinate system. Example station code: NZ.OPRZ.10.HH?
         """
         try:
-            self._launch_gatherer()
             self.crate.station_code = station_code
-            logger.info("gathering event information")
-            if self.gatherer.event is not None:
-                self.crate.event = self.gatherer.event
-            else:
-                self.crate.event = self.gatherer.gather_event()
+            logger.info("GATHERING {station} for {event}".format(
+                station=station_code, event=self.config.event_id)
+            )
             logger.info("gathering station information")
             self.crate.inv = self.gatherer.gather_station(station_code)
             logger.info("gathering observation waveforms")
@@ -224,38 +271,30 @@ class Processor:
                                     resample=5, pad_length_in_seconds=20,
                                     output="VEL", back_azimuth=baz,
                                     filterbounds=[self.config.min_period,
-                                                  self.config.max_period]
+                                                  self.config.max_period],
+                                    corners=4
                                     )
         logger.info("preprocessing synthetic data")
         self.crate.st_syn = preproc(self.crate.st_syn, resample=5,
                                     pad_length_in_seconds=20, output="VEL",
-                                    back_azimuth=baz,
+                                    back_azimuth=baz, corners=4,
                                     filterbounds=[self.config.min_period,
-                                                  self.config.max_period]
+                                                  self.config.max_period],
+
                                     )
         self.crate.st_obs, self.crate.st_syn = trimstreams(self.crate.st_obs,
                                                            self.crate.st_syn)
-
-    def shift_synthetic(self):
-        """
-        TODO: determine how important half duration and time shift are
-        TODO: move the guts of this function into synpreproc.py (?)
-
-        Put synthetic data into the correct origin time given a GeoNet moment
-        tensor list retrieved from the GeoNet moment tensor CSV file.
-
-        Convolve the synthetic waveforms in place with a shape function
-        (default is a bartlett, which is basically a triangle function)
-        """
-        self.crate.moment_tensor = grab_geonet_moment_tensor(
-            self.config.event_id)
-        half_duration = half_duration_from_m0(self.crate.moment_tensor["Mo"])
-        self.crate.st_syn = stf_convolve(st=self.crate.st_syn,
-                                         half_duration=half_duration,
-                                         window="bartlett",
-                                         time_shift=False
-                                         )
-        self.crate.syn_shift_flag = True  # TODO: make this flag change smarter
+        try:
+            half_duration = (self.crate.event.focal_mechanisms[0].
+                             moment_tensor.source_time_function.duration) / 2
+            self.crate.st_syn = stf_convolve(st=self.crate.st_syn,
+                                             half_duration=half_duration,
+                                             window="bartlett",
+                                             time_shift=False
+                                             )
+            self.crate.syn_shift_flag = True  # TODO: make this flag smarter
+        except AttributeError:
+            print("half duration value not found in event")
 
     def run_pyflex(self):
         """
@@ -316,20 +355,20 @@ class Processor:
         self.crate.staltas = staltas
 
         if self.ds is not None:
+            logger.info("Saving misfit windows to PyASDF")
             for COMP in windows.keys():
                 for i, window in enumerate(windows[COMP]):
-                    internalpath = "{mod}/{net}_{sta}_{comp}_{num}".format(
-                        evid=self.config.component_list,
+                    tag = "{mod}/{net}_{sta}_{cmp}_{num}".format(
                         net=self.crate.st_obs[0].stats.network,
                         sta=self.crate.st_obs[0].stats.station,
-                        comp=COMP, mod=self.config.model_number, num=i)
+                        cmp=COMP, mod=self.config.model_number, num=i)
                     wind_dict = create_window_dictionary(window)
                     with warnings.catch_warnings():
                         warnings.simplefilter("ignore")
                         # auxiliary needs data, give it a bool; auxis love bools
                         self.ds.add_auxiliary_data(data=np.array([True]),
                                                    data_type="MisfitWindows",
-                                                   path=internalpath,
+                                                   path=tag,
                                                    parameters=wind_dict
                                                    )
 
@@ -352,7 +391,7 @@ class Processor:
             warnings.warn("windows must be collected before pyadjoint can run")
             return
 
-        logger.info("Running pyAdjoint for type {} ".format(
+        logger.info("running pyAdjoint for type {} ".format(
             self.config.adj_src_type)
             )
         pa_config = set_pyadjoint_configuration(config=self.config)
@@ -373,11 +412,15 @@ class Processor:
                 plot=False
                 )
             adjoint_sources[key] = adj_src
-            if self.ds:
-                logger.info("Saving adjoint source {} to PyASDF".format(key))
+            if self.ds is not None:
+                logger.info("saving adjoint sources {} to PyASDF".format(key))
                 with warnings.catch_warnings():
+                    tag = "{mod}/{net}_{sta}_{cmp}".format(
+                        mod=self.config.model_number, net=adj_src.network,
+                        sta=adj_src.station, cmp=adj_src.component[-1]
+                        )
                     warnings.simplefilter("ignore")
-                    adj_src.write_to_asdf(self.ds, time_offset=0)
+                    write_adj_src_to_asdf(adj_src, self.ds, tag, time_offset=0)
         self.crate.adj_srcs = adjoint_sources
 
     def plot_wav(self, **kwargs):
@@ -397,7 +440,7 @@ class Processor:
         :param dpi: dots per inch of the figure
         """
         from pyatoa.visuals.plot_waveforms import window_maker
-        show = kwargs.get("show", False)
+        show = kwargs.get("show", True)
         save = kwargs.get("save", None)
         figsize = kwargs.get("figsize", (11.69, 8.27))
         dpi = kwargs.get("dpi", 100)
@@ -422,6 +465,9 @@ class Processor:
         :param show: show the plot once generated, defaults to False
         :type save: str
         :param save: absolute filepath and filename if figure should be saved
+        :type show_faults: bool
+        :param show_faults: plot active faults and hikurangi trench from
+            internally saved coordinate files. takes extra time over simple plot
         :type figsize: tuple of floats
         :param figsize: length and width of the figure
         :type dpi: int
@@ -430,11 +476,13 @@ class Processor:
         from pyatoa.visuals.plot_map import generate_map
         show = kwargs.get("show", False)
         save = kwargs.get("save", None)
+        show_faults = kwargs.get("show_faults", False)
+
         figsize = kwargs.get("figsize", (11.69, 8.27))
         dpi = kwargs.get("dpi", 100)
 
         generate_map(config=self.config, event=self.crate.event,
-                     inv=self.crate.inv, show_faults=True,
+                     inv=self.crate.inv, show_faults=show_faults,
                      show=show, figsize=figsize, dpi=dpi, save=save
                      )
 

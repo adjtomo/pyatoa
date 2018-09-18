@@ -8,6 +8,7 @@ highlighted, connecting line between station and event, and important
 information annotated (e.g. misift information, distance, BAz etc.)
 """
 import warnings
+import pkg_resources
 
 import numpy as np
 import matplotlib as mpl
@@ -17,7 +18,7 @@ from mpl_toolkits.basemap import Basemap
 from obspy import read_inventory
 from obspy.imaging.beachball import beach
 
-from pyatoa.utils.gathering.grab_auxiliaries import _hardcode_paths, \
+from pyatoa.utils.gathering.grab_auxiliaries import hardcode_paths, \
     grab_geonet_moment_tensor
 from pyatoa.utils.operations.source_receiver import gcd_and_baz, parse_inventory
 from pyatoa.utils.operations.calculations import myround
@@ -63,7 +64,7 @@ def build_colormap(array):
     return colormap
 
 
-def plot_hikurangi_trench(m, path_):
+def plot_hikurangi_trench(m):
     """
     Trace the hikurangi trench from a coordinate file
 
@@ -72,7 +73,9 @@ def plot_hikurangi_trench(m, path_):
     :type path_: str
     :param path_: pathway to hikurangi trench coordinates
     """
-    trenchcoords = np.load(path)
+    trenchcoords = np.load(
+        pkg_resources.resource_filename(
+            __name__, "fault_coordinates/hikurangi_trench.npz"))
     lats = trenchcoords['LAT']
     lons = trenchcoords['LON']
     x, y = m(lons, lats)
@@ -86,7 +89,7 @@ def plot_hikurangi_trench(m, path_):
     m.plot(xprimenew, yprimenew, '--', linewidth=1.25, color='k', zorder=2)
 
 
-def plot_active_faults(m, path_):
+def plot_active_faults(m):
     """
     Plot onshore and offshore fault coordinate files taken from GeoNet
 
@@ -95,15 +98,18 @@ def plot_active_faults(m, path_):
     :type path_: str
     :param path_: pathway to hikurangi trench coordinates
     """
-    active_faults = np.load(path_)
-    lats = active_faults['LAT']
-    lons = active_faults['LON']
-    faults = active_faults['FAULT']
+    int_fid = "fault_coordinates/north_island_550_641_{}.npz"
+    for tag in ["onshore", "offshore"]:
+        fid = pkg_resources.resource_filename(__name__, int_fid.format(tag))
+        active_faults = np.load(fid)
+        lats = active_faults['LAT']
+        lons = active_faults['LON']
+        faults = active_faults['FAULT']
 
-    for i in range(faults.min(), faults.max()+1, 1):
-        indices = np.where(faults == i)
-        x, y = m(lons[indices], lats[indices])
-        m.plot(x, y, '--', linewidth=0.5, color='k', zorder=2, alpha=0.25)
+        for i in range(faults.min(), faults.max()+1, 1):
+            indices = np.where(faults == i)
+            x, y = m(lons[indices], lats[indices])
+            m.plot(x, y, '--', linewidth=0.5, color='k', zorder=2, alpha=0.25)
 
 
 def event_beachball(m, moment_tensor):
@@ -126,7 +132,7 @@ def event_beachball(m, moment_tensor):
     ax.add_collection(b)
 
 
-def plot_stations(m, inv,  **kwargs):
+def plot_stations(m, inv, event=None, **kwargs):
     """
     Fill map with stations based on station availability and network
 
@@ -142,7 +148,8 @@ def plot_stations(m, inv,  **kwargs):
     annotate_names = kwargs.get("annotate_names", False)
     color_by_network = kwargs.get("color_by_network", False)
 
-    network_codes, station_codes, latitudes, longitudes = parse_inventory(inv)
+    network_codes, station_codes, latitudes, longitudes = parse_inventory(
+        inv, event)
 
     x, y = m(longitudes, latitudes)
 
@@ -292,15 +299,13 @@ def generate_map(config, event, inv,
     m = initiate_basemap(map_corners=map_corners)
 
     # next section contains hardcoded paths
-    background_inv = read_inventory(_hardcode_paths()['stations'])
+    background_inv = read_inventory(hardcode_paths()['stations'])
     moment_tensor = grab_geonet_moment_tensor(config.event_id)
     if show_faults:
         warnings.warn("Plotting active faults takes some time, "
                       "please be patient", UserWarning)
-        plot_hikurangi_trench(m, "./fault_coordinates/hikurangi_trench.npz")
-        for path_ in ["./fault_coordinates/north_island_550_641_onshore.npz",
-                      "./fault_coordinates/north_island_550_641_offshore.npz"]:
-            plot_active_faults(m, path_)
+        plot_hikurangi_trench(m)
+        plot_active_faults(m)
 
     plot_stations(m, inv=background_inv, event=event, annotate_names=False,
                   color_by_network=False)
@@ -313,6 +318,7 @@ def generate_map(config, event, inv,
     if show:
         plt.show()
 
+    plt.close()
     return f, m
 
 

@@ -45,15 +45,4 @@ def stf_convolve(st, half_duration, window="bartlett", time_shift=False):
     return st_out
 
 
-def half_duration_from_m0(moment):
-    """
-    Empirical formula for half duration used by Harvard CMT, stated in
-    Daheln and Tromp (1998, p.178).
-
-    :type moment: float
-    :param moment: seismic moment in N*m
-    :rtype: float
-    :return: empirically scaled half duration
-    """
-    return 2.4E-6 * moment**(1/3)
 

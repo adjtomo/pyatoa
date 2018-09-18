@@ -84,7 +84,7 @@ class TestDataGatherMethods(unittest.TestCase):
         logger.setLevel(logging.DEBUG)
         ds = pyasdf.ASDFDataSet("testasdf.h5")
         config = Config(event_id='2018p130600',
-            min_period=9,
+            min_period=10,
             paths_to_waveforms=[
                 '/Users/chowbr/Documents/subduction/seismic',
                 '/seis/prj/fwi/bchow/seismic','/geonet/seismic'],
@@ -95,9 +95,11 @@ class TestDataGatherMethods(unittest.TestCase):
             model_number=0
                         )
         proc = Processor(config,ds=ds)
-        # sta = 'NZ.BKZ.10.HH?'
-        sta = 'XX.RD04.10.HH?'
+        sta = 'NZ.BKZ.10.HH?'
         proc.gather_data(sta)
+        proc.preprocess()
+        proc.run_pyflex()
+        proc.run_pyadjoint()
 
         f = window_maker(st_obs=proc.crate.st_obs, st_syn=proc.crate.st_syn,
                          windows=proc.crate.windows, staltas=proc.crate.staltas,
