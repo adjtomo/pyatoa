@@ -150,7 +150,7 @@ def window_maker(st_obs, st_syn, config, **kwargs):
             format_axis(AX)
         align_yaxis(axes[i], twaxes[i])
 
-    axes[0].set_title("{n}.{s}\t{e}\t[{b0}, {b1}]".format(
+    axes[0].set_title("{n}.{s}  {e}  [{b0}, {b1}]".format(
         e=config.event_id, n=st_obs[0].stats.network, s=st_obs[0].stats.station,
         b0=config.min_period, b1=config.max_period)
                      )

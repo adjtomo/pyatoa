@@ -24,8 +24,7 @@ from obspy.signal.filter import envelope
 
 from pyatoa import logger
 from pyatoa.utils.gathering.data_gatherer import Gatherer
-from pyatoa.utils.operations.source_receiver import gcd_and_baz, \
-    generate_focal_mechanism
+from pyatoa.utils.operations.source_receiver import gcd_and_baz
 from pyatoa.utils.operations.formatting import create_window_dictionary, \
     write_adj_src_to_asdf
 from pyatoa.utils.processing.preproc import preproc, trimstreams
@@ -33,7 +32,6 @@ from pyatoa.utils.processing.synpreproc import stf_convolve
 
 from pyatoa.utils.configurations.external_configurations import \
     set_pyflex_configuration, set_pyadjoint_configuration
-from pyatoa.utils.gathering.grab_auxiliaries import grab_geonet_moment_tensor
 
 
 class Crate:
@@ -93,21 +91,31 @@ class Crate:
         stream process flags comes from the 2 steps taken before preprocessing,
         downsampling and trimming
         """
-        self.st_obs_flag = isinstance(self.st_obs, obspy.Stream)
-        if self.st_obs_flag:
+        if isinstance(self.st_obs, obspy.Stream):
+            self.st_obs_flag = len(self.st_obs)
             self.obs_process_flag = (
                     hasattr(self.st_obs[0].stats, "processing") and
                     len(self.st_obs[0].stats.processing) >= 3
             )
-
-        self.st_syn_flag = isinstance(self.st_syn, obspy.Stream)
-        if self.st_syn_flag:
+        else:
+            self.st_obs_flag, self.obs_process_flag = False, False
+        if isinstance(self.st_syn, obspy.Stream):
+            self.st_syn_flag = len(self.st_syn)
             self.syn_process_flag = (
                     hasattr(self.st_syn[0].stats, "processing") and
                     len(self.st_syn[0].stats.processing) >= 3
             )
-        self.inv_flag = isinstance(self.inv, obspy.Inventory)
-        self.event_flag = isinstance(self.event, obspy.core.event.Event)
+        else:
+            self.st_syn_flag, self.syn_process_flag = False, False
+        if isinstance(self.inv, obspy.Inventory):
+            self.inv_flag = "{net}.{sta}".format(net=self.inv[0].code,
+                                                 sta=self.inv[0][0].code)
+        else:
+            self.inv_flag = False
+        if isinstance(self.event, obspy.core.event.Event):
+            self.event_flag = self.event.resource_id
+        else:
+            self.event_flag = False
         self.pyflex_flag = isinstance(self.windows, dict)
         self.pyadjoint_flag = isinstance(self.adj_srcs, dict)
 
@@ -139,18 +147,19 @@ class Processor:
         self.ds = ds
         self.gatherer = None
         self.crate = Crate()
+        self.launch()
 
     def __str__(self):
         """
         Print statement shows available information inside the workflow.
         """
         self.crate._checkflags()
-        return ("PROCESSOR\n"
-                "\tCRATE\n"
-                "\t\tEvent:                     {event}\n"
-                "\t\tInventory:                 {inventory}\n"
-                "\t\tObserved Stream:           {obsstream}\n"
-                "\t\tSynthetic Stream:          {synstream}\n"
+        return ("CRATE\n"
+                "\tEvent:                     {event}\n"
+                "\tInventory:                 {inventory}\n"
+                "\tObserved Stream(s):        {obsstream}\n"
+                "\tSynthetic Stream(s):       {synstream}\n"
+                "PROCESSOR\n"
                 "\tObs Data Preprocessed:       {obsproc}\n"
                 "\tSyn Data Preprocessed:       {synproc}\n"
                 "\tSynthetic Data Shifted:      {synshift}\n"
@@ -180,21 +189,32 @@ class Processor:
             gatherer = Gatherer(config=self.config, ds=self.ds)
             self.gatherer = gatherer
 
-    def _reset(self):
+    def reset(self):
         """
         To avoid user interaction with the Crate class.
         Convenience function to instantiate a new Crate, and hence start the
         workflow from the start without losing your event or gatherer.
         """
         self.crate = Crate()
+        self.launch()
 
     @property
     def event(self):
-        return self.crate.event
+        return self.gatherer.event
 
     @property
     def st(self):
-        return self.crate.st_syn + self.crate.st_obs
+        if isinstance(self.crate.st_syn, obspy.Stream) and \
+                isinstance(self.crate.st_obs, obspy.Stream):
+            return self.crate.st_syn + self.crate.st_obs
+        elif isinstance(self.crate.st_syn, obspy.Stream) and \
+                not isinstance(self.crate.st_obs, obspy.Stream):
+            return self.crate.st_syn
+        elif isinstance(self.crate.st_obs, obspy.Stream) and \
+                not isinstance(self.crate.st_syn, obspy.Stream):
+            return self.crate.st_obs
+        else:
+            return None
 
     @property
     def st_obs(self):
@@ -214,12 +234,12 @@ class Processor:
 
     @property
     def adj_srcs(self):
-        return sefl.crate.adj_srcs
+        return self.crate.adj_srcs
 
     def launch(self):
         """
-        Initiate the prerequisite parts of the processor class.
-        :return:
+        Initiate the prerequisite parts of the processor class. Populate with
+        an obspy event object
         """
         self._launch_gatherer()
         if self.gatherer.event is not None:
@@ -262,6 +282,13 @@ class Processor:
         """
         Preprocess observed and synthetic data in place on waveforms in crate.
         """
+        if not (isinstance(self.crate.st_obs, obspy.Stream) and
+                isinstance(self.crate.st_syn, obspy.Stream)
+                ):
+            warnings.warn("cannot preprocess, missing waveform data",
+                          UserWarning)
+            return
+
         logger.info("preprocessing observation data")
         if self.config.rotate_to_rtz:
             _, baz = gcd_and_baz(self.crate.event, self.crate.inv)
@@ -321,6 +348,12 @@ class Processor:
         9: c_4a = for curtailing windows w/ emergent starts and/or codas
         10:c_4b = for curtailing windows w/ emergent starts and/or codas
         """
+        if not (isinstance(self.crate.st_obs, obspy.Stream) and
+                isinstance(self.crate.st_syn, obspy.Stream)
+                ):
+            warnings.warn("cannot run Pyflex, no waveform data")
+            return
+
         pf_config, pf_event, pf_station = set_pyflex_configuration(
             config=self.config, inv=self.crate.inv, event=self.crate.event
             )
@@ -388,7 +421,8 @@ class Processor:
         if (self.crate.windows is None) or (isinstance(self.crate.windows, dict)
                                             and not len(self.crate.windows)
                                             ):
-            warnings.warn("windows must be collected before pyadjoint can run")
+            warnings.warn("cannot run Pyadjoint, no Pyflex outputs",
+                          UserWarning)
             return
 
         logger.info("running pyAdjoint for type {} ".format(
@@ -439,6 +473,13 @@ class Processor:
         :type dpi: int
         :param dpi: dots per inch of the figure
         """
+        if not (isinstance(self.crate.st_obs, obspy.Stream) and
+                isinstance(self.crate.st_syn, obspy.Stream)
+                ):
+            warnings.warn("cannot plot waveforms, no waveform data",
+                          UserWarning)
+            return
+
         from pyatoa.visuals.plot_waveforms import window_maker
         show = kwargs.get("show", True)
         save = kwargs.get("save", None)
@@ -450,7 +491,8 @@ class Processor:
                      adj_srcs=self.crate.adj_srcs,
                      stalta_wl=self.config.pyflex_config[0],
                      unit_output=self.config.unit_output,
-                     config=self.config, figsize=figsize, dpi=dpi, show=show
+                     config=self.config, figsize=figsize, dpi=dpi, show=show,
+                     save=save
                      )
 
     def plot_map(self, **kwargs):
@@ -473,18 +515,22 @@ class Processor:
         :type dpi: int
         :param dpi: dots per inch of the figure
         """
+        if not isinstance(self.crate.inv, obspy.Inventory):
+            warnings.warn("cannot plot mapper, no inventory", UserWarning)
+            return
         from pyatoa.visuals.plot_map import generate_map
-        show = kwargs.get("show", False)
+        show = kwargs.get("show", True)
         save = kwargs.get("save", None)
         show_faults = kwargs.get("show_faults", False)
 
-        figsize = kwargs.get("figsize", (11.69, 8.27))
+        figsize = kwargs.get("figsize", (8, 8.27))
         dpi = kwargs.get("dpi", 100)
 
         generate_map(config=self.config, event=self.crate.event,
                      inv=self.crate.inv, show_faults=show_faults,
                      show=show, figsize=figsize, dpi=dpi, save=save
                      )
+
 
 
 

@@ -15,7 +15,7 @@ class Config:
     """
     def __init__(self, model_number=None, event_id=None, min_period=10,
                  max_period=30, filter_corners=4, rotate_to_rtz=True,
-                 unit_output='DISP', pyflex_config='UAF',
+                 unit_output='DISP', pyflex_config='default',
                  adj_src_type='multitaper_misfit', raw_sampling_rate=None,
                  paths_to_waveforms=None, paths_to_responses=None):
         """
@@ -88,6 +88,8 @@ class Config:
         """
         if model_number is not None:
             self.model_number = 'm{:0>2}'.format(model_number)
+        else:
+            self.model_number = model_number
         self.event_id = event_id
         self.min_period = float(min_period)
         self.max_period = float(max_period)
@@ -108,9 +110,9 @@ class Config:
         string representation of class Config for print statements
         :return:
         """
-        return ("Config class\n"
+        return ("CONFIG\n"
                 "\tEvent ID:              {event_id}\n"
-                "\tMinimum Filter Period: {min_period\n"
+                "\tMinimum Filter Period: {min_period}\n"
                 "\tMaximum Filter Period: {max_period}\n"
                 "\tFilter Corners:        {corner}\n"
                 "\tRotate to RTZ:         {rotate}\n"
@@ -119,7 +121,7 @@ class Config:
                 "\tAdjoint Source Type:   {adjoint}\n"
                 "\tPaths to waveforms:    {paths_to_wavs}\n"
                 "\tPaths to responses:    {paths_to_resp}"
-                ).format(event_did=self.event_id, min_period=self.min_period,
+                ).format(event_id=self.event_id, min_period=self.min_period,
                          max_period=self.max_period, corner=self.filter_corners,
                          rotate=self.rotate_to_rtz, output=self.unit_output,
                          pyflex=self.pyflex_config, adjoint=self.adj_src_type,
@@ -190,14 +192,14 @@ class Config:
         :return:
         """
 
-    def write_to_pyasdf(self, ds):
+    def write_to_asdf(self, ds):
         """
         save the config values as a dictionary in the pyasdf data format
         for easy lookback
         """
         import numpy as np
         from obspy import UTCDateTime
-        par_dict = {"time": UTCDateTime(),
+        par_dict = {"creation_time": str(UTCDateTime()),
                     "model_number": self.model_number,
                     "event_id": self.event_id,
                     "min_period": self.min_period,
@@ -206,8 +208,11 @@ class Config:
                     "rotate_to_rtz": self.rotate_to_rtz,
                     "unit_output": self.unit_output,
                     "pyflex_config": self.pyflex_config,
-                    "adj_src_type": self.adj_src_type
+                    "adj_src_type": self.adj_src_type,
+                    "raw_sampling_rate": self.raw_sampling_rate
                     }
+
         ds.add_auxiliary_data(data_type="Configs", data=np.array([True]),
-                              path='{}', parameters=par_dict)
+                              path="{}".format(self.model_number),
+                              parameters=par_dict)
 

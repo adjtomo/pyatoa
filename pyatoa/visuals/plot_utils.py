@@ -53,3 +53,24 @@ def format_axis(input_ax):
     else:  # elif abs(round(ymin/ymax)) == 0:
         bounds = (-0.05,1.05)
     input_ax.set_ylim(bounds)
+
+
+def combine_figures(path_to_figure_a, path_to_figure_b, path_to_output):
+    """
+    UNFINISHED
+    We want station maps and waveform maps on the same plot but matplotlib makes
+    it difficult to combine two figure objects, so the hacky way of doing it is
+    to save two separate images and combine them afterwards
+    :param path_to_figure_a:
+    :param path_to_figure_b:
+    :return:
+    """
+    import PIL
+    import numpy as np
+
+    imgs = [PIL.Image.open(i) for i in [path_to_figure_a, path_to_figure_b]]
+    min_shape = sorted(sorted([(np.sum(i.size), i.size) for i in imgs])[0][1])
+    imgs_comb = np.hstack(imgs)
+    import ipdb;ipdb.set_trace()
+    imgs_comb = PIL.Image.fromarray(imgs_comb)
+    imgs_comb.save(path_to_output)

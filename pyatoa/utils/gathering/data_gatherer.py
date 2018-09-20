@@ -105,7 +105,8 @@ class Gatherer:
         try:
             return self.fetcher.station_fetch(station_code)
         except FileNotFoundError:
-            logger.info("internal station information not found, searching ext.")
+            logger.info(
+                "internal station information not found, searching ext.")
             inv = self.getter.station_get(station_code)
             if self.ds is not None:
                 self.ds.add_stationxml(inv)

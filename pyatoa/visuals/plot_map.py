@@ -18,8 +18,7 @@ from mpl_toolkits.basemap import Basemap
 from obspy import read_inventory
 from obspy.imaging.beachball import beach
 
-from pyatoa.utils.gathering.grab_auxiliaries import hardcode_paths, \
-    grab_geonet_moment_tensor
+from pyatoa.utils.gathering.grab_auxiliaries import hardcode_paths
 from pyatoa.utils.operations.source_receiver import gcd_and_baz, parse_inventory
 from pyatoa.utils.operations.calculations import myround
 
@@ -112,19 +111,31 @@ def plot_active_faults(m):
             m.plot(x, y, '--', linewidth=0.5, color='k', zorder=2, alpha=0.25)
 
 
-def event_beachball(m, moment_tensor):
+def event_beachball(m, event):
     """
     Plot event beachball for a given geonet moment tensor list,
     read in the from the GeoNet moment tensor csv file.
 
     :type m: Basemap
     :param m: basemap object
-    :type moment_tensor: dict
-    :param moment_tensor: a row from the GeoNet moment tensor csv file
+    :type event: obspy.core.event.Event
+    :param event: event object which should contain focal mechanism
     """
-    eventx, eventy = m(moment_tensor['Longitude'], moment_tensor['Latitude'])
-    focal_mechanism = [moment_tensor['strike2'], moment_tensor['dip2'],
-                       moment_tensor['rake2']]
+    eventx, eventy = m(event.preferred_origin().longitude,
+                       event.preferred_origin().latitude
+                       )
+    focal_mechanism = [event.focal_mechanisms[0].moment_tensor.tensor['m_rr'],
+                       event.focal_mechanisms[0].moment_tensor.tensor['m_tt'],
+                       event.focal_mechanisms[0].moment_tensor.tensor['m_pp'],
+                       event.focal_mechanisms[0].moment_tensor.tensor['m_rt'],
+                       event.focal_mechanisms[0].moment_tensor.tensor['m_rp'],
+                       event.focal_mechanisms[0].moment_tensor.tensor['m_tp']
+                       ]
+    # strike_dip_rake = [
+    #     event.focal_mechanisms[0].nodal_planes.nodal_plane_1.strike,
+    #     event.focal_mechanisms[0].nodal_planes.nodal_plane_1.dip,
+    #     event.focal_mechanisms[0].nodal_planes.nodal_plane_1.rake
+    # ]
     b = beach(focal_mechanism, xy=(eventx, eventy), width=2.5E4, linewidth=1,
               facecolor='r')
     b.set_zorder(1000)
@@ -157,12 +168,12 @@ def plot_stations(m, inv, event=None, **kwargs):
         color_dict = {"NZ": "black", "XX": "red", "X1": "green",
                       "X2": "blue", "YH": "yellow"}
         for net_, sta_, x_, y_ in zip(network_codes, station_codes, x, y):
-            m.scatter(x_, y_, marker='v', color=color_dict[net_], edgecolor='k',
-                      linestyle='-', s=60, zorder=5
-                      )
+            m.scatter(x_, y_, marker='v', color='None',
+                      edgecolor=color_dict[net_], linestyle='-', s=60,
+                      zorder=1001)
     else:
-        m.scatter(x, y, marker='v', color='w', edgecolor='k', linestyle='-',
-                  s=60, zorder=999
+        m.scatter(x, y, marker='v', color='None', edgecolor='k', linestyle='-',
+                  s=60, zorder=1001
                   )
     if annotate_names:
         for n_, x_, y_ in zip(station_codes, x, y):
@@ -188,13 +199,13 @@ def annotate_srcrcv_information(m, event, inv, config):
     event.origins[0].time.precision = 0
     gcdist, baz = gcd_and_baz(event, inv)
 
-    plt.annotate(s=("{id} / {sta}\n"
+    plt.annotate(s=("{id} / {net}.{sta}\n"
                     "{date}\n"
                     "{type}={mag:.2f}\n"
                     "Depth(km)={depth:.2f}\n"
                     "Dist(km)={dist:.2f}\n"
                     "BAz(deg)={baz:.2f}").format(
-        id=config.event_id, sta=inv[0][0].code,
+        id=config.event_id, net=inv[0].code, sta=inv[0][0].code,
         date=event.preferred_origin().time,
         depth=event.preferred_origin().depth*1E-3,
         type=event.preferred_magnitude().magnitude_type,
@@ -300,7 +311,6 @@ def generate_map(config, event, inv,
 
     # next section contains hardcoded paths
     background_inv = read_inventory(hardcode_paths()['stations'])
-    moment_tensor = grab_geonet_moment_tensor(config.event_id)
     if show_faults:
         warnings.warn("Plotting active faults takes some time, "
                       "please be patient", UserWarning)
@@ -309,7 +319,7 @@ def generate_map(config, event, inv,
 
     plot_stations(m, inv=background_inv, event=event, annotate_names=False,
                   color_by_network=False)
-    event_beachball(m, moment_tensor)
+    event_beachball(m, event)
     connect_source_receiver(m, event, inv)
     annotate_srcrcv_information(m, event, inv, config)
 
