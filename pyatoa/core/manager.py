@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 """
 Main workflow components of Pyatoa.
-Processor is the central workflow control object. It calls on mid and low level
+Manager is the central workflow control object. It calls on mid and low level
 classes to gather data, and then runs these through Pyflex for misfit window
 identification, and then into Pyadjoint for misfit quantification. Config class
 required to set the necessary parameters
 
 Crate class is a simple data storage object which is easily emptied and filled
-such that the processor can remain relatively high level and not get bogged down
-by excess storage requirements. Crate also feeds flags to the processor to
+such that the manager can remain relatively high level and not get bogged down
+by excess storage requirements. Crate also feeds flags to the manager to
 signal which processes have already occurred in the workflow.
 
 TODO: create a moment tensor object that can be attached to the event object
@@ -39,7 +39,7 @@ class Crate:
     An internal storage class for clutter-free rentention of data for individual
     stations. Simple flagging system for quick glances at workflow progress.
 
-    Mid-level object that is called and manipulated by the Processor class.
+    Mid-level object that is called and manipulated by the Manager class.
     """
     def __init__(self, station_code=None):
         """
@@ -120,7 +120,7 @@ class Crate:
         self.pyadjoint_flag = isinstance(self.adj_srcs, dict)
 
 
-class Processor:
+class Manager:
     """
     Core object within Pyatoa.
 
@@ -129,7 +129,7 @@ class Processor:
     """
     def __init__(self, config, ds=None):
         """
-        If no pyasdf dataset is given in the initiation of the processor, all
+        If no pyasdf dataset is given in the initiation of the Manager, all
         data fetching will happen via given pathways in the config file,
         or through external getting via FDSN pathways
 
@@ -140,7 +140,7 @@ class Processor:
         :param ds: ASDF data set from which to read and write data
         :type gatherer: pyatoa.utils.gathering.data_gatherer.Gatherer
         :param gatherer: gathering function used to get and fetch data
-        :type crate: pyatoa.core.processor.Crate
+        :type crate: pyatoa.core.Manager.Crate
         :param crate: Crate to hold all your information
         """
         self.config = copy.deepcopy(config)
@@ -159,7 +159,7 @@ class Processor:
                 "\tInventory:                 {inventory}\n"
                 "\tObserved Stream(s):        {obsstream}\n"
                 "\tSynthetic Stream(s):       {synstream}\n"
-                "PROCESSOR\n"
+                "MANAGER\n"
                 "\tObs Data Preprocessed:       {obsproc}\n"
                 "\tSyn Data Preprocessed:       {synproc}\n"
                 "\tSynthetic Data Shifted:      {synshift}\n"
@@ -238,7 +238,7 @@ class Processor:
 
     def launch(self):
         """
-        Initiate the prerequisite parts of the processor class. Populate with
+        Initiate the prerequisite parts of the Manager class. Populate with
         an obspy event object
         """
         self._launch_gatherer()
@@ -294,23 +294,26 @@ class Processor:
             _, baz = gcd_and_baz(self.crate.event, self.crate.inv)
         else:
             baz = None
+        # adjoint sources require the same sampling_rate as the synthetics
+        sampling_rate = self.crate.st_syn[0].stats.sampling_rate
         self.crate.st_obs = preproc(self.crate.st_obs, inv=self.crate.inv,
-                                    resample=5, pad_length_in_seconds=20,
+                                    resample=sampling_rate,
+                                    pad_length_in_seconds=20,
                                     output="VEL", back_azimuth=baz,
                                     filterbounds=[self.config.min_period,
                                                   self.config.max_period],
                                     corners=4
                                     )
         logger.info("preprocessing synthetic data")
-        self.crate.st_syn = preproc(self.crate.st_syn, resample=5,
+        self.crate.st_syn = preproc(self.crate.st_syn, resample=None,
                                     pad_length_in_seconds=20, output="VEL",
                                     back_azimuth=baz, corners=4,
                                     filterbounds=[self.config.min_period,
                                                   self.config.max_period],
 
                                     )
-        self.crate.st_obs, self.crate.st_syn = trimstreams(self.crate.st_obs,
-                                                           self.crate.st_syn)
+        self.crate.st_obs, self.crate.st_syn = trimstreams(
+            st_a=self.crate.st_obs, st_b=self.crate.st_syn, force="B")
         try:
             half_duration = (self.crate.event.focal_mechanisms[0].
                              moment_tensor.source_time_function.duration) / 2
@@ -449,7 +452,7 @@ class Processor:
             if self.ds is not None:
                 logger.info("saving adjoint sources {} to PyASDF".format(key))
                 with warnings.catch_warnings():
-                    tag = "{mod}/{net}_{sta}_{cmp}".format(
+                    tag = "{mod}/{net}_{sta}_BX{cmp}".format(
                         mod=self.config.model_number, net=adj_src.network,
                         sta=adj_src.station, cmp=adj_src.component[-1]
                         )

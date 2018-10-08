@@ -16,8 +16,9 @@ class Config:
     def __init__(self, model_number=None, event_id=None, min_period=10,
                  max_period=30, filter_corners=4, rotate_to_rtz=True,
                  unit_output='DISP', pyflex_config='default',
-                 adj_src_type='multitaper_misfit', raw_sampling_rate=None,
-                 paths_to_waveforms=None, paths_to_responses=None):
+                 adj_src_type='multitaper_misfit',
+                 paths_to_waveforms=None, paths_to_synthetics=None,
+                 paths_to_responses=None):
         """
         Allows the user to control the parameters of the packages called within
         pyatoa, as well as control where the outputs (i.e. pyasdf and plots) are
@@ -99,8 +100,8 @@ class Config:
         self.pyflex_config = pyflex_config
         self._generate_pyflex_config()
         self.adj_src_type = adj_src_type
-        self.raw_sampling_rate = raw_sampling_rate
         self.paths = {"waveforms": paths_to_waveforms,
+                      "synthetics": paths_to_synthetics,
                       "responses": paths_to_responses,
                       }
         self._generate_component_list()
@@ -120,12 +121,14 @@ class Config:
                 "\tPyflex Config:         {pyflex}\n"
                 "\tAdjoint Source Type:   {adjoint}\n"
                 "\tPaths to waveforms:    {paths_to_wavs}\n"
+                "\tPaths to synthetics:   {paths_to_syns}\n"
                 "\tPaths to responses:    {paths_to_resp}"
                 ).format(event_id=self.event_id, min_period=self.min_period,
                          max_period=self.max_period, corner=self.filter_corners,
                          rotate=self.rotate_to_rtz, output=self.unit_output,
                          pyflex=self.pyflex_config, adjoint=self.adj_src_type,
                          paths_to_wavs=self.paths['waveforms'],
+                         paths_to_syns=self.paths['synthetics'],
                          paths_to_resp=self.paths['responses']
                          )
 
@@ -209,7 +212,6 @@ class Config:
                     "unit_output": self.unit_output,
                     "pyflex_config": self.pyflex_config,
                     "adj_src_type": self.adj_src_type,
-                    "raw_sampling_rate": self.raw_sampling_rate
                     }
 
         ds.add_auxiliary_data(data_type="Configs", data=np.array([True]),

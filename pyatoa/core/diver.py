@@ -47,17 +47,34 @@ class Diver:
         which lists available components.
         """
         stations = []
-        for model_number in self.ds.auxiliary_data.MisfitWindows.list:
-            for window in self.ds.auxiliary_data.MisfitWindows.model_number:
+        for model_number in self.ds.auxiliary_data.MisfitWindows.list():
+            for window in self.ds.auxiliary_data.MisfitWindows[model_number]:
                 stations.append(
                     self.ds.auxiliary_data.MisfitWindows[model_number]
                     [window].parameters['channel_id']
                 )
         uniqueid = set(stations)
         counted_windows = {}
-        for id in uniqueid:
-            counted_windows[id] = stations.count(id)
+        for id_ in uniqueid:
+            counted_windows[id_] = stations.count(id_)
+        return counted_windows
 
+    def write_adj_src_to_specfem(self, buf="./", model="m00"):
+        """
+        write adjoint source from asdf data format to specfem input. when
+        writing to asdf data format, the adjoint source was time reversed for
+        convenient plotting, so this function needs to re-reverse, i.e. put
+        the data in the same format that pyadjoint outputted it
+        :param buffer:
+        :return:
+        """
+        shortcut = self.ds.auxiliary_data.AdjointSources[model]
+        for adj_src in shortcut:
+            file_template = "{id}.adj".format(
+                shortcut.adj_src.path.replace('_', '.')
+            )
+            outfile = os.path.join(buf, file_template)
+            np.savetxt(outfile, adj_src.data.value)
 
     def collect_misfits(self,model="m00"):
         """for each station, collect the misfit value
@@ -123,5 +140,5 @@ class Diver:
             
         from dataDepicter import Depicter
         depicter = Depicter(tack=self)
-        depicter.plot_misfit_histogram(m0=m0,m_a=m_a,binsize=binsize)
+        depicter.plot_misfit_histogram(m0=m0, m_a=m_a, binsize=binsize)
 

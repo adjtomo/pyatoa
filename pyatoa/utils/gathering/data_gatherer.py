@@ -132,15 +132,15 @@ class Gatherer:
             st_obs = self.getter.waveform_get(station_code)
             if self.ds is not None:
                 self.ds.add_waveforms(waveform=st_obs, tag='observed')
-        if self.config.raw_sampling_rate is not None:
-            if self.config.raw_sampling_rate < st_obs[0].stats.sampling_rate:
-                st_obs.resample(sampling_rate=self.config.raw_sampling_rate)
-            else:
-                warnings.warn(
-                    "Raw sampling rate {r} is greater than original {o}".format(
-                        r=self.config.raw_sampling_rate,
-                        o=st_obs[0].stats.sampling_rate), UserWarning
-                        )
+        # if self.config.raw_sampling_rate is not None:
+        #     if self.config.raw_sampling_rate < st_obs[0].stats.sampling_rate:
+        #         st_obs.resample(sampling_rate=self.config.raw_sampling_rate)
+        #     else:
+        #         warnings.warn(
+        #           "Raw sampling rate {r} is greater than original {o}".format(
+        #                 r=self.config.raw_sampling_rate,
+        #                 o=st_obs[0].stats.sampling_rate), UserWarning
+        #                 )
 
         return st_obs
 
@@ -158,13 +158,13 @@ class Gatherer:
         :return: stream object containing relevant waveforms
         """
         st_syn = self.fetcher.syn_waveform_fetch(station_code)
-        if self.config.raw_sampling_rate is not None:
-            if self.config.raw_sampling_rate < st_syn[0].stats.sampling_rate:
-                st_syn.resample(sampling_rate=self.config.raw_sampling_rate)
-            else:
-                warnings.warn(
-                    "Raw sampling rate {r} is greater than original {o}".format(
-                        r=self.config.raw_sampling_rate,
-                        o=st_syn[0].stats.sampling_rate), UserWarning
-                        )
+        # if self.config.raw_sampling_rate is not None:
+        #     if self.config.raw_sampling_rate < st_syn[0].stats.sampling_rate:
+        #         st_syn.resample(sampling_rate=self.config.raw_sampling_rate)
+        #     else:
+        #         warnings.warn(
+        #           "Raw sampling rate {r} is greater than original {o}".format(
+        #                 r=self.config.raw_sampling_rate,
+        #                 o=st_syn[0].stats.sampling_rate), UserWarning
+        #                 )
         return st_syn

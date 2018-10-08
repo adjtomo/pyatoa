@@ -27,25 +27,34 @@ def _zero_pad_stream(st, pad_length_in_seconds):
     return st
 
 
-def trimstreams(st_a, st_b):
+def trimstreams(st_a, st_b, force=None):
     """
     Trim two streams to common start and end times, do some basic preprocessing
-    before trimming.
+    before trimming. Allows user to force one stream to conform to another
 
     :type st_?: obspy.stream.Stream
     :param st_?: streams to be trimmed
     :rtype st_?: obspy.stream.Stream
     :return st_?: trimmed streams
     """
-    st_trimmed = st_a.copy() + st_b.copy()
-    start_set, end_set = 0, 1E10
-    for tr in st_trimmed:
-        start_hold = tr.stats.starttime
-        end_hold = tr.stats.endtime
-        if start_hold > start_set:
-            start_set = start_hold
-        if end_hold < end_set:
-            end_set = end_hold
+    if force:
+        if force == "A":
+            start_set = st_a[0].stats.starttime
+            end_set = st_a[0].stats.endtime
+        elif force == "B":
+            start_set = st_b[0].stats.starttime
+            end_set = st_b[0].stats.endtime
+    else:
+        st_trimmed = st_a.copy() + st_b.copy()
+        start_set, end_set = 0, 1E10
+        for st in st_trimmed:
+            start_hold = st.stats.starttime
+            end_hold = st.stats.endtime
+            if start_hold > start_set:
+                start_set = start_hold
+            if end_hold < end_set:
+                end_set = end_hold
+
     for st in [st_a, st_b]:
         st.trim(start_set, end_set)
         st.detrend("linear")
@@ -81,7 +90,7 @@ def preproc(st, inv=None, **kwargs):
     :return st: preprocessed stream object
     """
     warnings.filterwarnings("ignore", category=FutureWarning)
-    resample = kwargs.get("resample", 5)
+    resample = kwargs.get("resample", None)
     pad_length_in_seconds = kwargs.get("pad_length_in_seconds", 20)
     output = kwargs.get("output", "VEL").upper()
     back_azimuth = kwargs.get("back_azimuth", None)
@@ -89,14 +98,14 @@ def preproc(st, inv=None, **kwargs):
     water_level = kwargs.get("water_level", 60)
     corners = kwargs.get("corners", 4)
 
-    st.resample(resample)
+    if resample:
+        st.resample(resample)
     st.detrend("linear")
     st.detrend("demean")
     st.taper(max_percentage=0.05)
     if inv:
         st.attach_response(inv)
         st.remove_response(output=output, water_level=water_level, plot=False)
-        import matplotlib.pyplot as plt; plt.show()
         logger.info("removing response with water level {}".format(water_level))
         st.detrend("linear")
         st.detrend("demean")
@@ -111,9 +120,9 @@ def preproc(st, inv=None, **kwargs):
     if back_azimuth is not None:
         st.rotate(method="NE->RT", back_azimuth=back_azimuth)
         logger.info("rotating NE->RT by {} degrees".format(back_azimuth))
-    st = _zero_pad_stream(st, pad_length_in_seconds)
-    logger.info("zero padding front and back by {}s".format(
-        pad_length_in_seconds))
+    # st = _zero_pad_stream(st, pad_length_in_seconds)
+    # logger.info("zero padding front and back by {}s".format(
+    #     pad_length_in_seconds))
     if filter_bounds is not None:
         st.filter('bandpass', freqmin=1/filter_bounds[1],
                   freqmax=1/filter_bounds[0], corners=corners, zerophase=True)

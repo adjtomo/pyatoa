@@ -17,4 +17,4 @@ logger.addHandler(ch)
 
 
 from pyatoa.core.config import Config # NOQA
-from pyatoa.core.processor import Processor # NOQA
+from pyatoa.core.manager import Manager # NOQA

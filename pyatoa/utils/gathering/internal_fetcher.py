@@ -207,9 +207,7 @@ class Fetcher:
         if self.origintime is None:
             raise AttributeError("'origintime' must be specified")
         if paths_to_waveforms is None:
-            paths_to_waveforms = []
-            for path_ in self.config.paths['waveforms']:
-                paths_to_waveforms.append(os.path.join(path_, 'SPECFEM3D'))
+            paths_to_waveforms = self.config.paths['synthetics']
         net, sta, _, cha = station_code.split('.')
         comp = cha[-1]
 
@@ -223,7 +221,7 @@ class Fetcher:
             for filepath in glob.glob(
                                 full_path.format(net=net, sta=sta, cmp=comp)):
                 try:
-                    st += ascii_to_mseed(filepath,self.origintime)
+                    st += ascii_to_mseed(filepath, self.origintime)
                 except UnicodeDecodeError:
                     st += read(filepath)
                 logger.info("stream fetched by event {}".format(filepath))
