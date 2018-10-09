@@ -6,9 +6,12 @@ from obspy import Stream, Trace
 
 
 def ascii_to_mseed(path, origintime, location=''):
-    """convert native output of specfem into mseed format
-    :type event: obspy.event
-    :param event: specific event information
+    """
+
+    :param path: path of the given ascii file
+    :param origintime: UTCDatetime object for the origintime of the event
+    :param location:
+    :return:
     """
     time = np.loadtxt(fname=path, usecols=0)
     data = np.loadtxt(fname=path, usecols=1)

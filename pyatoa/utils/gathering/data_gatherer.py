@@ -23,7 +23,7 @@ class Gatherer:
     dependent on data availability. Preferentially searches internal pathways
     and will fall back onto external pathways if no data availability.
     """
-    def __init__(self, config, ds=None, startpad=20, endpad=200):
+    def __init__(self, config, ds=None):
         """
         :type config: pyatoa.core.config.Config
         :param config: configuration object that contains necessary parameters
@@ -41,15 +41,18 @@ class Gatherer:
         self.ds = ds
         self.event = None
         self.fetcher = Fetcher(config=self.config, ds=self.ds,
-                               startpad=startpad, endpad=endpad)
-        self.getter = Getter(config=self.config, startpad=startpad,
-                             endpad=endpad)
+                               startpad=self.config.startpad,
+                               endpad=self.config.endpad)
+        self.getter = Getter(config=self.config, startpad=self.config.startpad,
+                             endpad=self.config.endpad)
 
     def gather_event(self):
         """
         Get event information, check internally first. Keep the event as an
         attribute and check if the event has already be retrieved as this
         only needs to be done once per Pyatoa workflow.
+        Set the event time precision equal to 2 points after the decimal to keep
+        the origin time the same as that saved into the CMTSOLUTION file.
         :rtype: obspy.core.event.Event
         :return: event retrieved either via internal or external methods
         """
@@ -67,8 +70,10 @@ class Gatherer:
             self.event = self.getter.event_get()
             self.gather_focal_mechanism()
             logger.info("event got from external")
-        self.fetcher.origintime = self.event.origins[0].time
-        self.getter.origintime = self.event.origins[0].time
+
+        self.event.preferred_origin().time.precision = 2
+        self.fetcher.origintime = self.event.preferred_origin().time
+        self.getter.origintime = self.event.preferred_origin().time
         return self.event
 
     def gather_focal_mechanism(self):
@@ -168,3 +173,5 @@ class Gatherer:
         #                 o=st_syn[0].stats.sampling_rate), UserWarning
         #                 )
         return st_syn
+
+

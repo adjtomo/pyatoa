@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 import logging
 
-
 # set up logging (copied from pyflex)
 logger = logging.getLogger("pyatoa")
 logger.setLevel(logging.WARNING)

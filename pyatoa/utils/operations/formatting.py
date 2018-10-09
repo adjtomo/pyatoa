@@ -91,7 +91,7 @@ def write_adj_src_to_asdf(adj_src, ds, tag, time_offset):
     l = len(adj_src.adjoint_source)
     specfem_adj_source = np.empty((l, 2))
     specfem_adj_source[:, 0] = np.linspace(0, (l - 1) * adj_src.dt, l)
-    specfem_adj_source[:, 1] = time_offset
+    specfem_adj_source[:, 0] += time_offset
     specfem_adj_source[:, 1] = adj_src.adjoint_source[::-1]
 
     station_id = "{net}.{sta}".format(net=adj_src.network, sta=adj_src.station)

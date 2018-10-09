@@ -16,7 +16,7 @@ class Config:
     def __init__(self, model_number=None, event_id=None, min_period=10,
                  max_period=30, filter_corners=4, rotate_to_rtz=True,
                  unit_output='DISP', pyflex_config='default',
-                 adj_src_type='multitaper_misfit',
+                 adj_src_type='multitaper_misfit', startpad=20, endpad=500,
                  paths_to_waveforms=None, paths_to_synthetics=None,
                  paths_to_responses=None):
         """
@@ -104,6 +104,8 @@ class Config:
                       "synthetics": paths_to_synthetics,
                       "responses": paths_to_responses,
                       }
+        self.startpad = startpad
+        self.endpad = endpad
         self._generate_component_list()
 
     def __str__(self):

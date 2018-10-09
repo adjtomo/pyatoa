@@ -63,6 +63,10 @@ class Crate:
             dictionary based on component naming
         :type adj_srcs: dict of pyadjoint.AdjointSource objects
         :param adj_srcs: adjoint source waveforms stored in dictionaries
+        :type time_offset: float
+        :param time_offset: the amount that the beginning of the synthetics
+            (i.e. first column in the .sem? file) are shifted compared to the
+            CMTSOLUTION, in units of seconds.
         :type *flag: bool
         :param *_flag: if * is present in the Crate, or if * has been processed
         """
@@ -74,6 +78,7 @@ class Crate:
         self.windows = None
         self.staltas = None
         self.adj_srcs = None
+        self.time_offset = None
 
         self.event_flag = False
         self.st_obs_flag = False
@@ -314,6 +319,10 @@ class Manager:
                                     )
         self.crate.st_obs, self.crate.st_syn = trimstreams(
             st_a=self.crate.st_obs, st_b=self.crate.st_syn, force="B")
+        # vv essentially the first timestamp in the .sem? file from specfem
+        self.crate.time_offset = (self.crate.st_syn[0].stats.starttime -
+                                  self.crate.event.preferred_origin().time
+                                  )
         try:
             half_duration = (self.crate.event.focal_mechanisms[0].
                              moment_tensor.source_time_function.duration) / 2
@@ -457,7 +466,8 @@ class Manager:
                         sta=adj_src.station, cmp=adj_src.component[-1]
                         )
                     warnings.simplefilter("ignore")
-                    write_adj_src_to_asdf(adj_src, self.ds, tag, time_offset=0)
+                    write_adj_src_to_asdf(adj_src, self.ds, tag,
+                                          time_offset=self.crate.time_offset)
         self.crate.adj_srcs = adjoint_sources
 
     def plot_wav(self, **kwargs):
