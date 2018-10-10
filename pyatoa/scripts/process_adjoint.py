@@ -21,7 +21,7 @@ def write_adj_src(ds, model_number):
     shortcut = ds.auxiliary_data.AdjointSources[model_number]
     for adj_src in shortcut.list():
         template = "./{}.adj".format(shortcut[adj_src].path.replace('_', '.'))
-        np.savetxt(template, shortcut[adj_src].data.value)
+        np.savetxt(template, shortcut[adj_src].data.value, fmt='%.8E')
 
 
 def write_all_adj_src(ds, model_number, comp_list=["N","E","Z"]):
@@ -35,15 +35,14 @@ def write_all_adj_src(ds, model_number, comp_list=["N","E","Z"]):
     for adj_src in shortcut.list():
         station = shortcut[adj_src].path.replace('_', '.')
         template = "./{}.adj".format(station)
-        np.savetxt(template, shortcut[adj_src].data.value)
+        np.savetxt(template, shortcut[adj_src].data.value, fmt='%.8E')
         for comp in comp_list:
             station_check = station[:-1] + comp
             if station_check.replace('.', '_') not in shortcut.list():
                 blank_adj_src = shortcut[adj_src].data.value
                 blank_adj_src[:, 1] = np.zeros(len(blank_adj_src[:, 1]))
                 blank_template = "./{}.adj".format(station_check)
-                np.savetxt(blank_template, blank_adj_src)
-
+                np.savetxt(blank_template, blank_adj_src, fmt='%.8E')
 
 
 def create_stations_adjoint(ds, model_number):
@@ -80,10 +79,13 @@ config = pyatoa.Config(event_id="2018p130600", model_number=0, min_period=10,
                        unit_output="DISP", pyflex_config="UAF",
                        adj_src_type="multitaper_misfit",
                        paths_to_waveforms=[
+                           '/seis/prj/fwi/bchow/seismic', '/geonet/seismic',
                            '/Users/chowbr/Documents/subduction/seismic'],
                        paths_to_synthetics=[
+                           '/seis/prj/fwi/bchow/tomo/adjoint_test/adjoint_master',
                            '/Users/chowbr/Documents/subduction/tomo/adjoint_test/adjoint_master'],
                        paths_to_responses=[
+                           '/seis/prj/fwi/bchow/seed/RESPONSE',
                            '/Users/chowbr/Documents/subduction/seed/RESPONSE']
                        )
 
@@ -95,9 +97,11 @@ config.write_to_asdf(ds)
 mgmt = pyatoa.Manager(config=config, ds=ds)
 
 # loop through all stations that were interested in processing
-master_inventory = read_inventory(
-    "/Users/chowbr/Documents/subduction/data/STATIONXML/"
-    "MASTER/master_inventory.xml")
+master_inventory = read_inventory("/seis/prj/fwi/bchow/data/STATIONXML/"
+                                  "MASTER/master_inventory.xml"
+                                  )
+    # "/Users/chowbr/Documents/subduction/data/STATIONXML/"
+    # "MASTER/master_inventory.xml")
 for net in master_inventory:
     for sta in net:
         if sta.is_active(time=mgmt.event.preferred_origin().time):
@@ -110,6 +114,7 @@ for net in master_inventory:
                                                                   loc="*",
                                                                   cha="HH?")
                 )
+                import ipdb;ipdb.set_trace()
                 mgmt.preprocess()
                 mgmt.run_pyflex()
                 mgmt.run_pyadjoint()

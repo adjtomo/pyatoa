@@ -3,6 +3,7 @@
 import os
 import numpy as np
 from obspy import Stream, Trace
+from obspy.core.util.attribdict import AttribDict
 
 
 def ascii_to_mseed(path, origintime, location=''):
@@ -21,8 +22,10 @@ def ascii_to_mseed(path, origintime, location=''):
     net, sta, cha, fmt = os.path.basename(path).split('.')
     stats = {"network": net, "station": sta, "location": location,
              "channel": cha, "starttime": origintime, "npts": len(data),
-             "delta": delta, "mseed": {"dataquality": 'D'}
+             "delta": delta, "mseed": {"dataquality": 'D'},
+             "time_offset": time[0]
              }
+    import ipdb;ipdb.set_trace()
     st = Stream([Trace(data=data, header=stats)])
 
     return st
