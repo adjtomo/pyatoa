@@ -211,7 +211,9 @@ class Fetcher:
         net, sta, _, cha = station_code.split('.')
         comp = cha[-1]
 
-        specfem_fid_template = '{net}.{sta}.*{cmp}.semv*'
+        sem_fmt = {"DISP": "d", "VEL": "v", "ACC": "a"}
+
+        specfem_fid_template = '{net}.{sta}.*{cmp}.sem{fmt}'
         for path_ in paths_to_waveforms:
             if not os.path.exists(path_):
                 continue
@@ -219,7 +221,9 @@ class Fetcher:
                                      self.config.event_id, specfem_fid_template)
             st = Stream()
             for filepath in glob.glob(
-                                full_path.format(net=net, sta=sta, cmp=comp)):
+                        full_path.format(net=net, sta=sta, cmp=comp,
+                                         fmt=sem_fmt[self.config.unit_output])
+            ):
                 try:
                     st += ascii_to_mseed(filepath, self.origintime)
                 except UnicodeDecodeError:

@@ -3,12 +3,31 @@
 import os
 import numpy as np
 from obspy import Stream, Trace
-from obspy.core.util.attribdict import AttribDict
+
+
+def read_fortran_binary(path):
+    """
+    convert a fortran .bin file into a NumPy array,
+    stolen from fortran_binary.py _read() in SeisFlows
+    :param path:
+    :return:
+    """
+    nbytes = os.path.getsize(path)
+    with open(path, "rb") as f:
+        f.seek(0)
+        n = np.fromfile(f, dtype="int32", count=1)[0]
+        if n == nbytes - 8:
+            f.seek(4)
+            data = np.fromfile(f, dtype="float32")
+            return data[:-1]
+        else:
+            f.seek(0)
+            data = np.fromfile(f, dtype="float32")
+            return data
 
 
 def ascii_to_mseed(path, origintime, location=''):
     """
-
     :param path: path of the given ascii file
     :param origintime: UTCDatetime object for the origintime of the event
     :param location:
@@ -25,7 +44,6 @@ def ascii_to_mseed(path, origintime, location=''):
              "delta": delta, "mseed": {"dataquality": 'D'},
              "time_offset": time[0]
              }
-    import ipdb;ipdb.set_trace()
     st = Stream([Trace(data=data, header=stats)])
 
     return st

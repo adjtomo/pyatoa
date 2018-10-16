@@ -88,7 +88,16 @@ class Config:
             )
         """
         if model_number is not None:
-            self.model_number = 'm{:0>2}'.format(model_number)
+            if isinstance(model_number, str):
+                # model_number = "0"
+                if not model_number[0] == "m":
+                    self.model_number = 'm{:0>2}'.format(model_number)
+                # model_number = "m00"
+                else:
+                    self.model_number = model_number
+            # model_number = 0
+            elif isinstance(model_number, int):
+                self.model_number = 'm{:0>2}'.format(model_number)
         else:
             self.model_number = model_number
         self.event_id = event_id
@@ -114,6 +123,7 @@ class Config:
         :return:
         """
         return ("CONFIG\n"
+                "\tModel Number:          {model_num}\n"
                 "\tEvent ID:              {event_id}\n"
                 "\tMinimum Filter Period: {min_period}\n"
                 "\tMaximum Filter Period: {max_period}\n"
@@ -125,7 +135,8 @@ class Config:
                 "\tPaths to waveforms:    {paths_to_wavs}\n"
                 "\tPaths to synthetics:   {paths_to_syns}\n"
                 "\tPaths to responses:    {paths_to_resp}"
-                ).format(event_id=self.event_id, min_period=self.min_period,
+                ).format(model_number=self.model_number,
+                         event_id=self.event_id, min_period=self.min_period,
                          max_period=self.max_period, corner=self.filter_corners,
                          rotate=self.rotate_to_rtz, output=self.unit_output,
                          pyflex=self.pyflex_config, adjoint=self.adj_src_type,

@@ -69,6 +69,7 @@ def window_maker(st_obs, st_syn, config, **kwargs):
     """
     dpi = kwargs.get("dpi", 100)
     figsize = kwargs.get("figsize", (11.69, 8.27))  #A4
+    time_offset = kwargs.get("time_offset", 0)
     windows = kwargs.get("windows", None)
     staltas = kwargs.get("staltas", None)
     adj_srcs = kwargs.get("adj_srcs", None)
@@ -83,7 +84,8 @@ def window_maker(st_obs, st_syn, config, **kwargs):
 
     f = plt.figure(figsize=figsize, dpi=dpi)
     axes, twaxes = setup_plot(number_of=len(st_obs), twax=True)
-    t = np.linspace(0, st_obs[0].stats.endtime-st_obs[0].stats.starttime,
+    t = np.linspace(time_offset,
+                    st_obs[0].stats.endtime-st_obs[0].stats.starttime,
                     len(st_obs[0].data))
 
     z = 5

@@ -61,6 +61,50 @@ def create_window_dictionary(window):
     return win_dict
 
 
+def write_adj_src_to_ascii(ds, model_number, comp_list=["N", "E", "Z"]):
+    """
+    take AdjointSource auxiliary data from a pyasdf dataset and write out
+    the adjoint sources into ascii files with proper formatting, for input
+    into PyASDF
+    :param ds:
+    :param model_number:
+    :param comp_list:
+    :return:
+    """
+    def write_to_ascii(f, array):
+        """
+        function used to write the ascii in the correct format
+        :param array:
+        :return:
+        """
+        for dt, amp in array:
+            if dt == 0. and not amp == 0.:
+                dt = 0
+                adj_formatter = "{dt:>14}{amp:18.6f}\n"
+            if not dt == 0 and amp == 0.:
+                amp = 0
+                adj_formatter = "{dt:14.6f}{amp:>18}\n"
+            else:
+                adj_formatter = "{dt:14.6f}{amp:18.6f}\n"
+            f.write(adj_formatter.format(dt=dt, amp=amp))
+
+    shortcut = ds.auxiliary_data.AdjointSources[model_number]
+    for adj_src in shortcut.list():
+        station = shortcut[adj_src].path.replace('_', '.')
+        fid = "./{}.adj".format(station)
+        with open(fid, "w") as f:
+            write_to_ascii(f, shortcut[adj_src].data.value)
+        if comp_list:
+            for comp in comp_list:
+                station_check = station[:-1] + comp
+                if station_check.replace('.', '_') not in shortcut.list():
+                    blank_adj_src = shortcut[adj_src].data.value
+                    blank_adj_src[:, 1] = np.zeros(len(blank_adj_src[:, 1]))
+                    blank_template = "./{}.adj".format(station_check)
+                    with open(blank_template, "w") as b:
+                        write_to_ascii(b, blank_adj_src)
+
+
 def write_adj_src_to_asdf(adj_src, ds, tag, time_offset):
     """
     NOTE: Stolen and modified from Pyadjoint source code:

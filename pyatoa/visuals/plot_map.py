@@ -266,7 +266,8 @@ def initiate_basemap(map_corners):
 
 
 def generate_map(config, event, inv,
-                 map_corners=[-42.5007,-36.9488,172.9998,179.5077], **kwargs):
+                 map_corners=[-42.5007, -36.9488, 172.9998, 179.5077],
+                 **kwargs):
     """
     TODO: change map corners to reflect the new mesh created in August
     TODO: make map_corners a dictionary to keep it less ambiguous?
@@ -304,6 +305,7 @@ def generate_map(config, event, inv,
     dpi = kwargs.get("dpi", 100)
     show = kwargs.get("show", True)
     save = kwargs.get("save", None)
+    annotate_names = kwargs.get("annotate_names", False)
     show_faults = kwargs.get("show_faults", False)
 
     f = plt.figure(figsize=figsize, dpi=dpi)
@@ -317,8 +319,8 @@ def generate_map(config, event, inv,
         plot_hikurangi_trench(m)
         plot_active_faults(m)
 
-    plot_stations(m, inv=background_inv, event=event, annotate_names=False,
-                  color_by_network=False)
+    plot_stations(m, inv=background_inv, event=event,
+                  annotate_names=annotate_names, color_by_network=False)
     event_beachball(m, event)
     connect_source_receiver(m, event, inv)
     annotate_srcrcv_information(m, event, inv, config)

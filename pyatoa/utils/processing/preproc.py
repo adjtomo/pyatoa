@@ -38,10 +38,11 @@ def trimstreams(st_a, st_b, force=None):
     :return st_?: trimmed streams
     """
     if force:
-        if force == "A":
+        force = force.lower()
+        if force == "a":
             start_set = st_a[0].stats.starttime
             end_set = st_a[0].stats.endtime
-        elif force == "B":
+        elif force == "b":
             start_set = st_b[0].stats.starttime
             end_set = st_b[0].stats.endtime
     else:
@@ -110,6 +111,7 @@ def preproc(st, inv=None, **kwargs):
         st.detrend("linear")
         st.detrend("demean")
         st.taper(max_percentage=0.05)
+        st.rotate(method="->ZNE", inventory=inv)
     # no inventory means synthetic data
     elif not inv:
         if output == "DISP":

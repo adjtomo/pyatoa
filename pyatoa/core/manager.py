@@ -63,8 +63,7 @@ class Crate:
             dictionary based on component naming
         :type adj_srcs: dict of pyadjoint.AdjointSource objects
         :param adj_srcs: adjoint source waveforms stored in dictionaries
-        :type time_offset: float
-        :param time_offset: the amount that the beginning of the synthetics
+
             (i.e. first column in the .sem? file) are shifted compared to the
             CMTSOLUTION, in units of seconds.
         :type *flag: bool
@@ -78,7 +77,6 @@ class Crate:
         self.windows = None
         self.staltas = None
         self.adj_srcs = None
-        self.time_offset = None
 
         self.event_flag = False
         self.st_obs_flag = False
@@ -318,7 +316,7 @@ class Manager:
 
                                     )
         self.crate.st_obs, self.crate.st_syn = trimstreams(
-            st_a=self.crate.st_obs, st_b=self.crate.st_syn, force="B")
+            st_a=self.crate.st_obs, st_b=self.crate.st_syn, force="b")
         # vv essentially the first timestamp in the .sem? file from specfem
         self.crate.time_offset = (self.crate.st_syn[0].stats.starttime -
                                   self.crate.event.preferred_origin().time
@@ -502,6 +500,7 @@ class Manager:
         window_maker(st_obs=self.crate.st_obs, st_syn=self.crate.st_syn,
                      windows=self.crate.windows, staltas=self.crate.staltas,
                      adj_srcs=self.crate.adj_srcs,
+                     time_offset=self.crate.time_offset,
                      stalta_wl=self.config.pyflex_config[0],
                      unit_output=self.config.unit_output,
                      config=self.config, figsize=figsize, dpi=dpi, show=show,
