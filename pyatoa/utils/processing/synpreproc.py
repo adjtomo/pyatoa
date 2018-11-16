@@ -8,9 +8,9 @@ from scipy import signal
 from pyatoa import logger
 
 
-def stf_convolve(st, half_duration, window="bartlett", time_shift=False):
+def stf_convolve(st, half_duration, window="bartlett", time_shift=None):
     """
-    Convolve source time function with a stream, time shift if needed
+    Generic convolve source time function with a stream, time shift if needed
 
     :type st: obspy.stream.Stream
     :param st: stream object containing traces of data
@@ -35,7 +35,7 @@ def stf_convolve(st, half_duration, window="bartlett", time_shift=False):
     # make sure window touches 0 at the end
     if stf[-1] != 0:
         stf = np.append(stf, 0)
-    stf *= (2/len(stf))
+    # stf *= (2/len(stf))  # not sure if this is necessary?
     st_out = st.copy()
     for tr in st_out:
         if time_shift:
@@ -43,6 +43,47 @@ def stf_convolve(st, half_duration, window="bartlett", time_shift=False):
         data_out = np.convolve(tr.data, stf, mode="same")
         tr.data = data_out
     return st_out
+
+
+def stf_convolve_gaussian(st, half_duration, time_shift=None):
+    """
+    Convolve function with a Gaussian window. 
+    Following taken from specfem "comp_source_time_function.f90"
+
+    hdur given is hdur_Gaussian = hdur/SOURCE_DECAY_MIMIC_TRIANGLE
+    with SOURCE_DECAY_MIMIC_TRIANGLE ~ 1.68
+
+    This gaussian uses a strong decay rate to avoid non-zero onset times, while
+    still miicking a triangle source time function
+
+    :param st:
+    :param half_duration:
+    :param time_shift:
+    :return:
+    """
+    logger.info("convolving synthetic data with gaussian "
+                "window of half duration {:.2f}s".format(half_duration)
+                )
+    sampling_rate = st[0].stats.sampling_rate
+    half_duration_in_samples = round(half_duration * sampling_rate)
+
+    # generate gaussian function
+    source_decay = 4
+    # source_decay_mimic_triangle = 1.68
+    decay_rate = half_duration_in_samples / source_decay
+    a = 1 / (decay_rate ** 2)
+    t = np.arange(-half_duration_in_samples, half_duration_in_samples, 1)
+    gaussian_stf = np.exp(-a * t**2) / (np.sqrt(np.pi) * decay_rate)
+
+    st_out = st.copy()
+    for tr in st_out:
+        if time_shift:
+            tr.stats.starttime += time_shift
+        data_out = np.convolve(tr.data, gaussian_stf, mode="same")
+        tr.data = data_out
+
+    return st_out
+
 
 
 

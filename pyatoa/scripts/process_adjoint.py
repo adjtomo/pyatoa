@@ -22,7 +22,8 @@ model_number = "m00"
 config = pyatoa.Config(event_id="2018p266243", model_number=model_number,
                        min_period=10, max_period=30, filter_corners=4,
                        rotate_to_rtz=False, unit_output="DISP",
-                       pyflex_config="UAF", adj_src_type="multitaper_misfit",
+                       pyflex_config="UAF",
+                       adj_src_type="multitaper_misfit",
                        paths_to_waveforms=[
                            '/seis/prj/fwi/bchow/seismic', '/geonet/seismic',
                            '/Users/chowbr/Documents/subduction/seismic'],
@@ -52,10 +53,6 @@ for net in master_inventory:
     for sta in net:
         if sta.is_active(time=mgmt.event.preferred_origin().time):
             try:
-                # if net.code != "XX":
-                #     continue
-                # if os.path.exists('./figures/wav_{}'.format(sta.code)):
-                #     continue
                 mgmt.gather_data(
                     station_code="{net}.{sta}.{loc}.{cha}".format(net=net.code,
                                                                   sta=sta.code,
@@ -65,13 +62,9 @@ for net in master_inventory:
                 mgmt.preprocess()
                 mgmt.run_pyflex()
                 mgmt.run_pyadjoint()
-                # import ipdb;ipdb.set_trace()
-                mgmt.plot_wav(save="./figures/wav_{}".format(sta.code),
-                              show=False
-                              )
-                mgmt.plot_map(save="./figures/map_{}".format(sta.code),
-                              show=False, show_faults=False
-                              )
+                mgmt.plot_wav(save="./figures/{eid}/wav_{sta}".format(
+                    eid=config.event_id, sta=sta.code), show=False
+                )
                 mgmt.reset()
             except Exception as e:
                 traceback.print_exc()

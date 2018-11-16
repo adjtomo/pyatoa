@@ -28,7 +28,7 @@ from pyatoa.utils.operations.source_receiver import gcd_and_baz
 from pyatoa.utils.operations.formatting import create_window_dictionary, \
     write_adj_src_to_asdf
 from pyatoa.utils.processing.preproc import preproc, trimstreams
-from pyatoa.utils.processing.synpreproc import stf_convolve
+from pyatoa.utils.processing.synpreproc import stf_convolve_gaussian
 
 from pyatoa.utils.configurations.external_configurations import \
     set_pyflex_configuration, set_pyadjoint_configuration
@@ -130,7 +130,7 @@ class Manager:
     Workflow management function that internally calls on all other objects
     within the package in order to gather, process and analyze waveform data.
     """
-    def __init__(self, config, ds=None):
+    def __init__(self, config, ds=None, empty=False):
         """
         If no pyasdf dataset is given in the initiation of the Manager, all
         data fetching will happen via given pathways in the config file,
@@ -150,7 +150,8 @@ class Manager:
         self.ds = ds
         self.gatherer = None
         self.crate = Crate()
-        self.launch()
+        if not empty:
+            self.launch()
 
     def __str__(self):
         """
@@ -301,15 +302,16 @@ class Manager:
         sampling_rate = self.crate.st_syn[0].stats.sampling_rate
         self.crate.st_obs = preproc(self.crate.st_obs, inv=self.crate.inv,
                                     resample=sampling_rate,
-                                    pad_length_in_seconds=20,
-                                    output="VEL", back_azimuth=baz,
+                                    pad_length_in_seconds=20, back_azimuth=baz,
+                                    output=self.config.unit_output,
                                     filterbounds=[self.config.min_period,
                                                   self.config.max_period],
                                     corners=4
                                     )
         logger.info("preprocessing synthetic data")
         self.crate.st_syn = preproc(self.crate.st_syn, resample=None,
-                                    pad_length_in_seconds=20, output="VEL",
+                                    pad_length_in_seconds=20,
+                                    output=self.config.unit_output,
                                     back_azimuth=baz, corners=4,
                                     filterbounds=[self.config.min_period,
                                                   self.config.max_period],
@@ -322,13 +324,14 @@ class Manager:
                                   self.crate.event.preferred_origin().time
                                   )
         try:
+            # convolve synthetic data with a gaussian source-time-function
             half_duration = (self.crate.event.focal_mechanisms[0].
                              moment_tensor.source_time_function.duration) / 2
-            self.crate.st_syn = stf_convolve(st=self.crate.st_syn,
-                                             half_duration=half_duration,
-                                             window="bartlett",
-                                             time_shift=False
-                                             )
+
+            self.crate.st_syn = stf_convolve_gaussian(
+                st=self.crate.st_syn, half_duration=half_duration,
+                time_shift=False
+            )
             self.crate.syn_shift_flag = True  # TODO: make this flag smarter
         except AttributeError:
             print("half duration value not found in event")
@@ -528,18 +531,19 @@ class Manager:
         :param dpi: dots per inch of the figure
         """
         if not isinstance(self.crate.inv, obspy.Inventory):
-            warnings.warn("cannot plot mapper, no inventory", UserWarning)
-            return
+            warnings.warn("no inventory given, plotting blank map", UserWarning)
         from pyatoa.visuals.plot_map import generate_map
         show = kwargs.get("show", True)
         save = kwargs.get("save", None)
         show_faults = kwargs.get("show_faults", False)
+        annotate_names = kwargs.get("annotate_names", False)
 
         figsize = kwargs.get("figsize", (8, 8.27))
         dpi = kwargs.get("dpi", 100)
 
         generate_map(config=self.config, event=self.crate.event,
                      inv=self.crate.inv, show_faults=show_faults,
+                     annotate_names=annotate_names,
                      show=show, figsize=figsize, dpi=dpi, save=save
                      )
 

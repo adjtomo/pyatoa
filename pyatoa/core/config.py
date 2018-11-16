@@ -123,7 +123,7 @@ class Config:
         :return:
         """
         return ("CONFIG\n"
-                "\tModel Number:          {model_num}\n"
+                "\tModel Number:          {model_number}\n"
                 "\tEvent ID:              {event_id}\n"
                 "\tMinimum Filter Period: {min_period}\n"
                 "\tMaximum Filter Period: {max_period}\n"
@@ -157,6 +157,8 @@ class Config:
     def _generate_pyflex_config(self):
         """
         Allow for dictionary lookup of pyflex config, or manual set
+        Acceptance levels can also be set as arrays, defining a time-dependent
+        acceptance level. This must be the same length as your waveform
 
         ++PYFLEX (Maggi et al. 2009)
         i  Standard Tuning Parameters:
@@ -174,7 +176,8 @@ class Config:
         10:c_4b = for curtailing windows w/ emergent starts and/or codas
         """
         cfg_dict = {"default": [.08, 15., 1., .8, .7, 4., 0., 1., 2., 3., 10.],
-                    "UAF": [.18, 4., 1.5, .71, .7, 2., 0., 3., 2., 2.5, 12.]
+                    "UAF": [.18, 4., 1.5, .71, .7, 2., 0., 3., 2., 2.5, 12.],
+                    "NZ": [.15, 15., 1.75, .7, .7, 2., 0., 3., 2., 2.5, 12.],
                     }
         if isinstance(self.pyflex_config, str):
             self.pyflex_config = cfg_dict[self.pyflex_config]
@@ -200,6 +203,16 @@ class Config:
         if self.unit_output not in ['DISP', 'VEL', 'ACC']:
             warnings.warn("'unit_output' must be 'DISP','VEL' or 'ACC'",
                           UserWarning)
+
+    def set_pyflex_config(self, config):
+        """
+        convenience function for pyflex testing to quickly change between
+        different pyflex configs
+        :param config:
+        :return:
+        """
+        self.pyflex_config = config
+        self._generate_pyflex_config()
 
     def write_to_txt_file(self, filename):
         """

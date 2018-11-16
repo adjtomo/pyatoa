@@ -67,7 +67,7 @@ def trimstreams(st_a, st_b, force=None):
 
 def preproc(st, inv=None, **kwargs):
     """
-    Preprocess waveform data
+    Preprocess waveform data. Assumes synthetics are in units of displacement.
 
     :type st: obspy.stream.Stream
     :param st: stream object to process
@@ -114,10 +114,11 @@ def preproc(st, inv=None, **kwargs):
         st.rotate(method="->ZNE", inventory=inv)
     # no inventory means synthetic data
     elif not inv:
-        if output == "DISP":
-            st.integrate(method="cumtrapz")
-        elif output == "ACC":
+        # st.integrate(method="cumtrapz")
+        if output == "VEL":
             st.differentiate(method="gradient")
+        elif output == "ACC":
+            st.differentiate(method="gradient").differentiate(method="gradient")
         st.taper(max_percentage=0.05)
     if back_azimuth is not None:
         st.rotate(method="NE->RT", back_azimuth=back_azimuth)

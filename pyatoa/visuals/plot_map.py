@@ -173,7 +173,7 @@ def plot_stations(m, inv, event=None, **kwargs):
                       zorder=1001)
     else:
         m.scatter(x, y, marker='v', color='None', edgecolor='k', linestyle='-',
-                  s=60, zorder=1001
+                  s=1, zorder=1001
                   )
     if annotate_names:
         for n_, x_, y_ in zip(station_codes, x, y):
@@ -265,7 +265,7 @@ def initiate_basemap(map_corners):
     return m
 
 
-def generate_map(config, event, inv,
+def generate_map(config, event, inv=None,
                  map_corners=[-42.5007, -36.9488, 172.9998, 179.5077],
                  **kwargs):
     """
@@ -321,10 +321,11 @@ def generate_map(config, event, inv,
 
     plot_stations(m, inv=background_inv, event=event,
                   annotate_names=annotate_names, color_by_network=False)
-    event_beachball(m, event)
-    connect_source_receiver(m, event, inv)
-    annotate_srcrcv_information(m, event, inv, config)
-
+    if event:
+        event_beachball(m, event)
+    if inv:
+        connect_source_receiver(m, event, inv)
+        annotate_srcrcv_information(m, event, inv, config)
     if save:
         plt.savefig(save, figsize=figsize, dpi=dpi)
     if show:

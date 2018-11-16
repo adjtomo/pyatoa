@@ -107,7 +107,7 @@ def window_maker(st_obs, st_syn, config, **kwargs):
 
         if windows is not None:
             ymin, ymax = axes[i].get_ylim()
-            window_anno = "maxCC:{mcc:.4f}\nccShift:{ccs}\ndlnA:{dln:.4f}"
+            window_anno = "maxCC:{mcc:.4f}\nccShift:{ccs:.2f}s\ndlnA:{dln:.4f}"
             try:
                 for window in windows[comp]:
                     xwindow = np.arange(window.left, window.right, 1)
@@ -117,9 +117,10 @@ def window_maker(st_obs, st_syn, config, **kwargs):
                                          linewidth=0.5,
                                          alpha=(window.max_cc_value ** 2) * 0.25
                                          )
-                    anno_str = window_anno.format(mcc=window.max_cc_value,
-                                                  ccs=window.cc_shift,
-                                                  dln=window.dlnA)
+                    anno_str = window_anno.format(
+                        mcc=window.max_cc_value,
+                        ccs=window.cc_shift * st_obs[0].stats.delta,
+                        dln=window.dlnA)
                     axes[i].annotate(s=anno_str, xy=(twindow[10], ymax * 0.5),
                                      zorder=z-1, fontsize=7)
 
