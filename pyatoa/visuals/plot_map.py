@@ -165,15 +165,20 @@ def plot_stations(m, inv, event=None, **kwargs):
     x, y = m(longitudes, latitudes)
 
     if color_by_network:
-        color_dict = {"NZ": "black", "XX": "red", "X1": "green",
+        color_dict = {"NZ": "w", "XX": "red", "X1": "green",
                       "X2": "blue", "YH": "yellow"}
         for net_, sta_, x_, y_ in zip(network_codes, station_codes, x, y):
-            m.scatter(x_, y_, marker='v', color='None',
-                      edgecolor=color_dict[net_], linestyle='-', s=60,
+            if net_ not in ["XX", "NZ"]:
+                continue
+            # m.scatter(x_, y_, marker='v', color='None',
+            #           edgecolor=color_dict[net_], linestyle='-', s=60,
+            #           zorder=1001)
+            m.scatter(x_, y_, marker='v', color=color_dict[net_],
+                      edgecolor='k', linestyle='-', s=90, linewidth=1.5,
                       zorder=1001)
     else:
         m.scatter(x, y, marker='v', color='None', edgecolor='k', linestyle='-',
-                  s=1, zorder=1001
+                  s=20, zorder=1001
                   )
     if annotate_names:
         for n_, x_, y_ in zip(station_codes, x, y):
@@ -236,7 +241,7 @@ def connect_source_receiver(m, event, inv):
               linestyle='-', s=75, zorder=1000)
 
 
-def initiate_basemap(map_corners):
+def initiate_basemap(map_corners, scalebar=True):
     """
     set up the basemap object in the same way each time
 
@@ -254,13 +259,14 @@ def initiate_basemap(map_corners):
                 llcrnrlat=map_corners[0], llcrnrlon=map_corners[2],
                 urcrnrlat=map_corners[1], urcrnrlon=map_corners[3],
                 )
-    m.drawcoastlines(linewidth=1.5)
+    m.drawcoastlines(linewidth=2.5) #1.5
     m.fillcontinents(color=continent_color, lake_color=lake_color)
     m.drawparallels(np.arange(int(map_corners[0]), int(map_corners[1]), 1),
                     labels=[1, 0, 0, 0], linewidth=0.0)
     m.drawmeridians(np.arange(int(map_corners[2]), int(map_corners[3])+1, 1),
                     labels=[0, 0, 0, 1], linewidth=0.0)
-    place_scalebar(m, map_corners)
+    if scalebar:
+        place_scalebar(m, map_corners)
 
     return m
 
@@ -307,9 +313,10 @@ def generate_map(config, event, inv=None,
     save = kwargs.get("save", None)
     annotate_names = kwargs.get("annotate_names", False)
     show_faults = kwargs.get("show_faults", False)
+    color_by_network = kwargs.get("color_by_network", False)
 
     f = plt.figure(figsize=figsize, dpi=dpi)
-    m = initiate_basemap(map_corners=map_corners)
+    m = initiate_basemap(map_corners=map_corners, scalebar=False)
 
     # next section contains hardcoded paths
     background_inv = read_inventory(hardcode_paths()['stations'])
@@ -320,7 +327,8 @@ def generate_map(config, event, inv=None,
         plot_active_faults(m)
 
     plot_stations(m, inv=background_inv, event=event,
-                  annotate_names=annotate_names, color_by_network=False)
+                  annotate_names=annotate_names,
+                  color_by_network=color_by_network)
     if event:
         event_beachball(m, event)
     if inv:

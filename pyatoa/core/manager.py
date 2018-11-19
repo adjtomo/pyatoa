@@ -537,6 +537,9 @@ class Manager:
         save = kwargs.get("save", None)
         show_faults = kwargs.get("show_faults", False)
         annotate_names = kwargs.get("annotate_names", False)
+        color_by_network = kwargs.get("color_by_network", False)
+        map_corners = kwargs.get("map_corners",
+                                 [-42.5007, -36.9488, 172.9998, 179.5077])
 
         figsize = kwargs.get("figsize", (8, 8.27))
         dpi = kwargs.get("dpi", 100)
@@ -544,7 +547,9 @@ class Manager:
         generate_map(config=self.config, event=self.crate.event,
                      inv=self.crate.inv, show_faults=show_faults,
                      annotate_names=annotate_names,
-                     show=show, figsize=figsize, dpi=dpi, save=save
+                     show=show, figsize=figsize, dpi=dpi, save=save,
+                     color_by_network=color_by_network,
+                     map_corners=map_corners
                      )
 
 
