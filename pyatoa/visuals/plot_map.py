@@ -45,7 +45,7 @@ def place_scalebar(m, map_corners):
                    yoffset=0.01 * (m.ymax-m.ymin))
 
 
-def build_colormap(array):
+def build_colormap(array, standalone_colorbar=None):
     """
     Build a custom range colormap, hardcoded colormap. Round values before.
 
@@ -59,6 +59,8 @@ def build_colormap(array):
     norm = mpl.colors.Normalize(vmin=vmin, vmax=vmax)
     cmap = cm.plasma
     colormap = cm.ScalarMappable(norm=norm, cmap=cmap)
+
+    if standalone_colorbar:
 
     return colormap
 
@@ -143,6 +145,34 @@ def event_beachball(m, event):
     ax.add_collection(b)
 
 
+def plot_catalog(m, cat, **kwargs):
+    """
+    plot an entire catalog of events based on magnitude and depth
+    :param m:
+    :param cat:
+    :param kwargs:
+    :return:
+    """
+    lats, lons, depths, mags = [], [], [], []
+    for event in cat:
+        lats.append(event.preferred_origin().latitude)
+        lons.append(event.preferred_origin().longitude)
+        depths.append(round(event.preferred_origin().depth * 1E-3, 2))
+        mags.append(round(event.preferred_magnitude().mag, 2))
+
+    # convert depths to reasonable sizes
+    mags = [3*m**2 for m in mags]
+    depth_color = build_colormap(depths)
+    x, y = m(lons, lats)
+    m.scatter(x, y, marker='o', edgecolor='k', s=mags, zorder=999,
+              linewidth=2, c=depth_color.to_rgba(depths),
+              )
+    # f, ax = plt.subplots(1)
+    # cbar = f.colorbar(depth_color, ticks=[min(depths), max(depths)], aspect=10,
+    #                   orientation='vertical', ax=ax, label='Depth (km)')
+
+
+
 def plot_stations(m, inv, event=None, **kwargs):
     """
     Fill map with stations based on station availability and network
@@ -158,27 +188,24 @@ def plot_stations(m, inv, event=None, **kwargs):
     """
     annotate_names = kwargs.get("annotate_names", False)
     color_by_network = kwargs.get("color_by_network", False)
-
     network_codes, station_codes, latitudes, longitudes = parse_inventory(
         inv, event)
 
     x, y = m(longitudes, latitudes)
 
     if color_by_network:
-        color_dict = {"NZ": "w", "XX": "red", "X1": "green",
-                      "X2": "blue", "YH": "yellow"}
+        color_dict = {"NZ": "red", "XX": "orange", "X1": "green",
+                      "X2": "blue", "YH": "m"}
         for net_, sta_, x_, y_ in zip(network_codes, station_codes, x, y):
-            if net_ not in ["XX", "NZ"]:
-                continue
             # m.scatter(x_, y_, marker='v', color='None',
             #           edgecolor=color_dict[net_], linestyle='-', s=60,
             #           zorder=1001)
             m.scatter(x_, y_, marker='v', color=color_dict[net_],
-                      edgecolor='k', linestyle='-', s=90, linewidth=1.5,
+                      edgecolor='k', linestyle='-', s=75, linewidth=1.75,
                       zorder=1001)
     else:
         m.scatter(x, y, marker='v', color='None', edgecolor='k', linestyle='-',
-                  s=20, zorder=1001
+                  s=60, zorder=1001
                   )
     if annotate_names:
         for n_, x_, y_ in zip(station_codes, x, y):
@@ -238,7 +265,7 @@ def connect_source_receiver(m, event, inv):
     m.plot([event_x, station_x], [event_y, station_y], '--', linewidth=1.1,
            c='k', zorder=998)
     m.scatter(station_x, station_y, marker='v', color='r', edgecolor='k',
-              linestyle='-', s=75, zorder=1000)
+              linestyle='-', s=75, zorder=2500)
 
 
 def initiate_basemap(map_corners, scalebar=True):
@@ -259,7 +286,7 @@ def initiate_basemap(map_corners, scalebar=True):
                 llcrnrlat=map_corners[0], llcrnrlon=map_corners[2],
                 urcrnrlat=map_corners[1], urcrnrlon=map_corners[3],
                 )
-    m.drawcoastlines(linewidth=2.5) #1.5
+    m.drawcoastlines(linewidth=2.0) #1.5
     m.fillcontinents(color=continent_color, lake_color=lake_color)
     m.drawparallels(np.arange(int(map_corners[0]), int(map_corners[1]), 1),
                     labels=[1, 0, 0, 0], linewidth=0.0)
@@ -271,7 +298,8 @@ def initiate_basemap(map_corners, scalebar=True):
     return m
 
 
-def generate_map(config, event, inv=None,
+def generate_map(config, event_or_cat, inv=None,
+
                  map_corners=[-42.5007, -36.9488, 172.9998, 179.5077],
                  **kwargs):
     """
@@ -326,11 +354,14 @@ def generate_map(config, event, inv=None,
         plot_hikurangi_trench(m)
         plot_active_faults(m)
 
-    plot_stations(m, inv=background_inv, event=event,
+    # TO FIX: I messed up all the stuff around here trying to plot a catalog
+    # need to fix it up and make sure this mapper can handle both cleanly
+    plot_stations(m, inv=background_inv, event=None,
                   annotate_names=annotate_names,
                   color_by_network=color_by_network)
-    if event:
-        event_beachball(m, event)
+    # event_beachball(m, event)
+    plot_catalog(m, event_or_cat)
+
     if inv:
         connect_source_receiver(m, event, inv)
         annotate_srcrcv_information(m, event, inv, config)

@@ -88,6 +88,8 @@ class Crate:
         self.pyflex_flag = False
         self.pyadjoint_flag = False
 
+        self.raw_syn_comp = None
+
     def _checkflags(self):
         """
         Update flags based on what is available in the crate. The 3 in the
@@ -314,8 +316,7 @@ class Manager:
                                     output=self.config.unit_output,
                                     back_azimuth=baz, corners=4,
                                     filterbounds=[self.config.min_period,
-                                                  self.config.max_period],
-
+                                                  self.config.max_period]
                                     )
         self.crate.st_obs, self.crate.st_syn = trimstreams(
             st_a=self.crate.st_obs, st_b=self.crate.st_syn, force="b")
@@ -544,7 +545,7 @@ class Manager:
         figsize = kwargs.get("figsize", (8, 8.27))
         dpi = kwargs.get("dpi", 100)
 
-        generate_map(config=self.config, event=self.crate.event,
+        generate_map(config=self.config, event_or_cat=self.crate.event,
                      inv=self.crate.inv, show_faults=show_faults,
                      annotate_names=annotate_names,
                      show=show, figsize=figsize, dpi=dpi, save=save,

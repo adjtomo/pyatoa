@@ -42,7 +42,7 @@ def ascii_to_mseed(path, origintime, location=''):
     stats = {"network": net, "station": sta, "location": location,
              "channel": cha, "starttime": origintime, "npts": len(data),
              "delta": delta, "mseed": {"dataquality": 'D'},
-             "time_offset": time[0]
+             "time_offset": time[0], "format":fmt
              }
     st = Stream([Trace(data=data, header=stats)])
 

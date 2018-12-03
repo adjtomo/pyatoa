@@ -61,7 +61,8 @@ def create_window_dictionary(window):
     return win_dict
 
 
-def write_adj_src_to_ascii(ds, model_number, comp_list=["N", "E", "Z"]):
+def write_adj_src_to_ascii(ds, model_number, filepath="./",
+                           comp_list=["N", "E", "Z"]):
     """
     take AdjointSource auxiliary data from a pyasdf dataset and write out
     the adjoint sources into ascii files with proper formatting, for input
@@ -89,18 +90,27 @@ def write_adj_src_to_ascii(ds, model_number, comp_list=["N", "E", "Z"]):
             f.write(adj_formatter.format(dt=dt, amp=amp))
 
     shortcut = ds.auxiliary_data.AdjointSources[model_number]
+    event_id = ds.filename.split('/')[-1].split('.')[0]
+
+    pathcheck = os.path.join(filepath, event_id)
+
+    if not os.path.exists(pathcheck):
+        os.makedirs(pathcheck)
     for adj_src in shortcut.list():
         station = shortcut[adj_src].path.replace('_', '.')
-        fid = "./{}.adj".format(station)
+        fid = "{path}/{sta}.adj".format(path=pathcheck, sta=station)
         with open(fid, "w") as f:
             write_to_ascii(f, shortcut[adj_src].data.value)
+        # write blank adjoint sources for components with no misfit windows
         if comp_list:
             for comp in comp_list:
                 station_check = station[:-1] + comp
                 if station_check.replace('.', '_') not in shortcut.list():
                     blank_adj_src = shortcut[adj_src].data.value
                     blank_adj_src[:, 1] = np.zeros(len(blank_adj_src[:, 1]))
-                    blank_template = "./{}.adj".format(station_check)
+                    blank_template = "{path}/{sta}.adj".format(path=pathcheck,
+                                                               sta=station_check
+                                                               )
                     with open(blank_template, "w") as b:
                         write_to_ascii(b, blank_adj_src)
 

@@ -210,10 +210,7 @@ class Fetcher:
             paths_to_waveforms = self.config.paths['synthetics']
         net, sta, _, cha = station_code.split('.')
         comp = cha[-1]
-
-        sem_fmt = {"DISP": "d", "VEL": "v", "ACC": "a"}
-
-        specfem_fid_template = '{net}.{sta}.*{cmp}.sem{fmt}'
+        specfem_fid_template = '{net}.{sta}.*{cmp}.sem?'
         for path_ in paths_to_waveforms:
             if not os.path.exists(path_):
                 continue
@@ -221,8 +218,7 @@ class Fetcher:
                                      self.config.event_id, specfem_fid_template)
             st = Stream()
             for filepath in glob.glob(
-                        full_path.format(net=net, sta=sta, cmp=comp,
-                                         fmt=sem_fmt[self.config.unit_output])
+                        full_path.format(net=net, sta=sta, cmp=comp)
             ):
                 try:
                     st += ascii_to_mseed(filepath, self.origintime)
@@ -234,6 +230,10 @@ class Fetcher:
                 st.trim(starttime=self.origintime - self.startpad,
                         endtime=self.origintime + self.endpad
                         )
+                # TO DO: fix this, its a kinda hacky way of figuring out what
+                # the Specfem output has been given in, no error catching so it
+                # will fail if the last letter of the filename is not d,v, or a
+                # raw_syn_comp = {"d":"DISP","v":"VEL","a":"ACC"}[filepath[-1]]
                 return st
         else:
             raise FileNotFoundError(

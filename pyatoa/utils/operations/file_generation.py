@@ -1,9 +1,9 @@
 """
 For generation of input files for Specfem
 """
+import os
 
-
-def create_stations_adjoint(ds, model_number):
+def create_stations_adjoint(ds, model_number, filepath="./"):
     """
     generate an adjoint stations file for specfem input by reading in the master
     station list and checking which adjoint sources are available in the
@@ -12,9 +12,11 @@ def create_stations_adjoint(ds, model_number):
     :param model_number:
     :return:
     """
-    master_station_list = ('/Users/chowbr/Documents/subduction/data/'
-                           'STATIONXML/MASTER/master_station_list.txt'
-                           )
+    master_station_list = ('/seis/prj/fwi/bchow/data/STATIONXML/MASTER/'
+                           'master_station_list.txt')
+    # master_station_list = ('/Users/chowbr/Documents/subduction/data/'
+    #                        'STATIONXML/MASTER/master_station_list.txt'
+    #                        )
     stas_with_adjsrcs = []
     for code in ds.auxiliary_data.AdjointSources[model_number].list():
         stas_with_adjsrcs.append(code.split('_')[1])
@@ -23,7 +25,9 @@ def create_stations_adjoint(ds, model_number):
     with open(master_station_list, "r") as f:
         lines = f.readlines()
 
-    with open("STATIONS_ADJOINT", "w") as f:
+    event_id = ds.filename.split('/')[-1].split('.')[0]
+    pathout = os.path.join(filepath, event_id, "STATIONS_ADJOINT")
+    with open(pathout, "w") as f:
         for line in lines:
             if line.split()[0] in stas_with_adjsrcs:
                     f.write(line)
