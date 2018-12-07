@@ -29,23 +29,57 @@ mpl.rcParams['lines.markersize'] = 10
 mpl.rcParams['axes.linewidth'] = 2
 
 
-def place_scalebar(m, map_corners):
+def legend():
+    leg = plt.legend(loc="lower right")
+    leg.get_frame().set_edgecolor('k')
+    leg.get_frame().set_linewidth(1)
+
+
+def standalone_colorbar(bounds, steps):
+    """
+    generate a colorbar as a new figure
+    TO DO: clean this up and potentially add it into basemap
+    """
+    fig = plt.figure(figsize=(0.5, 8))
+    mpl.rcParams['font.size'] = 25
+    mpl.rcParams['axes.linewidth'] = 4
+
+    ax = fig.add_axes([0.2,0.05,0.4,0.75])
+    # bounds = range(0,90,10)
+    cmap = mpl.cm.get_cmap('jet_r')
+    norm = mpl.colors.BoundaryNorm(bounds, cmap.N)
+    cb = mpl.colorbar.ColorbarBase(ax, cmap=cmap, norm=norm, extend='max',
+                                   orientation='vertical')
+    cb.set_label("Event Depth (km)")
+    cb.ax.invert_yaxis()
+    plt.show()
+
+
+def place_scalebar(m, map_corners, loc="upper-right"):
     """
     Put the scale bar in the corner at a reasonable distance from each edge
+    handy reminder:
+        latitude is up down
+        longitude is right left
 
     :type m: Basemap
     :param m: basemap object
     :type map_corners: list of floats
     :param map_corners: [lat_bot,lat_top,lon_left,lon_right]
     """
-    # scale set for bottom right-hand corner
-    latscale = map_corners[0] + (map_corners[1] - map_corners[0]) * 0.94  # up
-    lonscale = map_corners[2] + (map_corners[3] - map_corners[2]) * 0.875  # lft
+    if loc == "upper-right":
+        latscale = map_corners[0] + (map_corners[1] - map_corners[0]) * 0.94
+        lonscale = map_corners[2] + (map_corners[3] - map_corners[2]) * 0.875
+    if loc == "lower-right":
+        latscale = map_corners[0] + (map_corners[1] - map_corners[0]) * 0.24
+        lonscale = map_corners[2] + (map_corners[3] - map_corners[2]) * 0.9
     m.drawmapscale(lonscale, latscale, lonscale, latscale, 100,
-                   yoffset=0.01 * (m.ymax-m.ymin))
+                   yoffset=0.01 * (m.ymax-m.ymin), zorder=5000, linewidth=2,
+                   fontsize=13
+                   )
 
 
-def build_colormap(array, standalone_colorbar=None):
+def build_colormap(array):
     """
     Build a custom range colormap, hardcoded colormap. Round values before.
 
@@ -57,10 +91,8 @@ def build_colormap(array, standalone_colorbar=None):
     vmax = myround(np.nanmax(array), base=1, choice='up')
     vmin = myround(np.nanmin(array), base=1, choice='down')
     norm = mpl.colors.Normalize(vmin=vmin, vmax=vmax)
-    cmap = cm.plasma
+    cmap = cm.jet_r
     colormap = cm.ScalarMappable(norm=norm, cmap=cmap)
-
-    if standalone_colorbar:
 
     return colormap
 
@@ -87,7 +119,8 @@ def plot_hikurangi_trench(m):
     xprimenew = np.linspace(x.min(), x.max(), 100)
     yprimenew = np.interp(xprimenew, xprime, yprime)
 
-    m.plot(xprimenew, yprimenew, '--', linewidth=1.25, color='k', zorder=2)
+    m.plot(xprimenew, yprimenew, ':', linewidth=2.25, color='k', alpha=0.5,
+           zorder=2)
 
 
 def plot_active_faults(m):
@@ -110,10 +143,10 @@ def plot_active_faults(m):
         for i in range(faults.min(), faults.max()+1, 1):
             indices = np.where(faults == i)
             x, y = m(lons[indices], lats[indices])
-            m.plot(x, y, '--', linewidth=0.5, color='k', zorder=2, alpha=0.25)
+            m.plot(x, y, '-.', linewidth=1, color='k', zorder=2, alpha=0.25)
 
 
-def event_beachball(m, event):
+def event_beachball(m, event, type="focal_mechanism" **kwargs):
     """
     Plot event beachball for a given geonet moment tensor list,
     read in the from the GeoNet moment tensor csv file.
@@ -123,59 +156,101 @@ def event_beachball(m, event):
     :type event: obspy.core.event.Event
     :param event: event object which should contain focal mechanism
     """
+    width = kwargs.get("width", 2.6E4)
+    facecolor = kwargs.get("facecolor", 'r')
+
     eventx, eventy = m(event.preferred_origin().longitude,
                        event.preferred_origin().latitude
                        )
-    focal_mechanism = [event.focal_mechanisms[0].moment_tensor.tensor['m_rr'],
-                       event.focal_mechanisms[0].moment_tensor.tensor['m_tt'],
-                       event.focal_mechanisms[0].moment_tensor.tensor['m_pp'],
-                       event.focal_mechanisms[0].moment_tensor.tensor['m_rt'],
-                       event.focal_mechanisms[0].moment_tensor.tensor['m_rp'],
-                       event.focal_mechanisms[0].moment_tensor.tensor['m_tp']
-                       ]
-    # strike_dip_rake = [
-    #     event.focal_mechanisms[0].nodal_planes.nodal_plane_1.strike,
-    #     event.focal_mechanisms[0].nodal_planes.nodal_plane_1.dip,
-    #     event.focal_mechanisms[0].nodal_planes.nodal_plane_1.rake
-    # ]
-    b = beach(focal_mechanism, xy=(eventx, eventy), width=2.5E4, linewidth=1,
-              facecolor='r')
+    if type == "focal_mechanism":
+        beach_input = [
+            event.focal_mechanisms[0].moment_tensor.tensor['m_rr'],
+            event.focal_mechanisms[0].moment_tensor.tensor['m_tt'],
+            event.focal_mechanisms[0].moment_tensor.tensor['m_pp'],
+            event.focal_mechanisms[0].moment_tensor.tensor['m_rt'],
+            event.focal_mechanisms[0].moment_tensor.tensor['m_rp'],
+            event.focal_mechanisms[0].moment_tensor.tensor['m_tp']
+        ]
+    elif type == "strike_dip_rake":
+        beach_input = [
+            event.focal_mechanisms[0].nodal_planes.nodal_plane_1.strike,
+            event.focal_mechanisms[0].nodal_planes.nodal_plane_1.dip,
+            event.focal_mechanisms[0].nodal_planes.nodal_plane_1.rake
+        ]
+    b = beach(beach_input, xy=(eventx, eventy), width=width, linewidth=1,
+              facecolor=facecolor)
     b.set_zorder(1000)
     ax = plt.gca()
     ax.add_collection(b)
 
 
-def plot_catalog(m, cat, **kwargs):
+def plot_catalog(m):
     """
     plot an entire catalog of events based on magnitude and depth
+
+    HEAVILY HARDCODED for AGU18 prep. TO DO: fix this up for a real catalog plot
+
     :param m:
     :param cat:
     :param kwargs:
     :return:
     """
-    lats, lons, depths, mags = [], [], [], []
-    for event in cat:
-        lats.append(event.preferred_origin().latitude)
-        lons.append(event.preferred_origin().longitude)
-        depths.append(round(event.preferred_origin().depth * 1E-3, 2))
-        mags.append(round(event.preferred_magnitude().mag, 2))
-
-    # convert depths to reasonable sizes
-    mags = [3*m**2 for m in mags]
+    fid = ("/Users/chowbr/Documents/subduction/oficial/presentations/agu_2018/"
+           "srcrcv_map/kaikoura_to_east_cape.npz")
+    inputs = np.load(fid)
+    lats = inputs["lats"]
+    lons = inputs["lons"]
+    depths = inputs["depths"]
+    mags = inputs["mags"]
+    dates = inputs["dates"]
+    ids = inputs["ids"]
     depth_color = build_colormap(depths)
-    x, y = m(lons, lats)
-    m.scatter(x, y, marker='o', edgecolor='k', s=mags, zorder=999,
-              linewidth=2, c=depth_color.to_rgba(depths),
-              )
-    # f, ax = plt.subplots(1)
-    # cbar = f.colorbar(depth_color, ticks=[min(depths), max(depths)], aspect=10,
-    #                   orientation='vertical', ax=ax, label='Depth (km)')
+    import ipdb;ipdb.set_trace()
+    # ADDITION TO JANKILY GET MOMENT TENSORS
+    import pyatoa
+    for i, eid in enumerate(ids):
+        if eid in ['2013p613824',
+                    '2016p858951',
+                    '2015p768477',
+                    '2016p858260',
+                    '2017p735876',
+                    '2017p819775',
+                    '2017p795065',
+                    '2018p130600',
+                    '2017p708412',
+                    '2017p861155']:
+            try:
+                config = pyatoa.Config(event_id=eid)
+                mgmt = pyatoa.Manager(config)
+                width = mgmt.event.preferred_magnitude().mag**2*6E2
+                color = depth_color.to_rgba(depths[i])
+                event_beachball(m, mgmt.event, width=width, facecolor=color)
+            except Exception as e:
+                print(e)
+                continue
+
+
+    # ADDITION STOP
+
+    # mags = [m**2.6 for m in mags]
+    #
+    # depth_color = build_colormap(depths)
+    # x, y = m(lons, lats)
+    # m.scatter(x, y, marker='o', edgecolor='k', s=mags, zorder=999,
+    #           linewidth=0.5, c=depth_color.to_rgba(depths),
+    #           )
+    # for M, D in zip([4.5, 6.0], [0, 80]):
+    #     m.scatter(0, 0, marker='o', edgecolor='k', s=M**2.6, zorder=1,
+    #               linewidth=0.5, label="M{}, z={}km".format(M, D),
+    #               c=depth_color.to_rgba(D)
+    #               )
 
 
 
 def plot_stations(m, inv, event=None, **kwargs):
     """
     Fill map with stations based on station availability and network
+    TO DO: fix this up and comment it nicely
 
     :type m: Basemap
     :param m: basemap object
@@ -194,15 +269,24 @@ def plot_stations(m, inv, event=None, **kwargs):
     x, y = m(longitudes, latitudes)
 
     if color_by_network:
+        colors, markers = [], []
         color_dict = {"NZ": "red", "XX": "orange", "X1": "green",
                       "X2": "blue", "YH": "m"}
-        for net_, sta_, x_, y_ in zip(network_codes, station_codes, x, y):
-            # m.scatter(x_, y_, marker='v', color='None',
-            #           edgecolor=color_dict[net_], linestyle='-', s=60,
-            #           zorder=1001)
-            m.scatter(x_, y_, marker='v', color=color_dict[net_],
-                      edgecolor='k', linestyle='-', s=75, linewidth=1.75,
-                      zorder=1001)
+        marker_dict = {"NZ": "^", "XX": "v", "X1": "*",
+                      "X2": "d", "YH": "s"}
+        label_dict = {"NZ": "NZ (GeoNet)", "XX":"XX (BEACON)",
+                      "X1": "X1", "X2": "X2 (SAHKE)", "YH": "YH (HOBITSS)"}
+        # for the legend
+        for net in color_dict.keys():
+            m.scatter(0, 0, marker='v', color=color_dict[net], linestyle='-',
+                      s=80, linewidth=1.25, zorder=1, label=label_dict[net]
+                      )
+        # for the station plot, so we can scatter all at once
+        for net in network_codes:
+            colors.append(color_dict[net])
+        m.scatter(x, y, marker='v', color=colors, edgecolor='k',
+                  linestyle='-', s=80, linewidth=1.25, zorder=1001
+                  )
     else:
         m.scatter(x, y, marker='v', color='None', edgecolor='k', linestyle='-',
                   s=60, zorder=1001
@@ -265,7 +349,7 @@ def connect_source_receiver(m, event, inv):
     m.plot([event_x, station_x], [event_y, station_y], '--', linewidth=1.1,
            c='k', zorder=998)
     m.scatter(station_x, station_y, marker='v', color='r', edgecolor='k',
-              linestyle='-', s=75, zorder=2500)
+              linestyle='-', s=100, zorder=2500)
 
 
 def initiate_basemap(map_corners, scalebar=True):
@@ -286,7 +370,7 @@ def initiate_basemap(map_corners, scalebar=True):
                 llcrnrlat=map_corners[0], llcrnrlon=map_corners[2],
                 urcrnrlat=map_corners[1], urcrnrlon=map_corners[3],
                 )
-    m.drawcoastlines(linewidth=2.0) #1.5
+    m.drawcoastlines(linewidth=.05) #1.5
     m.fillcontinents(color=continent_color, lake_color=lake_color)
     m.drawparallels(np.arange(int(map_corners[0]), int(map_corners[1]), 1),
                     labels=[1, 0, 0, 0], linewidth=0.0)
@@ -299,7 +383,6 @@ def initiate_basemap(map_corners, scalebar=True):
 
 
 def generate_map(config, event_or_cat, inv=None,
-
                  map_corners=[-42.5007, -36.9488, 172.9998, 179.5077],
                  **kwargs):
     """
@@ -344,7 +427,7 @@ def generate_map(config, event_or_cat, inv=None,
     color_by_network = kwargs.get("color_by_network", False)
 
     f = plt.figure(figsize=figsize, dpi=dpi)
-    m = initiate_basemap(map_corners=map_corners, scalebar=False)
+    m = initiate_basemap(map_corners=map_corners, scalebar=True)
 
     # next section contains hardcoded paths
     background_inv = read_inventory(hardcode_paths()['stations'])
@@ -356,15 +439,18 @@ def generate_map(config, event_or_cat, inv=None,
 
     # TO FIX: I messed up all the stuff around here trying to plot a catalog
     # need to fix it up and make sure this mapper can handle both cleanly
-    plot_stations(m, inv=background_inv, event=None,
-                  annotate_names=annotate_names,
-                  color_by_network=color_by_network)
-    # event_beachball(m, event)
-    plot_catalog(m, event_or_cat)
+    # plot_stations(m, inv=background_inv, event=None,
+    #               annotate_names=annotate_names,
+    #               color_by_network=color_by_network
+    #               )
+    # event_beachball(m, event_or_cat)
+    plot_catalog(m)
+
+    legend()
 
     if inv:
-        connect_source_receiver(m, event, inv)
-        annotate_srcrcv_information(m, event, inv, config)
+        connect_source_receiver(m, event_or_cat, inv)
+        annotate_srcrcv_information(m, event_or_cat, inv, config)
     if save:
         plt.savefig(save, figsize=figsize, dpi=dpi)
     if show:

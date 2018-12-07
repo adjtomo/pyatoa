@@ -12,11 +12,14 @@ def create_stations_adjoint(ds, model_number, filepath="./"):
     :param model_number:
     :return:
     """
-    master_station_list = ('/seis/prj/fwi/bchow/data/STATIONXML/MASTER/'
-                           'master_station_list.txt')
-    # master_station_list = ('/Users/chowbr/Documents/subduction/data/'
-    #                        'STATIONXML/MASTER/master_station_list.txt'
-    #                        )
+    for f in ['/seis/prj/fwi/bchow/data/STATIONXML/MASTER/'
+              'master_station_list.txt',
+              '/Users/chowbr/Documents/subduction/data/'
+              'STATIONXML/MASTER/master_station_list.txt'
+              ]:
+        if os.path.exists(f):
+            master_station_list = f
+
     stas_with_adjsrcs = []
     for code in ds.auxiliary_data.AdjointSources[model_number].list():
         stas_with_adjsrcs.append(code.split('_')[1])

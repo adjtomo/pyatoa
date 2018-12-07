@@ -116,7 +116,7 @@ def preproc(st, inv=None, **kwargs):
     elif not inv:
         # TO DO: dynamically check what the raw specfem output units are
         # for now we assume they are velocity
-        st.integrate(method="cumtrapz")
+        # st.integrate(method="cumtrapz")
         # if output != self.raw_syn_comp:
         #     diff_dict = {"DISP":1, "VEL":2, "ACC":3}
         #     desired = diff_dict[output]
