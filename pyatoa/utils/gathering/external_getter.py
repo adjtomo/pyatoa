@@ -30,7 +30,7 @@ class Getter:
             for wavefomr fetching.
         """
 
-        self.config = copy.deepcopy(config)
+        self.config = config
         if self.config is not None:
             self.event_id = self.config.event_id
         else:

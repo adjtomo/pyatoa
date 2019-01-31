@@ -17,8 +17,8 @@ class Config:
                  max_period=30, filter_corners=4, rotate_to_rtz=True,
                  unit_output='DISP', pyflex_config='default',
                  adj_src_type='multitaper_misfit', startpad=20, endpad=500,
-                 paths_to_waveforms=None, paths_to_synthetics=None,
-                 paths_to_responses=None):
+                 paths_to_waveforms=[], paths_to_synthetics=[],
+                 paths_to_responses=[]):
         """
         Allows the user to control the parameters of the packages called within
         pyatoa, as well as control where the outputs (i.e. pyasdf and plots) are
@@ -144,6 +144,7 @@ class Config:
                          paths_to_syns=self.paths['synthetics'],
                          paths_to_resp=self.paths['responses']
                          )
+
 
     def _generate_component_list(self):
         """

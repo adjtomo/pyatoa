@@ -37,7 +37,7 @@ class Gatherer:
         :param endpad: padding in seconds after the origin time of an event
             for wavefomr fetching.
         """
-        self.config = copy.deepcopy(config)
+        self.config = config
         self.ds = ds
         self.event = None
         self.fetcher = Fetcher(config=self.config, ds=self.ds,

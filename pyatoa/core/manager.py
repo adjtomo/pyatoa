@@ -148,7 +148,8 @@ class Manager:
         :type crate: pyatoa.core.Manager.Crate
         :param crate: Crate to hold all your information
         """
-        self.config = copy.deepcopy(config)
+        # self.config = copy.deepcopy(config)
+        self.config = config
         self.ds = ds
         self.gatherer = None
         self.crate = Crate()

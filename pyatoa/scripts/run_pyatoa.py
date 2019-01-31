@@ -33,7 +33,7 @@ logger.setLevel(logging.DEBUG)
 config = pyatoa.Config(event_id="2018p130600", model_number=0, min_period=10,
                        max_period=30, filter_corners=4, rotate_to_rtz=True,
                        unit_output="DISP", pyflex_config="UAF",
-                       adj_src_type="multitaper_misfit", raw_sampling_rate=50.,
+                       adj_src_type="multitaper_misfit",
                        paths_to_waveforms=[
                            '/Users/chowbr/Documents/subduction/seismic',
                            '/seis/prj/fwi/bchow/seismic', '/geonet/seismic'],

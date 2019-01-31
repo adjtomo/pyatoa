@@ -36,7 +36,7 @@ class Fetcher:
         :param endpad: padding in seconds after the origin time of an event
             for wavefomr fetching.
         """
-        self.config = copy.deepcopy(config)
+        self.config = config
         self.ds = ds
         self.startpad = startpad
         self.endpad = endpad
@@ -111,6 +111,7 @@ class Fetcher:
         dir_structure = '{sta}.{net}'
         file_template = 'RESP.{net}.{sta}.{loc}.{cha}'
 
+        # TO DO: if paths to responses is None, cannot iterate. Do we want to?
         for path_ in paths_to_responses:
             if not os.path.exists(path_):
                 continue
@@ -185,7 +186,7 @@ class Fetcher:
                 "No waveforms found for {} for given directories".format(
                     station_code))
 
-    def _fetch_by_event(self, station_code, paths_to_waveforms=None):
+    def _fetch_by_event(self, station_code):
         """
         Synthetic data is saved by event id and model number,
         give a hardcoded search path to get to the data.
@@ -206,11 +207,11 @@ class Fetcher:
         """
         if self.origintime is None:
             raise AttributeError("'origintime' must be specified")
-        if paths_to_waveforms is None:
-            paths_to_waveforms = self.config.paths['synthetics']
+        paths_to_waveforms = self.config.paths['synthetics']
         net, sta, _, cha = station_code.split('.')
         comp = cha[-1]
         specfem_fid_template = '{net}.{sta}.*{cmp}.sem?'
+        import ipdb;ipdb.set_trace()
         for path_ in paths_to_waveforms:
             if not os.path.exists(path_):
                 continue
@@ -237,7 +238,7 @@ class Fetcher:
                 return st
         else:
             raise FileNotFoundError(
-                "No waveforms for {} found for given event".format(
+                "No synthetic waveforms for {} found for given event".format(
                     station_code))
 
     def obs_waveform_fetch(self, station_code):
