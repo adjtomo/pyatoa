@@ -97,6 +97,14 @@ def build_colormap(array):
     return colormap
 
 
+def scale_magnitude(magitude):
+    """
+    Short function to standardize magnitude scaling on plots
+    :param magitude: float
+    :return:
+    """
+    return
+
 def plot_hikurangi_trench(m):
     """
     Trace the hikurangi trench from a coordinate file
@@ -146,7 +154,7 @@ def plot_active_faults(m):
             m.plot(x, y, '-.', linewidth=1, color='k', zorder=2, alpha=0.25)
 
 
-def event_beachball(m, event, type="focal_mechanism" **kwargs):
+def event_beachball(m, event, type="focal_mechanism", **kwargs):
     """
     Plot event beachball for a given geonet moment tensor list,
     read in the from the GeoNet moment tensor csv file.
@@ -182,69 +190,6 @@ def event_beachball(m, event, type="focal_mechanism" **kwargs):
     b.set_zorder(1000)
     ax = plt.gca()
     ax.add_collection(b)
-
-
-def plot_catalog(m):
-    """
-    plot an entire catalog of events based on magnitude and depth
-
-    HEAVILY HARDCODED for AGU18 prep. TO DO: fix this up for a real catalog plot
-
-    :param m:
-    :param cat:
-    :param kwargs:
-    :return:
-    """
-    fid = ("/Users/chowbr/Documents/subduction/oficial/presentations/agu_2018/"
-           "srcrcv_map/kaikoura_to_east_cape.npz")
-    inputs = np.load(fid)
-    lats = inputs["lats"]
-    lons = inputs["lons"]
-    depths = inputs["depths"]
-    mags = inputs["mags"]
-    dates = inputs["dates"]
-    ids = inputs["ids"]
-    depth_color = build_colormap(depths)
-    import ipdb;ipdb.set_trace()
-    # ADDITION TO JANKILY GET MOMENT TENSORS
-    import pyatoa
-    for i, eid in enumerate(ids):
-        if eid in ['2013p613824',
-                    '2016p858951',
-                    '2015p768477',
-                    '2016p858260',
-                    '2017p735876',
-                    '2017p819775',
-                    '2017p795065',
-                    '2018p130600',
-                    '2017p708412',
-                    '2017p861155']:
-            try:
-                config = pyatoa.Config(event_id=eid)
-                mgmt = pyatoa.Manager(config)
-                width = mgmt.event.preferred_magnitude().mag**2*6E2
-                color = depth_color.to_rgba(depths[i])
-                event_beachball(m, mgmt.event, width=width, facecolor=color)
-            except Exception as e:
-                print(e)
-                continue
-
-
-    # ADDITION STOP
-
-    # mags = [m**2.6 for m in mags]
-    #
-    # depth_color = build_colormap(depths)
-    # x, y = m(lons, lats)
-    # m.scatter(x, y, marker='o', edgecolor='k', s=mags, zorder=999,
-    #           linewidth=0.5, c=depth_color.to_rgba(depths),
-    #           )
-    # for M, D in zip([4.5, 6.0], [0, 80]):
-    #     m.scatter(0, 0, marker='o', edgecolor='k', s=M**2.6, zorder=1,
-    #               linewidth=0.5, label="M{}, z={}km".format(M, D),
-    #               c=depth_color.to_rgba(D)
-    #               )
-
 
 
 def plot_stations(m, inv, event=None, **kwargs):
@@ -332,7 +277,7 @@ def annotate_srcrcv_information(m, event, inv, config):
         multialignment='right', fontsize=10)
 
 
-def connect_source_receiver(m, event, inv):
+def connect_source_receiver(m, event, sta, **kwargs):
     """
     draw a dashed line connecting the station and receiver, highlight station
 
@@ -340,19 +285,28 @@ def connect_source_receiver(m, event, inv):
     :param m: basemap object
     :type event: obspy.core.event.Event
     :param event: event object
-    :type inv: obspy.core.inventory.Inventory
-    :param inv: inventory containing relevant network and stations
+    :type sta: obspy.core.inventory.Inventory
+    :param sta: inventory containing relevant network and stations
     """
+    linestyle = kwargs.get("linestyle", "--")
+    linewidth = kwargs.get("linewidth", 1.1)
+    linecolor = kwargs.get("color", "k")
+    marker = kwargs.get("marker", "v")
+    markercolor = kwargs.get("markercolor", "r")
+    zorder = kwargs.get("zorder", 100)
+
     event_x, event_y = m(event.preferred_origin().longitude,
                          event.preferred_origin().latitude)
-    station_x, station_y = m(inv[0][0].longitude, inv[0][0].latitude)
-    m.plot([event_x, station_x], [event_y, station_y], '--', linewidth=1.1,
-           c='k', zorder=998)
-    m.scatter(station_x, station_y, marker='v', color='r', edgecolor='k',
-              linestyle='-', s=100, zorder=2500)
+    station_x, station_y = m(sta.longitude, sta.latitude)
+    m.plot([event_x, station_x], [event_y, station_y], linestyle, linewidth,
+           c=linecolor, zorder=998)
+    m.scatter(station_x, station_y, marker=marker, color=markercolor,
+              edgecolor='k', linestyle='-', s=75, zorder=zorder)
+    m.scatter(event_x, event_y, marker="o", color=markercolor, edgecolor="k",
+              s=75, zorder=zorder)
 
 
-def initiate_basemap(map_corners, scalebar=True):
+def initiate_basemap(map_corners, scalebar=True, **kwargs):
     """
     set up the basemap object in the same way each time
 
@@ -361,8 +315,10 @@ def initiate_basemap(map_corners, scalebar=True):
     :rtype m: Basemap
     :return m: basemap object
     """
-    continent_color = 'w'
-    lake_color = 'w'
+    continent_color = kwargs.get("contininent_color", "w")
+    lake_color = kwargs.get("lake_color", "w")
+    coastline_zorder = kwargs.get("coastline_zorder", 5)
+    coastline_linewidth = kwargs.get("coastline_linewidth", 1.0)
 
     # initiate map
     m = Basemap(projection='stere', resolution='h', rsphere=6371200,
@@ -370,7 +326,7 @@ def initiate_basemap(map_corners, scalebar=True):
                 llcrnrlat=map_corners[0], llcrnrlon=map_corners[2],
                 urcrnrlat=map_corners[1], urcrnrlon=map_corners[3],
                 )
-    m.drawcoastlines(linewidth=.05) #1.5
+    m.drawcoastlines(linewidth=coastline_linewidth, zorder=coastline_zorder)
     m.fillcontinents(color=continent_color, lake_color=lake_color)
     m.drawparallels(np.arange(int(map_corners[0]), int(map_corners[1]), 1),
                     labels=[1, 0, 0, 0], linewidth=0.0)
@@ -449,8 +405,8 @@ def generate_map(config, event_or_cat, inv=None,
     legend()
 
     if inv:
-        connect_source_receiver(m, event_or_cat, inv)
-        annotate_srcrcv_information(m, event_or_cat, inv, config)
+        connect_source_receiver(m, event_or_cat, inv[0][0])
+        annotate_srcrcv_information(m, event_or_cat, inv[0][0], config)
     if save:
         plt.savefig(save, figsize=figsize, dpi=dpi)
     if show:

@@ -1,0 +1,1554 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<FDSNStationXML xmlns="http://www.fdsn.org/xml/station/1" schemaVersion="1.0">
+  <Source>homemade</Source>
+  <Module>ObsPy 1.1.0</Module>
+  <ModuleURI>https://www.obspy.org</ModuleURI>
+  <Created>2018-09-13T02:07:48.098409</Created>
+  <Network code="NZ" restrictedStatus="open" startDate="1884-02-01T00:00:00">
+    <Description>New Zealand National Seismograph Network</Description>
+    <TotalNumberStations>2199</TotalNumberStations>
+    <SelectedNumberStations>38</SelectedNumberStations>
+    <Station code="BFZ" restrictedStatus="open" startDate="1996-04-03T00:00:00">
+      <Description>New Zealand National Seismograph Network</Description>
+      <Comment>
+        <Value>Location is given in WGS84</Value>
+      </Comment>
+      <Latitude datum="WGS84" unit="DEGREES">-40.679647283</Latitude>
+      <Longitude datum="WGS84" unit="DEGREES">176.246245098</Longitude>
+      <Elevation>283.0</Elevation>
+      <Site>
+        <Name>Birch Farm</Name>
+        <Description>15 km south of Pongaroa</Description>
+      </Site>
+      <CreationDate>1996-04-03T00:00:00</CreationDate>
+      <TotalNumberChannels>96</TotalNumberChannels>
+      <SelectedNumberChannels>18</SelectedNumberChannels>
+    </Station>
+    <Station code="BKZ" restrictedStatus="open" startDate="2004-02-11T00:00:00">
+      <Description>New Zealand National Seismograph Network</Description>
+      <Comment>
+        <Value>Location is given in WGS84</Value>
+      </Comment>
+      <Latitude datum="WGS84" unit="DEGREES">-39.165665643</Latitude>
+      <Longitude datum="WGS84" unit="DEGREES">176.492543736</Longitude>
+      <Elevation>706.0</Elevation>
+      <Site>
+        <Name>Black Stump Farm</Name>
+        <Description>51 km north-west of Napier</Description>
+      </Site>
+      <CreationDate>2004-02-11T00:00:00</CreationDate>
+      <TotalNumberChannels>33</TotalNumberChannels>
+      <SelectedNumberChannels>6</SelectedNumberChannels>
+    </Station>
+    <Station code="COVZ" restrictedStatus="open" startDate="1998-03-25T00:00:00">
+      <Description>Tongariro National Park volcano seismic network</Description>
+      <Comment>
+        <Value>Location is given in WGS84</Value>
+      </Comment>
+      <Latitude datum="WGS84" unit="DEGREES">-39.199914229</Latitude>
+      <Longitude datum="WGS84" unit="DEGREES">175.542401907</Longitude>
+      <Elevation>1133.0</Elevation>
+      <Site>
+        <Name>Chateau Observatory</Name>
+        <Description>26 km north-east of Ohakune</Description>
+      </Site>
+      <CreationDate>1998-03-25T00:00:00</CreationDate>
+      <TotalNumberChannels>39</TotalNumberChannels>
+      <SelectedNumberChannels>12</SelectedNumberChannels>
+    </Station>
+    <Station code="DUWZ" restrictedStatus="open" startDate="2003-12-10T00:00:00">
+      <Description>Wellington regional seismic network</Description>
+      <Comment>
+        <Value>Location is given in WGS84</Value>
+      </Comment>
+      <Latitude datum="WGS84" unit="DEGREES">-40.801714607</Latitude>
+      <Longitude datum="WGS84" unit="DEGREES">173.921645369</Longitude>
+      <Elevation>484.0</Elevation>
+      <Site>
+        <Name>D'Urville Island</Name>
+        <Description>16 km north-east of French Pass</Description>
+      </Site>
+      <CreationDate>2003-12-10T00:00:00</CreationDate>
+      <TotalNumberChannels>60</TotalNumberChannels>
+      <SelectedNumberChannels>9</SelectedNumberChannels>
+    </Station>
+    <Station code="ETVZ" restrictedStatus="open" startDate="2014-03-12T00:00:00">
+      <Description>Tongariro National Park volcano seismic network</Description>
+      <Comment>
+        <Value>Location is given in WGS84</Value>
+      </Comment>
+      <Latitude datum="WGS84" unit="DEGREES">-39.1357</Latitude>
+      <Longitude datum="WGS84" unit="DEGREES">175.7106</Longitude>
+      <Elevation>1236.0</Elevation>
+      <Site>
+        <Name>East Tongariro</Name>
+        <Description>17 km south-west of Turangi</Description>
+      </Site>
+      <CreationDate>2014-03-12T00:00:00</CreationDate>
+      <TotalNumberChannels>20</TotalNumberChannels>
+      <SelectedNumberChannels>6</SelectedNumberChannels>
+    </Station>
+    <Station code="FWVZ" restrictedStatus="open" startDate="1999-05-11T00:00:00">
+      <Description>Tongariro National Park volcano seismic network</Description>
+      <Comment>
+        <Value>Location is given in WGS84</Value>
+      </Comment>
+      <Latitude datum="WGS84" unit="DEGREES">-39.254945374</Latitude>
+      <Longitude datum="WGS84" unit="DEGREES">175.55295183</Longitude>
+      <Elevation>2043.0</Elevation>
+      <Site>
+        <Name>Far West</Name>
+        <Description>21 km north-east of Ohakune</Description>
+      </Site>
+      <CreationDate>1999-05-11T00:00:00</CreationDate>
+      <TotalNumberChannels>71</TotalNumberChannels>
+      <SelectedNumberChannels>18</SelectedNumberChannels>
+    </Station>
+    <Station code="HAZ" restrictedStatus="open" startDate="2010-01-14T00:00:00">
+      <Description>New Zealand National Seismograph Network</Description>
+      <Comment>
+        <Value>Location is given in WGS84</Value>
+      </Comment>
+      <Latitude datum="WGS84" unit="DEGREES">-37.7561</Latitude>
+      <Longitude datum="WGS84" unit="DEGREES">177.7826</Longitude>
+      <Elevation>81.0</Elevation>
+      <Site>
+        <Name>Te Kaha</Name>
+        <Description>9 km east of Te Kaha</Description>
+      </Site>
+      <CreationDate>2010-01-14T00:00:00</CreationDate>
+      <TotalNumberChannels>33</TotalNumberChannels>
+      <SelectedNumberChannels>6</SelectedNumberChannels>
+    </Station>
+    <Station code="HIZ" restrictedStatus="open" startDate="2004-02-03T00:00:00">
+      <Description>New Zealand National Seismograph Network</Description>
+      <Comment>
+        <Value>Location is given in WGS84</Value>
+      </Comment>
+      <Latitude datum="WGS84" unit="DEGREES">-38.51292897</Latitude>
+      <Longitude datum="WGS84" unit="DEGREES">174.855686101</Longitude>
+      <Elevation>237.0</Elevation>
+      <Site>
+        <Name>Hauiti</Name>
+        <Description>8 km north of Mahoenui</Description>
+      </Site>
+      <CreationDate>2004-02-03T00:00:00</CreationDate>
+      <TotalNumberChannels>48</TotalNumberChannels>
+      <SelectedNumberChannels>9</SelectedNumberChannels>
+    </Station>
+    <Station code="KHEZ" restrictedStatus="open" startDate="2009-05-21T00:00:00">
+      <Description>Taranaki volcano seismic network</Description>
+      <Comment>
+        <Value>Location is given in WGS84</Value>
+      </Comment>
+      <Latitude datum="WGS84" unit="DEGREES">-39.2942</Latitude>
+      <Longitude datum="WGS84" unit="DEGREES">174.0145</Longitude>
+      <Elevation>929.0</Elevation>
+      <Site>
+        <Name>Kahui Hut</Name>
+        <Description>15 km south-east of Okato</Description>
+      </Site>
+      <CreationDate>2009-05-21T00:00:00</CreationDate>
+      <TotalNumberChannels>27</TotalNumberChannels>
+      <SelectedNumberChannels>6</SelectedNumberChannels>
+    </Station>
+    <Station code="KHZ" restrictedStatus="open" startDate="1988-12-08T00:00:00">
+      <Description>New Zealand National Seismograph Network</Description>
+      <Comment>
+        <Value>Location is given in WGS84</Value>
+      </Comment>
+      <Latitude datum="WGS84" unit="DEGREES">-42.41598</Latitude>
+      <Longitude datum="WGS84" unit="DEGREES">173.53897</Longitude>
+      <Elevation>64.0</Elevation>
+      <Site>
+        <Name>Kahutara</Name>
+        <Description>12 km west of Kaikoura</Description>
+      </Site>
+      <CreationDate>1988-12-08T00:00:00</CreationDate>
+      <TotalNumberChannels>88</TotalNumberChannels>
+      <SelectedNumberChannels>15</SelectedNumberChannels>
+    </Station>
+    <Station code="KNZ" restrictedStatus="open" startDate="1998-10-19T00:00:00">
+      <Description>New Zealand National Seismograph Network</Description>
+      <Comment>
+        <Value>Location is given in WGS84</Value>
+      </Comment>
+      <Latitude datum="WGS84" unit="DEGREES">-39.021755222</Latitude>
+      <Longitude datum="WGS84" unit="DEGREES">177.673668799</Longitude>
+      <Elevation>32.0</Elevation>
+      <Site>
+        <Name>Kokohu</Name>
+        <Description>6 km north-west of Nuhaka</Description>
+      </Site>
+      <CreationDate>1998-10-19T00:00:00</CreationDate>
+      <TotalNumberChannels>72</TotalNumberChannels>
+      <SelectedNumberChannels>15</SelectedNumberChannels>
+    </Station>
+    <Station code="MAVZ" restrictedStatus="open" startDate="2008-02-07T00:00:00">
+      <Description>Tongariro National Park volcano seismic network</Description>
+      <Comment>
+        <Value>Location is given in NZGD2000</Value>
+      </Comment>
+      <Latitude datum="NZGD2000" unit="DEGREES">-39.2679133</Latitude>
+      <Longitude datum="NZGD2000" unit="DEGREES">175.5616533</Longitude>
+      <Elevation>2624.1</Elevation>
+      <Site>
+        <Name>Matarangi</Name>
+        <Description>21 km north-east of Ohakune</Description>
+      </Site>
+      <CreationDate>2008-02-07T00:00:00</CreationDate>
+      <TotalNumberChannels>52</TotalNumberChannels>
+      <SelectedNumberChannels>15</SelectedNumberChannels>
+    </Station>
+    <Station code="MKAZ" restrictedStatus="open" startDate="1995-01-10T00:00:00">
+      <Description>Auckland volcano seismic network</Description>
+      <Comment>
+        <Value>Location is given in NZGD2000</Value>
+      </Comment>
+      <Latitude datum="NZGD2000" unit="DEGREES">-37.10413</Latitude>
+      <Longitude datum="NZGD2000" unit="DEGREES">175.16117</Longitude>
+      <Elevation>140.0</Elevation>
+      <Site>
+        <Name>Moumoukai</Name>
+        <Description>19 km east of Drury</Description>
+      </Site>
+      <CreationDate>1995-01-10T00:00:00</CreationDate>
+      <TotalNumberChannels>22</TotalNumberChannels>
+      <SelectedNumberChannels>9</SelectedNumberChannels>
+    </Station>
+    <Station code="MRWZ" endDate="2008-08-28T00:00:00" restrictedStatus="open" startDate="2008-04-15T00:00:00">
+      <Description>Temporary sites</Description>
+      <Comment>
+        <Value>Location is given in WGS84</Value>
+      </Comment>
+      <Latitude datum="WGS84" unit="DEGREES">-41.226025</Latitude>
+      <Longitude datum="WGS84" unit="DEGREES">174.6982083</Longitude>
+      <Elevation>204.8</Elevation>
+      <Site>
+        <Name>Makara Bunker</Name>
+        <Description>9 km north-west of Wellington</Description>
+      </Site>
+      <CreationDate>2008-04-15T00:00:00</CreationDate>
+      <TerminationDate>2008-08-28T00:00:00</TerminationDate>
+      <TotalNumberChannels>12</TotalNumberChannels>
+      <SelectedNumberChannels>3</SelectedNumberChannels>
+    </Station>
+    <Station code="MRZ" restrictedStatus="open" startDate="1992-04-08T00:00:00">
+      <Description>New Zealand National Seismograph Network</Description>
+      <Comment>
+        <Value>Location is given in WGS84</Value>
+      </Comment>
+      <Latitude datum="WGS84" unit="DEGREES">-40.66054537</Latitude>
+      <Longitude datum="WGS84" unit="DEGREES">175.578526763</Longitude>
+      <Elevation>286.0</Elevation>
+      <Site>
+        <Name>Mangatainoka River</Name>
+        <Description>10 km west of Eketahuna</Description>
+      </Site>
+      <CreationDate>1992-04-08T00:00:00</CreationDate>
+      <TotalNumberChannels>61</TotalNumberChannels>
+      <SelectedNumberChannels>6</SelectedNumberChannels>
+    </Station>
+    <Station code="MWZ" restrictedStatus="open" startDate="2004-02-29T00:00:00">
+      <Description>New Zealand National Seismograph Network</Description>
+      <Comment>
+        <Value>Location is given in WGS84</Value>
+      </Comment>
+      <Latitude datum="WGS84" unit="DEGREES">-38.334001396</Latitude>
+      <Longitude datum="WGS84" unit="DEGREES">177.527779304</Longitude>
+      <Elevation>573.0</Elevation>
+      <Site>
+        <Name>Matawai</Name>
+        <Description>within 5 km of Matawai</Description>
+      </Site>
+      <CreationDate>2004-02-29T00:00:00</CreationDate>
+      <TotalNumberChannels>72</TotalNumberChannels>
+      <SelectedNumberChannels>6</SelectedNumberChannels>
+    </Station>
+    <Station code="MXZ" restrictedStatus="open" startDate="2004-02-29T00:00:00">
+      <Description>New Zealand National Seismograph Network</Description>
+      <Comment>
+        <Value>Location is given in WGS84</Value>
+      </Comment>
+      <Latitude datum="WGS84" unit="DEGREES">-37.562258507</Latitude>
+      <Longitude datum="WGS84" unit="DEGREES">178.306631253</Longitude>
+      <Elevation>106.0</Elevation>
+      <Site>
+        <Name>Matakaoa Point</Name>
+        <Description>9 km north-west of Te Araroa</Description>
+      </Site>
+      <CreationDate>2004-02-29T00:00:00</CreationDate>
+      <TotalNumberChannels>66</TotalNumberChannels>
+      <SelectedNumberChannels>9</SelectedNumberChannels>
+    </Station>
+    <Station code="NNZ" restrictedStatus="open" startDate="2003-08-12T00:00:00">
+      <Description>New Zealand National Seismograph Network</Description>
+      <Comment>
+        <Value>Location is given in WGS84</Value>
+      </Comment>
+      <Latitude datum="WGS84" unit="DEGREES">-41.217102661</Latitude>
+      <Longitude datum="WGS84" unit="DEGREES">173.379476754</Longitude>
+      <Elevation>130.0</Elevation>
+      <Site>
+        <Name>Nelson</Name>
+        <Description>10 km north-east of Nelson</Description>
+      </Site>
+      <CreationDate>2003-08-12T00:00:00</CreationDate>
+      <TotalNumberChannels>90</TotalNumberChannels>
+      <SelectedNumberChannels>15</SelectedNumberChannels>
+    </Station>
+    <Station code="NTVZ" restrictedStatus="open" startDate="2014-11-06T00:00:00">
+      <Description>Tongariro National Park volcano seismic network</Description>
+      <Comment>
+        <Value>Location is given in WGS84</Value>
+      </Comment>
+      <Latitude datum="WGS84" unit="DEGREES">-39.0984817</Latitude>
+      <Longitude datum="WGS84" unit="DEGREES">175.6759733</Longitude>
+      <Elevation>1260.0</Elevation>
+      <Site>
+        <Name>North Tongariro</Name>
+        <Description>15 km south-west of Turangi</Description>
+      </Site>
+      <CreationDate>2014-11-06T00:00:00</CreationDate>
+      <TotalNumberChannels>22</TotalNumberChannels>
+      <SelectedNumberChannels>6</SelectedNumberChannels>
+    </Station>
+    <Station code="OPRZ" restrictedStatus="open" startDate="2006-11-14T00:00:00">
+      <Description>Rotorua/Okataina volcano seismic network</Description>
+      <Comment>
+        <Value>Location is given in WGS84</Value>
+      </Comment>
+      <Latitude datum="WGS84" unit="DEGREES">-37.844300073</Latitude>
+      <Longitude datum="WGS84" unit="DEGREES">176.554929138</Longitude>
+      <Elevation>134.0</Elevation>
+      <Site>
+        <Name>Ohinepanea</Name>
+        <Description>18 km west of Matata</Description>
+      </Site>
+      <CreationDate>2006-11-14T00:00:00</CreationDate>
+      <TotalNumberChannels>21</TotalNumberChannels>
+      <SelectedNumberChannels>6</SelectedNumberChannels>
+    </Station>
+    <Station code="OTVZ" restrictedStatus="open" startDate="2004-11-18T00:00:00">
+      <Description>Tongariro National Park volcano seismic network</Description>
+      <Comment>
+        <Value>Location is given in WGS84</Value>
+      </Comment>
+      <Latitude datum="WGS84" unit="DEGREES">-39.163113759</Latitude>
+      <Longitude datum="WGS84" unit="DEGREES">175.665073554</Longitude>
+      <Elevation>1506.0</Elevation>
+      <Site>
+        <Name>Oturere</Name>
+        <Description>22 km south-west of Turangi</Description>
+      </Site>
+      <CreationDate>2004-11-18T00:00:00</CreationDate>
+      <TotalNumberChannels>35</TotalNumberChannels>
+      <SelectedNumberChannels>6</SelectedNumberChannels>
+    </Station>
+    <Station code="PUZ" restrictedStatus="open" startDate="1989-03-08T00:00:00">
+      <Description>New Zealand National Seismograph Network</Description>
+      <Comment>
+        <Value>Location is given in WGS84</Value>
+      </Comment>
+      <Latitude datum="WGS84" unit="DEGREES">-38.071547867</Latitude>
+      <Longitude datum="WGS84" unit="DEGREES">178.257209049</Longitude>
+      <Elevation>430.0</Elevation>
+      <Site>
+        <Name>Puketiti</Name>
+        <Description>9 km north-west of Tokomaru Bay</Description>
+      </Site>
+      <CreationDate>1989-03-08T00:00:00</CreationDate>
+      <TotalNumberChannels>54</TotalNumberChannels>
+      <SelectedNumberChannels>6</SelectedNumberChannels>
+    </Station>
+    <Station code="PWZ" restrictedStatus="open" startDate="2001-01-30T00:00:00">
+      <Description>New Zealand National Seismograph Network</Description>
+      <Comment>
+        <Value>Location is given in WGS84</Value>
+      </Comment>
+      <Latitude datum="WGS84" unit="DEGREES">-40.029684442</Latitude>
+      <Longitude datum="WGS84" unit="DEGREES">176.861995223</Longitude>
+      <Elevation>66.0</Elevation>
+      <Site>
+        <Name>Pawanui</Name>
+        <Description>27 km east of Waipukurau</Description>
+      </Site>
+      <CreationDate>2001-01-30T00:00:00</CreationDate>
+      <TotalNumberChannels>57</TotalNumberChannels>
+      <SelectedNumberChannels>12</SelectedNumberChannels>
+    </Station>
+    <Station code="PXZ" restrictedStatus="open" startDate="2005-08-21T00:00:00">
+      <Description>New Zealand National Seismograph Network</Description>
+      <Comment>
+        <Value>Location is given in WGS84</Value>
+      </Comment>
+      <Latitude datum="WGS84" unit="DEGREES">-40.030644463</Latitude>
+      <Longitude datum="WGS84" unit="DEGREES">176.862145221</Longitude>
+      <Elevation>103.0</Elevation>
+      <Site>
+        <Name>Pawanui</Name>
+        <Description>27 km east of Waipukurau</Description>
+      </Site>
+      <CreationDate>2005-08-21T00:00:00</CreationDate>
+      <TotalNumberChannels>30</TotalNumberChannels>
+      <SelectedNumberChannels>6</SelectedNumberChannels>
+    </Station>
+    <Station code="RATZ" restrictedStatus="open" startDate="1984-11-21T00:00:00">
+      <Description>Taupo volcano seismic network</Description>
+      <Comment>
+        <Value>Location is given in WGS84</Value>
+      </Comment>
+      <Latitude datum="WGS84" unit="DEGREES">-38.866498038</Latitude>
+      <Longitude datum="WGS84" unit="DEGREES">175.772175968</Longitude>
+      <Elevation>653.0</Elevation>
+      <Site>
+        <Name>Rangitukua</Name>
+        <Description>15 km north of Turangi</Description>
+      </Site>
+      <CreationDate>1984-11-21T00:00:00</CreationDate>
+      <TotalNumberChannels>21</TotalNumberChannels>
+      <SelectedNumberChannels>6</SelectedNumberChannels>
+    </Station>
+    <Station code="RTZ" restrictedStatus="open" startDate="2011-05-05T00:00:00">
+      <Description>New Zealand National Seismograph Network</Description>
+      <Comment>
+        <Value>Location is given in WGS84</Value>
+      </Comment>
+      <Latitude datum="WGS84" unit="DEGREES">-38.61544</Latitude>
+      <Longitude datum="WGS84" unit="DEGREES">176.980518</Longitude>
+      <Elevation>867.0</Elevation>
+      <Site>
+        <Name>Ruatahuna</Name>
+        <Description>31 km south-east of Murupara</Description>
+      </Site>
+      <CreationDate>2011-05-05T00:00:00</CreationDate>
+      <TotalNumberChannels>42</TotalNumberChannels>
+      <SelectedNumberChannels>9</SelectedNumberChannels>
+    </Station>
+    <Station code="TLZ" restrictedStatus="open" startDate="2009-05-07T00:00:00">
+      <Description>New Zealand National Seismograph Network</Description>
+      <Comment>
+        <Value>Location is given in WGS84</Value>
+      </Comment>
+      <Latitude datum="WGS84" unit="DEGREES">-38.3294</Latitude>
+      <Longitude datum="WGS84" unit="DEGREES">175.538</Longitude>
+      <Elevation>660.0</Elevation>
+      <Site>
+        <Name>Tolley Road</Name>
+        <Description>31 km west of Tokoroa</Description>
+      </Site>
+      <CreationDate>2009-05-07T00:00:00</CreationDate>
+      <TotalNumberChannels>24</TotalNumberChannels>
+      <SelectedNumberChannels>3</SelectedNumberChannels>
+    </Station>
+    <Station code="TMVZ" restrictedStatus="open" startDate="2013-05-14T00:00:00">
+      <Description>Tongariro National Park volcano seismic network</Description>
+      <Comment>
+        <Value>Location is given in WGS84</Value>
+      </Comment>
+      <Latitude datum="WGS84" unit="DEGREES">-39.11561</Latitude>
+      <Longitude datum="WGS84" unit="DEGREES">175.704064</Longitude>
+      <Elevation>1200.0</Elevation>
+      <Site>
+        <Name>Te Maari</Name>
+        <Description>15 km south-west of Turangi</Description>
+      </Site>
+      <CreationDate>2013-05-14T00:00:00</CreationDate>
+      <TotalNumberChannels>42</TotalNumberChannels>
+      <SelectedNumberChannels>12</SelectedNumberChannels>
+    </Station>
+    <Station code="TOZ" restrictedStatus="open" startDate="1998-10-15T00:00:00">
+      <Description>New Zealand National Seismograph Network</Description>
+      <Comment>
+        <Value>Location is given in WGS84</Value>
+      </Comment>
+      <Latitude datum="WGS84" unit="DEGREES">-37.73095563</Latitude>
+      <Longitude datum="WGS84" unit="DEGREES">175.501846822</Longitude>
+      <Elevation>85.0</Elevation>
+      <Site>
+        <Name>Tahuroa Road</Name>
+        <Description>9 km south of Morrinsville</Description>
+      </Site>
+      <CreationDate>1998-10-15T00:00:00</CreationDate>
+      <TotalNumberChannels>39</TotalNumberChannels>
+      <SelectedNumberChannels>6</SelectedNumberChannels>
+    </Station>
+    <Station code="TRVZ" restrictedStatus="open" startDate="2005-03-16T00:00:00">
+      <Description>Tongariro National Park volcano seismic network</Description>
+      <Comment>
+        <Value>Location is given in WGS84</Value>
+      </Comment>
+      <Latitude datum="WGS84" unit="DEGREES">-39.298816259</Latitude>
+      <Longitude datum="WGS84" unit="DEGREES">175.547821602</Longitude>
+      <Elevation>2062.0</Elevation>
+      <Site>
+        <Name>Turoa</Name>
+        <Description>17 km north-east of Ohakune</Description>
+      </Site>
+      <CreationDate>2005-03-16T00:00:00</CreationDate>
+      <TotalNumberChannels>37</TotalNumberChannels>
+      <SelectedNumberChannels>9</SelectedNumberChannels>
+    </Station>
+    <Station code="TSZ" restrictedStatus="open" startDate="2004-01-26T00:00:00">
+      <Description>New Zealand National Seismograph Network</Description>
+      <Comment>
+        <Value>Location is given in WGS84</Value>
+      </Comment>
+      <Latitude datum="WGS84" unit="DEGREES">-40.058553101</Latitude>
+      <Longitude datum="WGS84" unit="DEGREES">175.961123866</Longitude>
+      <Elevation>531.0</Elevation>
+      <Site>
+        <Name>Takapari Road</Name>
+        <Description>15 km east of Kimbolton</Description>
+      </Site>
+      <CreationDate>2004-01-26T00:00:00</CreationDate>
+      <TotalNumberChannels>36</TotalNumberChannels>
+      <SelectedNumberChannels>6</SelectedNumberChannels>
+    </Station>
+    <Station code="URZ" restrictedStatus="open" startDate="1990-10-09T00:00:00">
+      <Description>New Zealand National Seismograph Network</Description>
+      <Comment>
+        <Value>Location is given in WGS84</Value>
+      </Comment>
+      <Latitude datum="WGS84" unit="DEGREES">-38.259249093</Latitude>
+      <Longitude datum="WGS84" unit="DEGREES">177.110894471</Longitude>
+      <Elevation>95.0</Elevation>
+      <Site>
+        <Name>Urewera</Name>
+        <Description>12 km south of Waimana</Description>
+      </Site>
+      <CreationDate>1990-10-09T00:00:00</CreationDate>
+      <TotalNumberChannels>102</TotalNumberChannels>
+      <SelectedNumberChannels>24</SelectedNumberChannels>
+    </Station>
+    <Station code="VRZ" restrictedStatus="open" startDate="2003-11-26T00:00:00">
+      <Description>New Zealand National Seismograph Network</Description>
+      <Comment>
+        <Value>Location is given in WGS84</Value>
+      </Comment>
+      <Latitude datum="WGS84" unit="DEGREES">-39.12434088</Latitude>
+      <Longitude datum="WGS84" unit="DEGREES">174.758452563</Longitude>
+      <Elevation>166.0</Elevation>
+      <Site>
+        <Name>Vera Road</Name>
+        <Description>48 km north-east of Stratford</Description>
+      </Site>
+      <CreationDate>2003-11-26T00:00:00</CreationDate>
+      <TotalNumberChannels>72</TotalNumberChannels>
+      <SelectedNumberChannels>12</SelectedNumberChannels>
+    </Station>
+    <Station code="WAZ" restrictedStatus="open" startDate="2003-07-18T00:00:00">
+      <Description>New Zealand National Seismograph Network</Description>
+      <Comment>
+        <Value>Location is given in WGS84</Value>
+      </Comment>
+      <Latitude datum="WGS84" unit="DEGREES">-39.754644424</Latitude>
+      <Longitude datum="WGS84" unit="DEGREES">174.985532904</Longitude>
+      <Elevation>382.0</Elevation>
+      <Site>
+        <Name>Wanganui</Name>
+        <Description>21 km north of Whanganui</Description>
+      </Site>
+      <CreationDate>2003-07-18T00:00:00</CreationDate>
+      <TotalNumberChannels>30</TotalNumberChannels>
+      <SelectedNumberChannels>6</SelectedNumberChannels>
+    </Station>
+    <Station code="WHVZ" restrictedStatus="open" startDate="2009-03-25T00:00:00">
+      <Description>Tongariro National Park volcano seismic network</Description>
+      <Comment>
+        <Value>Location is given in WGS84</Value>
+      </Comment>
+      <Latitude datum="WGS84" unit="DEGREES">-39.2825</Latitude>
+      <Longitude datum="WGS84" unit="DEGREES">175.5886</Longitude>
+      <Elevation>2105.0</Elevation>
+      <Site>
+        <Name>Whangaehu Hut</Name>
+        <Description>21 km north-east of Ohakune</Description>
+      </Site>
+      <CreationDate>2009-03-25T00:00:00</CreationDate>
+      <TotalNumberChannels>13</TotalNumberChannels>
+      <SelectedNumberChannels>3</SelectedNumberChannels>
+    </Station>
+    <Station code="WIZ" restrictedStatus="open" startDate="1976-12-12T00:00:00">
+      <Description>Rotorua/Okataina volcano seismic network</Description>
+      <Comment>
+        <Value>Location is given in WGS84</Value>
+      </Comment>
+      <Latitude datum="WGS84" unit="DEGREES">-37.524510539</Latitude>
+      <Longitude datum="WGS84" unit="DEGREES">177.189301882</Longitude>
+      <Elevation>40.0</Elevation>
+      <Site>
+        <Name>White Island</Name>
+        <Description>within 5 km of White Island</Description>
+      </Site>
+      <CreationDate>1976-12-12T00:00:00</CreationDate>
+      <TotalNumberChannels>38</TotalNumberChannels>
+      <SelectedNumberChannels>9</SelectedNumberChannels>
+    </Station>
+    <Station code="WPVZ" endDate="2010-12-01T00:00:00" restrictedStatus="open" startDate="2003-12-10T00:00:00">
+      <Description>Tongariro National Park volcano seismic network</Description>
+      <Comment>
+        <Value>Location is given in WGS84</Value>
+      </Comment>
+      <Latitude datum="WGS84" unit="DEGREES">-39.20400432</Latitude>
+      <Longitude datum="WGS84" unit="DEGREES">175.545921935</Longitude>
+      <Elevation>1244.0</Elevation>
+      <Site>
+        <Name>Whakapapa</Name>
+        <Description>26 km north-east of Ohakune</Description>
+      </Site>
+      <CreationDate>2003-12-10T00:00:00</CreationDate>
+      <TerminationDate>2010-12-01T00:00:00</TerminationDate>
+      <TotalNumberChannels>9</TotalNumberChannels>
+      <SelectedNumberChannels>3</SelectedNumberChannels>
+    </Station>
+    <Station code="WSRZ" restrictedStatus="open" startDate="2013-04-08T00:00:00">
+      <Description>Rotorua/Okataina volcano seismic network</Description>
+      <Comment>
+        <Value>Location is given in WGS84</Value>
+      </Comment>
+      <Latitude datum="WGS84" unit="DEGREES">-37.51811</Latitude>
+      <Longitude datum="WGS84" unit="DEGREES">177.177805</Longitude>
+      <Elevation>292.4</Elevation>
+      <Site>
+        <Name>White Island Summit</Name>
+        <Description>within 5 km of White Island</Description>
+      </Site>
+      <CreationDate>2013-04-08T00:00:00</CreationDate>
+      <TotalNumberChannels>32</TotalNumberChannels>
+      <SelectedNumberChannels>6</SelectedNumberChannels>
+    </Station>
+  </Network>
+  <Network code="YH" endDate="2015-12-31T23:59:59" restrictedStatus="open" startDate="2014-01-01T00:00:00">
+    <Description>Hikurangi Ocean Bottom Investigation of Tremor and Slow Slip</Description>
+    <TotalNumberStations>15</TotalNumberStations>
+    <SelectedNumberStations>9</SelectedNumberStations>
+    <Station code="LOBS1" endDate="2015-06-22T23:59:59" restrictedStatus="open" startDate="2014-05-14T00:00:00">
+      <Latitude unit="DEGREES">-38.5921</Latitude>
+      <Longitude unit="DEGREES">178.8187</Longitude>
+      <Elevation>-993.5999755859375</Elevation>
+      <Site>
+        <Name>LDEO OBS</Name>
+      </Site>
+      <CreationDate>2014-05-14T00:00:00</CreationDate>
+      <TotalNumberChannels>6</TotalNumberChannels>
+      <SelectedNumberChannels>0</SelectedNumberChannels>
+    </Station>
+    <Station code="LOBS2" endDate="2015-06-22T23:59:59" restrictedStatus="open" startDate="2014-05-15T00:00:00">
+      <Latitude unit="DEGREES">-38.621</Latitude>
+      <Longitude unit="DEGREES">179.0461</Longitude>
+      <Elevation>-3562.5</Elevation>
+      <Site>
+        <Name>LDEO OBS</Name>
+      </Site>
+      <CreationDate>2014-05-15T00:00:00</CreationDate>
+      <TotalNumberChannels>4</TotalNumberChannels>
+      <SelectedNumberChannels>0</SelectedNumberChannels>
+    </Station>
+    <Station code="LOBS3" endDate="2015-06-23T23:59:59" restrictedStatus="open" startDate="2014-05-15T00:00:00">
+      <Latitude unit="DEGREES">-38.7922</Latitude>
+      <Longitude unit="DEGREES">179.1473</Longitude>
+      <Elevation>-3540.300048828125</Elevation>
+      <Site>
+        <Name>LDEO OBS</Name>
+      </Site>
+      <CreationDate>2014-05-15T00:00:00</CreationDate>
+      <TotalNumberChannels>4</TotalNumberChannels>
+      <SelectedNumberChannels>0</SelectedNumberChannels>
+    </Station>
+    <Station code="LOBS4" endDate="2015-06-22T23:59:59" restrictedStatus="open" startDate="2014-05-15T00:00:00">
+      <Latitude unit="DEGREES">-39.1201</Latitude>
+      <Longitude unit="DEGREES">178.9815</Longitude>
+      <Elevation>-3440.5</Elevation>
+      <Site>
+        <Name>LDEO OBS</Name>
+      </Site>
+      <CreationDate>2014-05-15T00:00:00</CreationDate>
+      <TotalNumberChannels>6</TotalNumberChannels>
+      <SelectedNumberChannels>0</SelectedNumberChannels>
+    </Station>
+    <Station code="LOBS5" endDate="2015-06-23T23:59:59" restrictedStatus="open" startDate="2014-05-15T00:00:00">
+      <Latitude unit="DEGREES">-39.1193</Latitude>
+      <Longitude unit="DEGREES">178.6984</Longitude>
+      <Elevation>-2361.0</Elevation>
+      <Site>
+        <Name>LDEO OBS</Name>
+      </Site>
+      <CreationDate>2014-05-15T00:00:00</CreationDate>
+      <TotalNumberChannels>6</TotalNumberChannels>
+      <SelectedNumberChannels>0</SelectedNumberChannels>
+    </Station>
+    <Station code="LOBS6" endDate="2015-06-26T23:59:59" restrictedStatus="open" startDate="2014-05-14T00:00:00">
+      <Latitude unit="DEGREES">-38.9778</Latitude>
+      <Longitude unit="DEGREES">178.796</Longitude>
+      <Elevation>-1873.5</Elevation>
+      <Site>
+        <Name>LDEO OBS</Name>
+      </Site>
+      <CreationDate>2014-05-14T00:00:00</CreationDate>
+      <TotalNumberChannels>6</TotalNumberChannels>
+      <SelectedNumberChannels>0</SelectedNumberChannels>
+    </Station>
+    <Station code="LOBS7" endDate="2015-06-25T23:59:59" restrictedStatus="open" startDate="2014-05-15T00:00:00">
+      <Latitude unit="DEGREES">-38.7115</Latitude>
+      <Longitude unit="DEGREES">178.5681</Longitude>
+      <Elevation>-784.0999755859375</Elevation>
+      <Site>
+        <Name>LDEO OBS</Name>
+      </Site>
+      <CreationDate>2014-05-15T00:00:00</CreationDate>
+      <TotalNumberChannels>4</TotalNumberChannels>
+      <SelectedNumberChannels>0</SelectedNumberChannels>
+    </Station>
+    <Station code="LOBS8" endDate="2015-06-26T23:59:59" restrictedStatus="open" startDate="2014-05-13T00:00:00">
+      <Latitude unit="DEGREES">-38.8432</Latitude>
+      <Longitude unit="DEGREES">178.4594</Longitude>
+      <Elevation>-651.2999877929688</Elevation>
+      <Site>
+        <Name>LDEO OBS</Name>
+      </Site>
+      <CreationDate>2014-05-13T00:00:00</CreationDate>
+      <TotalNumberChannels>6</TotalNumberChannels>
+      <SelectedNumberChannels>0</SelectedNumberChannels>
+    </Station>
+    <Station code="LOBS9" endDate="2015-06-23T23:59:59" restrictedStatus="open" startDate="2014-05-11T00:00:00">
+      <Latitude unit="DEGREES">-39.0716</Latitude>
+      <Longitude unit="DEGREES">178.5214</Longitude>
+      <Elevation>-1457.4000244140625</Elevation>
+      <Site>
+        <Name>LDEO OBS</Name>
+      </Site>
+      <CreationDate>2014-05-11T00:00:00</CreationDate>
+      <TotalNumberChannels>6</TotalNumberChannels>
+      <SelectedNumberChannels>0</SelectedNumberChannels>
+    </Station>
+  </Network>
+  <Network code="X2">
+    <Description>SAHKE2 Broadband Transect</Description>
+    <Station code="LE4" endDate="2010-11-27T00:00:00" startDate="2010-05-16T00:00:00">
+      <Latitude unit="DEGREES">-41.3579</Latitude>
+      <Longitude unit="DEGREES">175.6919</Longitude>
+      <Elevation unit="METERS">123456.0</Elevation>
+      <Site>
+        <Name>SAHKE</Name>
+      </Site>
+      <CreationDate>2018-09-13T02:07:47.560400</CreationDate>
+    </Station>
+    <Station code="LTN6" endDate="2010-12-15T00:00:00" startDate="2010-07-12T00:00:00">
+      <Latitude unit="DEGREES">-41.1033</Latitude>
+      <Longitude unit="DEGREES">175.3238</Longitude>
+      <Elevation unit="METERS">123456.0</Elevation>
+      <Site>
+        <Name>SAHKE</Name>
+      </Site>
+      <CreationDate>2018-09-13T02:07:47.560500</CreationDate>
+    </Station>
+    <Station code="T004" endDate="2010-09-12T00:00:00" startDate="2010-03-29T00:00:00">
+      <Latitude unit="DEGREES">-41.3403</Latitude>
+      <Longitude unit="DEGREES">175.6688</Longitude>
+      <Elevation unit="METERS">123456.0</Elevation>
+      <Site>
+        <Name>SAHKE</Name>
+      </Site>
+      <CreationDate>2018-09-13T02:07:47.560580</CreationDate>
+    </Station>
+    <Station code="T007" endDate="2010-05-03T00:00:00" startDate="2010-02-10T00:00:00">
+      <Latitude unit="DEGREES">-41.3041</Latitude>
+      <Longitude unit="DEGREES">175.6513</Longitude>
+      <Elevation unit="METERS">123456.0</Elevation>
+      <Site>
+        <Name>SAHKE</Name>
+      </Site>
+      <CreationDate>2018-09-13T02:07:47.560655</CreationDate>
+    </Station>
+    <Station code="T010" endDate="2010-12-14T00:00:00" startDate="2010-05-15T00:00:00">
+      <Latitude unit="DEGREES">-41.252</Latitude>
+      <Longitude unit="DEGREES">175.5825</Longitude>
+      <Elevation unit="METERS">123456.0</Elevation>
+      <Site>
+        <Name>SAHKE</Name>
+      </Site>
+      <CreationDate>2018-09-13T02:07:47.560731</CreationDate>
+    </Station>
+    <Station code="T014" endDate="2010-12-16T00:00:00" startDate="2010-02-03T00:00:00">
+      <Latitude unit="DEGREES">-41.2075</Latitude>
+      <Longitude unit="DEGREES">175.5063</Longitude>
+      <Elevation unit="METERS">123456.0</Elevation>
+      <Site>
+        <Name>SAHKE</Name>
+      </Site>
+      <CreationDate>2018-09-13T02:07:47.560806</CreationDate>
+    </Station>
+    <Station code="T016" endDate="2010-11-18T00:00:00" startDate="2010-03-29T00:00:00">
+      <Latitude unit="DEGREES">-41.1893</Latitude>
+      <Longitude unit="DEGREES">175.4737</Longitude>
+      <Elevation unit="METERS">123456.0</Elevation>
+      <Site>
+        <Name>SAHKE</Name>
+      </Site>
+      <CreationDate>2018-09-13T02:07:47.560881</CreationDate>
+    </Station>
+    <Station code="T018" endDate="2010-12-15T00:00:00" startDate="2010-02-24T00:00:00">
+      <Latitude unit="DEGREES">-41.1715</Latitude>
+      <Longitude unit="DEGREES">175.385</Longitude>
+      <Elevation unit="METERS">123456.0</Elevation>
+      <Site>
+        <Name>SAHKE</Name>
+      </Site>
+      <CreationDate>2018-09-13T02:07:47.560955</CreationDate>
+    </Station>
+    <Station code="T020" endDate="2010-09-18T00:00:00" startDate="2010-03-30T00:00:00">
+      <Latitude unit="DEGREES">-41.1251</Latitude>
+      <Longitude unit="DEGREES">175.3497</Longitude>
+      <Elevation unit="METERS">123456.0</Elevation>
+      <Site>
+        <Name>SAHKE</Name>
+      </Site>
+      <CreationDate>2018-09-13T02:07:47.561029</CreationDate>
+    </Station>
+  </Network>
+  <Network code="X1">
+    <Description>Stephen Bannister's Temporary Network</Description>
+    <Station code="GA01" endDate="2018-09-13T02:07:47.561076" startDate="2011-11-01T00:00:00">
+      <Latitude unit="DEGREES">-39.0331</Latitude>
+      <Longitude unit="DEGREES">177.8549</Longitude>
+      <Elevation unit="METERS">33.0</Elevation>
+      <Site>
+        <Name>Banni</Name>
+      </Site>
+      <CreationDate>2018-09-13T02:07:47.561108</CreationDate>
+    </Station>
+    <Station code="GA02" endDate="2018-09-13T02:07:47.561144" startDate="2011-11-01T00:00:00">
+      <Latitude unit="DEGREES">-38.7793</Latitude>
+      <Longitude unit="DEGREES">177.8695</Longitude>
+      <Elevation unit="METERS">220.0</Elevation>
+      <Site>
+        <Name>Banni</Name>
+      </Site>
+      <CreationDate>2018-09-13T02:07:47.561175</CreationDate>
+    </Station>
+    <Station code="GA03" endDate="2018-09-13T02:07:47.561200" startDate="2011-11-01T00:00:00">
+      <Latitude unit="DEGREES">-38.6059</Latitude>
+      <Longitude unit="DEGREES">177.9959</Longitude>
+      <Elevation unit="METERS">46.0</Elevation>
+      <Site>
+        <Name>Banni</Name>
+      </Site>
+      <CreationDate>2018-09-13T02:07:47.561229</CreationDate>
+    </Station>
+    <Station code="GA04" endDate="2018-09-13T02:07:47.561253" startDate="2011-11-01T00:00:00">
+      <Latitude unit="DEGREES">-38.5529</Latitude>
+      <Longitude unit="DEGREES">178.1548</Longitude>
+      <Elevation unit="METERS">210.0</Elevation>
+      <Site>
+        <Name>Banni</Name>
+      </Site>
+      <CreationDate>2018-09-13T02:07:47.561281</CreationDate>
+    </Station>
+    <Station code="GA05" endDate="2018-09-13T02:07:47.561310" startDate="2011-11-01T00:00:00">
+      <Latitude unit="DEGREES">-38.5844</Latitude>
+      <Longitude unit="DEGREES">177.8048</Longitude>
+      <Elevation unit="METERS">85.0</Elevation>
+      <Site>
+        <Name>Banni</Name>
+      </Site>
+      <CreationDate>2018-09-13T02:07:47.561347</CreationDate>
+    </Station>
+    <Station code="GA06" endDate="2018-09-13T02:07:47.561371" startDate="2012-01-01T00:00:00">
+      <Latitude unit="DEGREES">-39.111</Latitude>
+      <Longitude unit="DEGREES">177.9161</Longitude>
+      <Elevation unit="METERS">159.0</Elevation>
+      <Site>
+        <Name>Banni</Name>
+      </Site>
+      <CreationDate>2018-09-13T02:07:47.561400</CreationDate>
+    </Station>
+    <Station code="GA07" endDate="2018-09-13T02:07:47.561423" startDate="2012-01-01T00:00:00">
+      <Latitude unit="DEGREES">-38.4322</Latitude>
+      <Longitude unit="DEGREES">178.0478</Longitude>
+      <Elevation unit="METERS">569.0</Elevation>
+      <Site>
+        <Name>Banni</Name>
+      </Site>
+      <CreationDate>2018-09-13T02:07:47.561452</CreationDate>
+    </Station>
+    <Station code="GA08" endDate="2018-09-13T02:07:47.561475" startDate="2012-01-01T00:00:00">
+      <Latitude unit="DEGREES">-38.8312</Latitude>
+      <Longitude unit="DEGREES">177.7095</Longitude>
+      <Elevation unit="METERS">358.0</Elevation>
+      <Site>
+        <Name>Banni</Name>
+      </Site>
+      <CreationDate>2018-09-13T02:07:47.561502</CreationDate>
+    </Station>
+    <Station code="GA09" endDate="2018-09-13T02:07:47.561527" startDate="2013-06-01T00:00:00">
+      <Latitude unit="DEGREES">-38.5194</Latitude>
+      <Longitude unit="DEGREES">177.9363</Longitude>
+      <Elevation unit="METERS">107.0</Elevation>
+      <Site>
+        <Name>Banni</Name>
+      </Site>
+      <CreationDate>2018-09-13T02:07:47.561554</CreationDate>
+    </Station>
+    <Station code="GA10" endDate="2018-09-13T02:07:47.561585" startDate="2013-06-01T00:00:00">
+      <Latitude unit="DEGREES">-38.9087</Latitude>
+      <Longitude unit="DEGREES">177.4627</Longitude>
+      <Elevation unit="METERS">57.0</Elevation>
+      <Site>
+        <Name>Banni</Name>
+      </Site>
+      <CreationDate>2018-09-13T02:07:47.561616</CreationDate>
+    </Station>
+    <Station code="GA11" endDate="2018-09-13T02:07:47.561646" startDate="2014-03-01T00:00:00">
+      <Latitude unit="DEGREES">-38.4932</Latitude>
+      <Longitude unit="DEGREES">177.6711</Longitude>
+      <Elevation unit="METERS">224.0</Elevation>
+      <Site>
+        <Name>Banni</Name>
+      </Site>
+      <CreationDate>2018-09-13T02:07:47.561680</CreationDate>
+    </Station>
+    <Station code="HD01" endDate="1970-01-24T06:21:31" startDate="2009-09-01T00:00:00">
+      <Latitude unit="DEGREES">-38.4802</Latitude>
+      <Longitude unit="DEGREES">175.9473</Longitude>
+      <Elevation unit="METERS">470.0</Elevation>
+      <Site>
+        <Name>Banni</Name>
+      </Site>
+      <CreationDate>2018-09-13T02:07:47.561743</CreationDate>
+    </Station>
+    <Station code="HD02" endDate="1970-01-24T06:58:26" startDate="2009-09-01T00:00:00">
+      <Latitude unit="DEGREES">-38.6275</Latitude>
+      <Longitude unit="DEGREES">175.9196</Longitude>
+      <Elevation unit="METERS">600.0</Elevation>
+      <Site>
+        <Name>Banni</Name>
+      </Site>
+      <CreationDate>2018-09-13T02:07:47.561806</CreationDate>
+    </Station>
+    <Station code="HD03" endDate="1970-01-24T06:21:31" startDate="2009-09-01T00:00:00">
+      <Latitude unit="DEGREES">-38.5497</Latitude>
+      <Longitude unit="DEGREES">176.0564</Longitude>
+      <Elevation unit="METERS">630.0</Elevation>
+      <Site>
+        <Name>Banni</Name>
+      </Site>
+      <CreationDate>2018-09-13T02:07:47.561859</CreationDate>
+    </Station>
+    <Station code="HD04" endDate="2018-09-13T02:07:47.561882" startDate="2009-09-01T00:00:00">
+      <Latitude unit="DEGREES">-38.493</Latitude>
+      <Longitude unit="DEGREES">176.2204</Longitude>
+      <Elevation unit="METERS">440.0</Elevation>
+      <Site>
+        <Name>Banni</Name>
+      </Site>
+      <CreationDate>2018-09-13T02:07:47.561918</CreationDate>
+    </Station>
+    <Station code="HD05" endDate="1970-01-24T06:38:11" startDate="2009-09-01T00:00:00">
+      <Latitude unit="DEGREES">-38.4663</Latitude>
+      <Longitude unit="DEGREES">176.2627</Longitude>
+      <Elevation unit="METERS">445.0</Elevation>
+      <Site>
+        <Name>Banni</Name>
+      </Site>
+      <CreationDate>2018-09-13T02:07:47.561972</CreationDate>
+    </Station>
+    <Station code="HD06" endDate="1970-01-24T06:38:11" startDate="2009-09-01T00:00:00">
+      <Latitude unit="DEGREES">-38.3932</Latitude>
+      <Longitude unit="DEGREES">176.0619</Longitude>
+      <Elevation unit="METERS">280.0</Elevation>
+      <Site>
+        <Name>Banni</Name>
+      </Site>
+      <CreationDate>2018-09-13T02:07:47.562024</CreationDate>
+    </Station>
+    <Station code="HD07" endDate="1970-01-24T06:21:31" startDate="2009-09-01T00:00:00">
+      <Latitude unit="DEGREES">-38.3214</Latitude>
+      <Longitude unit="DEGREES">176.1626</Longitude>
+      <Elevation unit="METERS">480.0</Elevation>
+      <Site>
+        <Name>Banni</Name>
+      </Site>
+      <CreationDate>2018-09-13T02:07:47.562091</CreationDate>
+    </Station>
+    <Station code="HD08" endDate="1970-01-24T06:38:11" startDate="2009-09-01T00:00:00">
+      <Latitude unit="DEGREES">-38.63</Latitude>
+      <Longitude unit="DEGREES">176.3063</Longitude>
+      <Elevation unit="METERS">520.0</Elevation>
+      <Site>
+        <Name>Banni</Name>
+      </Site>
+      <CreationDate>2018-09-13T02:07:47.562142</CreationDate>
+    </Station>
+    <Station code="HD09" endDate="1970-01-24T06:25:05" startDate="2010-01-01T00:00:00">
+      <Latitude unit="DEGREES">-38.6675</Latitude>
+      <Longitude unit="DEGREES">176.1798</Longitude>
+      <Elevation unit="METERS">450.0</Elevation>
+      <Site>
+        <Name>Banni</Name>
+      </Site>
+      <CreationDate>2018-09-13T02:07:47.562194</CreationDate>
+    </Station>
+    <Station code="HD10" endDate="1970-01-24T06:38:11" startDate="2010-01-01T00:00:00">
+      <Latitude unit="DEGREES">-38.5482</Latitude>
+      <Longitude unit="DEGREES">176.3669</Longitude>
+      <Elevation unit="METERS">390.0</Elevation>
+      <Site>
+        <Name>Banni</Name>
+      </Site>
+      <CreationDate>2018-09-13T02:07:47.562246</CreationDate>
+    </Station>
+    <Station code="HD11" endDate="1970-01-24T06:41:45" startDate="2010-04-01T00:00:00">
+      <Latitude unit="DEGREES">-38.632</Latitude>
+      <Longitude unit="DEGREES">176.2606</Longitude>
+      <Elevation unit="METERS">320.0</Elevation>
+      <Site>
+        <Name>Banni</Name>
+      </Site>
+      <CreationDate>2018-09-13T02:07:47.562298</CreationDate>
+    </Station>
+    <Station code="HD12" endDate="1970-01-24T06:38:11" startDate="2010-04-01T00:00:00">
+      <Latitude unit="DEGREES">-38.3711</Latitude>
+      <Longitude unit="DEGREES">176.157</Longitude>
+      <Elevation unit="METERS">360.0</Elevation>
+      <Site>
+        <Name>Banni</Name>
+      </Site>
+      <CreationDate>2018-09-13T02:07:47.562403</CreationDate>
+    </Station>
+    <Station code="HD13" endDate="1970-01-24T06:38:11" startDate="2010-04-01T00:00:00">
+      <Latitude unit="DEGREES">-38.4546</Latitude>
+      <Longitude unit="DEGREES">176.3458</Longitude>
+      <Elevation unit="METERS">340.0</Elevation>
+      <Site>
+        <Name>Banni</Name>
+      </Site>
+      <CreationDate>2018-09-13T02:07:47.562460</CreationDate>
+    </Station>
+    <Station code="HD14" endDate="1970-01-24T06:25:05" startDate="2010-04-01T00:00:00">
+      <Latitude unit="DEGREES">-38.4594</Latitude>
+      <Longitude unit="DEGREES">176.1714</Longitude>
+      <Elevation unit="METERS">340.0</Elevation>
+      <Site>
+        <Name>Banni</Name>
+      </Site>
+      <CreationDate>2018-09-13T02:07:47.562528</CreationDate>
+    </Station>
+    <Station code="HD15" endDate="1970-01-24T06:38:11" startDate="2010-04-01T00:00:00">
+      <Latitude unit="DEGREES">-38.4872</Latitude>
+      <Longitude unit="DEGREES">176.0043</Longitude>
+      <Elevation unit="METERS">660.0</Elevation>
+      <Site>
+        <Name>Banni</Name>
+      </Site>
+      <CreationDate>2018-09-13T02:07:47.562589</CreationDate>
+    </Station>
+    <Station code="HD16" endDate="1970-01-24T06:38:11" startDate="2010-04-01T00:00:00">
+      <Latitude unit="DEGREES">-38.4408</Latitude>
+      <Longitude unit="DEGREES">175.9444</Longitude>
+      <Elevation unit="METERS">420.0</Elevation>
+      <Site>
+        <Name>Banni</Name>
+      </Site>
+      <CreationDate>2018-09-13T02:07:47.562642</CreationDate>
+    </Station>
+    <Station code="HD17" endDate="1970-01-24T06:38:11" startDate="2010-04-01T00:00:00">
+      <Latitude unit="DEGREES">-38.5483</Latitude>
+      <Longitude unit="DEGREES">175.0556</Longitude>
+      <Elevation unit="METERS">600.0</Elevation>
+      <Site>
+        <Name>Banni</Name>
+      </Site>
+      <CreationDate>2018-09-13T02:07:47.562694</CreationDate>
+    </Station>
+    <Station code="HD18" endDate="1970-01-24T06:38:11" startDate="2010-11-01T00:00:00">
+      <Latitude unit="DEGREES">-38.5283</Latitude>
+      <Longitude unit="DEGREES">176.4573</Longitude>
+      <Elevation unit="METERS">375.0</Elevation>
+      <Site>
+        <Name>Banni</Name>
+      </Site>
+      <CreationDate>2018-09-13T02:07:47.562747</CreationDate>
+    </Station>
+    <Station code="HD19" endDate="1970-01-24T06:38:11" startDate="2010-11-01T00:00:00">
+      <Latitude unit="DEGREES">-38.3762</Latitude>
+      <Longitude unit="DEGREES">176.3696</Longitude>
+      <Elevation unit="METERS">325.0</Elevation>
+      <Site>
+        <Name>Banni</Name>
+      </Site>
+      <CreationDate>2018-09-13T02:07:47.562800</CreationDate>
+    </Station>
+    <Station code="HD20" endDate="1970-01-24T06:38:11" startDate="2010-11-01T00:00:00">
+      <Latitude unit="DEGREES">-38.5842</Latitude>
+      <Longitude unit="DEGREES">176.1467</Longitude>
+      <Elevation unit="METERS">430.0</Elevation>
+      <Site>
+        <Name>Banni</Name>
+      </Site>
+      <CreationDate>2018-09-13T02:07:47.562852</CreationDate>
+    </Station>
+    <Station code="HD21" endDate="1970-01-24T06:38:11" startDate="2010-11-01T00:00:00">
+      <Latitude unit="DEGREES">-38.5052</Latitude>
+      <Longitude unit="DEGREES">176.0877</Longitude>
+      <Elevation unit="METERS">515.0</Elevation>
+      <Site>
+        <Name>Banni</Name>
+      </Site>
+      <CreationDate>2018-09-13T02:07:47.562903</CreationDate>
+    </Station>
+    <Station code="HD22" endDate="1970-01-24T06:36:41" startDate="2010-11-01T00:00:00">
+      <Latitude unit="DEGREES">-38.5666</Latitude>
+      <Longitude unit="DEGREES">176.1907</Longitude>
+      <Elevation unit="METERS">385.0</Elevation>
+      <Site>
+        <Name>Banni</Name>
+      </Site>
+      <CreationDate>2018-09-13T02:07:47.562967</CreationDate>
+    </Station>
+    <Station code="HD23" endDate="1970-01-24T06:38:11" startDate="2010-11-01T00:00:00">
+      <Latitude unit="DEGREES">-38.6253</Latitude>
+      <Longitude unit="DEGREES">175.9533</Longitude>
+      <Elevation unit="METERS">520.0</Elevation>
+      <Site>
+        <Name>Banni</Name>
+      </Site>
+      <CreationDate>2018-09-13T02:07:47.563028</CreationDate>
+    </Station>
+    <Station code="HD24" endDate="1970-01-24T06:38:11" startDate="2010-11-01T00:00:00">
+      <Latitude unit="DEGREES">-38.5671</Latitude>
+      <Longitude unit="DEGREES">176.0895</Longitude>
+      <Elevation unit="METERS">560.0</Elevation>
+      <Site>
+        <Name>Banni</Name>
+      </Site>
+      <CreationDate>2018-09-13T02:07:47.563081</CreationDate>
+    </Station>
+    <Station code="HD25" endDate="1970-01-24T06:38:11" startDate="2010-11-01T00:00:00">
+      <Latitude unit="DEGREES">-38.5855</Latitude>
+      <Longitude unit="DEGREES">176.2945</Longitude>
+      <Elevation unit="METERS">305.0</Elevation>
+      <Site>
+        <Name>Banni</Name>
+      </Site>
+      <CreationDate>2018-09-13T02:07:47.563141</CreationDate>
+    </Station>
+    <Station code="HD26" endDate="1970-01-24T06:38:11" startDate="2010-11-01T00:00:00">
+      <Latitude unit="DEGREES">-38.5696</Latitude>
+      <Longitude unit="DEGREES">175.9547</Longitude>
+      <Elevation unit="METERS">610.0</Elevation>
+      <Site>
+        <Name>Banni</Name>
+      </Site>
+      <CreationDate>2018-09-13T02:07:47.563205</CreationDate>
+    </Station>
+    <Station code="HD27" endDate="1970-01-24T06:38:11" startDate="2010-11-01T00:00:00">
+      <Latitude unit="DEGREES">-38.4324</Latitude>
+      <Longitude unit="DEGREES">176.2374</Longitude>
+      <Elevation unit="METERS">530.0</Elevation>
+      <Site>
+        <Name>Banni</Name>
+      </Site>
+      <CreationDate>2018-09-13T02:07:47.563257</CreationDate>
+    </Station>
+    <Station code="HD28" endDate="1970-01-24T06:38:11" startDate="2010-11-01T00:00:00">
+      <Latitude unit="DEGREES">-38.4424</Latitude>
+      <Longitude unit="DEGREES">176.158</Longitude>
+      <Elevation unit="METERS">380.0</Elevation>
+      <Site>
+        <Name>Banni</Name>
+      </Site>
+      <CreationDate>2018-09-13T02:07:47.563309</CreationDate>
+    </Station>
+    <Station code="HD29" endDate="1970-01-24T06:38:11" startDate="2010-11-01T00:00:00">
+      <Latitude unit="DEGREES">-38.4012</Latitude>
+      <Longitude unit="DEGREES">176.1991</Longitude>
+      <Elevation unit="METERS">460.0</Elevation>
+      <Site>
+        <Name>Banni</Name>
+      </Site>
+      <CreationDate>2018-09-13T02:07:47.563361</CreationDate>
+    </Station>
+    <Station code="HD30" endDate="1970-01-24T06:38:11" startDate="2010-11-01T00:00:00">
+      <Latitude unit="DEGREES">-38.5291</Latitude>
+      <Longitude unit="DEGREES">175.9377</Longitude>
+      <Elevation unit="METERS">480.0</Elevation>
+      <Site>
+        <Name>Banni</Name>
+      </Site>
+      <CreationDate>2018-09-13T02:07:47.563433</CreationDate>
+    </Station>
+    <Station code="HD31" endDate="1970-01-24T06:38:11" startDate="2010-11-01T00:00:00">
+      <Latitude unit="DEGREES">-38.3019</Latitude>
+      <Longitude unit="DEGREES">176.3053</Longitude>
+      <Elevation unit="METERS">525.0</Elevation>
+      <Site>
+        <Name>Banni</Name>
+      </Site>
+      <CreationDate>2018-09-13T02:07:47.563495</CreationDate>
+    </Station>
+    <Station code="HD32" endDate="1970-01-24T06:38:11" startDate="2010-12-01T00:00:00">
+      <Latitude unit="DEGREES">-38.7035</Latitude>
+      <Longitude unit="DEGREES">176.1434</Longitude>
+      <Elevation unit="METERS">558.0</Elevation>
+      <Site>
+        <Name>Banni</Name>
+      </Site>
+      <CreationDate>2018-09-13T02:07:47.563547</CreationDate>
+    </Station>
+    <Station code="HD33" endDate="1970-01-24T06:38:11" startDate="2011-01-01T00:00:00">
+      <Latitude unit="DEGREES">-38.5031</Latitude>
+      <Longitude unit="DEGREES">176.2634</Longitude>
+      <Elevation unit="METERS">305.0</Elevation>
+      <Site>
+        <Name>Banni</Name>
+      </Site>
+      <CreationDate>2018-09-13T02:07:47.563599</CreationDate>
+    </Station>
+    <Station code="HD34" endDate="1970-01-24T06:38:11" startDate="2011-02-01T00:00:00">
+      <Latitude unit="DEGREES">-38.4764</Latitude>
+      <Longitude unit="DEGREES">176.0497</Longitude>
+      <Elevation unit="METERS">515.0</Elevation>
+      <Site>
+        <Name>Banni</Name>
+      </Site>
+      <CreationDate>2018-09-13T02:07:47.563652</CreationDate>
+    </Station>
+    <Station code="HD35" endDate="1970-01-24T06:37:40" startDate="2011-02-01T00:00:00">
+      <Latitude unit="DEGREES">-38.5331</Latitude>
+      <Longitude unit="DEGREES">176.0008</Longitude>
+      <Elevation unit="METERS">500.0</Elevation>
+      <Site>
+        <Name>Banni</Name>
+      </Site>
+      <CreationDate>2018-09-13T02:07:47.563704</CreationDate>
+    </Station>
+    <Station code="HD36" endDate="1970-01-24T06:38:11" startDate="2011-02-01T00:00:00">
+      <Latitude unit="DEGREES">-38.4912</Latitude>
+      <Longitude unit="DEGREES">176.1677</Longitude>
+      <Elevation unit="METERS">340.0</Elevation>
+      <Site>
+        <Name>Banni</Name>
+      </Site>
+      <CreationDate>2018-09-13T02:07:47.563757</CreationDate>
+    </Station>
+    <Station code="HD37" endDate="1970-01-24T06:38:11" startDate="2011-02-01T00:00:00">
+      <Latitude unit="DEGREES">-38.4177</Latitude>
+      <Longitude unit="DEGREES">176.1366</Longitude>
+      <Elevation unit="METERS">355.0</Elevation>
+      <Site>
+        <Name>Banni</Name>
+      </Site>
+      <CreationDate>2018-09-13T02:07:47.563813</CreationDate>
+    </Station>
+    <Station code="HD38" endDate="1970-01-24T06:38:11" startDate="2011-02-01T00:00:00">
+      <Latitude unit="DEGREES">-38.519</Latitude>
+      <Longitude unit="DEGREES">176.2041</Longitude>
+      <Elevation unit="METERS">325.0</Elevation>
+      <Site>
+        <Name>Banni</Name>
+      </Site>
+      <CreationDate>2018-09-13T02:07:47.563879</CreationDate>
+    </Station>
+    <Station code="HD39" endDate="1970-01-24T06:38:11" startDate="2011-02-01T00:00:00">
+      <Latitude unit="DEGREES">-38.4868</Latitude>
+      <Longitude unit="DEGREES">176.3221</Longitude>
+      <Elevation unit="METERS">295.0</Elevation>
+      <Site>
+        <Name>Banni</Name>
+      </Site>
+      <CreationDate>2018-09-13T02:07:47.563940</CreationDate>
+    </Station>
+    <Station code="HD50" endDate="2018-09-13T02:07:47.563963" startDate="2015-11-01T00:00:00">
+      <Latitude unit="DEGREES">-38.3396</Latitude>
+      <Longitude unit="DEGREES">176.2687</Longitude>
+      <Elevation unit="METERS">361.0</Elevation>
+      <Site>
+        <Name>Banni</Name>
+      </Site>
+      <CreationDate>2018-09-13T02:07:47.563998</CreationDate>
+    </Station>
+    <Station code="HD51" endDate="2018-09-13T02:07:47.564025" startDate="2015-11-01T00:00:00">
+      <Latitude unit="DEGREES">-38.2435</Latitude>
+      <Longitude unit="DEGREES">176.2483</Longitude>
+      <Elevation unit="METERS">380.0</Elevation>
+      <Site>
+        <Name>Banni</Name>
+      </Site>
+      <CreationDate>2018-09-13T02:07:47.564052</CreationDate>
+    </Station>
+    <Station code="HD53" endDate="2018-09-13T02:07:47.564076" startDate="2015-12-01T00:00:00">
+      <Latitude unit="DEGREES">-38.2659</Latitude>
+      <Longitude unit="DEGREES">176.4812</Longitude>
+      <Elevation unit="METERS">362.0</Elevation>
+      <Site>
+        <Name>Banni</Name>
+      </Site>
+      <CreationDate>2018-09-13T02:07:47.564103</CreationDate>
+    </Station>
+    <Station code="HD54" endDate="2018-09-13T02:07:47.564126" startDate="2015-12-01T00:00:00">
+      <Latitude unit="DEGREES">-38.2815</Latitude>
+      <Longitude unit="DEGREES">176.3781</Longitude>
+      <Elevation unit="METERS">480.0</Elevation>
+      <Site>
+        <Name>Banni</Name>
+      </Site>
+      <CreationDate>2018-09-13T02:07:47.564154</CreationDate>
+    </Station>
+    <Station code="HD55" endDate="2018-09-13T02:07:47.564178" startDate="2015-12-01T00:00:00">
+      <Latitude unit="DEGREES">-38.2815</Latitude>
+      <Longitude unit="DEGREES">176.5605</Longitude>
+      <Elevation unit="METERS">469.0</Elevation>
+      <Site>
+        <Name>Banni</Name>
+      </Site>
+      <CreationDate>2018-09-13T02:07:47.564206</CreationDate>
+    </Station>
+    <Station code="HD56" endDate="2018-09-13T02:07:47.564229" startDate="2015-12-01T00:00:00">
+      <Latitude unit="DEGREES">-38.3184</Latitude>
+      <Longitude unit="DEGREES">176.5538</Longitude>
+      <Elevation unit="METERS">439.0</Elevation>
+      <Site>
+        <Name>Banni</Name>
+      </Site>
+      <CreationDate>2018-09-13T02:07:47.564257</CreationDate>
+    </Station>
+    <Station code="HD57" endDate="2018-09-13T02:07:47.564286" startDate="2015-12-01T00:00:00">
+      <Latitude unit="DEGREES">-38.1872</Latitude>
+      <Longitude unit="DEGREES">176.3714</Longitude>
+      <Elevation unit="METERS">520.0</Elevation>
+      <Site>
+        <Name>Banni</Name>
+      </Site>
+      <CreationDate>2018-09-13T02:07:47.564316</CreationDate>
+    </Station>
+    <Station code="HD58" endDate="2018-09-13T02:07:47.564346" startDate="2015-12-01T00:00:00">
+      <Latitude unit="DEGREES">-38.3019</Latitude>
+      <Longitude unit="DEGREES">176.3053</Longitude>
+      <Elevation unit="METERS">492.0</Elevation>
+      <Site>
+        <Name>Banni</Name>
+      </Site>
+      <CreationDate>2018-09-13T02:07:47.564378</CreationDate>
+    </Station>
+    <Station code="HD59" endDate="2018-09-13T02:07:47.564401" startDate="2015-12-01T00:00:00">
+      <Latitude unit="DEGREES">-38.2815</Latitude>
+      <Longitude unit="DEGREES">176.3781</Longitude>
+      <Elevation unit="METERS">440.0</Elevation>
+      <Site>
+        <Name>Banni</Name>
+      </Site>
+      <CreationDate>2018-09-13T02:07:47.564430</CreationDate>
+    </Station>
+    <Station code="HD60" endDate="2018-09-13T02:07:47.565195" startDate="2016-03-01T00:00:00">
+      <Latitude unit="DEGREES">-38.2863</Latitude>
+      <Longitude unit="DEGREES">176.1992</Longitude>
+      <Elevation unit="METERS">389.0</Elevation>
+      <Site>
+        <Name>Banni</Name>
+      </Site>
+      <CreationDate>2018-09-13T02:07:47.565253</CreationDate>
+    </Station>
+  </Network>
+  <Network code="XX">
+    <Description>FATHOM Network</Description>
+    <Station code="RD01" startDate="2017-07-18T00:00:00">
+      <Latitude unit="DEGREES">-40.5547</Latitude>
+      <Longitude unit="DEGREES">175.971</Longitude>
+      <Elevation unit="METERS">175.971</Elevation>
+      <Site>
+        <Name>PORI (Pori Rd)</Name>
+      </Site>
+      <CreationDate>2018-09-13T02:07:48.095373</CreationDate>
+    </Station>
+    <Station code="RD02" startDate="2017-07-18T00:00:00">
+      <Latitude unit="DEGREES">-40.459743</Latitude>
+      <Longitude unit="DEGREES">176.475059</Longitude>
+      <Elevation unit="METERS">176.475059</Elevation>
+      <Site>
+        <Name>ANGR (Angora Rd)</Name>
+      </Site>
+      <CreationDate>2018-09-13T02:07:48.095404</CreationDate>
+    </Station>
+    <Station code="RD03" startDate="2017-07-19T00:00:00">
+      <Latitude unit="DEGREES">-40.265627</Latitude>
+      <Longitude unit="DEGREES">176.38285</Longitude>
+      <Elevation unit="METERS">176.38285</Elevation>
+      <Site>
+        <Name>TURI (Te Uri Rd)</Name>
+      </Site>
+      <CreationDate>2018-09-13T02:07:48.095422</CreationDate>
+    </Station>
+    <Station code="RD04" startDate="2017-07-19T00:00:00">
+      <Latitude unit="DEGREES">-40.266732</Latitude>
+      <Longitude unit="DEGREES">176.634472</Longitude>
+      <Elevation unit="METERS">176.634472</Elevation>
+      <Site>
+        <Name>PORA (Porangahau)</Name>
+      </Site>
+      <CreationDate>2018-09-13T02:07:48.095440</CreationDate>
+    </Station>
+    <Station code="RD05" startDate="2017-07-19T00:00:00">
+      <Latitude unit="DEGREES">-40.468979</Latitude>
+      <Longitude unit="DEGREES">176.223187</Longitude>
+      <Elevation unit="METERS">176.223187</Elevation>
+      <Site>
+        <Name>MNHR (Manuhara Rd)</Name>
+      </Site>
+      <CreationDate>2018-09-13T02:07:48.095457</CreationDate>
+    </Station>
+    <Station code="RD06" startDate="2017-07-23T00:00:00">
+      <Latitude unit="DEGREES">-40.297179</Latitude>
+      <Longitude unit="DEGREES">176.166373</Longitude>
+      <Elevation unit="METERS">176.166373</Elevation>
+      <Site>
+        <Name>DNVK (Dannevirke)</Name>
+      </Site>
+      <CreationDate>2018-09-13T02:07:48.095473</CreationDate>
+    </Station>
+    <Station code="RD07" startDate="2017-07-23T00:00:00">
+      <Latitude unit="DEGREES">-39.901712</Latitude>
+      <Longitude unit="DEGREES">176.537086</Longitude>
+      <Elevation unit="METERS">176.537086</Elevation>
+      <Site>
+        <Name>WPAW (Waipawa)</Name>
+      </Site>
+      <CreationDate>2018-09-13T02:07:48.095490</CreationDate>
+    </Station>
+    <Station code="RD08" startDate="2017-07-23T00:00:00">
+      <Latitude unit="DEGREES">-39.746061</Latitude>
+      <Longitude unit="DEGREES">176.620558</Longitude>
+      <Elevation unit="METERS">176.620558</Elevation>
+      <Site>
+        <Name>RAKW (Raukawa Rd)</Name>
+      </Site>
+      <CreationDate>2018-09-13T02:07:48.095505</CreationDate>
+    </Station>
+    <Station code="RD09" startDate="2017-07-24T00:00:00">
+      <Latitude unit="DEGREES">-39.444767</Latitude>
+      <Longitude unit="DEGREES">176.697439</Longitude>
+      <Elevation unit="METERS">176.697439</Elevation>
+      <Site>
+        <Name>MCNL (McNeill Hill)</Name>
+      </Site>
+      <CreationDate>2018-09-13T02:07:48.095522</CreationDate>
+    </Station>
+    <Station code="RD10" endDate="2018-03-13T00:00:00" startDate="2017-07-24T00:00:00">
+      <Latitude unit="DEGREES">-39.646616</Latitude>
+      <Longitude unit="DEGREES">177.076505</Longitude>
+      <Elevation unit="METERS">177.076505</Elevation>
+      <Site>
+        <Name>CPKN (Cape Kidnappers)</Name>
+      </Site>
+      <CreationDate>2018-09-13T02:07:48.095537</CreationDate>
+    </Station>
+    <Station code="RD11" endDate="2018-03-13T00:00:00" startDate="2017-07-24T00:00:00">
+      <Latitude unit="DEGREES">-39.787316</Latitude>
+      <Longitude unit="DEGREES">176.862452</Longitude>
+      <Elevation unit="METERS">176.862452</Elevation>
+      <Site>
+        <Name>KAHU (Kahuranaki Loc1)</Name>
+      </Site>
+      <CreationDate>2018-09-13T02:07:48.095554</CreationDate>
+    </Station>
+    <Station code="RD12" startDate="2017-07-25T00:00:00">
+      <Latitude unit="DEGREES">-39.45214</Latitude>
+      <Longitude unit="DEGREES">176.4228</Longitude>
+      <Elevation unit="METERS">176.4228</Elevation>
+      <Site>
+        <Name>KWKA (Kaweka Forest)</Name>
+      </Site>
+      <CreationDate>2018-09-13T02:07:48.095569</CreationDate>
+    </Station>
+    <Station code="RD13" startDate="2017-07-25T00:00:00">
+      <Latitude unit="DEGREES">-39.643259</Latitude>
+      <Longitude unit="DEGREES">176.376887</Longitude>
+      <Elevation unit="METERS">176.376887</Elevation>
+      <Site>
+        <Name>KERE (Kereru)</Name>
+      </Site>
+      <CreationDate>2018-09-13T02:07:48.095585</CreationDate>
+    </Station>
+    <Station code="RD14" startDate="2017-07-25T00:00:00">
+      <Latitude unit="DEGREES">-39.912996</Latitude>
+      <Longitude unit="DEGREES">176.200187</Longitude>
+      <Elevation unit="METERS">176.200187</Elevation>
+      <Site>
+        <Name>PNUI (Pukenui)</Name>
+      </Site>
+      <CreationDate>2018-09-13T02:07:48.095600</CreationDate>
+    </Station>
+    <Station code="RD15" startDate="2017-07-26T00:00:00">
+      <Latitude unit="DEGREES">-40.062711</Latitude>
+      <Longitude unit="DEGREES">176.439131</Longitude>
+      <Elevation unit="METERS">176.439131</Elevation>
+      <Site>
+        <Name>WPUK (Waipukarau)</Name>
+      </Site>
+      <CreationDate>2018-09-13T02:07:48.095616</CreationDate>
+    </Station>
+    <Station code="RD16" startDate="2017-07-26T00:00:00">
+      <Latitude unit="DEGREES">-40.105341</Latitude>
+      <Longitude unit="DEGREES">176.680445</Longitude>
+      <Elevation unit="METERS">176.680445</Elevation>
+      <Site>
+        <Name>OROA (Omakere)</Name>
+      </Site>
+      <CreationDate>2018-09-13T02:07:48.095631</CreationDate>
+    </Station>
+    <Station code="RD17" startDate="2017-09-25T00:00:00">
+      <Latitude unit="DEGREES">-39.90869</Latitude>
+      <Longitude unit="DEGREES">176.95619</Longitude>
+      <Elevation unit="METERS">176.95619</Elevation>
+      <Site>
+        <Name>TEAC (Te Apiti Rd Loc1)</Name>
+      </Site>
+      <CreationDate>2018-09-13T02:07:48.095646</CreationDate>
+    </Station>
+    <Station code="RD18" startDate="2017-09-25T00:00:00">
+      <Latitude unit="DEGREES">-39.929775</Latitude>
+      <Longitude unit="DEGREES">176.703977</Longitude>
+      <Elevation unit="METERS">176.703977</Elevation>
+      <Site>
+        <Name>RANC (River Rd)</Name>
+      </Site>
+      <CreationDate>2018-09-13T02:07:48.095663</CreationDate>
+    </Station>
+    <Station code="RD19" startDate="2018-03-14T00:00:00">
+      <Latitude unit="DEGREES">-39.579613</Latitude>
+      <Longitude unit="DEGREES">176.644902</Longitude>
+      <Elevation unit="METERS">176.644902</Elevation>
+      <Site>
+        <Name>MATT (Matapiro Rd)</Name>
+      </Site>
+      <CreationDate>2018-09-13T02:07:48.095678</CreationDate>
+    </Station>
+    <Station code="RD20" startDate="2018-03-13T00:00:00">
+      <Latitude unit="DEGREES">-39.793858</Latitude>
+      <Longitude unit="DEGREES">176.875881</Longitude>
+      <Elevation unit="METERS">176.875881</Elevation>
+      <Site>
+        <Name>KAHU2 (Kahuranaki Loc2)</Name>
+      </Site>
+      <CreationDate>2018-09-13T02:07:48.095694</CreationDate>
+    </Station>
+    <Station code="RD21" startDate="2018-03-14T00:00:00">
+      <Latitude unit="DEGREES">-39.913152</Latitude>
+      <Longitude unit="DEGREES">176.946881</Longitude>
+      <Elevation unit="METERS">176.946881</Elevation>
+      <Site>
+        <Name>TEAC2 (Te Apiti Rd Loc2)</Name>
+      </Site>
+      <CreationDate>2018-09-13T02:07:48.095708</CreationDate>
+    </Station>
+    <Station code="RD22" startDate="2018-07-20T00:00:00">
+      <Latitude unit="DEGREES">-40.910278</Latitude>
+      <Longitude unit="DEGREES">176.199167</Longitude>
+      <Elevation unit="METERS">176.199167</Elevation>
+      <Site>
+        <Name>CAPT (Castlepoint)</Name>
+      </Site>
+      <CreationDate>2018-09-13T02:07:48.095725</CreationDate>
+    </Station>
+  </Network>
+</FDSNStationXML>

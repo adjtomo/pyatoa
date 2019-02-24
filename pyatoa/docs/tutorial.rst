@@ -194,3 +194,5 @@ so we can continue along the workflow.
         Paths to waveforms:    []
         Paths to synthetics:   ['/Users/chowbr/Documents/subduction/seismic']
         Paths to responses:    []
+
+Now that we've specified a path to synthetics, we can query for data again

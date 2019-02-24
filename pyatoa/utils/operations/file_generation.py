@@ -3,6 +3,7 @@ For generation of input files for Specfem
 """
 import os
 
+
 def create_stations_adjoint(ds, model_number, filepath="./"):
     """
     generate an adjoint stations file for specfem input by reading in the master

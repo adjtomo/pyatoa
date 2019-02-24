@@ -203,7 +203,7 @@ class Manager:
         workflow from the start without losing your event or gatherer.
         """
         self.crate = Crate()
-        self.launch()
+        self.launch(reset=True)
 
     @property
     def event(self):
@@ -243,19 +243,20 @@ class Manager:
     def adj_srcs(self):
         return self.crate.adj_srcs
 
-    def launch(self):
+    def launch(self, reset=False):
         """
         Initiate the prerequisite parts of the Manager class. Populate with
         an obspy event object
         """
-        self._launch_gatherer()
+        self._launch_gatherer(reset)
         if self.gatherer.event is not None:
             self.crate.event = self.gatherer.event
         else:
             logger.info("gathering event information")
-            self.crate.event = self.gatherer.gather_event()
+            if self.config.event_id is not None:
+                self.crate.event = self.gatherer.gather_event()
 
-    def gather_data(self, station_code):
+    def gather_data(self, station_code, overwrite=False):
         """
         Launch a gatherer object and gather event, station and waveform
         information given a station code. Fills the crate based on information
@@ -269,21 +270,71 @@ class Manager:
             L=location, C=channel). Allows for wildcard naming. By default
             the pyatoa workflow wants three orthogonal components in the N/E/Z
             coordinate system. Example station code: NZ.OPRZ.10.HH?
+        :type overwrite: bool
+        :param overwrite: user choice to overwrite existing objects in a crate.
+            Useful e.g. when you only gather obs and failed on gathering syn,
+            change some parameters and want to gather again without wasting
+            time to gather stuff you already have.
         """
-        try:
-            self.crate.station_code = station_code
-            logger.info("GATHERING {station} for {event}".format(
-                station=station_code, event=self.config.event_id)
-            )
-            logger.info("gathering station information")
-            self.crate.inv = self.gatherer.gather_station(station_code)
-            logger.info("gathering observation waveforms")
-            self.crate.st_obs = self.gatherer.gather_observed(station_code)
-            logger.info("gathering synthetic waveforms")
-            self.crate.st_syn = self.gatherer.gather_synthetic(station_code)
-        except Exception as e:
-            print(e)
-            return
+        # if overwriting, don't check the crate before gathering new data
+        if overwrite:
+            print("overwrite proection off")
+            try:
+                self.crate.station_code = station_code
+                logger.info("GATHERING {station} for {event}".format(
+                    station=station_code, event=self.config.event_id)
+                )
+                logger.info("gathering station information")
+                self.crate.inv = self.gatherer.gather_station(station_code)
+                logger.info("gathering observation waveforms")
+                self.crate.st_obs = self.gatherer.gather_observed(station_code)
+                logger.info("gathering synthetic waveforms")
+                self.crate.st_syn = self.gatherer.gather_synthetic(station_code)
+            except Exception as e:
+                print(e)
+                return
+        # if not overwriting, don't gather new data if crate already has data
+        else:
+            print("overwrite protection on")
+            try:
+                if not self.crate.station_code:
+                    self.crate.station_code = station_code
+                    logger.info("GATHERING {station} for {event}".format(
+                        station=station_code, event=self.config.event_id)
+                    )
+                else:
+                    logger.info("Crate already contains: {station}".format(
+                        station=self.crate.station_code)
+                    )
+                if not self.crate.inv:
+                    logger.info("gathering station information")
+                    self.crate.inv = self.gatherer.gather_station(station_code)
+                else:
+                    logger.info("Crate already contains: {net}.{sta}".format(
+                        net=self.crate.inv[0].code,
+                        sta=self.crate.inv[0][0].code)
+                    )
+                if not self.crate.st_obs:
+                    logger.info("gathering observation waveforms")
+                    self.crate.st_obs = self.gatherer.gather_observed(
+                        station_code)
+                else:
+                    logger.info(
+                        "Crate already contains: {obs} obs. waveforms".format(
+                            obs=len(self.crate.st_obs))
+                    )
+                if not self.crate.st_syn:
+                    logger.info("gathering synthetic waveforms")
+                    self.crate.st_syn = self.gatherer.gather_synthetic(
+                        station_code)
+                else:
+                    logger.info(
+                        "Crate already contains: {syn} syn. waveforms".format(
+                            syn=len(self.crate.st_syn))
+                    )
+            except Exception as e:
+                print(e)
+                return
 
     def preprocess(self):
         """
@@ -524,7 +575,7 @@ class Manager:
         :param show: show the plot once generated, defaults to False
         :type save: str
         :param save: absolute filepath and filename if figure should be saved
-        :type show_faults: bool
+        :type show_faults: boolp
         :param show_faults: plot active faults and hikurangi trench from
             internally saved coordinate files. takes extra time over simple plot
         :type figsize: tuple of floats
