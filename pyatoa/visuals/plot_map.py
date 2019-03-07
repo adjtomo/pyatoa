@@ -258,7 +258,7 @@ def annotate_srcrcv_information(m, event, inv, config):
     :param config: configuration object to steal information from
     """
     event.origins[0].time.precision = 0
-    gcdist, baz = gcd_and_baz(event, inv)
+    gcdist, baz = gcd_and_baz(event, inv[0][0])
 
     plt.annotate(s=("{id} / {net}.{sta}\n"
                     "{date}\n"
@@ -395,18 +395,16 @@ def generate_map(config, event_or_cat, inv=None,
 
     # TO FIX: I messed up all the stuff around here trying to plot a catalog
     # need to fix it up and make sure this mapper can handle both cleanly
-    # plot_stations(m, inv=background_inv, event=None,
-    #               annotate_names=annotate_names,
-    #               color_by_network=color_by_network
-    #               )
-    # event_beachball(m, event_or_cat)
-    plot_catalog(m)
-
-    legend()
+    plot_stations(m, inv=background_inv, event=None,
+                  annotate_names=annotate_names,
+                  color_by_network=color_by_network
+                  )
+    event_beachball(m, event_or_cat)
+    # legend()
 
     if inv:
         connect_source_receiver(m, event_or_cat, inv[0][0])
-        annotate_srcrcv_information(m, event_or_cat, inv[0][0], config)
+        annotate_srcrcv_information(m, event_or_cat, inv, config)
     if save:
         plt.savefig(save, figsize=figsize, dpi=dpi)
     if show:

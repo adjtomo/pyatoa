@@ -64,7 +64,7 @@ for net in master_inventory:
                     station_code="{net}.{sta}.{loc}.{cha}".format(net=net.code,
                                                                   sta=sta.code,
                                                                   loc="*",
-                                                                  cha="HHp  ?")
+                                                                  cha="HH?")
                 )
                 proc.preprocess()
                 proc.run_pyflex()

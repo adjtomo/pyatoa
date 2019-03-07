@@ -252,7 +252,7 @@ class Manager:
         if self.gatherer.event is not None:
             self.crate.event = self.gatherer.event
         else:
-            logger.info("gathering event information")
+            # logger.info("gathering event information")
             if self.config.event_id is not None:
                 self.crate.event = self.gatherer.gather_event()
 

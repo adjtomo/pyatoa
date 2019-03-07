@@ -116,21 +116,20 @@ def preproc(st, inv=None, **kwargs):
     elif not inv:
         # TO DO: dynamically check what the raw specfem output units are
         # for now we assume they are velocity
-        st.integrate(method="cumtrapz")
-        if output != self.raw_syn_comp:
-            diff_dict = {"DISP":1, "VEL":2, "ACC":3}
-            desired = diff_dict[output]
-            given = diff_dict[self.raw_syn_comp]
-            separation = desired - given
-            if separation == 1:
-                st.integrate(method="cumtrapz")
-            elif separation == 2:
-                st.integrate(method="cumtrapz").integrate(method="cumtrapz")
-            elif separation == -1:
-                st.differentiate(method="gradient")
-            elif separation == -2:
-                st.differentiate(method="gradient").differentiate(
-                    method="gradient")
+        # if output != self.raw_syn_comp:
+        #     diff_dict = {"DISP": 1, "VEL": 2, "ACC": 3}
+        #     desired = diff_dict[output]
+        #     given = diff_dict[self.raw_syn_comp]
+        #     separation = desired - given
+        #     if separation == 1:
+        #         st.integrate(method="cumtrapz")
+        #     elif separation == 2:
+        #         st.integrate(method="cumtrapz").integrate(method="cumtrapz")
+        #     elif separation == -1:
+        #         st.differentiate(method="gradient")
+        #     elif separation == -2:
+        #         st.differentiate(method="gradient").differentiate(
+        #             method="gradient")
 
         st.taper(max_percentage=0.05)
     if back_azimuth is not None:

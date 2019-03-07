@@ -3,7 +3,7 @@ Functions used in determining source receiver information
 """
 
 
-def gcd_and_baz(event, inv):
+def gcd_and_baz(event, sta):
     """
     Calculate great circle distance and backazimuth values for a given
     station and event configuration
@@ -21,8 +21,8 @@ def gcd_and_baz(event, inv):
     from obspy.geodetics import gps2dist_azimuth
     gcdist, _, baz = gps2dist_azimuth(lat1=event.preferred_origin().latitude,
                                       lon1=event.preferred_origin().longitude,
-                                      lat2=inv[0][0].latitude,
-                                      lon2=inv[0][0].longitude
+                                      lat2=sta.latitude,
+                                      lon2=sta.longitude
                                       )
     return gcdist*1E-3, baz
 
@@ -220,7 +220,7 @@ def generate_focal_mechanism(mtlist, event=None):
         force_resource_id=False, tensor=tensor,
         source_time_function=source_time_function,
         derived_origin_id=id_template.format('origin#ristau'),
-        scalar_moment=seismic_moment_in_Nm, double_couple=mtlist['DC']/100,
+        scalar_moment=seismic_moment_in_nm, double_couple=mtlist['DC']/100,
         variance_reduction=mtlist['VR'], comment=comment
         )
 

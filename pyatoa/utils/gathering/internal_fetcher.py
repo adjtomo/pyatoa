@@ -211,7 +211,6 @@ class Fetcher:
         net, sta, _, cha = station_code.split('.')
         comp = cha[-1]
         specfem_fid_template = '{net}.{sta}.*{cmp}.sem?'
-        import ipdb;ipdb.set_trace()
         for path_ in paths_to_waveforms:
             if not os.path.exists(path_):
                 continue

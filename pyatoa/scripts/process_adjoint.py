@@ -7,9 +7,9 @@ import pyasdf
 import pyatoa
 import logging
 import traceback
-import numpy as np
 from obspy import read_inventory
 
+from pyatoa.utils.operations.pyasdf_editing import clean_ds
 from pyatoa.utils.operations.formatting import write_adj_src_to_ascii
 from pyatoa.utils.operations.file_generation import create_stations_adjoint
 
@@ -19,34 +19,9 @@ logger.setLevel(logging.DEBUG)
 
 # initiate config
 model_number = "m00"
-# 2018p130600
-# ['2017p708412',
-#                  '2017p795065',
-#                  '2018p177486',
-#                  '2017p819775',
-#                  '2017p852531',
-#                  '2017p735876',
-#                  '2017p919876',
-#                  '2013p613824',
-#                  '2018p266243',
-#                  '2016p858260',
-#                  '2015p768477',
-#                  '2016p858951',
-#                  '2017p861155'
-                 # ]:
-for event_id in ['2017p795065',
-                 '2018p177486',
-                 '2017p819775',
-                 '2017p852531',
-                 '2017p735876',
-                 '2017p919876',
-                 '2013p613824',
-                 '2018p266243',
-                 '2016p858260',
-                 '2015p768477',
-                 '2016p858951',
-                 '2017p861155'
-                 ]:
+event_ids = ["2016p355601", "2017p292246"]
+
+for event_id in event_ids:
     if not os.path.exists("./figures/{}".format(event_id)):
         os.makedirs("./figures/{}".format(event_id))
 
@@ -69,6 +44,7 @@ for event_id in ['2017p795065',
 
     # initiate pyasdf dataset where all data will be saved
     ds = pyasdf.ASDFDataSet("./{}.h5".format(config.event_id))
+    clean_ds(ds)
     config.write_to_asdf(ds)
 
     # begin the Pyatoa Workflow
@@ -76,20 +52,15 @@ for event_id in ['2017p795065',
 
     # loop through all stations that were interested in processing
     master_inventory = read_inventory(
-        # "/Users/chowbr/Documents/subduction/data/STATIONXML/"
-        # "MASTER/master_inventory.xml")
-        "/seis/prj/fwi/bchow/data/STATIONXML/"
-        "MASTER/master_inventory.xml"
-        )
+        "/Users/chowbr/Documents/subduction/data/STATIONXML/"
+        "MASTER/master_inventory_slim.xml")
     for net in master_inventory:
         for sta in net:
             if sta.is_active(time=mgmt.event.preferred_origin().time):
                 try:
                     mgmt.gather_data(
-                        station_code="{net}.{sta}.{loc}.{cha}".format(net=net.code,
-                                                                      sta=sta.code,
-                                                                      loc="*",
-                                                                      cha="HH?")
+                        station_code="{net}.{sta}.{loc}.{cha}".format(
+                            net=net.code, sta=sta.code, loc="*", cha="HH?")
                     )
                     mgmt.preprocess()
                     mgmt.run_pyflex()
@@ -106,7 +77,7 @@ for event_id in ['2017p795065',
                     mgmt.reset()
                     continue
 
-    write_adj_src_to_ascii(ds, model_number=model_number, filepath="./adjsrcs")
-    create_stations_adjoint(ds, model_number=model_number, filepath="./adjsrcs")
+    write_adj_src_to_ascii(ds, model_number=model_number, filepath="./SEM/")
+    create_stations_adjoint(ds, model_number=model_number, filepath="./SEM/")
 
 
