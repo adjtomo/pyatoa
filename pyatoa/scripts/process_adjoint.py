@@ -19,7 +19,7 @@ logger.setLevel(logging.DEBUG)
 
 # initiate config
 model_number = "m00"
-event_ids = ["2016p355601", "2017p292246"]
+event_ids = ["2016p355601", "2017p2922ss46"]
 
 for event_id in event_ids:
     if not os.path.exists("./figures/{}".format(event_id)):
@@ -43,13 +43,13 @@ for event_id in event_ids:
                            )
 
     # initiate pyasdf dataset where all data will be saved
-    ds = pyasdf.ASDFDataSet("./{}.h5".format(config.event_id))
-    clean_ds(ds)
-    config.write_to_asdf(ds)
+    ds = pyasdf.ASDFDataSet(
+        "/Users/chowbr/Documents/subduction/tomo/adjoint_test/hdf5/{}.h5".format(config.event_id))
+    # clean_ds(ds)
+    # config.write_to_asdf(ds)
 
     # begin the Pyatoa Workflow
     mgmt = pyatoa.Manager(config=config, ds=ds)
-
     # loop through all stations that were interested in processing
     master_inventory = read_inventory(
         "/Users/chowbr/Documents/subduction/data/STATIONXML/"
@@ -65,11 +65,18 @@ for event_id in event_ids:
                     mgmt.preprocess()
                     mgmt.run_pyflex()
                     mgmt.run_pyadjoint()
-                    mgmt.plot_wav(save="./figures/{eid}/wav_{sta}".format(
-                        eid=config.event_id, sta=sta.code), show=False
-                    )
+                    from pyatoa.visuals.plot_waveforms import window_maker
+                    window_maker(st_obs=mgmt.crate.st_obs,
+                                 st_syn=mgmt.crate.st_syn,
+                                 time_offset=mgmt.crate.time_offset,
+                                 unit_output=config.unit_output, config=config,
+                                 show=True)
+
+                    # mgmt.plot_wav(save="./figures/{eid}/wav_{sta}".format(
+                    #     eid=config.event_id, sta=sta.code), show=False
+                    # )
                     mgmt.plot_map(save="./figures/{eid}/map_{sta}".format(
-                        eid=config.event_id, sta=sta.code), show=False
+                        eid=config.event_id, sta=sta.code), show=True
                     )
                     mgmt.reset()
                 except Exception as e:

@@ -358,7 +358,7 @@ class Manager:
                                     resample=sampling_rate,
                                     pad_length_in_seconds=20, back_azimuth=baz,
                                     output=self.config.unit_output,
-                                    filterbounds=[self.config.min_period,
+                                    filter_bounds=[self.config.min_period,
                                                   self.config.max_period],
                                     corners=4
                                     )
@@ -367,7 +367,7 @@ class Manager:
                                     pad_length_in_seconds=20,
                                     output=self.config.unit_output,
                                     back_azimuth=baz, corners=4,
-                                    filterbounds=[self.config.min_period,
+                                    filter_bounds=[self.config.min_period,
                                                   self.config.max_period]
                                     )
         self.crate.st_obs, self.crate.st_syn = trimstreams(

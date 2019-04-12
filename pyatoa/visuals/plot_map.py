@@ -105,6 +105,7 @@ def scale_magnitude(magitude):
     """
     return
 
+
 def plot_hikurangi_trench(m):
     """
     Trace the hikurangi trench from a coordinate file
@@ -338,7 +339,7 @@ def initiate_basemap(map_corners, scalebar=True, **kwargs):
     return m
 
 
-def generate_map(config, event_or_cat, inv=None,
+def generate_map(config, event_or_cat=None, inv=None,
                  map_corners=[-42.5007, -36.9488, 172.9998, 179.5077],
                  **kwargs):
     """
@@ -399,7 +400,8 @@ def generate_map(config, event_or_cat, inv=None,
                   annotate_names=annotate_names,
                   color_by_network=color_by_network
                   )
-    event_beachball(m, event_or_cat)
+    if event_or_cat:
+        event_beachball(m, event_or_cat)
     # legend()
 
     if inv:

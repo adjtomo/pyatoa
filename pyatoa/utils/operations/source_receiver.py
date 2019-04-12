@@ -3,6 +3,47 @@ Functions used in determining source receiver information
 """
 
 
+def sort_by_backazimuth(ds, clockwise=True):
+    """
+    Its illustrative to show misfit information for an event, sorted by
+    backazimuth. Stations with misfit information are generally sorted
+    alphabetically, so this function just calcualtes backazimuth and returns a
+    sorted list of station names. Can go clockwise or counter clockwise.
+    :type ds: pyasdf.ASDFDataSet()
+    :param ds: dataset containing event and station information
+    :type clockwise: bool
+    :param clockwise: False = counter clockwise
+    :rytpe: list
+    :return: list of stations in order from 0deg to 360deg in direction
+    """
+    from obspy.geodetics import gps2dist_azimuth
+
+    def baz(event, sta_stats):
+        """
+        same as gcd_and_baz below, but avoid repeat import and only returns baz
+        """
+        _, _, baz = gps2dist_azimuth(
+            lat1=event.preferred_origin().latitude,
+            lon1=event.preferred_origin().longitude,
+            lat2=sta_stats.latitude,
+            lon2=sta_stats.longitude
+            )
+        return baz
+
+    station_names, list_of_baz = [], []
+    event = ds.events[0]
+    for sta_name in ds.waveforms.list():
+        sta = ds.waveforms[sta_name].StationXML[0][0]
+        list_of_baz.append(baz(event, sta))
+        station_names.append(sta_name)
+    list_of_baz, station_names = zip(*sorted(zip(list_of_baz, station_names)))
+
+    if not clockwise:
+        station_names.reverse()
+
+    return station_names
+
+
 def lonlat_utm(lon_or_x, lat_or_y, utm_zone=60, inverse=False):
     """convert latitude and longitude coordinates to UTM projection
     from mesh_gen_helper.py (personal code)
@@ -30,7 +71,7 @@ def lonlat_utm(lon_or_x, lat_or_y, utm_zone=60, inverse=False):
 
 
 def generate_srcrcv_vtk_file(h5_fid, fid_out, model="m00", utm_zone=60,
-                             event_fid=None):
+                             event_fid_out=None):
     """
     It's useful to visualize source receiver locations in Paraview, alongside
     sensitivity kernels. VTK files are produced by Specfem, however they are for
@@ -60,21 +101,22 @@ def generate_srcrcv_vtk_file(h5_fid, fid_out, model="m00", utm_zone=60,
     # pyasdf auxiliary_data. make sure no repeat stations
     ds = pyasdf.ASDFDataSet(h5_fid)
     sta_x, sta_y, sta_elv, sta_ids = [], [], [], []
-    for adjsrc in ds.auxiliary_data.AdjointSources[model].list():
-        sta = ds.auxiliary_data.AdjointSources[model][adjsrc]
-        station_id = sta.parameters["station_id"]
-        if station_id in sta_ids:
-            continue
-        latitude = sta.parameters["latitude"]
-        longitude = sta.parameters["longitude"]
-        elevation_in_m = sta.parameters["elevation_in_m"]
+    if bool(ds.auxiliary_data):
+        for adjsrc in ds.auxiliary_data.AdjointSources[model].list():
+            sta = ds.auxiliary_data.AdjointSources[model][adjsrc]
+            station_id = sta.parameters["station_id"]
+            if station_id in sta_ids:
+                continue
+            latitude = sta.parameters["latitude"]
+            longitude = sta.parameters["longitude"]
+            elevation_in_m = sta.parameters["elevation_in_m"]
 
-        x, y = lonlat_utm(lon_or_x=longitude, lat_or_y=latitude,
-                          utm_zone=utm_zone, inverse=False)
-        sta_x.append(x)
-        sta_y.append(y)
-        sta_elv.append(elevation_in_m)
-        sta_ids.append(station_id)
+            x, y = lonlat_utm(lon_or_x=longitude, lat_or_y=latitude,
+                              utm_zone=utm_zone, inverse=False)
+            sta_x.append(x)
+            sta_y.append(y)
+            sta_elv.append(elevation_in_m)
+            sta_ids.append(station_id)
 
     # get event location information in UTM_60. set depth at 100 for epicenter
     ev_x, ev_y = lonlat_utm(lon_or_x=ds.events[0].preferred_origin().longitude,
@@ -99,8 +141,8 @@ def generate_srcrcv_vtk_file(h5_fid, fid_out, model="m00", utm_zone=60,
             f.write("{X:18.6E}{Y:18.6E}{E:18.6E}\n".format(X=x, Y=y, E=e))
 
     # make a separate vtk file for the source
-    if event_fid:
-        with open(event_fid, "w") as f:
+    if event_fid_out:
+        with open(event_fid_out, "w") as f:
             f.write("# vtk DataFile Version 2.0\n"
                     "Source and Receiver VTK file from Pyatoa\n"
                     "ASCII\n"
