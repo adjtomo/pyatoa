@@ -7,12 +7,12 @@ import os
 import csv
 
 from obspy import UTCDateTime, read_events
-
 from pyatoa import logger
 
 
 def hardcode_paths():
     """
+    TO DO: try to remove this hardcoding, or avoid it if these aren't found
     personal development convenience function to hardcode in a path dictionary
     for fetching internally stored information
 
@@ -28,16 +28,31 @@ def hardcode_paths():
         where = "VIC"
         datafolder = "/Users/chowbr/Documents/subduction/data"
     else:
+        where = "MAUI"
         return
 
-    paths = {"faults": os.path.join(datafolder, "FAULTS", ''),
-             "stations": os.path.join(datafolder, "STATIONXML", "MASTER",
-                                      "master_inventory.xml"),
-             "geonet_mt": os.path.join(datafolder, "GEONET", "data",
-                                       "moment-tensor",
-                                       "GeoNet_CMT_solutions.csv"),
-             "gcmt_mt": os.path.join(datafolder, "GCMT")
-             }
+    if where != "MAUI":
+        paths = {"faults": os.path.join(datafolder, "FAULTS", ''),
+                 "stations": os.path.join(datafolder, "STATIONXML", "MASTER",
+                                          "master_inventory.xml"),
+                 "geonet_mt": os.path.join(datafolder, "GEONET", "data",
+                                           "moment-tensor",
+                                           "GeoNet_CMT_solutions.csv"),
+                 "gcmt_mt": os.path.join(datafolder, "GCMT")
+                 }
+    else:
+        datafolder = ("/scale_wlg_nobackup/filesets/nobackup/nesi00263/bchow/"
+                      "primer/auxiliary_data")
+
+        paths = {"faults": os.path.join(datafolder, "faults", ''),
+                 "stations": os.path.join(datafolder, "stationxml",
+                                          "master_inventory.xml"),
+                 "geonet_mt": os.path.join(datafolder, "geonet", "data",
+                                           "moment-tensor",
+                                           "GeoNet_CMT_solutions.csv"),
+                 "gcmt_mt": os.path.join(datafolder, "gcmt")
+                 }
+
     return paths
 
 

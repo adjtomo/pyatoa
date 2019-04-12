@@ -6,6 +6,7 @@ import os
 
 def create_stations_adjoint(ds, model_number, filepath="./"):
     """
+    TO DO: remove the hardcoded paths for station list
     generate an adjoint stations file for specfem input by reading in the master
     station list and checking which adjoint sources are available in the
     pyasdf dataset
@@ -16,7 +17,9 @@ def create_stations_adjoint(ds, model_number, filepath="./"):
     for f in ['/seis/prj/fwi/bchow/data/STATIONXML/MASTER/'
               'master_station_list.txt',
               '/Users/chowbr/Documents/subduction/data/'
-              'STATIONXML/MASTER/master_station_list.txt'
+              'STATIONXML/MASTER/master_station_list.txt',
+              '/scale_wlg_nobackup/filesets/nobackup/nesi00263/bchow/primer/'
+                            'auxiliary_data/stationxml/master_station_list.txt',
               ]:
         if os.path.exists(f):
             master_station_list = f
