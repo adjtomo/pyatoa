@@ -65,20 +65,21 @@ for event_id in event_ids:
                     mgmt.preprocess()
                     mgmt.run_pyflex()
                     mgmt.run_pyadjoint()
-                    from pyatoa.visuals.plot_waveforms import window_maker
-                    window_maker(st_obs=mgmt.crate.st_obs,
-                                 st_syn=mgmt.crate.st_syn,
-                                 time_offset=mgmt.crate.time_offset,
-                                 unit_output=config.unit_output, config=config,
-                                 show=True)
+                    # from pyatoa.visuals.plot_waveforms import window_maker
+                    # window_maker(st_obs=mgmt.crate.st_obs,
+                    #              st_syn=mgmt.crate.st_syn,
+                    #              time_offset=mgmt.crate.time_offset,
+                    #              unit_output=config.unit_output, config=config,
+                    #              show=True)
 
-                    # mgmt.plot_wav(save="./figures/{eid}/wav_{sta}".format(
-                    #     eid=config.event_id, sta=sta.code), show=False
-                    # )
+                    mgmt.plot_wav(save="./figures/{eid}/wav_{sta}".format(
+                        eid=config.event_id, sta=sta.code), show=True
+                    )
                     mgmt.plot_map(save="./figures/{eid}/map_{sta}".format(
                         eid=config.event_id, sta=sta.code), show=True
                     )
                     mgmt.reset()
+                    import ipdb;ipdb.set_trace()
                 except Exception as e:
                     traceback.print_exc()
                     mgmt.reset()

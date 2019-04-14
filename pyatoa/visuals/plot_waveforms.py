@@ -73,6 +73,7 @@ def window_maker(st_obs, st_syn, config, **kwargs):
     windows = kwargs.get("windows", None)
     staltas = kwargs.get("staltas", None)
     adj_srcs = kwargs.get("adj_srcs", None)
+    length_s = kwargs.get("length_s", None)
     stalta_wl = kwargs.get("stalta_wl", None)
     unit_output = kwargs.get("unit_output", None)
     show = kwargs.get("show", False)
@@ -147,7 +148,11 @@ def window_maker(st_obs, st_syn, config, **kwargs):
         axes[i].legend(lines_for_legend, labels, prop={"size": 9},
                        loc="upper right")
         axes[i].set_ylabel(comp)
-        axes[i].set_xlim([t[0], t[-1]])
+
+        # dynamic seismogram length
+        if not length_s:
+            length_s = t[-1]
+        axes[i].set_xlim([t[0], length_s])
         twaxes[i].set_yticklabels([])
         for AX in [axes[i], twaxes[i]]:
             format_axis(AX)
@@ -163,5 +168,5 @@ def window_maker(st_obs, st_syn, config, **kwargs):
     if show:
         plt.show()
 
-    plt.close()
+    plt.close("all")
     return f

@@ -290,6 +290,7 @@ class Manager:
                 self.crate.st_obs = self.gatherer.gather_observed(station_code)
                 logger.info("gathering synthetic waveforms")
                 self.crate.st_syn = self.gatherer.gather_synthetic(station_code)
+
             except Exception as e:
                 print(e)
                 return
@@ -553,9 +554,14 @@ class Manager:
         figsize = kwargs.get("figsize", (11.69, 8.27))
         dpi = kwargs.get("dpi", 100)
 
+        # calculate a seismogram length
+        from pyatoa.utils.operations.source_receiver import seismogram_length
+        length_s = seismogram_length(
+            distance_km=gcd_and_baz(self.crate.event, self.crate.inv[0][0])[0]
+        )
         window_maker(st_obs=self.crate.st_obs, st_syn=self.crate.st_syn,
                      windows=self.crate.windows, staltas=self.crate.staltas,
-                     adj_srcs=self.crate.adj_srcs,
+                     adj_srcs=self.crate.adj_srcs, length_s=length_s,
                      time_offset=self.crate.time_offset,
                      stalta_wl=self.config.pyflex_config[0],
                      unit_output=self.config.unit_output,
@@ -575,7 +581,7 @@ class Manager:
         :param show: show the plot once generated, defaults to False
         :type save: str
         :param save: absolute filepath and filename if figure should be saved
-        :type show_faults: boolp
+        :type show_faults: bool
         :param show_faults: plot active faults and hikurangi trench from
             internally saved coordinate files. takes extra time over simple plot
         :type figsize: tuple of floats

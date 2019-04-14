@@ -3,6 +3,18 @@ Functions used in determining source receiver information
 """
 
 
+def seismogram_length(distance_km, slow_wavespeed_km_s=2, bin=50):
+    """
+    Dynamically determine the length of the seismogram based on source-receiver
+    distance. Bin into lengths to keep some uniformity in window lengths
+    :return:
+    """
+    from pyatoa.utils.operations.calculations import myround
+
+    rough_length_s = distance_km / slow_wavespeed_km_s
+    return myround(rough_length_s, base=bin, choice='up')
+
+
 def sort_by_backazimuth(ds, clockwise=True):
     """
     Its illustrative to show misfit information for an event, sorted by
