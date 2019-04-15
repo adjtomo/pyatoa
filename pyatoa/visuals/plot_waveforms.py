@@ -76,7 +76,7 @@ def window_maker(st_obs, st_syn, config, **kwargs):
     length_s = kwargs.get("length_s", None)
     stalta_wl = kwargs.get("stalta_wl", None)
     unit_output = kwargs.get("unit_output", None)
-    show = kwargs.get("show", False)
+    show_fig = kwargs.get("show", False)
     save = kwargs.get("save", None)
 
     middle_trace = len(st_obs)//2
@@ -165,8 +165,10 @@ def window_maker(st_obs, st_syn, config, **kwargs):
     axes[-1].set_xlabel("time [s]")
     if save:
         plt.savefig(save, figsize=figsize, dpi=dpi)
-    if show:
-        plt.show()
-
+    if show_fig:
+        if show_fig == "hold":
+            return f
+        else:
+            plt.show()
     plt.close("all")
     return f

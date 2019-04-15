@@ -62,6 +62,8 @@ for event_id in event_ids:
                         station_code="{net}.{sta}.{loc}.{cha}".format(
                             net=net.code, sta=sta.code, loc="*", cha="HH?")
                     )
+                    if not mgmt.st_obs:
+                        continue
                     mgmt.preprocess()
                     mgmt.run_pyflex()
                     mgmt.run_pyadjoint()
@@ -73,13 +75,12 @@ for event_id in event_ids:
                     #              show=True)
 
                     mgmt.plot_wav(save="./figures/{eid}/wav_{sta}".format(
-                        eid=config.event_id, sta=sta.code), show=True
+                        eid=config.event_id, sta=sta.code), show="hold",
                     )
                     mgmt.plot_map(save="./figures/{eid}/map_{sta}".format(
                         eid=config.event_id, sta=sta.code), show=True
                     )
                     mgmt.reset()
-                    import ipdb;ipdb.set_trace()
                 except Exception as e:
                     traceback.print_exc()
                     mgmt.reset()

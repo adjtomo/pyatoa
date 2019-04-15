@@ -124,6 +124,14 @@ class Crate:
         self.pyflex_flag = isinstance(self.windows, dict)
         self.pyadjoint_flag = isinstance(self.adj_srcs, dict)
 
+    def _checkfull(self):
+        """
+        A quick check to make sure the crate is full
+        :return: bool
+        """
+        checkfull = (self.st_obs and self.st_syn and self.inv and self.event)
+        return checkfull
+
 
 class Manager:
     """
@@ -242,6 +250,13 @@ class Manager:
     @property
     def adj_srcs(self):
         return self.crate.adj_srcs
+
+    def check_full(self):
+        """
+        check full from crate
+        :return:
+        """
+        return self.crate.check_full
 
     def launch(self, reset=False):
         """
@@ -557,7 +572,8 @@ class Manager:
         # calculate a seismogram length
         from pyatoa.utils.operations.source_receiver import seismogram_length
         length_s = seismogram_length(
-            distance_km=gcd_and_baz(self.crate.event, self.crate.inv[0][0])[0]
+            distance_km=gcd_and_baz(self.crate.event, self.crate.inv[0][0])[0],
+            slow_wavespeed_km_s=2, binsize=50, minimum_length=100
         )
         window_maker(st_obs=self.crate.st_obs, st_syn=self.crate.st_syn,
                      windows=self.crate.windows, staltas=self.crate.staltas,
