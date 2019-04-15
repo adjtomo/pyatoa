@@ -124,12 +124,13 @@ class Crate:
         self.pyflex_flag = isinstance(self.windows, dict)
         self.pyadjoint_flag = isinstance(self.adj_srcs, dict)
 
-    def _checkfull(self):
+    def check_full(self):
         """
         A quick check to make sure the crate is full
         :return: bool
         """
-        checkfull = (self.st_obs and self.st_syn and self.inv and self.event)
+        checkfull = bool(
+            self.st_obs and self.st_syn and self.inv and self.event)
         return checkfull
 
 
@@ -200,7 +201,7 @@ class Manager:
         :return: if True, launch a new gatherer regardless of whether one exists
         """
         if (self.gatherer is None) or reset:
-            logger.info("initiating gatherer")
+            logger.info("initiating/resetting gatherer")
             gatherer = Gatherer(config=self.config, ds=self.ds)
             self.gatherer = gatherer
 
@@ -256,7 +257,7 @@ class Manager:
         check full from crate
         :return:
         """
-        return self.crate.check_full
+        return self.crate.check_full()
 
     def launch(self, reset=False):
         """
@@ -293,7 +294,7 @@ class Manager:
         """
         # if overwriting, don't check the crate before gathering new data
         if overwrite:
-            print("overwrite proection off")
+            print("OVERWRITE PROTECTION: OFF")
             try:
                 self.crate.station_code = station_code
                 logger.info("GATHERING {station} for {event}".format(
@@ -311,7 +312,7 @@ class Manager:
                 return
         # if not overwriting, don't gather new data if crate already has data
         else:
-            print("overwrite protection on")
+            print("OVERWRITE PROTECTION: ON")
             try:
                 if not self.crate.station_code:
                     self.crate.station_code = station_code

@@ -62,7 +62,7 @@ for event_id in event_ids:
                         station_code="{net}.{sta}.{loc}.{cha}".format(
                             net=net.code, sta=sta.code, loc="*", cha="HH?")
                     )
-                    if not mgmt.st_obs:
+                    if not mgmt.check_full():
                         continue
                     mgmt.preprocess()
                     mgmt.run_pyflex()
