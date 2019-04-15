@@ -21,6 +21,7 @@ def hardcode_paths():
     """
     split = os.getcwd().split('/')
     basecheck = os.path.join(split[0], split[1], split[2])
+    import pdb;pdb.set_trace()
     if basecheck == "seis/prj":
         where = "GNS"
         datafolder = "/seis/prj/fwi/bchow/data"
@@ -29,8 +30,8 @@ def hardcode_paths():
         datafolder = "/Users/chowbr/Documents/subduction/data"
     else:
         where = "MAUI"
-        return
-
+    
+    # Set hardcoded paths based on system
     if where != "MAUI":
         paths = {"faults": os.path.join(datafolder, "FAULTS", ''),
                  "stations": os.path.join(datafolder, "STATIONXML", "MASTER",
@@ -52,7 +53,6 @@ def hardcode_paths():
                                            "GeoNet_CMT_solutions.csv"),
                  "gcmt_mt": os.path.join(datafolder, "gcmt")
                  }
-
     return paths
 
 
