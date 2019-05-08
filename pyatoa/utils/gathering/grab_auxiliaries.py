@@ -21,7 +21,6 @@ def hardcode_paths():
     """
     split = os.getcwd().split('/')
     basecheck = os.path.join(split[0], split[1], split[2])
-    import pdb;pdb.set_trace()
     if basecheck == "seis/prj":
         where = "GNS"
         datafolder = "/seis/prj/fwi/bchow/data"
