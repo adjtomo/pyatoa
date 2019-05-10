@@ -10,6 +10,7 @@ import pyasdf
 import pyatoa
 import logging
 import argparse
+import warnings
 import traceback
 
 from obspy import read_inventory
@@ -48,6 +49,21 @@ def set_logging(set_bool=True):
         logger.setLevel(logging.DEBUG)
 
 
+def make_directories(args):
+    """
+    Make the necessary output directories for Pyatoa
+    """
+    fig_dir = os.path.join(
+                   args.output_dir, "figures", args.model_number, args.event_id)
+    data_dir = os.path.join(args.output_dir, "data")
+    sem_dir = os.path.join(args.working_dir, "traces", "adj")
+    for d in [fig_dir, data_dir, sem_dir]:
+        if not os.path.exists(d):
+            os.makedirs(d)
+    
+    return fig_dir, data_dir, sem_dir
+
+
 def process_data(args):
     """
     Main workflow for Pyatoa to process data
@@ -59,11 +75,9 @@ def process_data(args):
     working_dir = args.working_dir
     event_id = args.event_id
     output_dir = args.output_dir
+    syn_dir = args.path_to_synthetics
 
-    # make a directory to store generated figures, make the output dir if needed
-    fig_dir = os.path.join(output_dir, "figures", model_number, event_id)
-    if not os.path.exists(fig_dir):
-        os.makedirs(fig_dir)
+    fig_dir, data_dir, sem_dir = make_directories(args)    
 
     # set the pyatoa config object for misfit quantification
     config = pyatoa.Config(
@@ -71,23 +85,22 @@ def process_data(args):
         max_period=30, filter_corners=4, rotate_to_rtz=False,
         unit_output="DISP", pyflex_config="UAF",
         adj_src_type="multitaper_misfit",
-        paths_to_synthetics=[os.path.join(os.getcwd(), "test_synthetics")],
+        paths_to_synthetics= [syn_dir],
         # paths_to_waveforms=[os.path.join(basepath, "primer", "seismic"],
         # paths_to_responses=[os.path.join(basepath, "primer", "seed", "RESPONSE"]
         )
 
     # initiate pyasdf dataset where all data will be saved
     ds = pyasdf.ASDFDataSet(os.path.join(
-        working_dir, "data", "{}.h5".format(config.event_id))
+                data_dir, "{}.h5".format(config.event_id))
     )
     clean_ds(ds)
     config.write_to_asdf(ds)
 
     # begin the Pyatoa Workflow, loop through all stations located in the inv.
     mgmt = pyatoa.Manager(config=config, ds=ds)
-    master_inventory = read_inventory(os.path.join(
-        basepath, "primer", "auxiliary_data", "stationxml",
-        "master_inventory_slim.xml")
+    master_inventory = read_inventory(
+                os.path.join(working_dir, "master_inventory_slim.xml")
     )
     for net in master_inventory:
         for sta in net:
@@ -114,14 +127,15 @@ def process_data(args):
                     continue
 
     # save adjoint sources to the seisflows scratch directory
-    sem_path = os.path.join(working_dir, "traces", "adj")
-    write_adj_src_to_ascii(ds, model_number=model_number, filepath=sem_path)
-    create_stations_adjoint(ds, model_number=model_number, filepath=sem_path)
+    write_adj_src_to_ascii(ds, model_number=model_number, filepath=sem_dir)
+    create_stations_adjoint(ds, model_number=model_number, filepath=sem_dir)
 
 
 if __name__ == "__main__":
+    warnings.filterwarnings("ignore")
+    print("Ignoring warnings due to H5PY deprecation warning")
     args = initialize_parser()
-    set_logging(set=args.logging)
+    set_logging(set_bool=args.logging)
     process_data(args)
 
 
