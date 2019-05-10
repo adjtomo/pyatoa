@@ -40,7 +40,7 @@ def set_logging(set_bool=True):
     """
     Turn logging on or off for Pyatoa, lots of information is spit out so for
     fully automatic workflows, best to turn off
-    :param set:
+    :param set_bool:
     :return:
     """
     if set_bool:
