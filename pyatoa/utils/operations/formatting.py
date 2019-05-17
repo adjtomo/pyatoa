@@ -7,6 +7,34 @@ import os
 import numpy as np
 
 
+def channel_codes(dt):
+    """
+    Specfem outputs seismograms with channel band codes set by IRIS. Instrument
+    codes are always X for synthetics, but band code will vary with the sampling
+    rate of the data, return the correct code given a sampling rate.
+    Taken from Appenix B of the Specfem3D cartesian manual (June 15, 2018)
+    :type dt: float
+    :param dt: sampling rate of the data in seconds
+    :rtype: str
+    :return: band code as specified by Iris
+    """
+    if dt >= 1:
+        return "L"  # long period
+    elif 0.1 < dt < 1:
+        return "M"  # mid period
+    elif 0.0125 < dt <= 0.1:
+        return "B"  # broad band
+    elif 0.001 <= dt <= 0.0125:
+        return "H"  # high broad band
+    elif 0.004 <= dt < 0.001:
+        return "C"
+    elif 0.001 <= dt < 0.0002:
+        return "F"
+    else:
+        print("Channel code does not exist for this value of 'dt'")
+        return None
+
+
 def distribute_dataless(path_to_response, inv):
     """
     Response files written through obspy come out as a single object, but pyatoa

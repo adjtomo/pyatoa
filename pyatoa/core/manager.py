@@ -26,7 +26,7 @@ from pyatoa import logger
 from pyatoa.utils.gathering.data_gatherer import Gatherer
 from pyatoa.utils.operations.source_receiver import gcd_and_baz
 from pyatoa.utils.operations.formatting import create_window_dictionary, \
-    write_adj_src_to_asdf
+    write_adj_src_to_asdf, channel_codes
 from pyatoa.utils.processing.preproc import preproc, trimstreams
 from pyatoa.utils.processing.synpreproc import stf_convolve_gaussian
 
@@ -508,7 +508,7 @@ class Manager:
                           UserWarning)
             return
 
-        logger.info("running pyAdjoint for type {} ".format(
+        logger.info("running Pyadjoint for type {} ".format(
             self.config.adj_src_type)
             )
         pa_config = set_pyadjoint_configuration(config=self.config)
@@ -532,9 +532,11 @@ class Manager:
             if self.ds is not None:
                 logger.info("saving adjoint sources {} to PyASDF".format(key))
                 with warnings.catch_warnings():
-                    tag = "{mod}/{net}_{sta}_BX{cmp}".format(
+                    tag = "{mod}/{net}_{sta}_{ban}X{cmp}".format(
                         mod=self.config.model_number, net=adj_src.network,
-                        sta=adj_src.station, cmp=adj_src.component[-1]
+                        sta=adj_src.station,
+                        ban=channel_codes(self.crate.st_syn[0].stats.delta),
+                        cmp=adj_src.component[-1]
                         )
                     warnings.simplefilter("ignore")
                     write_adj_src_to_asdf(adj_src, self.ds, tag,
