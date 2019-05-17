@@ -214,8 +214,13 @@ class Fetcher:
         for path_ in paths_to_waveforms:
             if not os.path.exists(path_):
                 continue
-            full_path = os.path.join(path_, self.config.model_number,
-                                     self.config.event_id, specfem_fid_template)
+            # original full_path was set with a specific path file for devel
+            # but seisflows simply moves synthetics into an already distributed
+            # directory structure, so no need for full_path any more. 
+            # it is left here for potential future use
+            # full_path = os.path.join(path_, self.config.model_number,
+            #                        self.config.event_id, specfem_fid_template)    
+            full_path = os.path.join(path_, specfem_fid_template)
             st = Stream()
             for filepath in glob.glob(
                         full_path.format(net=net, sta=sta, cmp=comp)

@@ -30,8 +30,8 @@ def initialize_parser():
     parser.add_argument("-i", "--event_id")
     parser.add_argument("-m", "--model_number")
     parser.add_argument("-w", "--working_dir")
-    parser.add_argument("-p", "--path_to_synthetics")
     parser.add_argument("-o", "--output_dir")
+    parser.add_argument("-c", "--current_dir")
     parser.add_argument("-l", "--logging", default=True)
 
     return parser.parse_args()
@@ -56,12 +56,14 @@ def make_directories(args):
     fig_dir = os.path.join(
                    args.output_dir, "figures", args.model_number, args.event_id)
     data_dir = os.path.join(args.output_dir, "data")
-    sem_dir = os.path.join(args.working_dir, "traces", "adj")
-    for d in [fig_dir, data_dir, sem_dir]:
+    sem_dir = os.path.join(args.current_dir, "traces", "adj")
+    syn_dir = os.path.join(args.current_dir, "traces", "syn")
+    spcfm_data = os.path.join(args.current_dir, "DATA")
+    for d in [fig_dir, data_dir, sem_dir, syn_dir]:
         if not os.path.exists(d):
             os.makedirs(d)
     
-    return fig_dir, data_dir, sem_dir
+    return fig_dir, data_dir, sem_dir, syn_dir, spcfm_data
 
 
 def process_data(args):
@@ -72,12 +74,9 @@ def process_data(args):
     """
     # initiate config using provided arguments
     model_number = args.model_number
-    working_dir = args.working_dir
     event_id = args.event_id
-    output_dir = args.output_dir
-    syn_dir = args.path_to_synthetics
 
-    fig_dir, data_dir, sem_dir = make_directories(args)    
+    fig_dir, data_dir, sem_dir, syn_dir, spcfm_data= make_directories(args)    
 
     # set the pyatoa config object for misfit quantification
     config = pyatoa.Config(
@@ -100,7 +99,7 @@ def process_data(args):
     # begin the Pyatoa Workflow, loop through all stations located in the inv.
     mgmt = pyatoa.Manager(config=config, ds=ds)
     master_inventory = read_inventory(
-                os.path.join(working_dir, "master_inventory_slim.xml")
+                os.path.join(args.working_dir, "master_inventory_slim.xml")
     )
     for net in master_inventory:
         for sta in net:
@@ -128,7 +127,7 @@ def process_data(args):
 
     # save adjoint sources to the seisflows scratch directory
     write_adj_src_to_ascii(ds, model_number=model_number, filepath=sem_dir)
-    create_stations_adjoint(ds, model_number=model_number, filepath=sem_dir)
+    create_stations_adjoint(ds, model_number=model_number, filepath=spcfm_data)
 
 
 if __name__ == "__main__":
