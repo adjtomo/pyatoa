@@ -4,7 +4,7 @@ For generation of input files for Specfem
 import os
 
 
-def create_stations_adjoint(ds, model_number, filepath="./"):
+def create_stations_adjoint(ds, model_number, filepath=None):
     """
     TO DO: remove the hardcoded paths for station list
     generate an adjoint stations file for specfem input by reading in the master
@@ -33,8 +33,15 @@ def create_stations_adjoint(ds, model_number, filepath="./"):
         lines = f.readlines()
 
     event_id = ds.filename.split('/')[-1].split('.')[0]
-    pathout = os.path.join(filepath, event_id, "STATIONS_ADJOINT")
+    # if no output path is specified, save into current working directory with
+    # an event_id tag to avoid confusion with other files, else normal naming
+    if not filepath:
+        pathout = "./STATIONS_ADJOINT_{}".format(event_id)
+    else:
+        pathout = os.path.join(filepath, "STATIONS_ADJOINT")
     with open(pathout, "w") as f:
         for line in lines:
             if line.split()[0] in stas_with_adjsrcs:
                     f.write(line)
+        
+            

@@ -21,7 +21,7 @@ module load Anaconda3/5.2.0-GCC-7.1.0
 module load HDF5/1.10.1-GCC-7.1.0 
 source activate tomo
 
-python /scale_wlg_nobackup/filesets/nobackup/nesi00263/bchow/tests/pyatoa_test/process_seisflows.py \
+python /scale_wlg_persistent/filesets/project/nesi00263/PyPackages/pyatoa/pyatoa/scripts/process_seisflows.py \
 -i ${event_id} -m ${model_num} -p ${syn_dir} -w ${work_dir} -o ${out_dir}
 
 

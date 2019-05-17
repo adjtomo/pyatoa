@@ -61,7 +61,7 @@ def create_window_dictionary(window):
     return win_dict
 
 
-def write_adj_src_to_ascii(ds, model_number, filepath="./",
+def write_adj_src_to_ascii(ds, model_number, filepath=None,
                            comp_list=["N", "E", "Z"]):
     """
     take AdjointSource auxiliary data from a pyasdf dataset and write out
@@ -88,11 +88,14 @@ def write_adj_src_to_ascii(ds, model_number, filepath="./",
             else:
                 adj_formatter = "{dt:14.6f}{amp:18.6f}\n"
             f.write(adj_formatter.format(dt=dt, amp=amp))
-
+    
     shortcut = ds.auxiliary_data.AdjointSources[model_number]
     event_id = ds.filename.split('/')[-1].split('.')[0]
-
-    pathcheck = os.path.join(filepath, event_id)
+    
+    if not filepath:
+        pathcheck = os.path.join("./", event_id)
+    else:
+        pathcheck = filepath
 
     if not os.path.exists(pathcheck):
         os.makedirs(pathcheck)
@@ -108,8 +111,8 @@ def write_adj_src_to_ascii(ds, model_number, filepath="./",
                 if station_check.replace('.', '_') not in shortcut.list():
                     blank_adj_src = shortcut[adj_src].data.value
                     blank_adj_src[:, 1] = np.zeros(len(blank_adj_src[:, 1]))
-                    blank_template = "{path}/{sta}.adj".format(path=pathcheck,
-                                                               sta=station_check
+                    blank_template = "{path}/{sta}.adj".format(
+                                           path=pathcheck, sta=station_check
                                                                )
                     with open(blank_template, "w") as b:
                         write_to_ascii(b, blank_adj_src)
