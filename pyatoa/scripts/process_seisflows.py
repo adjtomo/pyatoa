@@ -6,6 +6,7 @@ requirements mandated by seisflows
 import os
 import sys
 import glob
+import time
 import pyasdf
 import pyatoa
 import logging
@@ -136,6 +137,6 @@ if __name__ == "__main__":
     args = initialize_parser()
     set_logging(set_bool=args.logging)
     process_data(args)
-
+    time.sleep(5)    
 
 

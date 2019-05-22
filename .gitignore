@@ -2,6 +2,9 @@
 grandfather_scripts
 pyatoa/.DS_Store
 
+#Pyatoa files
+pyatoa/visuals/fault_coordinates/hikurangi_trench.npz
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
