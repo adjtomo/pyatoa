@@ -17,7 +17,8 @@ from obspy import read_inventory
 
 from pyatoa.utils.operations.pyasdf_editing import clean_ds
 from pyatoa.utils.operations.formatting import write_adj_src_to_ascii
-from pyatoa.utils.operations.file_generation import create_stations_adjoint
+from pyatoa.utils.operations.file_generation import create_stations_adjoint, \
+    sum_residuals
 
 
 def initialize_parser():
@@ -32,6 +33,7 @@ def initialize_parser():
     parser.add_argument("-w", "--working_dir")
     parser.add_argument("-o", "--output_dir")
     parser.add_argument("-c", "--current_dir")
+    parser.add_argument("-s", "--suffix")
     parser.add_argument("-l", "--logging", default=True)
 
     return parser.parse_args()
@@ -75,6 +77,7 @@ def process_data(args):
     # initiate config using provided arguments
     model_number = args.model_number
     event_id = args.event_id
+    suffix = args.suffix
 
     fig_dir, data_dir, sem_dir, syn_dir, spcfm_data= make_directories(args)    
 
@@ -128,7 +131,7 @@ def process_data(args):
     # save adjoint sources to the seisflows scratch directory
     write_adj_src_to_ascii(ds, model_number=model_number, filepath=sem_dir)
     create_stations_adjoint(ds, model_number=model_number, filepath=spcfm_data)
-
+    sum_residuals(ds, model_number=model_number, suffix=suffix, )
 
 if __name__ == "__main__":
     warnings.filterwarnings("ignore")
