@@ -4,33 +4,6 @@ For generation of input files for Specfem
 import os
 
 
-def sum_residuals(ds, model_number, suffix=None, filepath="./"):
-    """
-    Residuals are stored in adjoint trace dictionaries, and are needed for
-    Seisflows. This will sum the residuals and place them into a specific
-    filepath.
-    This replaces seisflows.workflow.inversion.write_misfit()
-
-    :param ds:
-    :param model_number:
-    :param filepath:
-    :return:
-    """
-    adjoint_sources = ds.auxiliary_data.AdjointSources[model_number]
-    residuals = []
-    for adjsrc in adjoint_sources.list():
-        residuals.append(adjoint_sources[adjsrc].parameters["misfit_value"])
-    summed_residuals = sum(residuals)
-
-    if suffix:
-        import numpy as np
-        np.savetxt(fname=os.path.join(filepath, "f_{}".format(suffix)),
-                   X=[summed_residuals], fmt="%11.6e"
-                   )
-
-    return summed_residuals
-
-
 def create_stations_adjoint(ds, model_number, filepath=None):
     """
     TO DO: remove the hardcoded paths for station list

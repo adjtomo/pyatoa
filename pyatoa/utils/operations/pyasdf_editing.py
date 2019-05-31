@@ -90,3 +90,36 @@ def del_configs(ds, model=None):
                 del ds.auxiliary_data.Configs[model][comp]
 
 
+def sum_misfits(ds, model):
+    """
+    Misfits are stored in adjoint trace dictionaries, and are needed for
+    Seisflows. This will sum the misfits and place them into a specific
+    filepath.
+    
+    As per Tape (2010) Eq. 6, misfit for a single earthquake is given as:
+    F^T_s(m) = (1/2) * (1/N_s) * sum[i=1:N_s] (F^T_i(m))
+    
+    N_s = total number of measurement windows for a source s
+    ith window identified by a 
+    source, station, component, period range, local window index
+
+    The total misfit function F^T is given by Eq. 7
+    F^T(m) = (1/S) * sum[s=1:S] (F^T_s(m))
+
+    where S is the number of sources. The total misfit is calculated in
+    the seisflows function: seisflows.workflow.inversion.write_misfit()    
+
+    :param ds:
+    :param model_number:
+    :param filepath:
+    :return:
+    """
+    adjoint_sources = ds.auxiliary_data.AdjointSources[model]
+    misfits = []
+    for adjsrc in adjoint_sources.list():
+        misfits.append(adjoint_sources[adjsrc].parameters["misfit_value"])
+   
+    summed_misfits = 0.5 * sum(misfits)/len(misfits)
+
+    return summed_misfits
+
