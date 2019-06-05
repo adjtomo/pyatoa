@@ -74,7 +74,6 @@ def make_directories(args):
     fig_dir = os.path.join(args.output_dir, "figures", args.model_number, 
                                                                   args.event_id)
     data_dir = os.path.join(args.output_dir, "data")
-    misfit_txt = os.path.join(args.output_dir, "pyatoa.misfits")
     for d in [fig_dir, data_dir]:
         if not os.path.exists(d):
             os.makedirs(d)
@@ -82,7 +81,8 @@ def make_directories(args):
     pyatoa_paths = {
         "FIGURES": fig_dir, 
         "PYATOA_DATA": data_dir,
-        "MISFIT_FILE": misfit_txt,
+        # "MISFIT_FILE": os.path.join(args.output_dir, "misfits", args.event_id)
+        "MISFIT_FILE": os.path.join(args.output_dir, "pyatoa.misfits"),
         "ADJ_TRACES": os.path.join(args.current_dir, "traces", "adj"), 
         "SYN_TRACES": os.path.join(args.current_dir, "traces", "syn"),
         "EVENT_DATA": os.path.join(args.current_dir, "DATA")
@@ -168,6 +168,5 @@ if __name__ == "__main__":
     args = initialize_parser()
     set_logging(set_bool=args.logging)
     process_data(args)
-    time.sleep(15)    
 
 
