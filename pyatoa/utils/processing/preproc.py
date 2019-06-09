@@ -10,7 +10,7 @@ from pyatoa import logger
 
 def _zero_pad_stream(st, pad_length_in_seconds):
     """
-    zero pad the data of a stream, change the starttime to reflect the change
+    Zero pad the data of a stream, change the starttime to reflect the change
 
     :type st: obspy.stream.Stream
     :param st: stream to be zero padded
@@ -34,8 +34,11 @@ def trimstreams(st_a, st_b, force=None):
 
     :type st_?: obspy.stream.Stream
     :param st_?: streams to be trimmed
+    :type force: str
+    :param force: "a" or "b"; force trim to the length of "st_a" or to "st_b",
+        if not given, trims to the common time
     :rtype st_?: obspy.stream.Stream
-    :return st_?: trimmed streams
+    :return st_?: trimmed stream
     """
     if force:
         force = force.lower()

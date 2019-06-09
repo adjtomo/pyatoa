@@ -1,4 +1,5 @@
-"""file format conversion functions
+"""
+File format conversion functions
 """
 import os
 import numpy as np
@@ -9,8 +10,11 @@ def read_fortran_binary(path):
     """
     convert a fortran .bin file into a NumPy array,
     stolen from fortran_binary.py _read() in SeisFlows
-    :param path:
-    :return:
+    
+    :type path: str
+    :param path: path to fortran .bin file
+    :rtype: np.array
+    :return: fortran binary data as a numpy array
     """
     nbytes = os.path.getsize(path)
     with open(path, "rb") as f:
@@ -28,10 +32,19 @@ def read_fortran_binary(path):
 
 def ascii_to_mseed(path, origintime, location=''):
     """
+    Specfem3D outputs seismograms to ASCII (.sem) files
+    Pyatoa expects seismograms as obspy Stream objects. 
+    This convenience function converts the .sem files into Stream objects
+    with the correct header information.    
+
+    :type path: str
     :param path: path of the given ascii file
+    :type origintime: obspy.UTCDateTime
     :param origintime: UTCDatetime object for the origintime of the event
-    :param location:
-    :return:
+    :type location: str
+    :param location: location value for a given station/component
+    :rtype st: obspy.Stream.stream
+    :return st: stream containing header and data info taken from ascii file
     """
     time = np.loadtxt(fname=path, usecols=0)
     data = np.loadtxt(fname=path, usecols=1)
@@ -51,15 +64,22 @@ def ascii_to_mseed(path, origintime, location=''):
 
 def mt_transform(mt, method):
     """
-    transform moment tensor between xyz and rtp coordinates
-    acceptable mt formats:
-        [m11,m22,m33,m12,m13,m23]
-        [mxx,myy,mzz,mxy,mxz,myz]
-        [mrr,mtt,mpp,mrt,mrp,mtp]
+    Transform moment tensor between XYZ and RTP coordinates
+
+    Acceptable formats for the parameter mt:
+        1) [m11,m22,m33,m12,m13,m23]
+        2) [mxx,myy,mzz,mxy,mxz,myz]
+        3) [mrr,mtt,mpp,mrt,mrp,mtp]
+    
+    Based on equation ?? from Aki and Richards Quantitative Seismology
+    TO DO: find the correct equation number
+
     :type mt: dict
     :param mt: moment tensor in format above
     :type method: str
     :param method: type of conversion, "rtp2xyz" or "xyz2rtp"
+    :rtype: dict
+    :return: converted moment tensor dictionary
     """
     if method == "xyz2rtp":
         if "m_xx" not in mt.keys():

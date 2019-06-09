@@ -23,10 +23,11 @@ import numpy as np
 from obspy.signal.filter import envelope
 
 from pyatoa import logger
+from pyatoa.utils.asdf.additions import write_adj_src_to_asdf
 from pyatoa.utils.gathering.data_gatherer import Gatherer
 from pyatoa.utils.operations.source_receiver import gcd_and_baz
 from pyatoa.utils.operations.formatting import create_window_dictionary, \
-    write_adj_src_to_asdf, channel_codes
+     channel_codes
 from pyatoa.utils.processing.preproc import preproc, trimstreams
 from pyatoa.utils.processing.synpreproc import stf_convolve_gaussian
 
