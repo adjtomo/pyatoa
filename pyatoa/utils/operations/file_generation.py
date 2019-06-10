@@ -207,7 +207,7 @@ def write_adj_src_to_ascii(ds, model, filepath=None,
                 adj_formatter = "{dt:14.6f}{amp:18.6f}\n"
             f.write(adj_formatter.format(dt=dt, amp=amp))
     
-    shortcut = ds.auxiliary_data.AdjointSources[model]
+    adjsrcs = ds.auxiliary_data.AdjointSources[model]
     event_id = ds.filename.split('/')[-1].split('.')[0]
     
     if not filepath:
@@ -217,15 +217,17 @@ def write_adj_src_to_ascii(ds, model, filepath=None,
 
     if not os.path.exists(pathcheck):
         os.makedirs(pathcheck)
-    for adj_src in shortcut.list():
-        station = shortcut[adj_src].path.replace('_', '.')
+    for adj_src in adjsrcs.list():
+        station = adjsrcs[adj_src].path.replace('_', '.')
         fid = "{path}/{sta}.adj".format(path=pathcheck, sta=station)
         with open(fid, "w") as f:
-            write_to_ascii(f, shortcut[adj_src].data.value)
+            write_to_ascii(f, adjsrcs[adj_src].data.value)
         # write blank adjoint sources for components with no misfit windows
         if comp_list:
             for comp in comp_list:
                 station_check = station[:-1] + comp
-                if station_check.replace('.', '_') not in shortcut.list():
-                    blank_adj_src = shortcut[adj_src].data.value
+                if station_check.replace('.', '_') not in adjsrcs.list():
+                    blank_adj_src = adjsrcs[adj_src].data.value
                     blank_adj_src[:, 1] = np.zeros(len(blank_adj_src[:, 1]))
+                    fid = "{path}/{sta}.adj".format(path=pathcheck, sta=station)
+                    with open(

@@ -221,6 +221,7 @@ class Config:
         :param filename:
         :return:
         """
+        raise NotImplementedError
 
     def write_to_asdf(self, ds):
         """

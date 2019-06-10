@@ -22,17 +22,17 @@ import pyadjoint
 import numpy as np
 from obspy.signal.filter import envelope
 
-from pyatoa import logger
-from pyatoa.utils.asdf.additions import write_adj_src_to_asdf
-from pyatoa.utils.gathering.data_gatherer import Gatherer
-from pyatoa.utils.operations.source_receiver import gcd_and_baz
-from pyatoa.utils.operations.formatting import create_window_dictionary, \
+from .. import logger
+from ..utils.asdf.additions import write_adj_src_to_asdf
+from ..utils.gathering.data_gatherer import Gatherer
+from ..utils.operations.source_receiver import gcd_and_baz
+from ..utils.operations.formatting import create_window_dictionary, \
      channel_codes
-from pyatoa.utils.processing.preproc import preproc, trimstreams
-from pyatoa.utils.processing.synpreproc import stf_convolve_gaussian
+from ..utils.processing.preprocess import preproc, trimstreams
+from ..utils.processing.synpreprocess import stf_convolve_gaussian
 
-from pyatoa.utils.configurations.external_configurations import \
-    set_pyflex_configuration, set_pyadjoint_configuration
+from ..utils.configurations.external import set_pyflex_config, \
+     set_pyadjoint_config
 
 
 class Crate:

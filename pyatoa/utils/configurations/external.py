@@ -5,7 +5,7 @@ so that these packages can run properly
 """
 
 
-def set_pyflex_configuration(config, inv, event):
+def set_pyflex_config(config, inv, event):
     """
     Set the Pyflex configuration based on Pyatoa Config parameter
     
@@ -153,7 +153,7 @@ def set_pyflex_configuration(config, inv, event):
     return pf_config, pf_event, pf_station
 
 
-def set_pyadjoint_configuration(config):
+def set_pyadjoint_config(config):
     """
     Set the Pyadjoint config based on Pyatoa config parameter    
 
