@@ -3,10 +3,101 @@ For generation of input files for Specfem, or for any external files required
 for codes that interact with Pyatoa
 """
 import os
+import json
+import time
 
+def write_misfit_json(ds, model, step_count=0, fidout="./misfits.json"):
+    """
+    Misfit text file useful for quickly determining misfit information garnered
+    from a swath of pyatoa runs, used by Seisflows
 
+    As per Tape (2010) Eq. 7, the total misfit function F^T is given as:
+            F^T(m) = (1/S) * sum[s=1:S] (F^T_s(m))
+    
+    where S is the number of sources
+
+    :type ds: pyasdf.ASDFDataSet
+    :param ds: processed dataset, assumed to contain auxiliary_data.Statistics
+    :type model: str
+    :param model: model number, e.g. "m00"
+    :type step: int
+    :param step: line search step count
+    :type fidout: str
+    :param fidout: output file to write the misfit
+    """
+    # organize information to be written
+    step = "s{:0>2}".format(step_count)
+    stats = ds.auxiliary_data.Statistics[model][step].parameters
+    misfit = ds.auxiliary_data.Statistics[model][step].data.value[0]
+    windows = stats["number_misfit_windows"]
+    adjsrcs = stats["number_adjoint_sources"]
+    event_id = os.path.basename(ds.filename).split(".")[0]
+   
+    # build nested dictioanaries 
+    event_dict = {"misfit": float(misfit), 
+                  "windows": int(windows), 
+                  "adjsrcs": int(adjsrcs)
+                  }
+    step_dict = {"{}".format(event_id): event_dict}
+    model_dict = {"{}".format(step): step_dict}
+    misfit_dict = {model: model_dict}
+    
+    # To allow multiple cpu's clean, simultaenous write capability, create a 
+    # lock file that can only be accessed by one cpu at a time
+    fidout_lock = fidout + "_lock"
+    while True:
+        # another process has control of the misfit file
+        if os.path.exists(fidout_lock):
+            print("file is locked, waiting")
+            time.sleep(5)
+        # misfit file is available for writing
+        elif os.path.exists(fidout) and not os.path.exists(fidout_lock):
+            print("file is available at {}".format(time.asctime()))
+            os.rename(fidout, fidout_lock)
+            with open(fidout_lock, "r") as f:
+                misfit_dict = json.load(f)
+                if model in misfit_dict.keys():
+                    if step in misfit_dict[model].keys():
+                        misfit_dict[model][step][event_id] = event_dict
+                    else:
+                        misfit_dict[model][step] = step_dict
+                else:
+                    misfit_dict[model] = model_dict
+       
+                # Parse misfit dict to give the total misfit
+                misfits, windows_all, adjsrcs_all = [], [], []
+                for key in misfit_dict[model][step].keys():
+                    if key in ["misfit", "windows", "adjsrcs"]:
+                        continue
+                    misfits.append(misfit_dict[model][step][key]["misfit"])
+                    windows_all.append(misfit_dict[model][step][key]["windows"])
+                    adjsrcs_all.append(misfit_dict[model][step][key]["adjsrcs"])
+
+                misfit_dict[model][step]["misfit"] = sum(misfits)/len(misfits)
+                misfit_dict[model][step]["windows"] = sum(windows_all)
+                misfit_dict[model][step]["adjsrcs"] = sum(adjsrcs_all)
+                f.close()
+    
+            # rewrite new misfit into lock file, then rename when finished
+            with open(fidout_lock, "w") as f:
+                json.dump(misfit_dict, f, indent=4, separators=(',', ':'), 
+                          sort_keys=True)
+                f.close()
+            os.rename(fidout_lock, fidout)   
+            return
+        # misfit file has not been written yet
+        else:
+            print("file has not been written")
+            with open(fidout, "w") as f:
+                json.dump(misfit_dict, f, indent=4, separators=(',', ':'),
+                          sort_keys=True)
+            return
+
+         
 def write_misfit_stats(ds, model, step_count=0, fidout="./pyatoa.misfits"):
     """
+    Deprecated, and not working. See write_misfit_json
+
     Misfit text file useful for quickly determining misfit information garnered
     from a swatch of pyatoa runs, used by Seisflows
 
@@ -23,28 +114,57 @@ def write_misfit_stats(ds, model, step_count=0, fidout="./pyatoa.misfits"):
     :type fidout: str
     :param fidout: output file to write the misfit
     """
+    import warnings
+    warnings.warn("This function is deprecated", DeprecationWarning)
+
     step = "s{:0>2}".format(step_count)
     stats = ds.auxiliary_data.Statistics[model][step].parameters
     misfit = ds.auxiliary_data.Statistics[model][step].data.value[0]
     windows = stats["number_misfit_windows"]
     adjsrcs = stats["number_adjoint_sources"]
    
-    # reformat to write 
-    model = model[1:]
-    step_count = str(step_count)
+    # reformat to write. set format string
+    model = int(model[1:])
     event_id = os.path.basename(ds.filename).split(".")[0]
-    
-    misfit_file_exists = os.path.exists(fidout)
-    with open(fidout, "a") as f:
-        if not misfit_file_exists:
-            f.write("MODEL\tSTEP\t   EVENT_ID\t\t\t\tMSFT\tWNDW\tADJS\n")
-        f.write(
-           "{:>5s}\t{:>4s}\t{:>10s}\t\t{:8.6e}\t{:>4d}\t{:>4d}\n".format(
+    header = "MODEL\tSTEP\t   EVENT_ID\t\t\t\tMSFT\tWNDW\tADJS\n"
+    format_string = "{:>5d}\t{:>4d}\t{:>10s}\t\t{:8.6e}\t{:>4d}\t{:>4d}\n"
+   
+    # First iteration, first step, write header and first line of data
+    if not os.path.exists(fidout):
+        with open(fidout, "a") as f:
+            f.write(header)
+            f.write(format_string.format(
                           model, step_count, event_id, misfit, windows, adjsrcs)
-                )
+                    )
+        return
         
-        
+     
+    # File has already been written, check for duplicates, overwrite dupes 
+    with open(fidout, "rw") as f:
+        lines = f.readlines()
+        # look at misfits already written, skip header
+        for i, line in enumerate(lines[1:]):
+            i += 1  # hacky way to keep up with the fact that we start from 1
+            _model, _step, _event, _misfit, _window, _adjsrc = line.split()
+            # duplicate found, replace misfit, window and adjsrc
+            if model == _model and step == _step and  event_id == _event:
+                if misfit != _misfit:
+                    lines[i][3] = misfit 
+                    lines[i][4] = windows
+                    lines[i][5] = adjsrcs 
+                break
+        # LEFT UNFINISHED HERE, MOVED TO JSON WRITING        
+ 
+        # rewrite file from the beginning
+        f.seek(0,0)
+        f.write(header)
+        for line in lines[1:]:
+            f.wwrite(format_string.format(
+                     line[0], line[1], line[2], line[3], line[4], line[5])
+    
+                      )
 
+           
 def generate_srcrcv_vtk_file(h5_fid, fid_out, model="m00", utm_zone=60,
                              event_fid_out=None):
     """
@@ -229,5 +349,9 @@ def write_adj_src_to_ascii(ds, model, filepath=None,
                 if station_check.replace('.', '_') not in adjsrcs.list():
                     blank_adj_src = adjsrcs[adj_src].data.value
                     blank_adj_src[:, 1] = np.zeros(len(blank_adj_src[:, 1]))
-                    fid = "{path}/{sta}.adj".format(path=pathcheck, sta=station)
-                    with open(
+                    blank_template = "{path}/{sta}.adj".format(
+                                           path=pathcheck, sta=station_check
+                                                               )
+                    with open(blank_template, "w") as b:
+                        write_to_ascii(b, blank_adj_src)
+

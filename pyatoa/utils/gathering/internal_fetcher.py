@@ -229,7 +229,9 @@ class Fetcher:
                     st += ascii_to_mseed(filepath, self.origintime)
                 except UnicodeDecodeError:
                     st += read(filepath)
-                logger.info("stream fetched by event {}".format(filepath))
+                logger.info("stream fetched by event {}".format(
+                                                     os.path.basename(filepath))
+                            )
             if len(st) > 0:
                 st.merge()
                 st.trim(starttime=self.origintime - self.startpad,

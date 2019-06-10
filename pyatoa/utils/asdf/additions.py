@@ -20,10 +20,10 @@ def write_stats_to_asdf(ds, model, step):
     :type step: int
     :param step: trial step number (from Seisflows)
     """
-    import pyatoa.utils.asdf.extractions as extract
-    
-    stats = extract.misfit_stats(ds, model)
-    misfit = extract.sum_misfits(ds, model)
+    from pyatoa.utils.asdf import extractions   
+ 
+    stats = extractions.misfit_stats(ds, model)
+    misfit = extractions.sum_misfits(ds, model)
    
     ds.add_auxiliary_data(data=np.array([misfit]), 
                           data_type="Statistics",

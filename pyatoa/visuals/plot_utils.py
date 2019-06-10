@@ -68,6 +68,7 @@ def combine_figures(path_to_figure_a, path_to_figure_b, path_to_output):
     import PIL
     import numpy as np
 
+    raise NotImplementedError
     imgs = [PIL.Image.open(i) for i in [path_to_figure_a, path_to_figure_b]]
     min_shape = sorted(sorted([(np.sum(i.size), i.size) for i in imgs])[0][1])
     imgs_comb = np.hstack(imgs)

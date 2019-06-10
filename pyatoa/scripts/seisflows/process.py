@@ -4,6 +4,7 @@ misfit functional within the automated workflow, in the context of
 requirements mandated by seisflows
 """
 import os
+import sys
 import json
 import pyasdf
 import pyatoa
@@ -17,7 +18,7 @@ from pyatoa.utils.asdf.deletions import clean_ds
 from pyatoa.utils.asdf.extractions import sum_misfits
 from pyatoa.utils.asdf.additions import write_stats_to_asdf
 from pyatoa.utils.operations.file_generation import create_stations_adjoint, \
-                                     write_adj_src_to_ascii, write_misfit_stats
+                                     write_adj_src_to_ascii, write_misfit_json
 
 
 def initialize_parser():
@@ -34,7 +35,7 @@ def initialize_parser():
     parser.add_argument("-o", "--output_dir")
     parser.add_argument("-c", "--current_dir")
     parser.add_argument("-s", "--suffix")
-    parser.add_argument("-l", "--logging", default=True)
+    parser.add_argument("-l", "--logging", default=False)
 
     return parser.parse_args()
 
@@ -58,7 +59,7 @@ def get_paths(args):
     paths = {
         "FIGURES": fig_dir, 
         "PYATOA_DATA": data_dir,
-        "MISFIT_FILE": os.path.join(args.output_dir, "pyatoa.misfits"),
+        "MISFIT_FILE": os.path.join(args.output_dir, "misfits.json"),
         "ADJ_TRACES": os.path.join(args.current_dir, "traces", "adj"), 
         "SYN_TRACES": os.path.join(args.current_dir, "traces", "syn"),
         "EVENT_DATA": os.path.join(args.current_dir, "DATA"),
@@ -85,6 +86,7 @@ def finalize(ds, model, args, paths):
     :type paths: dict
     :param paths: return of get_paths() containing relevant paths 
     """
+    print("finalizing")
     # add statistics to auxiliary_data
     write_stats_to_asdf(ds, model, args.step_count)
     
@@ -95,7 +97,7 @@ def finalize(ds, model, args, paths):
     create_stations_adjoint(ds, model, paths["EVENT_DATA"])
     
     # sum and write misfits and statistics information to master text file 
-    write_misfit_stats(ds, model, args.step_count, paths["MISFIT_FILE"]) 
+    write_misfit_json(ds, model, args.step_count, paths["MISFIT_FILE"]) 
 
 
 def process_data(args):
@@ -106,9 +108,10 @@ def process_data(args):
     :type args: argparse.Parser 
     :param args: arguments passed in from Seisflows
     """
+    print("initiating")
     paths = get_paths(args)   
 
-    # set the pyatoa config object for misfit quantification
+    # set the Pyatoa Config object for misfit qu
     config = pyatoa.Config(
         event_id = args.event_id, 
         model_number = args.model_number, 
@@ -125,6 +128,7 @@ def process_data(args):
         )
 
     # save output by event id
+    print("running")
     ds_name = os.path.join(paths["PYATOA_DATA"], 
                            "{}.h5".format(config.event_id)
                             ) 
@@ -137,7 +141,9 @@ def process_data(args):
         stations = np.loadtxt(paths["STATIONS"], usecols=[0,1], dtype=str)
         for station in stations:
             sta, net = station
+            print("{}.{}".format(net, sta))
             try:
+                mgmt.reset()
                 mgmt.gather_data(station_code="{net}.{sta}.{loc}.{cha}".format(
                                            net=net, sta=sta, loc="*", cha="HH?")
                                  )
@@ -148,11 +154,9 @@ def process_data(args):
                                               "wav_{}".format(sta)), show=False)
                 mgmt.plot_map(save=os.path.join(paths["FIGURES"], 
                                               "map_{}".format(sta)), show=False)
-                mgmt.reset()
             except Exception as e:
-                print("\n")
                 traceback.print_exc()
-                mgmt.reset()
+                print("\n")
                 continue
 
         # generate output files for specfem and seisflows
@@ -164,7 +168,6 @@ if __name__ == "__main__":
     print("Ignoring warnings due to H5PY deprecation warning")
     
     args = initialize_parser()
-    
     if args.logging:
         logger = logging.getLogger("pyatoa")
         logger.setLevel(logging.DEBUG)

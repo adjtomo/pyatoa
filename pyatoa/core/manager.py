@@ -22,16 +22,16 @@ import pyadjoint
 import numpy as np
 from obspy.signal.filter import envelope
 
-from .. import logger
-from ..utils.asdf.additions import write_adj_src_to_asdf
-from ..utils.gathering.data_gatherer import Gatherer
-from ..utils.operations.source_receiver import gcd_and_baz
-from ..utils.operations.formatting import create_window_dictionary, \
+from pyatoa import logger
+from pyatoa.utils.asdf.additions import write_adj_src_to_asdf
+from pyatoa.utils.gathering.data_gatherer import Gatherer
+from pyatoa.utils.operations.source_receiver import gcd_and_baz
+from pyatoa.utils.operations.formatting import create_window_dictionary, \
      channel_codes
-from ..utils.processing.preprocess import preproc, trimstreams
-from ..utils.processing.synpreprocess import stf_convolve_gaussian
+from pyatoa.utils.processing.preprocess import preproc, trimstreams
+from pyatoa.utils.processing.synpreprocess import stf_convolve_gaussian
 
-from ..utils.configurations.external import set_pyflex_config, \
+from pyatoa.utils.configurations.external import set_pyflex_config, \
      set_pyadjoint_config
 
 
@@ -295,7 +295,7 @@ class Manager:
         """
         # if overwriting, don't check the crate before gathering new data
         if overwrite:
-            print("OVERWRITE PROTECTION: OFF")
+            logger.info("Overwrite protection: OFF")
             try:
                 self.crate.station_code = station_code
                 logger.info("GATHERING {station} for {event}".format(
@@ -313,7 +313,7 @@ class Manager:
                 return
         # if not overwriting, don't gather new data if crate already has data
         else:
-            print("OVERWRITE PROTECTION: ON")
+            logger.info("Overwrite protection: ON")
             try:
                 if not self.crate.station_code:
                     self.crate.station_code = station_code
@@ -438,7 +438,7 @@ class Manager:
             warnings.warn("cannot run Pyflex, no waveform data")
             return
 
-        pf_config, pf_event, pf_station = set_pyflex_configuration(
+        pf_config, pf_event, pf_station = set_pyflex_config(
             config=self.config, inv=self.crate.inv, event=self.crate.event
             )
         empties = 0
@@ -512,7 +512,7 @@ class Manager:
         logger.info("running Pyadjoint for type {} ".format(
             self.config.adj_src_type)
             )
-        pa_config = set_pyadjoint_configuration(config=self.config)
+        pa_config = set_pyadjoint_config(config=self.config)
 
         adjoint_sources = {}
         for key in self.crate.windows:
@@ -567,7 +567,7 @@ class Manager:
                           UserWarning)
             return
 
-        from pyatoa.visuals.plot_waveforms import window_maker
+        from pyatoa.visuals.waveforms import window_maker
         show = kwargs.get("show", True)
         save = kwargs.get("save", None)
         figsize = kwargs.get("figsize", (11.69, 8.27))
@@ -611,7 +611,7 @@ class Manager:
         """
         if not isinstance(self.crate.inv, obspy.Inventory):
             warnings.warn("no inventory given, plotting blank map", UserWarning)
-        from pyatoa.visuals.plot_map import generate_map
+        from pyatoa.visuals.mapping import generate_map
         show = kwargs.get("show", True)
         save = kwargs.get("save", None)
         show_faults = kwargs.get("show_faults", False)
