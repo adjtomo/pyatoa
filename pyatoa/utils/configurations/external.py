@@ -101,7 +101,7 @@ def set_pyflex_config(config, inv, event):
         Index where the signal ends for the signal to noise calculations.
     window_weight_fct (function)
         A function returning the weight for a specific window as a single number
-        Directly passed to the Window ‘s initialization function.
+        Directly passed to the Window's initialization function.
     window_signal_to_noise_type (str)
         The type of signal to noise ratio used to reject windows. If "amplitude"
         then the largest amplitude before the arrival is the noise amplitude and
@@ -131,15 +131,34 @@ def set_pyflex_config(config, inv, event):
     import pyflex
 
     pf_config = pyflex.Config(
-        min_period=config.min_period, max_period=config.max_period,
+        min_period=config.min_period,
+        max_period=config.max_period,
         stalta_waterlevel=config.pyflex_config[0],
         tshift_acceptance_level=config.pyflex_config[1],
+        tshift_reference=,
         dlna_acceptance_level=config.pyflex_config[2],
+        dlna_reference=,
         cc_acceptance_level=config.pyflex_config[3],
-        c_0=config.pyflex_config[4], c_1=config.pyflex_config[5],
-        c_2=config.pyflex_config[6], c_3a=config.pyflex_config[7],
-        c_3b=config.pyflex_config[8], c_4a=config.pyflex_config[9],
-        c_4b=config.pyflex_config[10]
+        s2n_limit=,
+        earth_model=,
+        min_surface_wave_velocity=,
+        max_time_before_first_arrival=,
+        c_0=config.pyflex_config[4],
+        c_1=config.pyflex_config[5],
+        c_2=config.pyflex_config[6],
+        c_3a=config.pyflex_config[7],
+        c_3b=config.pyflex_config[8],
+        c_4a=config.pyflex_config[9],
+        c_4b=config.pyflex_config[10],
+        check_global_data_quality=,
+        snr_integrate_base=,
+        snr_max_base=,
+        noise_start_index=,
+        signal_start_index=,
+        signal_end_index=,
+        window_weight_fct=,
+        window_signal_to_noise_type=,
+        resolution_strategy=
         )
     pf_station = pyflex.Station(latitude=inv[0][0].latitude,
                                 longitude=inv[0][0].longitude

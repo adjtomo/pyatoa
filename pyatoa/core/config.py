@@ -145,7 +145,6 @@ class Config:
                          paths_to_resp=self.paths['responses']
                          )
 
-
     def _generate_component_list(self):
         """
         create a small list for easy access to orthogonal components
