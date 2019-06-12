@@ -19,7 +19,7 @@ from pyatoa.utils.asdf.extractions import sum_misfits
 from pyatoa.utils.asdf.additions import write_stats_to_asdf
 from pyatoa.utils.operations.file_generation import create_stations_adjoint, \
                                      write_adj_src_to_ascii, write_misfit_json
-
+from pyatoa.visuals.convert_images import tile_and_combine
 
 def initialize_parser():
     """
@@ -57,8 +57,9 @@ def get_paths(args):
             os.makedirs(d)
    
     paths = {
-        "FIGURES": fig_dir, 
+        "EVENT_FIGURES": fig_dir, 
         "PYATOA_DATA": data_dir,
+        "PYATOA_FIGURES": os.path.join(args.output_dir, "figures"),
         "MISFIT_FILE": os.path.join(args.output_dir, "misfits.json"),
         "ADJ_TRACES": os.path.join(args.current_dir, "traces", "adj"), 
         "SYN_TRACES": os.path.join(args.current_dir, "traces", "syn"),
@@ -98,6 +99,12 @@ def finalize(ds, model, args, paths):
     
     # sum and write misfits and statistics information to master text file 
     write_misfit_json(ds, model, args.step_count, paths["MISFIT_FILE"]) 
+
+    # tile and combine .png images into a composite .pdf for easy fetching
+    tile_and_combine(ds, model, "s{:0<2}".format(args.step_count),
+                     paths["PYATOA_FIGURES"], purge_originals=True,
+                     purge_tiles=True
+                     )    
 
 
 def process_data(args):
@@ -150,9 +157,9 @@ def process_data(args):
                 mgmt.preprocess()
                 mgmt.run_pyflex()
                 mgmt.run_pyadjoint()
-                mgmt.plot_wav(save=os.path.join(paths["FIGURES"], 
+                mgmt.plot_wav(save=os.path.join(paths["EVENT_FIGURES"], 
                                               "wav_{}".format(sta)), show=False)
-                mgmt.plot_map(save=os.path.join(paths["FIGURES"], 
+                mgmt.plot_map(save=os.path.join(paths["EVENT_FIGURES"], 
                                               "map_{}".format(sta)), show=False)
             except Exception as e:
                 traceback.print_exc()

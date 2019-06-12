@@ -1,10 +1,9 @@
 """
-hacky way to combine all the outputs figures of pyatoa into a single pdf
+Hacky functions to combine all the outputs figures of pyatoa into a single pdf
 """
 import os
 import glob
 import shutil
-import pyasdf
 import subprocess
 
 
@@ -43,7 +42,7 @@ def tile_images(image_path, purge=False):
                 os.remove("{}_{}.png".format(tag, n))
 
 
-def combine_images(ds, image_path, purge=False):
+def combine_images(ds, image_path, composite_name="composite.pdf", purge=False):
     """
     Combine the tiled images into a single composite pdf.
     Needs to be run after tile_images
@@ -55,7 +54,8 @@ def combine_images(ds, image_path, purge=False):
     :param purge: delete images after tiling to save on space, defeaults to no
     """
     from pyatoa.utils.operations.source_receiver import sort_by_backazimuth
-
+   
+    # sort stations by backazimuth for easier visualization 
     sorted_station_names = sort_by_backazimuth(ds)
     stations_available = glob.glob(os.path.join(image_path, "tile_*.png"))
     sub_list = []
@@ -66,29 +66,41 @@ def combine_images(ds, image_path, purge=False):
             if tilename in check:
                 sub_list.append(tilename)
                 break
-
-    event_id = os.path.basename(ds.filename).split(".")[0]
+    
+    # run imagemagick convert using the subprocess module
     os.chdir(image_path)
-    subprocess.run(["convert"] + sub_list + ["{}_composite.pdf".format(event_id)])
+    subprocess.run(["convert"]
+                   + sub_list 
+                   + [composite_name]
+                   )
+    
+    # remove tile_*.png files 
     if purge:
         for tile in stations_available:
             os.remove(tile)
 
 
-
-if __name__ == "__main__":
-    model_number = "m00"
-    pyatoa_output = ("/scale_wlg_nobackup/filesets/nobackup/nesi00263/bchow/"
-                     "tests/seisflows_test/hikurangi_trial/pyatoa.output")
-    image_path = os.path.join(pyatoa_output, "figures", model_number, "*")
-    data_path = os.path.join(pyatoa_output, "data", "{}.h5")
+def tile_and_combine(ds, model, step, figure_path, 
+                                      purge_originals=False, purge_tiles=False):
+    """
+    Tile waveform and map images, combine all images into a single .pdf file
+    To be called from within a process script
+    """
+    event_id = os.path.basename(ds.filename).split(".")[0]
     
-    for images in glob.glob(image_path):
-        event_id = os.path.basename(images)
-        print(event_id)
-        ds_fid = data_path.format(event_id)
-        ds_temp = shutil.copy(src=ds_fid, dst=ds_fid + "_temp")
-        ds = pyasdf.ASDFDataSet(ds_temp)
-        tile_images(image_path=images)
-        combine_images(ds, images, purge=True)
-        os.remove(ds_temp)
+    # set up directories and pathnames
+    composite_path = os.path.join(figure_path, "composites")
+    composite_name = "{e}_{m}_{s}.pdf".format(e=event_id, m=model, s=step) 
+    if not os.path.exists(composite_path):
+        os.makedirs(composite_path)
+     
+    # tile and combine images 
+    image_path = os.path.join(figure_path, model, event_id)
+    tile_images(image_path, purge=purge_originals)
+    combine_images(ds, image_path, composite_name, purge=purge_tiles)
+    
+    # move composite figure to new path
+    src = os.path.join(image_path, composite_name)
+    dst = os.path.join(composite_path, composite_name)
+    os.rename(src, dst)         
+

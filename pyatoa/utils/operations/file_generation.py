@@ -5,11 +5,22 @@ for codes that interact with Pyatoa
 import os
 import json
 import time
+import numpy as np
 
 def write_misfit_json(ds, model, step_count=0, fidout="./misfits.json"):
     """
-    Misfit text file useful for quickly determining misfit information garnered
-    from a swath of pyatoa runs, used by Seisflows
+    Write a .json file containing misfit information for a given dataset,
+    model and step count. Sums misfit, number of windows, and number of
+    adjoint sources for a given event, model and step.
+    ---
+    NOTE:
+    Operates on a crude file lock system, which renames the .json file to keep
+    other compute nodes from accessing a file being written.
+    If this function crashes while writing, Pyatoa will get stuck in a loop,
+    and Seisflows will need to be stopped and resumed.
+    
+    Before this, make sure /path/to/misfits.json_lock is removed or renamed.
+    ---
 
     As per Tape (2010) Eq. 7, the total misfit function F^T is given as:
             F^T(m) = (1/S) * sum[s=1:S] (F^T_s(m))
@@ -20,8 +31,8 @@ def write_misfit_json(ds, model, step_count=0, fidout="./misfits.json"):
     :param ds: processed dataset, assumed to contain auxiliary_data.Statistics
     :type model: str
     :param model: model number, e.g. "m00"
-    :type step: int
-    :param step: line search step count
+    :type step_count: int
+    :param step_count: line search step count
     :type fidout: str
     :param fidout: output file to write the misfit
     """
@@ -94,16 +105,17 @@ def write_misfit_json(ds, model, step_count=0, fidout="./misfits.json"):
             return
 
          
-def write_misfit_stats(ds, model, step_count=0, fidout="./pyatoa.misfits"):
+def write_misfit_stats(ds, model, pathout):
     """
-    Deprecated, and not working. See write_misfit_json
+    A simpler alternative to write_misfit_json(), which relies on a crude file
+    renaming lock system to deal with multiple nodes accessing the same file.
 
-    Misfit text file useful for quickly determining misfit information garnered
-    from a swatch of pyatoa runs, used by Seisflows
+    This function simply writes a new text file for each event, which contains 
+    the total misfit for that event.
 
-    Caution, Seisflows uses the misfit written from this function to determine
-    if misfit is reduced per trial step. The formatter is 8.6f which follows
-    the Seisflows convention, but may be too limited for other purposes.
+    e.g. path/to/misfits/{model_number}/{event_id}
+    
+    These files will then need to be read by: seisflows.workflow.write_misfit()
 
     :type ds: pyasdf.ASDFDataSet
     :param ds: processed dataset, assumed to contain auxiliary_data.Statistics
@@ -114,55 +126,21 @@ def write_misfit_stats(ds, model, step_count=0, fidout="./pyatoa.misfits"):
     :type fidout: str
     :param fidout: output file to write the misfit
     """
-    import warnings
-    warnings.warn("This function is deprecated", DeprecationWarning)
-
-    step = "s{:0>2}".format(step_count)
-    stats = ds.auxiliary_data.Statistics[model][step].parameters
-    misfit = ds.auxiliary_data.Statistics[model][step].data.value[0]
-    windows = stats["number_misfit_windows"]
-    adjsrcs = stats["number_adjoint_sources"]
-   
-    # reformat to write. set format string
-    model = int(model[1:])
-    event_id = os.path.basename(ds.filename).split(".")[0]
-    header = "MODEL\tSTEP\t   EVENT_ID\t\t\t\tMSFT\tWNDW\tADJS\n"
-    format_string = "{:>5d}\t{:>4d}\t{:>10s}\t\t{:8.6e}\t{:>4d}\t{:>4d}\n"
-   
-    # First iteration, first step, write header and first line of data
-    if not os.path.exists(fidout):
-        with open(fidout, "a") as f:
-            f.write(header)
-            f.write(format_string.format(
-                          model, step_count, event_id, misfit, windows, adjsrcs)
-                    )
-        return
-        
-     
-    # File has already been written, check for duplicates, overwrite dupes 
-    with open(fidout, "rw") as f:
-        lines = f.readlines()
-        # look at misfits already written, skip header
-        for i, line in enumerate(lines[1:]):
-            i += 1  # hacky way to keep up with the fact that we start from 1
-            _model, _step, _event, _misfit, _window, _adjsrc = line.split()
-            # duplicate found, replace misfit, window and adjsrc
-            if model == _model and step == _step and  event_id == _event:
-                if misfit != _misfit:
-                    lines[i][3] = misfit 
-                    lines[i][4] = windows
-                    lines[i][5] = adjsrcs 
-                break
-        # LEFT UNFINISHED HERE, MOVED TO JSON WRITING        
- 
-        # rewrite file from the beginning
-        f.seek(0,0)
-        f.write(header)
-        for line in lines[1:]:
-            f.wwrite(format_string.format(
-                     line[0], line[1], line[2], line[3], line[4], line[5])
+    from pyatoa.utils.asdf.extractions import sum_misfits
     
-                      )
+    # set relevant path 
+    misfit_path = os.path.join(pathout, model)
+    if not os.path.exists(misfit_path):
+        os.makedirs(misfit_path)
+    
+    event_id = os.path.basename(ds.filename).split(".")[0]
+    fidout = os.path.join(misfit_path, event_id)    
+    
+    # calculate misfit 
+    misfit = sum_misfits(ds, model)
+
+    # save in the same format as seisflows 
+    np.savetxt(fidout, [misfit], '%11.6e')
 
            
 def generate_srcrcv_vtk_file(h5_fid, fid_out, model="m00", utm_zone=60,
