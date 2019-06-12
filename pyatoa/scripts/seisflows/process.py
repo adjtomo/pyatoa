@@ -21,6 +21,7 @@ from pyatoa.utils.operations.file_generation import create_stations_adjoint, \
                                      write_adj_src_to_ascii, write_misfit_json
 from pyatoa.visuals.convert_images import tile_and_combine
 
+
 def initialize_parser():
     """
     Seisflows calls pyatoa via subprocess, so we use an argparser to provide
@@ -120,25 +121,25 @@ def process_data(args):
 
     # set the Pyatoa Config object for misfit qu
     config = pyatoa.Config(
-        event_id = args.event_id, 
-        model_number = args.model_number, 
-        min_period = 10, 
-        max_period = 30, 
-        filter_corners = 4, 
-        rotate_to_rtz = False, 
-        unit_output = "DISP", 
-        pyflex_config = "UAF",
-        adj_src_type = "multitaper_misfit",
-        paths_to_synthetics = [paths["SYN_TRACES"]],
-        paths_to_waveforms = [], 
-        paths_to_responses = []
+        event_id=args.event_id,
+        model_number=args.model_number,
+        min_period=10,
+        max_period=30,
+        filter_corners=4,
+        rotate_to_rtz=False,
+        unit_output="DISP",
+        pyflex_config="UAF",
+        adj_src_type="multitaper_misfit",
+        paths_to_synthetics=[paths["SYN_TRACES"]],
+        paths_to_waveforms=[],
+        paths_to_responses=[]
         )
 
     # save output by event id
     print("running")
     ds_name = os.path.join(paths["PYATOA_DATA"], 
                            "{}.h5".format(config.event_id)
-                            ) 
+                           )
     with pyasdf.ASDFDataSet(ds_name) as ds:
         clean_ds(ds, config.model_number)
         config.write_to_asdf(ds)
