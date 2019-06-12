@@ -28,19 +28,18 @@ def tile_images(image_path, purge=False):
 
     # combine map and waveform figures
     os.chdir(image_path)
-    for n in stanames:
-        map_name = "map_{}.png".format(n)
-        wav_name = "wav_{}.png".format(n)
+    for name in stanames:
+        map_name = "map_{}.png".format(name)
+        wav_name = "wav_{}.png".format(name)
         if os.path.exists(map_name) and os.path.exists(wav_name):
             subprocess.run(
                 ["montage", map_name, wav_name, "-tile", "2x1", 
-                 "-geometry", "+0+0", "tile_{}.png".format(n)]
+                 "-geometry", "+0+0", "tile_{}.png".format(name)]
             )
-        # remove old images to save space
-        if purge:
-            for tag in ["map", "wav"]:
-                os.remove("{}_{}.png".format(tag, n))
-
+            # remove old images to save space
+            if purge:
+                os.remove(map_name)
+                os.remove(wav_name)
 
 def combine_images(ds, image_path, composite_name="composite.pdf", purge=False):
     """

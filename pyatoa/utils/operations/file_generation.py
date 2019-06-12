@@ -128,13 +128,8 @@ def write_misfit_stats(ds, model, pathout):
     """
     from pyatoa.utils.asdf.extractions import sum_misfits
     
-    # set relevant path 
-    misfit_path = os.path.join(pathout, model)
-    if not os.path.exists(misfit_path):
-        os.makedirs(misfit_path)
-    
     event_id = os.path.basename(ds.filename).split(".")[0]
-    fidout = os.path.join(misfit_path, event_id)    
+    fidout = os.path.join(pathout, event_id)    
     
     # calculate misfit 
     misfit = sum_misfits(ds, model)

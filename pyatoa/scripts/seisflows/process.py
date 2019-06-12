@@ -18,7 +18,7 @@ from pyatoa.utils.asdf.deletions import clean_ds
 from pyatoa.utils.asdf.extractions import sum_misfits
 from pyatoa.utils.asdf.additions import write_stats_to_asdf
 from pyatoa.utils.operations.file_generation import create_stations_adjoint, \
-                                     write_adj_src_to_ascii, write_misfit_json
+                   write_adj_src_to_ascii, write_misfit_json, write_misfit_stats
 from pyatoa.visuals.convert_images import tile_and_combine
 
 
@@ -53,13 +53,15 @@ def get_paths(args):
     fig_dir = os.path.join(args.output_dir, "figures", args.model_number, 
                                                                   args.event_id)
     data_dir = os.path.join(args.output_dir, "data")
-    for d in [fig_dir, data_dir]:
+    misfit_dir = os.path.join(args.output_dir, "misfits")
+    for d in [fig_dir, data_dir, misfit_dir]:
         if not os.path.exists(d):
             os.makedirs(d)
    
     paths = {
         "EVENT_FIGURES": fig_dir, 
         "PYATOA_DATA": data_dir,
+        "PYATOA_MISFITS": misfit_dir,
         "PYATOA_FIGURES": os.path.join(args.output_dir, "figures"),
         "MISFIT_FILE": os.path.join(args.output_dir, "misfits.json"),
         "ADJ_TRACES": os.path.join(args.current_dir, "traces", "adj"), 
@@ -100,6 +102,9 @@ def finalize(ds, model, args, paths):
     
     # sum and write misfits and statistics information to master text file 
     write_misfit_json(ds, model, args.step_count, paths["MISFIT_FILE"]) 
+    
+    # write misfits for seisflows into individual text files
+    write_misfit_stats(ds, model, paths["PYATOA_MISFITS"])
 
     # tile and combine .png images into a composite .pdf for easy fetching
     tile_and_combine(ds, model, "s{:0<2}".format(args.step_count),
