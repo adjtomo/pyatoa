@@ -163,10 +163,10 @@ def process_data(args):
                 mgmt.preprocess()
                 mgmt.run_pyflex()
                 mgmt.run_pyadjoint()
-                mgmt.plot_wav(save=os.path.join(paths["EVENT_FIGURES"], 
-                                              "wav_{}".format(sta)), show=False)
-                mgmt.plot_map(save=os.path.join(paths["EVENT_FIGURES"], 
-                                              "map_{}".format(sta)), show=False)
+                mgmt.plot_wav(save=os.path.join(
+                    paths["EVENT_FIGURES"], "wav_{}".format(sta)), show=False)
+                mgmt.plot_map(save=os.path.join(
+                    paths["EVENT_FIGURES"], "map_{}".format(sta)), show=False)
             except Exception as e:
                 traceback.print_exc()
                 print("\n")

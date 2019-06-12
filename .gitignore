@@ -1,6 +1,5 @@
 # Mac specific
-grandfather_scripts
-pyatoa/.DS_Store
+*.DS_Store
 
 #Pyatoa files
 pyatoa/visuals/fault_coordinates/hikurangi_trench.npz
