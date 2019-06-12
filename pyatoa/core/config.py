@@ -106,8 +106,7 @@ class Config:
         self.filter_corners = float(filter_corners)
         self.rotate_to_rtz = rotate_to_rtz
         self.unit_output = unit_output.upper()
-        self.pyflex_config = pyflex_config
-        self._generate_pyflex_config()
+        self.pyflex_config = (pyflex_config, None)
         self.adj_src_type = adj_src_type
         self.paths = {"waveforms": paths_to_waveforms,
                       "synthetics": paths_to_synthetics,
@@ -116,6 +115,7 @@ class Config:
         self.startpad = startpad
         self.endpad = endpad
         self._generate_component_list()
+        self._checkset_config_parameters()
 
     def __str__(self):
         """
@@ -139,7 +139,8 @@ class Config:
                          event_id=self.event_id, min_period=self.min_period,
                          max_period=self.max_period, corner=self.filter_corners,
                          rotate=self.rotate_to_rtz, output=self.unit_output,
-                         pyflex=self.pyflex_config, adjoint=self.adj_src_type,
+                         pyflex=self.pyflex_config[0],
+                         adjoint=self.adj_src_type,
                          paths_to_wavs=self.paths['waveforms'],
                          paths_to_syns=self.paths['synthetics'],
                          paths_to_resp=self.paths['responses']
@@ -154,65 +155,24 @@ class Config:
         else:
             self.component_list = ['Z', 'N', 'E']
 
-    def _generate_pyflex_config(self):
-        """
-        Allow for dictionary lookup of pyflex config, or manual set
-        Acceptance levels can also be set as arrays, defining a time-dependent
-        acceptance level. This must be the same length as your waveform
-
-        ++PYFLEX (Maggi et al. 2009)
-        i  Standard Tuning Parameters:
-        0: water level for STA/LTA (short term average/long term average)
-        1: time lag acceptance level
-        2: amplitude ratio acceptance level (dlna)
-        3: normalized cross correlation acceptance level
-        i  Fine Tuning Parameters
-        4: c_0 = for rejection of internal minima
-        5: c_1 = for rejection of short windows
-        6: c_2 = for rejection of un-prominent windows
-        7: c_3a = for rejection of multiple distinct arrivals
-        8: c_3b = for rejection of multiple distinct arrivals
-        9: c_4a = for curtailing windows w/ emergent starts and/or codas
-        10:c_4b = for curtailing windows w/ emergent starts and/or codas
-        """
-        cfg_dict = {"default": [.08, 15., 1., .8, .7, 4., 0., 1., 2., 3., 10.],
-                    "UAF": [.18, 4., 1.5, .71, .7, 2., 0., 3., 2., 2.5, 12.],
-                    "NZ": [.15, 15., 1.75, .7, .7, 2., 0., 3., 2., 2.5, 12.],
-                    }
-        if isinstance(self.pyflex_config, str):
-            self.pyflex_config = cfg_dict[self.pyflex_config]
-        elif isinstance(self.pyflex_config, list) and \
-                len(self.pyflex_config) != 11:
-            warnings.warn("given 'pyflex_config' is not correct length",
-                          UserWarning)
-        elif not isinstance(self.pyflex_config, list):
-            warnings.warn("'pyflex_config' must be type 'str' or 'list",
-                          UserWarning)
-
-    def _check_config_parameters(self):
+    def _checkset_config_parameters(self):
         """
         just make sure that some of the configuration parameters are set proper
         :return:
         """
-        if len(self.paths):
-            for path_ in self.paths.values():
-                for p in path_:
-                    if not os.path.exists(p):
-                        warnings.warn("path '{}' does not exist".format(p),
-                                      UserWarning)
+        from pyatoa.utils.configurations.external import pyflex_configs,\
+            set_pyflex_config
+
         if self.unit_output not in ['DISP', 'VEL', 'ACC']:
             warnings.warn("'unit_output' must be 'DISP','VEL' or 'ACC'",
                           UserWarning)
-
-    def set_pyflex_config(self, config):
-        """
-        convenience function for pyflex testing to quickly change between
-        different pyflex configs
-        :param config:
-        :return:
-        """
-        self.pyflex_config = config
-        self._generate_pyflex_config()
+        if self.pyflex_config[0] not in pyflex_configs().keys():
+            warnings.warn(
+                "{} not in preset pyflex configs, setting 'default'".format(
+                    self.pyflex_config)
+            )
+            self.pyflex_config = ("default", None)
+        self.pyflex_config = (self.pyflex_config[0], set_pyflex_config(self))
 
     def write_to_txt_file(self, filename):
         """

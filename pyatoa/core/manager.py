@@ -31,7 +31,7 @@ from pyatoa.utils.operations.formatting import create_window_dictionary, \
 from pyatoa.utils.processing.preprocess import preproc, trimstreams
 from pyatoa.utils.processing.synpreprocess import stf_convolve_gaussian
 
-from pyatoa.utils.configurations.external import set_pyflex_config, \
+from pyatoa.utils.configurations.external import set_pyflex_station_event, \
      set_pyadjoint_config
 
 
@@ -70,6 +70,7 @@ class Crate:
         :type *flag: bool
         :param *_flag: if * is present in the Crate, or if * has been processed
         """
+        # Objects containing relevant information
         self.station_code = station_code
         self.st_obs = None
         self.st_syn = None
@@ -79,6 +80,7 @@ class Crate:
         self.staltas = None
         self.adj_srcs = None
 
+        # Flags to show status of workflow
         self.event_flag = False
         self.st_obs_flag = False
         self.st_syn_flag = False
@@ -89,14 +91,15 @@ class Crate:
         self.pyflex_flag = False
         self.pyadjoint_flag = False
 
-        self.raw_syn_comp = None
 
-    def _checkflags(self):
+    def check_flags(self):
         """
         Update flags based on what is available in the crate. The 3 in the
         stream process flags comes from the 2 steps taken before preprocessing,
         downsampling and trimming
         """
+        # make sure observed waveforms are Stream objects
+        # set flags for easy determination of status
         if isinstance(self.st_obs, obspy.Stream):
             self.st_obs_flag = len(self.st_obs)
             self.obs_process_flag = (
@@ -105,6 +108,8 @@ class Crate:
             )
         else:
             self.st_obs_flag, self.obs_process_flag = False, False
+
+        # make sure sytnhetic waveforms are Stream objects
         if isinstance(self.st_syn, obspy.Stream):
             self.st_syn_flag = len(self.st_syn)
             self.syn_process_flag = (
@@ -113,15 +118,21 @@ class Crate:
             )
         else:
             self.st_syn_flag, self.syn_process_flag = False, False
+
+        # check to see if inv is an Inventory
         if isinstance(self.inv, obspy.Inventory):
             self.inv_flag = "{net}.{sta}".format(net=self.inv[0].code,
                                                  sta=self.inv[0][0].code)
         else:
             self.inv_flag = False
+
+        # check to see if event is an Event object
         if isinstance(self.event, obspy.core.event.Event):
             self.event_flag = self.event.resource_id
         else:
             self.event_flag = False
+
+        # If pyflex and pyadjoint are run, the crate will have these
         self.pyflex_flag = isinstance(self.windows, dict)
         self.pyadjoint_flag = isinstance(self.adj_srcs, dict)
 
@@ -158,7 +169,6 @@ class Manager:
         :type crate: pyatoa.core.Manager.Crate
         :param crate: Crate to hold all your information
         """
-        # self.config = copy.deepcopy(config)
         self.config = config
         self.ds = ds
         self.gatherer = None
@@ -170,7 +180,7 @@ class Manager:
         """
         Print statement shows available information inside the workflow.
         """
-        self.crate._checkflags()
+        self.crate.check_flags()
         return ("CRATE\n"
                 "\tEvent:                     {event}\n"
                 "\tInventory:                 {inventory}\n"
@@ -192,19 +202,6 @@ class Manager:
                          pyflex=self.crate.pyflex_flag,
                          pyadjoint=self.crate.pyadjoint_flag
                          )
-
-    def _launch_gatherer(self, reset=False):
-        """
-        Initiates gatherer class, should only need to be done once per asdf
-        dataset. Option given to reset and reinstantiate gatherer object.
-
-        :param reset: bool
-        :return: if True, launch a new gatherer regardless of whether one exists
-        """
-        if (self.gatherer is None) or reset:
-            logger.info("initiating/resetting gatherer")
-            gatherer = Gatherer(config=self.config, ds=self.ds)
-            self.gatherer = gatherer
 
     def reset(self):
         """
@@ -265,11 +262,16 @@ class Manager:
         Initiate the prerequisite parts of the Manager class. Populate with
         an obspy event object
         """
-        self._launch_gatherer(reset)
+        # Launch the gatherer
+        if (self.gatherer is None) or reset:
+            logger.info("initiating/resetting gatherer")
+            gatherer = Gatherer(config=self.config, ds=self.ds)
+            self.gatherer = gatherer
+
+        # Populate with an event
         if self.gatherer.event is not None:
             self.crate.event = self.gatherer.event
         else:
-            # logger.info("gathering event information")
             if self.config.event_id is not None:
                 self.crate.event = self.gatherer.gather_event()
 
@@ -358,6 +360,7 @@ class Manager:
         """
         Preprocess observed and synthetic data in place on waveforms in crate.
         """
+        # Pre-check to see if data has already been gathered
         if not (isinstance(self.crate.st_obs, obspy.Stream) and
                 isinstance(self.crate.st_syn, obspy.Stream)
                 ):
@@ -365,37 +368,46 @@ class Manager:
                           UserWarning)
             return
 
+        # Process observation waveforms
         logger.info("preprocessing observation data")
+        # If set in configs, rotate based on src rcv lat/lon values
         if self.config.rotate_to_rtz:
             _, baz = gcd_and_baz(self.crate.event, self.crate.inv)
         else:
             baz = None
-        # adjoint sources require the same sampling_rate as the synthetics
+        # Adjoint sources require the same sampling_rate as the synthetics
         sampling_rate = self.crate.st_syn[0].stats.sampling_rate
+
         self.crate.st_obs = preproc(self.crate.st_obs, inv=self.crate.inv,
                                     resample=sampling_rate,
                                     pad_length_in_seconds=20, back_azimuth=baz,
                                     output=self.config.unit_output,
                                     filter_bounds=[self.config.min_period,
-                                                  self.config.max_period],
+                                                   self.config.max_period],
                                     corners=4
                                     )
+
+        # Process synthetic waveforms
         logger.info("preprocessing synthetic data")
         self.crate.st_syn = preproc(self.crate.st_syn, resample=None,
                                     pad_length_in_seconds=20,
                                     output=self.config.unit_output,
                                     back_azimuth=baz, corners=4,
                                     filter_bounds=[self.config.min_period,
-                                                  self.config.max_period]
+                                                   self.config.max_period]
                                     )
+
+        # Trim observations and synthetics to the length of synthetics
         self.crate.st_obs, self.crate.st_syn = trimstreams(
             st_a=self.crate.st_obs, st_b=self.crate.st_syn, force="b")
-        # vv essentially the first timestamp in the .sem? file from specfem
+
+        # The first timestamp in the .sem? file from specfem
         self.crate.time_offset = (self.crate.st_syn[0].stats.starttime -
                                   self.crate.event.preferred_origin().time
                                   )
+
+        # Convolve synthetic data with a gaussian source-time-function
         try:
-            # convolve synthetic data with a gaussian source-time-function
             half_duration = (self.crate.event.focal_mechanisms[0].
                              moment_tensor.source_time_function.duration) / 2
 
@@ -432,53 +444,69 @@ class Manager:
         9: c_4a = for curtailing windows w/ emergent starts and/or codas
         10:c_4b = for curtailing windows w/ emergent starts and/or codas
         """
+        # Pre-check to see if data has already been gathered
         if not (isinstance(self.crate.st_obs, obspy.Stream) and
                 isinstance(self.crate.st_syn, obspy.Stream)
                 ):
             warnings.warn("cannot run Pyflex, no waveform data")
             return
 
-        pf_config, pf_event, pf_station = set_pyflex_config(
-            config=self.config, inv=self.crate.inv, event=self.crate.event
-            )
+        # Create Pyflex Station and Event objects
+        pf_station, pf_event = set_pyflex_station_event(
+            inv=self.crate.inv, event=self.crate.event
+        )
+
+        # empties to see if no windows were collected, windows and staltas
+        # saved as dictionary objects by component name
         empties = 0
         windows, staltas = {}, {}
-        for COMP in self.config.component_list:
-            window = pyflex.select_windows(
-                observed=self.crate.st_obs.select(component=COMP),
-                synthetic=self.crate.st_syn.select(component=COMP),
-                config=pf_config, event=pf_event, station=pf_station,
-                )
+        for comp in self.config.component_list:
+            # Run Pyflex to select misfit windows
+            try:
+                window = pyflex.select_windows(
+                    observed=self.crate.st_obs.select(component=comp),
+                    synthetic=self.crate.st_syn.select(component=comp),
+                    config=self.config.pyflex_config[1], event=pf_event,
+                    station=pf_station,
+                    )
+            except IndexError:
+                window = []
+
+            # Run Pyflex to collect STA/LTA information for plotting
             stalta = pyflex.stalta.sta_lta(
                 data=envelope(
-                    self.crate.st_syn.select(component=COMP)[0].data),
-                dt=self.crate.st_syn.select(component=COMP)[0].stats.delta,
+                    self.crate.st_syn.select(component=comp)[0].data),
+                dt=self.crate.st_syn.select(component=comp)[0].stats.delta,
                 min_period=self.config.min_period
                 )
-            staltas[COMP] = stalta
+            staltas[comp] = stalta
             logger.info("{0} window(s) found for component {1}".format(
-                len(window), COMP)
+                len(window), comp)
                 )
+            # If pyflex returns null, move on
             if not window:
                 empties += 1
                 continue
             else:
-                windows[COMP] = window
-        # TODO: should this be an exception?
+                windows[comp] = window
+
+        # Let the User know that no windows were found for this station
         if empties == len(self.config.component_list):
             warnings.warn("Empty windows", UserWarning)
 
+        # Store dictionaries in crate for Pyadjoint and plotting
         self.crate.windows = windows
         self.crate.staltas = staltas
 
+        # If an ASDFDataSet is given, save the windows into auxiliary_data
         if self.ds is not None:
             logger.info("Saving misfit windows to PyASDF")
-            for COMP in windows.keys():
-                for i, window in enumerate(windows[COMP]):
+            for comp in windows.keys():
+                for i, window in enumerate(windows[comp]):
                     tag = "{mod}/{net}_{sta}_{cmp}_{num}".format(
                         net=self.crate.st_obs[0].stats.network,
                         sta=self.crate.st_obs[0].stats.station,
-                        cmp=COMP, mod=self.config.model_number, num=i)
+                        cmp=comp, mod=self.config.model_number, num=i)
                     wind_dict = create_window_dictionary(window)
                     with warnings.catch_warnings():
                         warnings.simplefilter("ignore")
@@ -502,6 +530,7 @@ class Manager:
         lists, with each list containing the [left_window,right_window];
         each window argument should be given in units of time (seconds)
         """
+        # Precheck to see if Pyflex has been run already
         if (self.crate.windows is None) or (isinstance(self.crate.windows, dict)
                                             and not len(self.crate.windows)
                                             ):
@@ -509,19 +538,24 @@ class Manager:
                           UserWarning)
             return
 
+        # Set Pyadjoint configuration
         logger.info("running Pyadjoint for type {} ".format(
             self.config.adj_src_type)
             )
         pa_config = set_pyadjoint_config(config=self.config)
 
+        # Iterate over given windows produced by Pyflex
         adjoint_sources = {}
         for key in self.crate.windows:
             adjoint_windows = []
+
+            # Prepare window indices to give to Pyadjoint
             for win in self.crate.windows[key]:
                 adj_win = [win.left * self.crate.st_obs[0].stats.delta,
                            win.right * self.crate.st_obs[0].stats.delta]
                 adjoint_windows.append(adj_win)
 
+            # Run Pyadjoint to retrieve adjoint sources
             adj_src = pyadjoint.calculate_adjoint_source(
                 adj_src_type=self.config.adj_src_type,
                 observed=self.crate.st_obs.select(component=key)[0],
@@ -530,6 +564,8 @@ class Manager:
                 plot=False
                 )
             adjoint_sources[key] = adj_src
+
+            # If ASDFDataSet given, save adjoint source into auxiliary data
             if self.ds is not None:
                 logger.info("saving adjoint sources {} to PyASDF".format(key))
                 with warnings.catch_warnings():
@@ -542,6 +578,8 @@ class Manager:
                     warnings.simplefilter("ignore")
                     write_adj_src_to_asdf(adj_src, self.ds, tag,
                                           time_offset=self.crate.time_offset)
+
+        # Save adjoint source into crate for plotting
         self.crate.adj_srcs = adjoint_sources
 
     def plot_wav(self, **kwargs):
@@ -560,6 +598,7 @@ class Manager:
         :type dpi: int
         :param dpi: dots per inch of the figure
         """
+        # Precheck for waveform data
         if not (isinstance(self.crate.st_obs, obspy.Stream) and
                 isinstance(self.crate.st_syn, obspy.Stream)
                 ):
@@ -567,27 +606,31 @@ class Manager:
                           UserWarning)
             return
 
+        # Plotting functions contained in submodule
         from pyatoa.visuals.waveforms import window_maker
         show = kwargs.get("show", True)
         save = kwargs.get("save", None)
         figsize = kwargs.get("figsize", (11.69, 8.27))
         dpi = kwargs.get("dpi", 100)
 
-        # calculate a seismogram length
+        # Calculate the seismogram length
         from pyatoa.utils.operations.source_receiver import seismogram_length
         length_s = seismogram_length(
             distance_km=gcd_and_baz(self.crate.event, self.crate.inv[0][0])[0],
             slow_wavespeed_km_s=2, binsize=50, minimum_length=100
         )
-        window_maker(st_obs=self.crate.st_obs, st_syn=self.crate.st_syn,
-                     windows=self.crate.windows, staltas=self.crate.staltas,
-                     adj_srcs=self.crate.adj_srcs, length_s=length_s,
-                     time_offset=self.crate.time_offset,
-                     stalta_wl=self.config.pyflex_config[0],
-                     unit_output=self.config.unit_output,
-                     config=self.config, figsize=figsize, dpi=dpi, show=show,
-                     save=save
-                     )
+
+        # Call on window making function to produce waveform plots
+        window_maker(
+            st_obs=self.crate.st_obs, st_syn=self.crate.st_syn,
+            windows=self.crate.windows, staltas=self.crate.staltas,
+            adj_srcs=self.crate.adj_srcs, length_s=length_s,
+            time_offset=self.crate.time_offset,
+            stalta_wl=self.config.pyflex_config[1].stalta_waterlevel,
+            unit_output=self.config.unit_output,
+            config=self.config, figsize=figsize, dpi=dpi, show=show,
+            save=save
+        )
 
     def plot_map(self, **kwargs):
         """
@@ -609,9 +652,13 @@ class Manager:
         :type dpi: int
         :param dpi: dots per inch of the figure
         """
+        from pyatoa.visuals.mapping import generate_map
+
+        # Warn user if no invetnory is given
         if not isinstance(self.crate.inv, obspy.Inventory):
             warnings.warn("no inventory given, plotting blank map", UserWarning)
-        from pyatoa.visuals.mapping import generate_map
+
+        # Set kew word arguments
         show = kwargs.get("show", True)
         save = kwargs.get("save", None)
         show_faults = kwargs.get("show_faults", False)
@@ -623,6 +670,7 @@ class Manager:
         figsize = kwargs.get("figsize", (8, 8.27))
         dpi = kwargs.get("dpi", 100)
 
+        # Call external function to generate map
         generate_map(config=self.config, event_or_cat=self.crate.event,
                      inv=self.crate.inv, show_faults=show_faults,
                      annotate_names=annotate_names,
