@@ -4,7 +4,7 @@ misfit functional within the automated workflow, in the context of
 requirements mandated by seisflows
 """
 import os
-import sys
+
 import json
 import pyasdf
 import pyatoa
@@ -15,7 +15,6 @@ import traceback
 import numpy as np
 
 from pyatoa.utils.asdf.deletions import clean_ds
-from pyatoa.utils.asdf.extractions import sum_misfits
 from pyatoa.utils.asdf.additions import write_stats_to_asdf
 from pyatoa.utils.operations.file_generation import create_stations_adjoint, \
                    write_adj_src_to_ascii, write_misfit_json, write_misfit_stats
@@ -50,7 +49,7 @@ def get_paths(args):
     :return *_paths: dictionaries for given pyatoa and seisflows pathing
     """
     # pyatoa specific directories
-    fig_dir = os.path.join(args.output_dir, "figures", args.model_number, 
+    fig_dir = os.path.join(args.output_dir, "figures", args.model_number,
                                                                   args.event_id)
     data_dir = os.path.join(args.output_dir, "data")
     misfit_dir = os.path.join(args.output_dir, "misfits")
@@ -91,22 +90,22 @@ def finalize(ds, model, args, paths):
     :param paths: return of get_paths() containing relevant paths 
     """
     print("finalizing")
-    # add statistics to auxiliary_data
+    # REQUIRED: add statistics to auxiliary_data
     write_stats_to_asdf(ds, model, args.step_count)
     
-    # create the .sem ascii files required by specfem
+    # REQUIRED: create the .sem ascii files required by specfem
     write_adj_src_to_ascii(ds, model, paths["ADJ_TRACES"])
     
-    # create the STATIONS_ADJOINT file required by specfem
+    # REQUIRED: create the STATIONS_ADJOINT file required by specfem
     create_stations_adjoint(ds, model, paths["EVENT_DATA"])
     
-    # sum and write misfits and statistics information to master text file 
-    write_misfit_json(ds, model, args.step_count, paths["MISFIT_FILE"]) 
-    
-    # write misfits for seisflows into individual text files
+    # REQUIRED: write misfits for seisflows into individual text files
     write_misfit_stats(ds, model, paths["PYATOA_MISFITS"])
 
-    # tile and combine .png images into a composite .pdf for easy fetching
+    # OPTIONAL: sum and write misfits information to a json file
+    write_misfit_json(ds, model, args.step_count, paths["MISFIT_FILE"])
+
+    # OPTIONAL: combine .png images into a composite .pdf for easy fetching
     tile_and_combine(ds, model, "s{:0<2}".format(args.step_count),
                      paths["PYATOA_FIGURES"], purge_originals=True,
                      purge_tiles=True
@@ -122,9 +121,10 @@ def process_data(args):
     :param args: arguments passed in from Seisflows
     """
     print("initiating")
-    paths = get_paths(args)   
+    paths = get_paths(args)
 
-    # set the Pyatoa Config object for misfit qu
+    # set the Pyatoa Config object for misfit quantification
+    fix_windows = True
     config = pyatoa.Config(
         event_id=args.event_id,
         model_number=args.model_number,
@@ -146,7 +146,7 @@ def process_data(args):
                            "{}.h5".format(config.event_id)
                            )
     with pyasdf.ASDFDataSet(ds_name) as ds:
-        clean_ds(ds, config.model_number)
+        clean_ds(ds, config.model_number, fix_windows)
         config.write_to_asdf(ds)
 
         # calculate misfit by station, get stations from Specfem STATIONS file
@@ -161,7 +161,15 @@ def process_data(args):
                                            net=net, sta=sta, loc="*", cha="HH?")
                                  )
                 mgmt.preprocess()
-                mgmt.run_pyflex()
+
+                # Misfit Window Fixing:
+                # if 'fix_windows==False', OR 'fix_windows==True' BUT
+                # misfit windows do not exist yet, run Pyflex to create windows
+                if not fix_windows or not \
+                        hasattr(ds.auxiliary_data.MisfitWindows,
+                                config.model_number):
+                    mgmt.run_pyflex()
+
                 mgmt.run_pyadjoint()
                 mgmt.plot_wav(save=os.path.join(
                     paths["EVENT_FIGURES"], "wav_{}".format(sta)), show=False)
