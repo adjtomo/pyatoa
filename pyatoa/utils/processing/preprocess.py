@@ -95,7 +95,7 @@ def preproc(st, inv=None, **kwargs):
     """
     warnings.filterwarnings("ignore", category=FutureWarning)
     resample = kwargs.get("resample", None)
-    pad_length_in_seconds = kwargs.get("pad_length_in_seconds", 20)
+    pad_length_seconds = kwargs.get("pad_length_seconds", None)
     output = kwargs.get("output", "VEL").upper()
     back_azimuth = kwargs.get("back_azimuth", None)
     filter_bounds = kwargs.get("filter_bounds", (10,30))
@@ -108,9 +108,16 @@ def preproc(st, inv=None, **kwargs):
     st.detrend("demean")
     st.taper(max_percentage=0.05)
     if inv:
-        st.attach_response(inv)
-        st.remove_response(output=output, water_level=water_level, plot=False)
-        logger.info("removing response with water level {}".format(water_level))
+        # Occasionally, inventory issues arise, as ValueErrors due to 
+        # station availability, e.g. NZ.COVZ. Try/except to catch these.
+        try:
+            st.attach_response(inv)
+            st.remove_response(
+                output=output, water_level=water_level, plot=False)
+        except ValueError:
+            return None
+    
+        logger.info("remove response w/ water level {}".format(water_level))
         st.detrend("linear")
         st.detrend("demean")
         st.taper(max_percentage=0.05)
@@ -135,16 +142,24 @@ def preproc(st, inv=None, **kwargs):
         #             method="gradient")
 
         st.taper(max_percentage=0.05)
+    
+    # Rotate the given stream from standard North East to Radial Transverse
     if back_azimuth is not None:
         st.rotate(method="NE->RT", back_azimuth=back_azimuth)
         logger.info("rotating NE->RT by {} degrees".format(back_azimuth))
-    # st = _zero_pad_stream(st, pad_length_in_seconds)
-    # logger.info("zero padding front and back by {}s".format(
-    #     pad_length_in_seconds))
+    
+    # Zero pad the stream if given
+    if pad_length_seconds:
+        st = _zero_pad_stream(st, pad_length_seconds)
+        logger.info("zero padding front and back by {}s".format(
+                                                            pad_length_seconds))
+    
+    # Filter data using ObsPy Butterworth filters
     if filter_bounds is not None:
         st.filter('bandpass', freqmin=1/filter_bounds[1],
-                  freqmax=1/filter_bounds[0], corners=corners, zerophase=True)
-        msg = "filtering streams at {t0}s to {t1}s with a {c} corner {f} filter"
+                  freqmax=1/filter_bounds[0], corners=corners, zerophase=True
+                  )
+        msg = "filter streams {t0}s to {t1}s w/ {c} corner {f}"
         logger.info(msg.format(t0=filter_bounds[0], t1=filter_bounds[1],
                                c=corners, f="Butterworth"))
 

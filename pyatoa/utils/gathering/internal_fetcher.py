@@ -209,7 +209,7 @@ class Fetcher:
             raise AttributeError("'origintime' must be specified")
         paths_to_waveforms = self.config.paths['synthetics']
         net, sta, _, cha = station_code.split('.')
-        comp = cha[-1]
+        comp = cha[2:]
         specfem_fid_template = '{net}.{sta}.*{cmp}.sem?'
         for path_ in paths_to_waveforms:
             if not os.path.exists(path_):
