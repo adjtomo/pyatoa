@@ -30,11 +30,14 @@ def sum_misfits(ds, model):
     :return summed_misfit: total misfit for a given dataset and model
     """
     adjoint_sources = ds.auxiliary_data.AdjointSources[model]
+    number_windows = len(ds.auxiliary_data.MisfitWindows[model])
     misfits = []
+
+    # collect the total misfit calculated by Pyadjoint
     for adjsrc in adjoint_sources.list():
         misfits.append(adjoint_sources[adjsrc].parameters["misfit_value"])
-   
-    summed_misfits = 0.5 * sum(misfits)/len(misfits)
+    
+    summed_misfits = 0.5 * sum(misfits)/number_windows
 
     return summed_misfits
 

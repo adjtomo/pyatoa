@@ -283,17 +283,17 @@ def set_pyadjoint_config(config):
     """
     import pyadjoint
 
-    if config.adj_src_type == "waveform":
+    if config.pyadjoint_config[0] == "waveform":
         cfgout = pyadjoint.ConfigWaveForm(min_period=config.min_period,
                                           max_period=config.max_period,
                                           taper_type="hann",
                                           taper_percentage=0.15)
-    elif config.adj_src_type == "cc_traveltime_misfit":
+    elif config.pyadjoint_config[0] == "cc_traveltime_misfit":
         cfgout = pyadjoint.ConfigCrossCorrelation(
             min_period=config.min_period, max_period=config.max_period,
             taper_type='hann', taper_percentage=0.3, measure_type='dt',
             use_cc_error=True, dt_sigma_min=1.0, dlna_sigma_min=0.5)
-    elif config.adj_src_type == "multitaper_misfit":
+    elif config.pyadjoint_config[0] == "multitaper_misfit":
         cfgout = pyadjoint.ConfigMultiTaper(
             min_period=config.min_period, max_period=config.max_period,
             lnpt=15, transfunc_waterlevel=1e-10, water_threshold=0.02,
@@ -303,6 +303,8 @@ def set_pyadjoint_config(config):
             dt_sigma_min=1.0, dlna_sigma_min=0.5, use_cc_error=True,
             use_mt_error=False)
     else:
-        raise KeyError("adjoint source type incorrectly specified")
+        raise KeyError("adjoint source type incorrectly specified, "
+                       "must be: 'waveform', 'cc_traveltime_misfit', "
+                       "'multitaper_misfit'")
     return cfgout
 

@@ -67,6 +67,7 @@ def window_maker(st_obs, st_syn, config, **kwargs):
     :param st_*: stream object to plot
     :type config: pyatoa.core.config.Config
     """
+    # Get keyword arguments
     dpi = kwargs.get("dpi", 100)
     figsize = kwargs.get("figsize", (11.69, 8.27))  #A4
     time_offset = kwargs.get("time_offset", 0)
@@ -76,19 +77,24 @@ def window_maker(st_obs, st_syn, config, **kwargs):
     length_s = kwargs.get("length_s", None)
     stalta_wl = kwargs.get("stalta_wl", None)
     unit_output = kwargs.get("unit_output", None)
+    total_misfit = kwargs.get("total_misfit", None)
     show_fig = kwargs.get("show", False)
     save = kwargs.get("save", None)
 
+    # Set some parameters necessary for flexible plotting
     middle_trace = len(st_obs)//2
-    unit_dict = {"DISP": "displacement [m]", "VEL": "velocity [m/s]",
+    unit_dict = {"DISP": "displacement [m]", 
+                 "VEL": "velocity [m/s]",
                  "ACC": "acceleration [m/s^2]"}
 
+    # Instantiate plotting instances
     f = plt.figure(figsize=figsize, dpi=dpi)
     axes, twaxes = setup_plot(number_of=len(st_obs), twax=True)
     t = np.linspace(time_offset,
                     st_obs[0].stats.endtime-st_obs[0].stats.starttime,
                     len(st_obs[0].data))
-
+    
+    # Plot per component
     z = 5
     for i, comp in enumerate(config.component_list):
         obs = st_obs.select(component=comp)
@@ -98,7 +104,8 @@ def window_maker(st_obs, st_syn, config, **kwargs):
         a2, = axes[i].plot(t, syn[0].data, 'r', zorder=z,
                            label="{} (SYN)".format(syn[0].get_id()))
         lines_for_legend = [a1, a2]
-
+        
+        # If STA/LTA information from Pyflex given, plot behind waveforms
         if staltas is not None:
             stalta_ = normalize_a_to_b(staltas[comp], -1, 1)
             twaxes[i].plot(t, stalta_, 'gray', alpha=0.4, zorder=z-1)
@@ -106,6 +113,7 @@ def window_maker(st_obs, st_syn, config, **kwargs):
                               alpha=0.2, zorder=z-2, linewidth=1.5, c='k',
                               linestyle='--')
 
+        # If misfit windows given, plot each window and annotate information
         if windows is not None:
             ymin, ymax = axes[i].get_ylim()
             window_anno = "maxCC:{mcc:.4f}\nccShift:{ccs:.2f}s\ndlnA:{dln:.4f}"
@@ -124,7 +132,8 @@ def window_maker(st_obs, st_syn, config, **kwargs):
                         dln=window.dlnA)
                     axes[i].annotate(s=anno_str, xy=(twindow[10], ymax * 0.5),
                                      zorder=z-1, fontsize=7)
-
+                
+                # If adjoint sources given, plot and provide legend information
                 if adj_srcs is not None:
                     _adj_src = normalize_a_to_b(adj_srcs[comp].adjoint_source,
                                                 a=-1, b=1)
@@ -138,6 +147,7 @@ def window_maker(st_obs, st_syn, config, **kwargs):
             except KeyError:
                 pass
 
+        # The y-label of the middle trace contains common info from Pyflex
         if i == middle_trace:
             twaxes[i].set_ylabel("adjoint source (normalized) &\n"
                                  "STA/LTA (waterlevel = {})".format(stalta_wl),
@@ -149,7 +159,7 @@ def window_maker(st_obs, st_syn, config, **kwargs):
                        loc="upper right")
         axes[i].set_ylabel(comp)
 
-        # dynamic seismogram length
+        # Dynamic seismogram length
         if not length_s:
             length_s = t[-1]
         axes[i].set_xlim([t[0], length_s])
@@ -158,11 +168,17 @@ def window_maker(st_obs, st_syn, config, **kwargs):
             format_axis(AX)
         align_yaxis(axes[i], twaxes[i])
 
-    axes[0].set_title("{n}.{s}  {e}  [{b0}, {b1}]".format(
-        e=config.event_id, n=st_obs[0].stats.network, s=st_obs[0].stats.station,
-        b0=config.min_period, b1=config.max_period)
-                     )
+    # Set plot title with relevant information
+    title = "{net}.{sta} {evt} [{t0}s, {t1}s] ".format(
+        net=st_obs[0].stats.network, sta=st_obs[0].stats.station,
+        evt=config.event_id, t0=config.min_period, t1=config.max_period
+        )
+    if total_misfit:
+        title = " ".join([title, "misfit={:.3f}".format(total_misfit)])
+    axes[0].set_title(title)
+    
     axes[-1].set_xlabel("time [s]")
+    
     if save:
         plt.savefig(save, figsize=figsize, dpi=dpi)
     if show_fig:

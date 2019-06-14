@@ -138,8 +138,7 @@ def write_misfit_stats(ds, model, pathout):
     np.savetxt(fidout, [misfit], '%11.6e')
 
            
-def generate_srcrcv_vtk_file(h5_fid, fid_out, model="m00", utm_zone=60,
-                             event_fid_out=None):
+def create_srcrcv_vtk(ds, model, path_out, event_separate=False, utm_zone=60):
     """
     It's useful to visualize source receiver locations in Paraview, alongside
     sensitivity kernels. VTK files are produced by Specfem, however they are for
@@ -163,12 +162,12 @@ def generate_srcrcv_vtk_file(h5_fid, fid_out, model="m00", utm_zone=60,
     :type event_fid: str
     :param event_fid: if event vtk file to be made separately
     """
-    import pyasdf
     from pyatoa.utils.operations.source_receiver import lonlat_utm
+
+    event_id = os.path.basename(ds.filename).split(".")[0]
 
     # get receiver location information in UTM_60 coordinate system from
     # pyasdf auxiliary_data. make sure no repeat stations
-    ds = pyasdf.ASDFDataSet(h5_fid)
     sta_x, sta_y, sta_elv, sta_ids = [], [], [], []
     if bool(ds.auxiliary_data):
         for adjsrc in ds.auxiliary_data.AdjointSources[model].list():
@@ -187,14 +186,16 @@ def generate_srcrcv_vtk_file(h5_fid, fid_out, model="m00", utm_zone=60,
             sta_elv.append(elevation_in_m)
             sta_ids.append(station_id)
 
-    # get event location information in UTM_60. set depth at 100 for epicenter
+    # get event location information in UTM_60. 
     ev_x, ev_y = lonlat_utm(lon_or_x=ds.events[0].preferred_origin().longitude,
                             lat_or_y=ds.events[0].preferred_origin().latitude,
                             utm_zone=utm_zone, inverse=False
                             )
+    # set event epicentral depth to 100km to keep it above topography
     ev_elv = 100.0
 
     # write header for vtk file and then print values for source receivers
+    fid_out = os.path.join(path_out, "{}_{}.vtk".format(event_id, model)) 
     with open(fid_out, "w") as f:
         f.write("# vtk DataFile Version 2.0\n"
                 "Source and Receiver VTK file from Pyatoa\n"
@@ -210,7 +211,9 @@ def generate_srcrcv_vtk_file(h5_fid, fid_out, model="m00", utm_zone=60,
             f.write("{X:18.6E}{Y:18.6E}{E:18.6E}\n".format(X=x, Y=y, E=e))
 
     # make a separate vtk file for the source
-    if event_fid_out:
+    if event_separate:
+        event_fid_out = os.path.join(
+                             fid_out, "{}_{}_event.vtk".format(event_id, model))
         with open(event_fid_out, "w") as f:
             f.write("# vtk DataFile Version 2.0\n"
                     "Source and Receiver VTK file from Pyatoa\n"

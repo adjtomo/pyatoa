@@ -30,9 +30,7 @@ from pyatoa.utils.operations.formatting import create_window_dictionary, \
      channel_codes
 from pyatoa.utils.processing.preprocess import preproc, trimstreams
 from pyatoa.utils.processing.synpreprocess import stf_convolve_gaussian
-
-from pyatoa.utils.configurations.external import set_pyflex_station_event, \
-     set_pyadjoint_config
+from pyatoa.utils.configurations.external import set_pyflex_station_event
 
 
 class Crate:
@@ -79,6 +77,10 @@ class Crate:
         self.windows = None
         self.staltas = None
         self.adj_srcs = None
+        
+        # Internally used statistics 
+        self.number_windows = None
+        self.total_misfit = None        
 
         # Flags to show status of workflow
         self.event_flag = False
@@ -375,6 +377,7 @@ class Manager:
             _, baz = gcd_and_baz(self.crate.event, self.crate.inv)
         else:
             baz = None
+
         # Adjoint sources require the same sampling_rate as the synthetics
         sampling_rate = self.crate.st_syn[0].stats.sampling_rate
 
@@ -387,6 +390,11 @@ class Manager:
                                     corners=4
                                     )
 
+        # mid-check to see if preprocessing failed
+        if not isinstance(self.crate.st_obs, obspy.Stream):
+            warnings.warn("obs data could not be processed", UserWarning)
+            return
+        
         # Process synthetic waveforms
         logger.info("preprocessing synthetic data")
         self.crate.st_syn = preproc(self.crate.st_syn, resample=None,
@@ -396,6 +404,11 @@ class Manager:
                                     filter_bounds=[self.config.min_period,
                                                    self.config.max_period]
                                     )
+        
+        # mid-check to see if preprocessing failed
+        if not isinstance(self.crate.st_syn, obspy.Stream):
+            warnings.warn("syn data could not be processed", UserWarning)
+            return
 
         # Trim observations and synthetics to the length of synthetics
         self.crate.st_obs, self.crate.st_syn = trimstreams(
@@ -458,10 +471,10 @@ class Manager:
 
         # empties to see if no windows were collected, windows and staltas
         # saved as dictionary objects by component name
-        empties = 0
+        empties, number_windows = 0, 0
         windows, staltas = {}, {}
         for comp in self.config.component_list:
-            # Run Pyflex to select misfit windows
+            # Run Pyflex to select misfit windows as Window objects
             try:
                 window = pyflex.select_windows(
                     observed=self.crate.st_obs.select(component=comp),
@@ -483,6 +496,7 @@ class Manager:
             logger.info("{0} window(s) found for component {1}".format(
                 len(window), comp)
                 )
+            number_windows += len(window)
             # If pyflex returns null, move on
             if not window:
                 empties += 1
@@ -494,12 +508,17 @@ class Manager:
         if empties == len(self.config.component_list):
             warnings.warn("Empty windows", UserWarning)
 
-        # Store dictionaries in crate for Pyadjoint and plotting
+        # Store information in crate for Pyadjoint and plotting
         self.crate.windows = windows
         self.crate.staltas = staltas
+        self.crate.number_windows = number_windows
 
+        # Let the user know the outcomes of Pyflex
+        logger.info("NUMBER WINDOWS {}".format(number_windows))
+        print("{} window(s) total found".format(number_windows))
+    
         # If an ASDFDataSet is given, save the windows into auxiliary_data
-        if self.ds is not None:
+        if self.ds is not None and number_windows != 0:
             logger.info("Saving misfit windows to PyASDF")
             for comp in windows.keys():
                 for i, window in enumerate(windows[comp]):
@@ -540,11 +559,11 @@ class Manager:
 
         # Set Pyadjoint configuration
         logger.info("running Pyadjoint for type {} ".format(
-            self.config.adj_src_type)
+            self.config.pyadjoint_config[0])
             )
-        pa_config = set_pyadjoint_config(config=self.config)
 
         # Iterate over given windows produced by Pyflex
+        total_misfit = 0
         adjoint_sources = {}
         for key in self.crate.windows:
             adjoint_windows = []
@@ -555,15 +574,21 @@ class Manager:
                            win.right * self.crate.st_obs[0].stats.delta]
                 adjoint_windows.append(adj_win)
 
-            # Run Pyadjoint to retrieve adjoint sources
+            # Run Pyadjoint to retrieve adjoint source Objects
             adj_src = pyadjoint.calculate_adjoint_source(
-                adj_src_type=self.config.adj_src_type,
+                adj_src_type=self.config.pyadjoint_config[0],
                 observed=self.crate.st_obs.select(component=key)[0],
                 synthetic=self.crate.st_syn.select(component=key)[0],
-                config=pa_config, window=adjoint_windows,
+                config=self.config.pyadjoint_config[1], window=adjoint_windows,
                 plot=False
                 )
+            
+            # Save adjoint sources in dictionary
             adjoint_sources[key] = adj_src
+            logger.info("{misfit:.3f} misfit for component {comp} found".format(
+                        misfit=adj_src.misfit, comp=key)
+                        )
+            total_misfit += adj_src.misfit
 
             # If ASDFDataSet given, save adjoint source into auxiliary data
             if self.ds is not None:
@@ -578,9 +603,17 @@ class Manager:
                     warnings.simplefilter("ignore")
                     write_adj_src_to_asdf(adj_src, self.ds, tag,
                                           time_offset=self.crate.time_offset)
-
+        
         # Save adjoint source into crate for plotting
         self.crate.adj_srcs = adjoint_sources
+        
+        # Save total misfit for this station in the crate
+        # Misfit calucalated a la Tape (2010) Eq. 6
+        self.crate.total_misfit = 0.5 * total_misfit/self.crate.number_windows
+
+        # Let the user know the outcome of Pyadjoint
+        logger.info("TOTAL MISFIT {:.3f}".format(self.crate.total_misfit)) 
+        print("{} total misfit".format(self.crate.total_misfit))
 
     def plot_wav(self, **kwargs):
         """
@@ -619,7 +652,7 @@ class Manager:
             distance_km=gcd_and_baz(self.crate.event, self.crate.inv[0][0])[0],
             slow_wavespeed_km_s=2, binsize=50, minimum_length=100
         )
-
+        
         # Call on window making function to produce waveform plots
         window_maker(
             st_obs=self.crate.st_obs, st_syn=self.crate.st_syn,
@@ -628,8 +661,9 @@ class Manager:
             time_offset=self.crate.time_offset,
             stalta_wl=self.config.pyflex_config[1].stalta_waterlevel,
             unit_output=self.config.unit_output,
-            config=self.config, figsize=figsize, dpi=dpi, show=show,
-            save=save
+            config=self.config, figsize=figsize, 
+            total_misfit=self.crate.total_misfit, 
+            dpi=dpi, show=show, save=save
         )
 
     def plot_map(self, **kwargs):

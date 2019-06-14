@@ -107,7 +107,7 @@ class Config:
         self.rotate_to_rtz = rotate_to_rtz
         self.unit_output = unit_output.upper()
         self.pyflex_config = (pyflex_config, None)
-        self.adj_src_type = adj_src_type
+        self.pyadjoint_config = (adj_src_type, None)
         self.paths = {"waveforms": paths_to_waveforms,
                       "synthetics": paths_to_synthetics,
                       "responses": paths_to_responses,
@@ -160,19 +160,31 @@ class Config:
         just make sure that some of the configuration parameters are set proper
         :return:
         """
-        from pyatoa.utils.configurations.external import pyflex_configs,\
-            set_pyflex_config
-
+        import pyatoa.utils.configurations.external as extcfg
+        
+        # Check if unit output properly set
         if self.unit_output not in ['DISP', 'VEL', 'ACC']:
             warnings.warn("'unit_output' must be 'DISP','VEL' or 'ACC'",
                           UserWarning)
-        if self.pyflex_config[0] not in pyflex_configs().keys():
+        
+        # Check that Pyflex config is an available preset, else set 'default'
+        if self.pyflex_config[0] not in extcfg.pyflex_configs().keys():
             warnings.warn(
                 "{} not in preset pyflex configs, setting 'default'".format(
                     self.pyflex_config)
             )
             self.pyflex_config = ("default", None)
-        self.pyflex_config = (self.pyflex_config[0], set_pyflex_config(self))
+        
+        # Set Pyflex config as a tuple, (name, pyflex.Config)
+        self.pyflex_config = (self.pyflex_config[0], 
+                              extcfg.set_pyflex_config(self)
+                              )
+
+        # Set Pyadjoint Config as a tuple, (adj source type, pyadjoint.Config)
+        self.pyadjoint_config = (self.pyadjoint_config[0],
+                                 extcfg.set_pyadjoint_config(self)
+                                 )
+
 
     def write_to_txt_file(self, filename):
         """
@@ -197,8 +209,8 @@ class Config:
                     "filter_corners": self.filter_corners,
                     "rotate_to_rtz": self.rotate_to_rtz,
                     "unit_output": self.unit_output,
-                    "pyflex_config": self.pyflex_config,
-                    "adj_src_type": self.adj_src_type,
+                    "pyflex_config": self.pyflex_config[0],
+                    "adj_src_type": self.pyadjoint_config[0]
                     }
 
         ds.add_auxiliary_data(data_type="Configs", data=np.array([True]),
