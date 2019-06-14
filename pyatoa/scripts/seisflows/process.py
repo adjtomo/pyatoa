@@ -18,8 +18,7 @@ import numpy as np
 from pyatoa.utils.asdf.deletions import clean_ds
 from pyatoa.utils.asdf.additions import write_stats_to_asdf
 from pyatoa.utils.operations.file_generation import create_stations_adjoint, \
-                   write_adj_src_to_ascii, write_misfit_json, write_misfit_stats
-from pyatoa.visuals.convert_images import tile_and_combine
+                                   write_adj_src_to_ascii, write_misfit_stats
 from pyatoa.scripts.seisflows.sfconfig import sfconfig
 
 
@@ -27,16 +26,22 @@ def initialize_parser():
     """
     Seisflows calls pyatoa via subprocess, so we use an argparser to provide
     Pyatoa with information that it requires
+        
     :return:
     """
     parser = argparse.ArgumentParser(description="Inputs from Seisflows")
-    parser.add_argument("-e", "--event_id")
-    parser.add_argument("-m", "--model_number")
-    parser.add_argument("-i", "--step_count")
-    parser.add_argument("-w", "--working_dir")
-    parser.add_argument("-o", "--output_dir")
-    parser.add_argument("-c", "--current_dir")
-    parser.add_argument("-s", "--suffix")
+    parser.add_argument("-e", "--event_id", type=str, help="Event Identifier")
+    parser.add_argument("-m", "--model_number", type=str, 
+                help="Model Number, e.g. 'm00'")
+    parser.add_argument("-i", "--step_count", type=int, 
+                help="Step Count, e.g. 0" )
+    parser.add_argument("-w", "--working_dir", type=str, 
+                help="Working directory, main Seisflows directory")
+    parser.add_argument("-o", "--output_dir", type=str, 
+                help="Output directory, to save figures and processed data")
+    parser.add_argument("-c", "--current_dir", type=str,
+                help="Current Specfem directory, with 'DATA' and 'traces'")
+    parser.add_argument("-s", "--suffix", type=str, help="Seisflows suffix")
 
     return parser.parse_args()
 
@@ -55,7 +60,8 @@ def get_paths(args, usrcfg):
                            )
     data_dir = os.path.join(args.output_dir, usrcfg["data_dir"])
     misfit_dir = os.path.join(args.output_dir, usrcfg["misfit_dir"])
-    for d in [fig_dir, data_dir, misfit_dir]:
+    vtk_dir = os.path.join(args.output_dir, usrcfg["vtk_dir"])
+    for d in [fig_dir, data_dir, misfit_dir, vtk_dir]:
         if not os.path.exists(d):
             os.makedirs(d)
    
@@ -63,6 +69,7 @@ def get_paths(args, usrcfg):
         "EVENT_FIGURES": fig_dir, 
         "PYATOA_DATA": data_dir,
         "PYATOA_MISFITS": misfit_dir,
+        "PYATOA_VTK": vtk_dir,
         "PYATOA_FIGURES": os.path.join(args.output_dir, usrcfg["figure_dir"]),
         "MISFIT_FILE": os.path.join(args.output_dir, usrcfg["misfits_json"]),
         "ADJ_TRACES": os.path.join(args.current_dir, "traces", "adj"), 
@@ -91,7 +98,6 @@ def finalize(ds, model, args, paths, usrcfg):
     :type paths: dict
     :param paths: return of get_paths() containing relevant paths 
     """
-    print("finalizing")
     # REQUIRED: add statistics to auxiliary_data
     write_stats_to_asdf(ds, model, args.step_count)
     
@@ -105,16 +111,26 @@ def finalize(ds, model, args, paths, usrcfg):
     write_misfit_stats(ds, model, paths["PYATOA_MISFITS"])
 
     # OPTIONAL: sum and write misfits information to a json file
-    if usrcfg["write_mifsits_json"]:
+    if usrcfg["write_misfit_json"]:
+        from pyatoa.utils.operations.file_generation import write_misfit_json
         write_misfit_json(ds, model, args.step_count, paths["MISFIT_FILE"])
 
     # OPTIONAL: combine .png images into a composite .pdf for easy fetching
-    if usrcfg["tile_and_combine"]:
+    if usrcfg["plot_waveforms"] and usrcfg["plot_maps"] and \
+                                                     usrcfg["tile_and_combine"]:
+        from pyatoa.visuals.convert_images import tile_and_combine
         tile_and_combine(ds, model, "s{:0<2}".format(args.step_count),
                          paths["PYATOA_FIGURES"],
                          purge_originals=usrcfg["purge_originals"],
                          purge_tiles=usrcfg["purge_tiles"]
                          )
+
+    # OPTIONAL: generate .vtk files for given source and receivers 
+    if usrcfg["create_srcrcv_vtk"]:
+        from pyatoa.utils.operations.file_generation import create_srcrcv_vtk
+        create_srcrcv_vtk(ds, model, paths["PYATOA_VTK"], 
+                          event_separate=usrcfg["create_src_vtk"])
+        
 
 
 def process_data(args, usrcfg):
@@ -127,7 +143,6 @@ def process_data(args, usrcfg):
     :type usrcfg: dict
     :param usrcfg: user configuration, from sfconfig.py
     """
-    print("initiating")
     paths = get_paths(args, usrcfg)
 
     # Set the Pyatoa Config object for misfit quantification
@@ -137,23 +152,22 @@ def process_data(args, usrcfg):
         min_period=usrcfg["min_period"],
         max_period=usrcfg["max_period"],
         filter_corners=usrcfg["filter_corners"],
-        rotate_to_rtz=usrcfg["rotate_ro_rtz"],
+        rotate_to_rtz=usrcfg["rotate_to_rtz"],
         unit_output=usrcfg["unit_output"],
         pyflex_config=usrcfg["pyflex_config"],
         adj_src_type=usrcfg["adj_src_type"],
         paths_to_synthetics=[paths["SYN_TRACES"]],
-        paths_to_waveforms=[usrcfg["paths_to_waveforms"]],
-        paths_to_responses=[usrcfg["paths_to_responses"]]
+        paths_to_waveforms=usrcfg["paths_to_waveforms"],
+        paths_to_responses=usrcfg["paths_to_responses"]
         )
 
     # Save HDF5 output by event id
-    print("running")
     ds_name = os.path.join(paths["PYATOA_DATA"], 
                            "{}.h5".format(config.event_id)
                            )
     with pyasdf.ASDFDataSet(ds_name) as ds:
         # Make sure the ASDFDataSet doesn't already contain auxiliary_data
-        # that will be collected here.
+        # because it will be collected in this workflow
         clean_ds(ds, config.model_number, usrcfg["fix_windows"])
 
         # Write the Config to auxiliary_data for provenance
@@ -169,26 +183,40 @@ def process_data(args, usrcfg):
             print("{}.{}".format(net, sta))
             try:
                 mgmt.reset()
+                
+                # Gather data, searching internal pathways, else fetching from
+                # external pathways if possible. Preprocess identically
                 mgmt.gather_data(station_code="{net}.{sta}.{loc}.{cha}".format(
-                                           net=net, sta=sta, loc="*", cha="HH?")
+                                 net=net, sta=sta, loc="*", cha="HH[NZE]")
                                  )
                 mgmt.preprocess()
-
-                # Misfit Window Fixing:
+                
+                # Fix misfit windows
                 # if 'fix_windows==False', OR 'fix_windows==True' BUT
                 # misfit windows do not exist yet, run Pyflex to create windows
                 if not usrcfg["fix_windows"] or not \
                         hasattr(ds.auxiliary_data.MisfitWindows,
                                 config.model_number):
                     mgmt.run_pyflex()
-
                 mgmt.run_pyadjoint()
-                mgmt.plot_wav(save=os.path.join(
-                    paths["EVENT_FIGURES"], "wav_{}".format(sta)), show=False)
-                mgmt.plot_map(save=os.path.join(
-                    paths["EVENT_FIGURES"], "map_{}".format(sta)), show=False)
-            # Traceback ensures more detailed error tracking, but do not allow
-            # error to stop the workflow
+
+                # Plot waveforms with misfit windows and adjoint sources
+                if usrcfg["plot_waveforms"]:
+                    mgmt.plot_wav(
+                        save=os.path.join(
+                                  paths["EVENT_FIGURES"], "wav_{}".format(sta)), 
+                        show=False
+                        )
+               
+                # Plot source-receiver maps  
+                if usrcfg["plot_maps"]:
+                    mgmt.plot_map(
+                        save=os.path.join(
+                                  paths["EVENT_FIGURES"], "map_{}".format(sta)),
+                        show=False
+                        )
+                print("\n")
+            # Traceback ensures more detailed error tracking
             except Exception:
                 traceback.print_exc()
                 print("\n")
@@ -207,12 +235,12 @@ if __name__ == "__main__":
         # and relevant pathing
         args = initialize_parser()
 
-        # User defined configuration for Pyatoa, controlling processing parameters
+        # User defined configuration for Pyatoa, controlling processing params
         # pathing and switches for outputs and logging
         usrcfg = sfconfig()
 
         # Set logging based on user defined parameter
-        if usrcfg["logging"]:
+        if usrcfg["set_logging"]:
             logger = logging.getLogger("pyatoa")
             logger.setLevel(logging.DEBUG)
 

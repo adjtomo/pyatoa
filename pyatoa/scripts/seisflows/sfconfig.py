@@ -81,15 +81,18 @@ def sfconfig():
         "plot_maps": True,
 
         # Pyatoa Outputs
-        "write_misfits_json": True,
+        "write_misfit_json": True,
         "tile_and_combine": True,
         "purge_originals": True,
-        "purge_tiles": True
+        "purge_tiles": True,
+        "create_srcrcv_vtk": True,
+        "create_src_vtk": False,
 
         # Pyatoa Paths (output directory set in Seisflows)
         "figure_dir": "figures",
         "data_dir": "data",
         "misfit_dir": "misfits",
+        "vtk_dir": "vtks",
         "misfits_json": "misfits.json",
     }
     return pd
