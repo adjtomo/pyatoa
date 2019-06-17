@@ -61,9 +61,9 @@ def get_paths(args, usrcfg):
     data_dir = os.path.join(args.output_dir, usrcfg["data_dir"])
     misfit_dir = os.path.join(args.output_dir, usrcfg["misfit_dir"])
     vtk_dir = os.path.join(args.output_dir, usrcfg["vtk_dir"])
-    for d in [fig_dir, data_dir, misfit_dir, vtk_dir]:
-        if not os.path.exists(d):
-            os.makedirs(d)
+    # for d in [fig_dir, data_dir, misfit_dir, vtk_dir]:
+    #     if not os.path.exists(d):
+    #        os.makedirs(d)
    
     paths = {
         "EVENT_FIGURES": fig_dir, 
