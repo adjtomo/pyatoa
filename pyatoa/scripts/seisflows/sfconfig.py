@@ -69,21 +69,21 @@ def sfconfig():
         "filter_corners": 4,
         "rotate_to_rtz": False,
         "unit_output": "DISP",
-        "pyflex_config": "default",
+        "pyflex_config": "hikurangi_strict",
         "adj_src_type": "multitaper_misfit",
         "paths_to_waveforms": [],
         "paths_to_responses": [],
 
         # Pyatoa Considerations
         "set_logging": True,
-        "fix_windows": False,
+        "fix_windows": True,
         "plot_waveforms": True,
         "plot_maps": True,
 
         # Pyatoa Outputs
         "write_misfit_json": True,
         "tile_and_combine": True,
-        "purge_originals": True,
+        "purge_originals": False,
         "purge_tiles": True,
         "create_srcrcv_vtk": True,
         "create_src_vtk": False,

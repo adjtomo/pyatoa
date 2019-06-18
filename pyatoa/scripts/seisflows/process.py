@@ -61,9 +61,9 @@ def get_paths(args, usrcfg):
     data_dir = os.path.join(args.output_dir, usrcfg["data_dir"])
     misfit_dir = os.path.join(args.output_dir, usrcfg["misfit_dir"])
     vtk_dir = os.path.join(args.output_dir, usrcfg["vtk_dir"])
-    # for d in [fig_dir, data_dir, misfit_dir, vtk_dir]:
-    #     if not os.path.exists(d):
-    #        os.makedirs(d)
+    for d in [fig_dir]:#, data_dir, misfit_dir, vtk_dir]:
+        if not os.path.exists(d):
+           os.makedirs(d)
    
     paths = {
         "EVENT_FIGURES": fig_dir, 
@@ -119,7 +119,7 @@ def finalize(ds, model, args, paths, usrcfg):
     if usrcfg["plot_waveforms"] and usrcfg["plot_maps"] and \
                                                      usrcfg["tile_and_combine"]:
         from pyatoa.visuals.convert_images import tile_and_combine
-        tile_and_combine(ds, model, "s{:0<2}".format(args.step_count),
+        tile_and_combine(ds, model, "s{:0>2}".format(args.step_count),
                          paths["PYATOA_FIGURES"],
                          purge_originals=usrcfg["purge_originals"],
                          purge_tiles=usrcfg["purge_tiles"]
