@@ -78,6 +78,7 @@ def window_maker(st_obs, st_syn, config, **kwargs):
     stalta_wl = kwargs.get("stalta_wl", None)
     unit_output = kwargs.get("unit_output", None)
     total_misfit = kwargs.get("total_misfit", None)
+    append_title = kwargs.get("append_title", None)
     show_fig = kwargs.get("show", False)
     save = kwargs.get("save", None)
 
@@ -173,8 +174,11 @@ def window_maker(st_obs, st_syn, config, **kwargs):
         net=st_obs[0].stats.network, sta=st_obs[0].stats.station,
         evt=config.event_id, t0=config.min_period, t1=config.max_period
         )
+    # append extra information to the title
     if total_misfit:
         title = " ".join([title, "misfit={:.3f}".format(total_misfit)])
+    if append_title:
+        title = " ".join([title, append_title])
     axes[0].set_title(title)
     
     axes[-1].set_xlabel("time [s]")

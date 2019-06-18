@@ -205,14 +205,18 @@ class Manager:
                          pyadjoint=self.crate.pyadjoint_flag
                          )
 
-    def reset(self):
+    def reset(self, choice="hard"):
         """
         To avoid user interaction with the Crate class.
         Convenience function to instantiate a new Crate, and hence start the
         workflow from the start without losing your event or gatherer.
+        :type choice: str
+        :param choice: hard or soft reset, soft reset does not re-instantiate 
+            gatherer class, and leaves the same event. Useful for short workflows
         """
         self.crate = Crate()
-        self.launch(reset=True)
+        if choice == "soft":
+            self.launch(reset=True)
 
     @property
     def event(self):
@@ -645,6 +649,7 @@ class Manager:
         save = kwargs.get("save", None)
         figsize = kwargs.get("figsize", (11.69, 8.27))
         dpi = kwargs.get("dpi", 100)
+        append_title = kwargs.get("append_title", "")
 
         # Calculate the seismogram length
         from pyatoa.utils.operations.source_receiver import seismogram_length
@@ -662,7 +667,8 @@ class Manager:
             stalta_wl=self.config.pyflex_config[1].stalta_waterlevel,
             unit_output=self.config.unit_output,
             config=self.config, figsize=figsize, 
-            total_misfit=self.crate.total_misfit, 
+            total_misfit=self.crate.total_misfit,
+            append_title=append_title,
             dpi=dpi, show=show, save=save
         )
 
