@@ -104,6 +104,59 @@ so that these packages can run properly
         Possibilities are "interval_scheduling" and "merge".
         Interval scheduling will chose the optimal subset of non-overlapping
         windows. Merging will simply merge overlapping windows.
+
+
+    Pyadjoint Multitaper Config
+
+    :param min_period: Minimum period of the filtered input data in seconds.
+    :type min_period: float
+    :param max_period: Maximum period of the filtered input data in seconds.
+    :type max_period: float
+    :param lnpt: power index to determin the time lenght use in FFT (2^lnpt)
+    :type lnpt: int
+    :param transfunc_waterlevel: Water level on the transfer function
+        between data and synthetic.
+    :type transfunc_waterlevel: float
+    :param ipower_costaper: order of cosine taper, higher the value,
+        steeper the shoulders.
+    :type ipower_costaper: int
+    :param min_cycle_in_window:  Minimum cycle of a wave in time window to
+        determin the maximum period can be reliably measured.
+    :type min_cycle_in_window: int
+    :param taper_percentage: Percentage of a time window needs to be
+        tapered at two ends, to remove the non-zero values for adjoint
+        source and for fft.
+    :type taper_percentage: float
+    :param taper_type: Taper type, supports "hann", "cos", "cos_p10" so far
+    :type taper_type: str
+    :param mt_nw: bin width of multitapers (nw*df is the the half
+        bandwidth of multitapers in frequency domain,
+        typical values are 2.5, 3., 3.5, 4.0)
+    :type mt_nw: float
+    :param num_taper: number of eigen tapers (2*nw - 3 gives tapers
+        with eigen values larger than 0.96)
+    :type num_taper: int
+    :param dt_fac
+    :type dt_fac: float
+    :param err_fac
+    :type err_fac: float
+    :param dt_max_scale
+    :type dt_max_scale: float
+    :param phase_step: maximum step for cycle skip correction (?)
+    :type phase_step: float
+    :param dt_sigma_min: minimum travel time error allowed
+    :type dt_sigma_min: float
+    :param dlna_sigma_min: minimum amplitude error allowed
+    :type dlna_sigma_min: float
+    :param measure_type: type of measurements:
+                            dt(travel time),
+                            am(dlnA),
+                            wf(full waveform)
+    :param measure_type: string
+    :param use_cc_error: use cross correlation errors for
+    :type use_cc_error: logic
+    :param use_mt_error: use multi-taper error
+    :type use_mt_error: logic
 """
 
 
@@ -272,9 +325,16 @@ def set_pyflex_station_event(inv, event):
     return pf_station, pf_event
 
 
-def set_pyadjoint_config(config):
+def get_pyadjoint_config(choice, min_period, max_period):
     """
-    Set the Pyadjoint config based on Pyatoa config parameter    
+    Set the Pyadjoint config based on Pyatoa config parameter
+
+    For available adjoint source types, see:
+    https://github.com/computational-seismology/pyadjoint/blob/dev/src/pyadjoint/config.py
+
+    Available but not listed here:
+    ExponentiatedPhase, DoubleDifferenceCrossCorrelation,
+    DoubleDifferenceMultiTaper,
 
     :type config: pyatoa.core.config.Config
     :param config: config object which sets the pyadjoint type
@@ -283,28 +343,49 @@ def set_pyadjoint_config(config):
     """
     import pyadjoint
 
-    if config.pyadjoint_config[0] == "waveform":
-        cfgout = pyadjoint.ConfigWaveForm(min_period=config.min_period,
-                                          max_period=config.max_period,
-                                          taper_type="hann",
-                                          taper_percentage=0.15)
-    elif config.pyadjoint_config[0] == "cc_traveltime_misfit":
+    if choice == "waveform":
+        cfgout = pyadjoint.ConfigWaveForm(
+            min_period=min_period,
+            max_period=max_period,
+            taper_type="hann",
+            taper_percentage=0.15
+        )
+    elif choice == "cc_traveltime_misfit":
         cfgout = pyadjoint.ConfigCrossCorrelation(
-            min_period=config.min_period, max_period=config.max_period,
-            taper_type='hann', taper_percentage=0.3, measure_type='dt',
-            use_cc_error=True, dt_sigma_min=1.0, dlna_sigma_min=0.5)
-    elif config.pyadjoint_config[0] == "multitaper_misfit":
+            min_period=min_period,
+            max_period=max_period,
+            taper_type='hann',
+            taper_percentage=0.3,
+            measure_type='dt',
+            use_cc_error=True,
+            dt_sigma_min=1.0,
+            dlna_sigma_min=0.5
+        )
+    elif choice == "multitaper_misfit":
         cfgout = pyadjoint.ConfigMultiTaper(
-            min_period=config.min_period, max_period=config.max_period,
-            lnpt=15, transfunc_waterlevel=1e-10, water_threshold=0.02,
-            ipower_costaper=10, min_cycle_in_window=0.5, taper_type='hann',
-            taper_percentage=0.3, mt_nw=4.0, num_taper=5, dt_fac=2.0,
-            phase_step=1.5, err_fac=2.5, dt_max_scale=3.5, measure_type='dt',
-            dt_sigma_min=1.0, dlna_sigma_min=0.5, use_cc_error=True,
-            use_mt_error=False)
+            min_period=min_period,
+            max_period=max_period,
+            lnpt=15,
+            transfunc_waterlevel=1e-10,
+            water_threshold=0.02,
+            ipower_costaper=10,
+            min_cycle_in_window=3,  # The default is 0.5 but that's incorrect
+            taper_type='hann',
+            taper_percentage=0.3,
+            mt_nw=4.0,
+            num_taper=5,
+            dt_fac=2.0,
+            phase_step=1.5,
+            err_fac=2.5,
+            dt_max_scale=3.5,
+            measure_type='dt',
+            dt_sigma_min=1.0,
+            dlna_sigma_min=0.5,
+            use_cc_error=True,
+            use_mt_error=False
+        )
     else:
         raise KeyError("adjoint source type incorrectly specified, "
                        "must be: 'waveform', 'cc_traveltime_misfit', "
                        "'multitaper_misfit'")
     return cfgout
-

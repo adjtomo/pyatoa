@@ -13,7 +13,6 @@ signal which processes have already occurred in the workflow.
 
 TODO: create a moment tensor object that can be attached to the event object
 """
-import copy
 import warnings
 
 import obspy
@@ -262,6 +261,15 @@ class Manager:
         """
         return self.crate.check_full()
 
+    def overwrite_windows(self, windows):
+        """
+        To manually overwrite the managers' windows, avoids user interaction
+        with the Crate class. Check if windows are actually pyflex Windows
+        :type windows: dict
+        :param windows: dict of windows to overwrite
+        """
+        self.crate.windows = windows
+
     def launch(self, reset=False):
         """
         Initiate the prerequisite parts of the Manager class. Populate with
@@ -369,8 +377,7 @@ class Manager:
         if not (isinstance(self.crate.st_obs, obspy.Stream) and
                 isinstance(self.crate.st_syn, obspy.Stream)
                 ):
-            warnings.warn("cannot preprocess, missing waveform data",
-                          UserWarning)
+            warnings.warn("cannot preprocess, no waveform data", UserWarning)
             return
 
         # Process observation waveforms
@@ -384,6 +391,7 @@ class Manager:
         # Adjoint sources require the same sampling_rate as the synthetics
         sampling_rate = self.crate.st_syn[0].stats.sampling_rate
 
+        # Run external preprocessing script
         self.crate.st_obs = preproc(self.crate.st_obs, inv=self.crate.inv,
                                     resample=sampling_rate,
                                     pad_length_in_seconds=20, back_azimuth=baz,
@@ -393,12 +401,12 @@ class Manager:
                                     corners=4
                                     )
 
-        # mid-check to see if preprocessing failed
+        # Mid-check to see if preprocessing failed
         if not isinstance(self.crate.st_obs, obspy.Stream):
             warnings.warn("obs data could not be processed", UserWarning)
             return
         
-        # Process synthetic waveforms
+        # Run external synthetic waveform preprocesser
         logger.info("preprocessing synthetic data")
         self.crate.st_syn = preproc(self.crate.st_syn, resample=None,
                                     pad_length_in_seconds=20,
@@ -408,7 +416,7 @@ class Manager:
                                                    self.config.max_period]
                                     )
         
-        # mid-check to see if preprocessing failed
+        # Mid-check to see if preprocessing failed
         if not isinstance(self.crate.st_syn, obspy.Stream):
             warnings.warn("syn data could not be processed", UserWarning)
             return
@@ -417,7 +425,7 @@ class Manager:
         self.crate.st_obs, self.crate.st_syn = trimstreams(
             st_a=self.crate.st_obs, st_b=self.crate.st_syn, force="b")
 
-        # The first timestamp in the .sem? file from specfem
+        # Retrieve the first timestamp in the .sem? file from Specfem
         self.crate.time_offset = (self.crate.st_syn[0].stats.starttime -
                                   self.crate.event.preferred_origin().time
                                   )
@@ -472,13 +480,13 @@ class Manager:
             inv=self.crate.inv, event=self.crate.event
         )
 
-        # empties to see if no windows were collected, windows and staltas
+        # Empties to see if no windows were collected, windows and staltas
         # saved as dictionary objects by component name
         empties, number_windows = 0, 0
         windows, staltas = {}, {}
         for comp in self.config.component_list:
-            # Run Pyflex to select misfit windows as Window objects
             try:
+                # Run Pyflex to select misfit windows as Window objects
                 window = pyflex.select_windows(
                     observed=self.crate.st_obs.select(component=comp),
                     synthetic=self.crate.st_syn.select(component=comp),
@@ -490,16 +498,14 @@ class Manager:
 
             # Run Pyflex to collect STA/LTA information for plotting
             stalta = pyflex.stalta.sta_lta(
-                data=envelope(
-                    self.crate.st_syn.select(component=comp)[0].data),
+                data=envelope(self.crate.st_syn.select(component=comp)[0].data),
                 dt=self.crate.st_syn.select(component=comp)[0].stats.delta,
                 min_period=self.config.min_period
                 )
             staltas[comp] = stalta
-            logger.info("{0} window(s) found for component {1}".format(
-                len(window), comp)
-                )
             number_windows += len(window)
+            logger.info("{0} window(s) for comp {1}".format(len(window), comp))
+
             # If pyflex returns null, move on
             if not window:
                 empties += 1
@@ -532,7 +538,7 @@ class Manager:
                     wind_dict = create_window_dictionary(window)
                     with warnings.catch_warnings():
                         warnings.simplefilter("ignore")
-                        # auxiliary needs data, give it a bool; auxis love bools
+                        # Auxiliary needs data, give it a bool; auxis love bools
                         self.ds.add_auxiliary_data(data=np.array([True]),
                                                    data_type="MisfitWindows",
                                                    path=tag,
@@ -551,19 +557,23 @@ class Manager:
         pyadjoint.calculate_adjoint_source, the window needs to be a list of
         lists, with each list containing the [left_window,right_window];
         each window argument should be given in units of time (seconds)
+
+        NOTE2: This version of Pyadjoint is located here:
+
+        https://github.com/computational-seismology/pyadjoint/tree/dev
+
+        Lion's version of Pyadjoint does not contain some of these functions
         """
         # Precheck to see if Pyflex has been run already
         if (self.crate.windows is None) or (isinstance(self.crate.windows, dict)
                                             and not len(self.crate.windows)
                                             ):
-            warnings.warn("cannot run Pyadjoint, no Pyflex outputs",
-                          UserWarning)
+            warnings.warn("can't run Pyadjoint, no Pyflex outputs", UserWarning)
             return
 
-        # Set Pyadjoint configuration
         logger.info("running Pyadjoint for type {} ".format(
             self.config.pyadjoint_config[0])
-            )
+        )
 
         # Iterate over given windows produced by Pyflex
         total_misfit = 0

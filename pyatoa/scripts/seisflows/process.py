@@ -18,6 +18,7 @@ import numpy as np
 
 from pyatoa.utils.asdf.deletions import clean_ds
 from pyatoa.utils.asdf.additions import write_stats_to_asdf
+from pyatoa.utils.asdf.extractions import windows_from_ds
 from pyatoa.utils.operations.file_generation import create_stations_adjoint, \
                 write_misfit_json, write_adj_src_to_ascii, write_misfit_stats
 
@@ -229,13 +230,17 @@ def process(args, usrcfg):
                                  )
                 mgmt.preprocess()
                 
-                # Fix misfit windows
-                # if 'fix_windows==False', OR 'fix_windows==True' BUT
-                # misfit windows do not exist yet, run Pyflex to create windows
-                if not usrcfg["fix_windows"] or not \
-                        hasattr(ds.auxiliary_data.MisfitWindows,
-                                config.model_number):
+                # Either no fixed misfit windows or no windows exist yet
+                if not usrcfg["fix_windows"] or \
+                        not hasattr(ds.auxiliary_data.MisfitWindows,
+                                    config.model_number):
                     mgmt.run_pyflex()
+                else:
+                    # If windows exist and fixed windows, grab from ASDF dataset
+                    misfit_windows = windows_from_ds(
+                                              ds, config.model_number, net, sta)
+                    mgmt.overwrite_windows(misfit_windows)
+
                 mgmt.run_pyadjoint()
 
                 # Plot waveforms with misfit windows and adjoint sources

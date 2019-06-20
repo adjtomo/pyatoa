@@ -3,6 +3,65 @@ Functions for extracting information from a Pyasdf ASDFDataSet object
 """
 
 
+def windows_from_ds(ds, model, net, sta):
+    """
+    If misfit windows are to be fixed, then window information needs to be saved
+    between calls of Pyatoa. Fortunately, Pyatoa stores misfit window
+    information into MisfitWindow auxiliary data subgroups. This function
+    accesses this information and creates window dictionaries in the format
+    expected by the Pyatoa Manager class.
+    These windows only contain enough information so that Pyflex cooperates,
+    Pyadjoint can use them, and Pyatoa can generate plots.
+
+    :type ds: pyasdf.ASDFDataSet
+    :param ds: ASDF dataset containing MisfitWindows subgroup
+    :type model: str
+    :param model: model number, e.g. "m00"
+    :type net: str
+    :param net: network code used to find the name of the misfit window
+    :type sta: str
+    :param sta: station code used to find the name of the misfit window
+    :rtype window_dict: dict
+    :return window_dict: dictionary containing misfit windows, in a format
+        expected by Pyatoa Manager class
+    """
+    from pyflex.window import Window
+    misfit_windows = ds.auxiliary_data.MisfitWindows[model]
+
+    # Pyatoa expects the Manager class windows as a dictionary with keys
+    # corresponding to components, each item is then a list, containing
+    # Pyflex Window objects
+    window_dict = {}
+    for window_name in misfit_windows.list():
+        # Check the title of the misfit window to see if applicable
+        if (net in window_name) and (sta in window_name):
+            net_, sta_, comp_, n_ = window_name.split("_")
+            par = misfit_windows[window_name].parameters
+
+            # Create the misfit window
+            window_ = Window(
+                left=par["left_index"], right=par["right_index"],
+                center=par["center_index"], dt=par["dt"],
+                time_of_first_sample=par["time_of_first_sample"],
+                min_period=par["min_period"], channel_id=par["channel_id"]
+            )
+
+            # Pyflex is weird that it doesn't allow one to set all values
+            # in __init__, so we need to manual set some values after init
+            window_.dlnA = par["dlnA"]
+            window_.cc_shift = par["cc_shift_in_samples"]
+            window_.max_cc_value = par["max_cc_value"]
+
+            # Either append to existing entry
+            if comp_ in window_dict.keys():
+                window_dict[comp_] += [window_]
+            # Or create the first entry
+            else:
+                window_dict[comp_] = [window_]
+
+    return window_dict
+
+
 def sum_misfits(ds, model):
     """
     Misfits are stored in adjoint trace dictionaries, and are needed for
