@@ -4,7 +4,7 @@ work with the dataset as an input and act in-place on the dataset so no returns
 """
 
 
-def clean_ds(ds, model=None, fix_windows=False):
+def clean_ds(ds, model=None, step=None, fix_windows=False):
     """
     Removes synthetic waveforms and auxiliary data so that only observation
     data remains for new model runs. If no model nmber is given, will wipe
@@ -16,6 +16,8 @@ def clean_ds(ds, model=None, fix_windows=False):
     :param fix_windows: don't delete MisfitWindows
     :type model: str
     :param model: model number, e.g. "m00"
+        :type step: str
+    :param step: step number, e.g. "s00"
     """
     del_synthetic_waveforms(ds=ds, model=model)
     if fix_windows:
@@ -23,7 +25,7 @@ def clean_ds(ds, model=None, fix_windows=False):
                                   dont_delete=["MisfitWindows"]
                                   )
     else:
-        del_auxiliary_data(ds=ds, model=model)
+        del_auxiliary_data(ds=ds, model=model, step=step)
 
 
 def del_synthetic_waveforms(ds, model=None):
@@ -76,7 +78,7 @@ def del_auxiliary_data_except(ds, model=None, dont_delete=[]):
                 del ds.auxiliary_data[aux]
 
 
-def del_auxiliary_data(ds, model=None):
+def del_auxiliary_data(ds, model=None, step=None):
     """
     Delete all items in auxiliary data for a given model, if model not given,
     wipes all auxiliary data.
@@ -85,13 +87,27 @@ def del_auxiliary_data(ds, model=None):
     :param ds: dataset to be cleaned
     :type model: str
     :param model: model number, e.g. "m00"
+    :type step: str
+    :param step: step number, e.g. "s00"
     """
+    subgroups_with_step = ["Statistics"]
     for aux in ds.auxiliary_data.list():
         if model:
-            try:
-                del ds.auxiliary_data[aux][model]
-            except KeyError:
-                pass
+            # Grrr. Hardcoded check on auxiliary subgroup, because only
+            # "Statistics" has a 'step' subgroup
+            if step:
+                # if 'step' is in this subgroup, check and delete
+                if aux in subgroups_with_step:
+                    if hasattr(ds.auxiliary_data[aux][model], step):
+                        del ds.auxiliary_data[aux][model][step]
+                # if 'step' is not in this subgroup, just delete the model
+                else:
+                    if hasattr(ds.auxiliary_data[aux], model):
+                        del ds.auxiliary_data[aux][model]
+            # If no step given, simply delete the model subgroup if available
+            else:
+                if hasattr(ds.auxiliary_data[aux], model):
+                    del ds.auxiliary_data[aux][model]
         else:
             del ds.auxiliary_data[aux]
 

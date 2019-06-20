@@ -7,6 +7,7 @@ import json
 import time
 import numpy as np
 
+
 def write_misfit_json(ds, model, step_count=0, fidout="./misfits.json"):
     """
     Write a .json file containing misfit information for a given dataset,

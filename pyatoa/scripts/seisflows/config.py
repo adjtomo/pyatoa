@@ -91,10 +91,11 @@ def sfconfig():
         # Pyatoa Paths (output directory set in Seisflows)
         "figure_dir": "figures",
         "data_dir": "data",
-        "misfit_dir": "misfits",
-        "vtk_dir": "vtks",
         "misfits_json": "misfits.json",
     }
     return pd
 
+
+if __name__ == "__main__":
+    pass
 

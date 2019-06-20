@@ -93,7 +93,6 @@ class Crate:
         self.pyflex_flag = False
         self.pyadjoint_flag = False
 
-
     def check_flags(self):
         """
         Update flags based on what is available in the crate. The 3 in the
@@ -484,7 +483,7 @@ class Manager:
                     observed=self.crate.st_obs.select(component=comp),
                     synthetic=self.crate.st_syn.select(component=comp),
                     config=self.config.pyflex_config[1], event=pf_event,
-                    station=pf_station,
+                    station=pf_station, windows_filename="./{}".format(comp)
                     )
             except IndexError:
                 window = []
