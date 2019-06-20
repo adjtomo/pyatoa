@@ -336,8 +336,10 @@ def get_pyadjoint_config(choice, min_period, max_period):
     ExponentiatedPhase, DoubleDifferenceCrossCorrelation,
     DoubleDifferenceMultiTaper,
 
-    :type config: pyatoa.core.config.Config
-    :param config: config object which sets the pyadjoint type
+    :type choice: str
+    :param choice: type of adjoint source to use
+    :type *_period: float
+    :param *_period: period bounds of the data
     :rtype cfgout: pyadjoint.Config*
     :return cfgout: properly set pyadjoint configuration object
     """

@@ -188,7 +188,6 @@ class Config:
                                         max_period=self.max_period)
                                  )
 
-
     def write_to_txt_file(self, filename):
         """
         write out conf file to text file
