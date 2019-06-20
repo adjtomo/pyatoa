@@ -41,6 +41,11 @@ def tile_images(image_path, purge=False):
                 os.remove(map_name)
                 os.remove(wav_name)
 
+        # purge the maps which have no wav counterparts
+        elif os.path.exists(map_name) and purge:
+            os.remove(map_name)
+
+
 def combine_images(ds, image_path, composite_name="composite.pdf", purge=False):
     """
     Combine the tiled images into a single composite pdf.
