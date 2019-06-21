@@ -16,7 +16,7 @@ class Config:
                  max_period=30, filter_corners=4, rotate_to_rtz=False,
                  unit_output='DISP', pyflex_config='default',
                  adj_src_type='multitaper_misfit', start_pad=20, end_pad=500,
-                 zero_pad=20,
+                 zero_pad=20, synthetic_unit="DISP",
                  map_corners=[-42.5007, -36.9488, 172.9998, 179.5077],
                  paths_to_waveforms=[], paths_to_synthetics=[],
                  paths_to_responses=[]):
@@ -113,6 +113,7 @@ class Config:
         self.filter_corners = float(filter_corners)
         self.rotate_to_rtz = rotate_to_rtz
         self.unit_output = unit_output.upper()
+        self.synthetic_unit = synthetic_unit.upper()
         self.pyflex_config = (pyflex_config, None)
         self.pyadjoint_config = (adj_src_type, None)
         self.map_corners = map_corners
@@ -174,8 +175,13 @@ class Config:
         import pyatoa.utils.configurations.external as extcfg
         
         # Check if unit output properly set
-        if self.unit_output not in ['DISP', 'VEL', 'ACC']:
+        acceptable_units = ['DISP', 'VEL', 'ACC']
+        if self.unit_output not in acceptable_units:
             warnings.warn("'unit_output' must be 'DISP','VEL' or 'ACC'",
+                          UserWarning)
+
+        if self.synthetic_unit not in acceptable_units:
+            warnings.warn("'synthetic_units' must be 'DISP','VEL' or 'ACC'",
                           UserWarning)
         
         # Check that Pyflex config is an available preset, else set 'default'

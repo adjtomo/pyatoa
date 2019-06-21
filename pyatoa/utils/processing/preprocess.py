@@ -8,7 +8,7 @@ import numpy as np
 from pyatoa import logger
 
 
-def _zero_pad_stream(st, pad_length_in_seconds):
+def zero_pad_stream(st, pad_length_in_seconds):
     """
     Zero pad the data of a stream, change the starttime to reflect the change
 
@@ -32,8 +32,10 @@ def trimstreams(st_a, st_b, force=None):
     Trim two streams to common start and end times, do some basic preprocessing
     before trimming. Allows user to force one stream to conform to another
 
-    :type st_?: obspy.stream.Stream
-    :param st_?: streams to be trimmed
+    :type st_a: obspy.stream.Stream
+    :param st_a: streams to be trimmed
+    :type st_b: obspy.stream.Stream
+    :param st_b: streams to be trimmed
     :type force: str
     :param force: "a" or "b"; force trim to the length of "st_a" or to "st_b",
         if not given, trims to the common time
@@ -68,7 +70,10 @@ def trimstreams(st_a, st_b, force=None):
     return st_a, st_b
 
 
-def preproc(st, inv=None, **kwargs):
+def preproc(st, inv=None, resample=None, pad_length_in_seconds=None,
+            unit_output="VEL", synthetic_unit=None, back_azimuth=None,
+            filter_bounds=(10,30), water_level=60, corners=4,
+            taper_percentage=0.05):
     """
     Preprocess waveform data. Assumes synthetics are in units of displacement.
 
@@ -80,79 +85,92 @@ def preproc(st, inv=None, **kwargs):
     :param resample: sampling rate to resample to in Hz
     :type pad_length_in_seconds: int
     :param pad_length_in_seconds: length of padding front and back
-    :type output: str
-    :param output: output of response removal, available: 'DISP', 'VEL', 'ACC'
+    :type unit_output: str
+    :param unit_output: output of response removal, available:
+        'DISP', 'VEL', 'ACC'
+    :type synthetic_unit: str
+    :param synthetic_unit: units of synthetic traces, same available as unit
     :type back_azimuth: float
     :param back_azimuth: back azimuth in degrees
-    :type filterbounds: list of float
-    :param filterbounds: (min period, max_period)
+    :type filter_bounds: list of float
+    :param filter_bounds: (min period, max_period)
     :type water_level: int
     :param water_level: water level for response removal
     :type corners: int
     :param corners: value of the filter corners, i.e. steepness of filter edge
+    :type taper_percentage: float
+    :param taper_percentage: amount to taper ends of waveform
     :rtype st: obspy.stream.Stream
     :return st: preprocessed stream object
     """
     warnings.filterwarnings("ignore", category=FutureWarning)
-    resample = kwargs.get("resample", None)
-    pad_length_seconds = kwargs.get("pad_length_seconds", None)
-    output = kwargs.get("output", "VEL").upper()
-    back_azimuth = kwargs.get("back_azimuth", None)
-    filter_bounds = kwargs.get("filter_bounds", (10,30))
-    water_level = kwargs.get("water_level", 60)
-    corners = kwargs.get("corners", 4)
 
+    # Resample the data if possible
     if resample:
         st.resample(resample)
+
+    # Standard preprocessing
     st.detrend("linear")
     st.detrend("demean")
-    st.taper(max_percentage=0.05)
+    st.taper(max_percentage=taper_percentage)
+
+    # If inventory is given, working with observation data
     if inv:
         # Occasionally, inventory issues arise, as ValueErrors due to 
         # station availability, e.g. NZ.COVZ. Try/except to catch these.
         try:
             st.attach_response(inv)
-            st.remove_response(
-                output=output, water_level=water_level, plot=False)
+            st.remove_response(output=unit_output,
+                               water_level=water_level,
+                               plot=False)
         except ValueError:
             return None
     
-        logger.info("remove response w/ water level {}".format(water_level))
+        logger.info("remove response, units of {}".format(unit_output))
+
+        # Clean up streams after response removal
         st.detrend("linear")
         st.detrend("demean")
-        st.taper(max_percentage=0.05)
-        st.rotate(method="->ZNE", inventory=inv)
-    # no inventory means synthetic data
-    elif not inv:
-        # TO DO: dynamically check what the raw specfem output units are
-        # for now we assume they are velocity
-        # if output != self.raw_syn_comp:
-        #     diff_dict = {"DISP": 1, "VEL": 2, "ACC": 3}
-        #     desired = diff_dict[output]
-        #     given = diff_dict[self.raw_syn_comp]
-        #     separation = desired - given
-        #     if separation == 1:
-        #         st.integrate(method="cumtrapz")
-        #     elif separation == 2:
-        #         st.integrate(method="cumtrapz").integrate(method="cumtrapz")
-        #     elif separation == -1:
-        #         st.differentiate(method="gradient")
-        #     elif separation == -2:
-        #         st.differentiate(method="gradient").differentiate(
-        #             method="gradient")
+        st.taper(max_percentage=taper_percentage)
 
-        st.taper(max_percentage=0.05)
+        # Rotate streams if they are not in the ZNE coordinate system
+        st.rotate(method="->ZNE", inventory=inv)
+
+    # No inventory means synthetic data
+    elif not inv:
+        if unit_output != synthetic_unit:
+            logger.info(
+                "unit output and synthetic output do not match, adjusting")
+            # Determine the difference between synthetic unit and observed unit
+            diff_dict = {"DISP": 1, "VEL": 2, "ACC": 3}
+            difference = diff_dict[unit_output] - diff_dict[synthetic_unit]
+
+            # Integrate or differentiate stream to retrieve correct units
+            if difference == 1:
+                st.integrate(method="cumtrapz")
+            elif difference == 2:
+                st.integrate(method="cumtrapz").integrate(method="cumtrapz")
+            elif difference == -1:
+                st.differentiate(method="gradient")
+            elif difference == -2:
+                st.differentiate(
+                    method="gradient").differentiate(method="gradient")
+
+            st.detrend("linear")
+            st.detrend("demean")
+
+        st.taper(max_percentage=taper_percentage)
     
     # Rotate the given stream from standard North East to Radial Transverse
-    if back_azimuth is not None:
+    if back_azimuth:
         st.rotate(method="NE->RT", back_azimuth=back_azimuth)
         logger.info("rotating NE->RT by {} degrees".format(back_azimuth))
     
-    # Zero pad the stream if given
-    if pad_length_seconds:
-        st = _zero_pad_stream(st, pad_length_seconds)
-        logger.info("zero padding front and back by {}s".format(
-                                                            pad_length_seconds))
+    # Zero pad the stream if value is given
+    if pad_length_in_seconds:
+        st = zero_pad_stream(st, pad_length_in_seconds)
+        logger.info(
+            "zero padding front and back by {}s".format(pad_length_in_seconds))
     
     # Filter data using ObsPy Butterworth filters
     if filter_bounds is not None:

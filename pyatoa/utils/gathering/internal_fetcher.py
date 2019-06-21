@@ -207,40 +207,39 @@ class Fetcher:
         """
         if self.origintime is None:
             raise AttributeError("'origintime' must be specified")
-        paths_to_waveforms = self.config.paths['synthetics']
+
+        # Specfem denotes the units of synthetic traces by the naming of the
+        # ASCII files, corresponding to 'd' for displacement, 'v' for velocity,
+        # and 'a' for acceleration. Take this value from the user config.
+        specfem_id = self.config.synthetic_unit[0].lower()
+
+        # Generate information necessary to search for data
         net, sta, _, cha = station_code.split('.')
-        comp = cha[2:]
-        specfem_fid_template = '{net}.{sta}.*{cmp}.sem?'
-        for path_ in paths_to_waveforms:
+        specfem_fid_template = '{net}.{sta}.*{cmp}.sem{dva}'
+
+        # Check through paths given in Config
+        for path_ in self.config.paths['synthetics']:
             if not os.path.exists(path_):
                 continue
-            # original full_path was set with a specific path file for devel
-            # but seisflows simply moves synthetics into an already distributed
-            # directory structure, so no need for full_path any more. 
-            # it is left here for potential future use
-            # full_path = os.path.join(path_, self.config.model_number,
-            #                        self.config.event_id, specfem_fid_template)    
             full_path = os.path.join(path_, specfem_fid_template)
             st = Stream()
-            for filepath in glob.glob(
-                        full_path.format(net=net, sta=sta, cmp=comp)
-            ):
+            for filepath in glob.glob(full_path.format(
+                    net=net, sta=sta, cmp=cha[2:], dva=specfem_id)):
                 try:
+                    # Convert the ASCII file to a miniseed
                     st += ascii_to_mseed(filepath, self.origintime)
                 except UnicodeDecodeError:
+                    # If the data file is for some reason already in miniseed
                     st += read(filepath)
                 logger.info("stream fetched by event {}".format(
-                                                     os.path.basename(filepath))
-                            )
+                    os.path.basename(filepath))
+                )
+
             if len(st) > 0:
                 st.merge()
                 st.trim(starttime=self.origintime - self.start_pad,
                         endtime=self.origintime + self.end_pad
                         )
-                # TO DO: fix this, its a kinda hacky way of figuring out what
-                # the Specfem output has been given in, no error catching so it
-                # will fail if the last letter of the filename is not d,v, or a
-                # raw_syn_comp = {"d":"DISP","v":"VEL","a":"ACC"}[filepath[-1]]
                 return st
         else:
             raise FileNotFoundError(
