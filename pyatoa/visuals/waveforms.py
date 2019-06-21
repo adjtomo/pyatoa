@@ -134,11 +134,13 @@ def window_maker(st_obs, st_syn, config, **kwargs):
                     axes[i].annotate(s=anno_str, xy=(twindow[10], ymax * 0.5),
                                      zorder=z-1, fontsize=7)
                 
-                # If adjoint sources given, plot and provide legend information
+                # If Adjoint Sources given, plot and provide legend information
                 if adj_srcs is not None:
                     _adj_src = normalize_a_to_b(adj_srcs[comp].adjoint_source,
                                                 a=-1, b=1)
                     _adj_src = detrend(_adj_src, type="constant")
+
+                    # Plot adjoint source time reversed, line up with waveforms
                     b1, = twaxes[i].plot(t, _adj_src[::-1], 'g', alpha=0.5,
                                          linestyle='-.',
                                          label="Adjoint Source, Misfit={:.4f}".
@@ -164,6 +166,8 @@ def window_maker(st_obs, st_syn, config, **kwargs):
         if not length_s:
             length_s = t[-1]
         axes[i].set_xlim([t[0], length_s])
+
+        # Format axes and align
         twaxes[i].set_yticklabels([])
         for AX in [axes[i], twaxes[i]]:
             format_axis(AX)

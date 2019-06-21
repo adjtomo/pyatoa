@@ -210,7 +210,7 @@ class Manager:
         workflow from the start without losing your event or gatherer.
         :type choice: str
         :param choice: hard or soft reset, soft reset does not re-instantiate 
-            gatherer class, and leaves the same event. Useful for short workflows
+            gatherer class, and leaves the same event. Useful for short workflow
         """
         self.crate = Crate()
         if choice == "soft":
@@ -261,32 +261,44 @@ class Manager:
         """
         return self.crate.check_full()
 
-    def overwrite_windows(self, windows):
+    def overwrite(self, choice):
         """
         To manually overwrite the managers' windows, avoids user interaction
         with the Crate class. Check if windows are actually pyflex Windows
         :type windows: dict
         :param windows: dict of windows to overwrite
         """
-        self.crate.windows = windows
+        if choice == "windows":
+            self.crate.windows = windows
 
-    def launch(self, reset=False):
+    def launch(self, reset=False, set_event=None):
         """
         Initiate the prerequisite parts of the Manager class. Populate with
-        an obspy event object
+        an obspy event object which is gathered from FDSN by default.
+        Allow user to provide their own ObsPy event object so that the
+        Gatherer does not need to query FDSN
+        :type reset: bool
+        :param reset: Reset the Gatherer class for a new run
+        :type set_event: obspy.core.event.Event
+        :param set_event: if given, will bypass gathering the event and manually
+            set to the user given event
         """
         # Launch the gatherer
         if (self.gatherer is None) or reset:
             logger.info("initiating/resetting gatherer")
-            gatherer = Gatherer(config=self.config, ds=self.ds)
-            self.gatherer = gatherer
+            self.gatherer = Gatherer(config=self.config, ds=self.ds)
 
         # Populate with an event
-        if self.gatherer.event is not None:
+        if set_event:
+            self.gatherer.event = set_event
             self.crate.event = self.gatherer.event
+        # If no event given by user, query FDSN
         else:
-            if self.config.event_id is not None:
-                self.crate.event = self.gatherer.gather_event()
+            if self.gatherer.event is not None:
+                self.crate.event = self.gatherer.event
+            else:
+                if self.config.event_id is not None:
+                    self.crate.event = self.gatherer.gather_event()
 
     def gather_data(self, station_code, overwrite=False):
         """

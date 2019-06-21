@@ -3,11 +3,11 @@
   <Source>GeoNet</Source>
   <Sender>WEL(GNS_Test)</Sender>
   <Module>Delta</Module>
-  <ModuleURI/>
-  <Created>2018-08-28T01:28:14</Created>
+  <ModuleURI>None</ModuleURI>
+  <Created>2019-05-09T00:53:48</Created>
   <Network code="NZ" restrictedStatus="open" startDate="1884-02-01T00:00:00">
     <Description>New Zealand National Seismograph Network</Description>
-    <TotalNumberStations>2199</TotalNumberStations>
+    <TotalNumberStations>2202</TotalNumberStations>
     <SelectedNumberStations>1</SelectedNumberStations>
     <Station code="BFZ" restrictedStatus="open" startDate="1996-04-03T00:00:00">
       <Description>New Zealand National Seismograph Network</Description>

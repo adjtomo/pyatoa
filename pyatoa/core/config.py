@@ -14,7 +14,7 @@ class Config:
     Configuration class that controls functionalities inside pyatoa
     """
     def __init__(self, model_number=None, event_id=None, min_period=10,
-                 max_period=30, filter_corners=4, rotate_to_rtz=True,
+                 max_period=30, filter_corners=4, rotate_to_rtz=False,
                  unit_output='DISP', pyflex_config='default',
                  adj_src_type='multitaper_misfit', startpad=20, endpad=500,
                  paths_to_waveforms=[], paths_to_synthetics=[],
@@ -140,7 +140,7 @@ class Config:
                          max_period=self.max_period, corner=self.filter_corners,
                          rotate=self.rotate_to_rtz, output=self.unit_output,
                          pyflex=self.pyflex_config[0],
-                         adjoint=self.adj_src_type,
+                         adjoint=self.pyadjoint_config[0],
                          paths_to_wavs=self.paths['waveforms'],
                          paths_to_syns=self.paths['synthetics'],
                          paths_to_resp=self.paths['responses']
@@ -212,7 +212,7 @@ class Config:
                     "rotate_to_rtz": self.rotate_to_rtz,
                     "unit_output": self.unit_output,
                     "pyflex_config": self.pyflex_config[0],
-                    "adj_src_type": self.pyadjoint_config[0]
+                    "pyadjoint_config": self.pyadjoint_config[0]
                     }
 
         ds.add_auxiliary_data(data_type="Configs", data=np.array([True]),

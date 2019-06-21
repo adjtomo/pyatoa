@@ -1,7 +1,8 @@
 """
 A plugin to seisflows solver.specfem3d_nz.eval_func() to use in evaluating the
 misfit functional within the automated workflow, in the context of
-requirements mandated by seisflows
+requirements mandated by seisflows. Seisflows interacts with Pyatoa via an
+argument parser and a user defined configuration dictionary.
 """
 import os
 
