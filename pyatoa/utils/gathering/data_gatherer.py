@@ -30,21 +30,22 @@ class Gatherer:
             to run through the Pyatoa workflow
         :type ds: pyasdf.asdf_data_set.ASDFDataSet
         :param ds: dataset for internal data searching and saving
-        :type startpad: int
-        :param startpad: padding in seconds before the origin time of an event
+        :type start_pad: int
+        :param start_pad: padding in seconds before the origin time of an event
             for waveform fetching, to be fed into lower level functions.
-        :type endpad: int
-        :param endpad: padding in seconds after the origin time of an event
+        :type end_pad: int
+        :param end_pad: padding in seconds after the origin time of an event
             for wavefomr fetching.
         """
         self.config = config
         self.ds = ds
         self.event = None
         self.fetcher = Fetcher(config=self.config, ds=self.ds,
-                               startpad=self.config.startpad,
-                               endpad=self.config.endpad)
-        self.getter = Getter(config=self.config, startpad=self.config.startpad,
-                             endpad=self.config.endpad)
+                               start_pad=self.config.start_pad,
+                               end_pad=self.config.end_pad)
+        self.getter = Getter(config=self.config,
+                             start_pad=self.config.start_pad,
+                             end_pad=self.config.end_pad)
 
     def gather_event(self):
         """

@@ -13,7 +13,7 @@ from pyatoa import logger
 
 class Getter:
     def __init__(self, config=None, client="GEONET", event_id=None,
-                 startpad=20, endpad=200):
+                 start_pad=20, end_pad=200):
         """
         :type config: pyatoa.core.config.Config
         :param config: configuration object that contains necessary parameters
@@ -22,11 +22,11 @@ class Getter:
         :param client: FDSN client for data getting
         :type event_id: str
         :param event_id: unique event identifier
-        :type startpad: int
-        :param startpad: padding in seconds before the origin time of an event
+        :type start_pad: int
+        :param start_pad: padding in seconds before the origin time of an event
             for waveform fetching, to be fed into lower level functions.
-        :type endpad: int
-        :param endpad: padding in seconds after the origin time of an event
+        :type end_pad: int
+        :param end_pad: padding in seconds after the origin time of an event
             for wavefomr fetching.
         """
 
@@ -36,8 +36,8 @@ class Getter:
         else:
             self.event_id = event_id
         self.client = client
-        self.startpad = startpad
-        self.endpad = endpad
+        self.start_pad = start_pad
+        self.end_pad = end_pad
         self.Client = None
         self.event = None
         self.origintime = None
@@ -68,8 +68,8 @@ class Getter:
         net, sta, loc, cha = station_code.split('.')
         return self.Client.get_stations(network=net, station=sta, location=loc,
                                         channel=cha,
-                                        starttime=self.origintime-self.startpad,
-                                        endtime=self.origintime+self.endpad,
+                                        starttime=self.origintime-self.start_pad,
+                                        endtime=self.origintime+self.end_pad,
                                         level=level
                                         )
 
@@ -87,11 +87,11 @@ class Getter:
         net, sta, loc, cha = station_code.split('.')
         st = self.Client.get_waveforms(network=net, station=sta, location=loc,
                                        channel=cha, starttime=self.origintime-(
-                                                            self.startpad+10),
-                                       endtime=self.origintime+(self.endpad+10)
+                                                            self.start_pad+10),
+                                       endtime=self.origintime+(self.end_pad+10)
                                        )
-        st.trim(starttime=self.origintime-self.startpad,
-                endtime=self.origintime+self.endpad)
+        st.trim(starttime=self.origintime-self.start_pad,
+                endtime=self.origintime+self.end_pad)
         logger.info("stream got external {}".format(station_code))
         return st
 

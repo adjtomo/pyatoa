@@ -5,7 +5,6 @@ Configuration object for Pyatoa.
 Fed into the processor class for workflow management, and also used for
 information sharing between objects and functions.
 """
-import os
 import warnings
 
 
@@ -16,7 +15,9 @@ class Config:
     def __init__(self, model_number=None, event_id=None, min_period=10,
                  max_period=30, filter_corners=4, rotate_to_rtz=False,
                  unit_output='DISP', pyflex_config='default',
-                 adj_src_type='multitaper_misfit', startpad=20, endpad=500,
+                 adj_src_type='multitaper_misfit', start_pad=20, end_pad=500,
+                 zero_pad=20,
+                 map_corners=[-42.5007, -36.9488, 172.9998, 179.5077],
                  paths_to_waveforms=[], paths_to_synthetics=[],
                  paths_to_responses=[]):
         """
@@ -61,11 +62,16 @@ class Config:
             Pyadjoint.
             Available: 'waveform', 'cc_traveltime_misfit', 'multitaper_misfit'
             (http://krischer.github.io/pyadjoint/adjoint_sources/index.html)
-        :type raw_sampling_rate: float
-        :param raw_sampling_rate: waveform streams are saved in raw format
-            for later access, but fetched data is usually very high sampling
-            rate (e.g. 100Hz for HH? stations). This tag sets the raw sampling
-            rate of the saved data, useful for saving space.
+        :type start_pad: int
+        :param start_pad: seconds before event origintime to grab waveform data
+            for use by data gathering class
+        :type end_pad: int
+        :param end_pad: seconds after event origintime to grab waveform data
+        :type zero_pad: int
+        :type zero_pad: seconds to zero-pad data front and back, used by the
+            preprocess functions, useful for very small source-receiver
+            distances where there may not be much time from origin time
+            to first arrival
         :type paths_to_waveforms: list of str
         :param paths_to_waveforms: any absolute paths for Pyatoa to search for
             waveforms in. If path does not exist, it will automatically be
@@ -89,17 +95,18 @@ class Config:
         """
         if model_number is not None:
             if isinstance(model_number, str):
-                # model_number = "0"
+                # If e.g. model_number = "0"
                 if not model_number[0] == "m":
                     self.model_number = 'm{:0>2}'.format(model_number)
-                # model_number = "m00"
+                # If e.g. model_number = "m00"
                 else:
                     self.model_number = model_number
-            # model_number = 0
+            # If e.g. model_number = 0
             elif isinstance(model_number, int):
                 self.model_number = 'm{:0>2}'.format(model_number)
         else:
             self.model_number = model_number
+
         self.event_id = event_id
         self.min_period = float(min_period)
         self.max_period = float(max_period)
@@ -108,12 +115,16 @@ class Config:
         self.unit_output = unit_output.upper()
         self.pyflex_config = (pyflex_config, None)
         self.pyadjoint_config = (adj_src_type, None)
+        self.map_corners = map_corners
         self.paths = {"waveforms": paths_to_waveforms,
                       "synthetics": paths_to_synthetics,
                       "responses": paths_to_responses,
                       }
-        self.startpad = startpad
-        self.endpad = endpad
+        self.zero_pad = int(zero_pad)
+        self.start_pad = int(start_pad)
+        self.end_pad = int(end_pad)
+
+        # Run internal functions to check the Config object
         self._generate_component_list()
         self._checkset_config_parameters()
 

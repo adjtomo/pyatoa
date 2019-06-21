@@ -27,7 +27,7 @@ def myround(x, base=5, choice='near'):
     return roundout
 
 
-def overlapping_days(origin_time, startpad=20, endpad=200):
+def overlapping_days(origin_time, start_pad=20, end_pad=200):
     """
     Helper function to return a list of julian days based on a given
     origin time with a specific padding on either side. used to catch if an
@@ -35,18 +35,18 @@ def overlapping_days(origin_time, startpad=20, endpad=200):
 
     :type origin_time: obspy.core.UTCDateTime
     :param origin_time: event origin time
-    :param startpad: padding in seconds before the origin time of an event
+    :param start_pad: padding in seconds before the origin time of an event
         for waveform fetching, to be fed into lower level functions.
-    :type endpad: int
-    :param endpad: padding in seconds after the origin time of an event
+    :type end_pad: int
+    :param end_pad: padding in seconds after the origin time of an event
         for wavefomr fetching.
     :rtype: list of int
     :return: list of available julian days
     """
-    if (origin_time - startpad).julday != origin_time.julday:
-        return [(origin_time-startpad).julday, origin_time.julday]
-    elif (origin_time + endpad*2).julday != origin_time.julday:
-        return [origin_time.julday, (origin_time+endpad*2).julday]
+    if (origin_time - start_pad).julday != origin_time.julday:
+        return [(origin_time-start_pad).julday, origin_time.julday]
+    elif (origin_time + end_pad*2).julday != origin_time.julday:
+        return [origin_time.julday, (origin_time+end_pad*2).julday]
     else:
         return [origin_time.julday]
 

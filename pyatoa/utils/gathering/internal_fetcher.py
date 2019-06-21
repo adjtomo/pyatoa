@@ -19,8 +19,8 @@ from pyatoa.utils.operations.conversions import ascii_to_mseed
 
 
 class Fetcher:
-    def __init__(self, config, ds=None, origintime=None, startpad=20,
-                 endpad=200):
+    def __init__(self, config, ds=None, origintime=None, start_pad=20,
+                 end_pad=200):
         """
         :type config: pyatoa.core.config.Config
         :param config: configuration object that contains necessary parameters
@@ -29,17 +29,17 @@ class Fetcher:
         :param ds: dataset for internal data searching and saving
         :type origintime: obspy.core.UTCDateTime
         :param origintime: event origin time for event picking
-        :type startpad: int
-        :param startpad: padding in seconds before the origin time of an event
+        :type start_pad: int
+        :param start_pad: padding in seconds before the origin time of an event
             for waveform fetching, to be fed into lower level functions.
-        :type endpad: int
-        :param endpad: padding in seconds after the origin time of an event
+        :type end_pad: int
+        :param end_pad: padding in seconds after the origin time of an event
             for wavefomr fetching.
         """
         self.config = config
         self.ds = ds
-        self.startpad = startpad
-        self.endpad = endpad
+        self.start_pad = start_pad
+        self.end_pad = end_pad
         self.origintime = origintime
 
     def _asdf_event_fetch(self):
@@ -156,8 +156,8 @@ class Fetcher:
         dir_structure = '{year}/{net}/{sta}/{cha}*'
         file_template = '{net}.{sta}.{loc}.{cha}*{year}.{jday:0>3}'
         jdays = overlapping_days(origin_time=self.origintime,
-                                 startpad=self.startpad,
-                                 endpad=self.endpad
+                                 start_pad=self.start_pad,
+                                 end_pad=self.end_pad
                                  )
         for path_ in paths_to_waveforms:
             if not os.path.exists(path_):
@@ -177,8 +177,8 @@ class Fetcher:
                         filepath))
             if len(st) > 0:  # is this necessary?
                 st.merge()
-                st.trim(starttime=self.origintime-self.startpad,
-                        endtime=self.origintime+self.endpad
+                st.trim(starttime=self.origintime-self.start_pad,
+                        endtime=self.origintime+self.end_pad
                         )
                 return st
         else:
@@ -234,8 +234,8 @@ class Fetcher:
                             )
             if len(st) > 0:
                 st.merge()
-                st.trim(starttime=self.origintime - self.startpad,
-                        endtime=self.origintime + self.endpad
+                st.trim(starttime=self.origintime - self.start_pad,
+                        endtime=self.origintime + self.end_pad
                         )
                 # TO DO: fix this, its a kinda hacky way of figuring out what
                 # the Specfem output has been given in, no error catching so it

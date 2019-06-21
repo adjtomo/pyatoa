@@ -85,91 +85,6 @@ def lonlat_utm(lon_or_x, lat_or_y, utm_zone=60, inverse=False):
     return x_or_lon, y_or_lat
 
 
-# TO DO: this function was moved to utils.operations.file_generation
-# def generate_srcrcv_vtk_file(h5_fid, fid_out, model="m00", utm_zone=60,
-#                              event_fid_out=None):
-#     """
-#     It's useful to visualize source receiver locations in Paraview, alongside
-#     sensitivity kernels. VTK files are produced by Specfem, however they are for
-#     all receivers, and a source at depth which is sometimes confusing. This
-#     function will create source_receiver vtk files using the pyasdf h5 files,
-#     with only those receiver that were used in the misfit analysis, and only
-#     an epicentral source location, such that the source is visible on a top
-#     down view from Paraview.
-#     Gives the option to create an event vtk file separate to receivers, for
-#     more flexibility in the visualization.
-#     :type h5_fid: str
-#     :param h5_fid: path to pyasdf h5 file outputted by pyatoa
-#     :type fid_out: str
-#     :param fid_out: output path and filename to save vtk file e.g. 'test.vtk'
-#     :type model: str
-#     :param model: h5 is split up by model iteration, e.g. 'm00'
-#     :type utm_zone: int
-#     :param utm_zone: the utm zone of the mesh, 60 for NZ
-#     :type event_fid: str
-#     :param event_fid: if event vtk file to be made separately
-#     """
-# 
-#     # lazy import pyasdf
-#     import pyasdf
-# 
-#     # get receiver location information in UTM_60 coordinate system from
-#     # pyasdf auxiliary_data. make sure no repeat stations
-#     ds = pyasdf.ASDFDataSet(h5_fid)
-#     sta_x, sta_y, sta_elv, sta_ids = [], [], [], []
-#     if bool(ds.auxiliary_data):
-#         for adjsrc in ds.auxiliary_data.AdjointSources[model].list():
-#             sta = ds.auxiliary_data.AdjointSources[model][adjsrc]
-#             station_id = sta.parameters["station_id"]
-#             if station_id in sta_ids:
-#                 continue
-#             latitude = sta.parameters["latitude"]
-#             longitude = sta.parameters["longitude"]
-#             elevation_in_m = sta.parameters["elevation_in_m"]
-# 
-#             x, y = lonlat_utm(lon_or_x=longitude, lat_or_y=latitude,
-#                               utm_zone=utm_zone, inverse=False)
-#             sta_x.append(x)
-#             sta_y.append(y)
-#             sta_elv.append(elevation_in_m)
-#             sta_ids.append(station_id)
-# 
-#     # get event location information in UTM_60. set depth at 100 for epicenter
-#     ev_x, ev_y = lonlat_utm(lon_or_x=ds.events[0].preferred_origin().longitude,
-#                             lat_or_y=ds.events[0].preferred_origin().latitude,
-#                             utm_zone=utm_zone, inverse=False
-#                             )
-#     ev_elv = 100.0
-# 
-#     # write header for vtk file and then print values for source receivers
-#     with open(fid_out, "w") as f:
-#         f.write("# vtk DataFile Version 2.0\n"
-#                 "Source and Receiver VTK file from Pyatoa\n"
-#                 "ASCII\n"
-#                 "DATASET POLYDATA\n"
-#                 )
-#         # num points equal to number of stations plus 1 event
-#         f.write("POINTS\t{} float\n".format(len(sta_x)+1))
-#         f.write("{X:18.6E}{Y:18.6E}{E:18.6E}\n".format(
-#             X=ev_x, Y=ev_y, E=ev_elv)
-#         )
-#         for x, y, e in zip(sta_x, sta_y, sta_elv):
-#             f.write("{X:18.6E}{Y:18.6E}{E:18.6E}\n".format(X=x, Y=y, E=e))
-# 
-#     # make a separate vtk file for the source
-#     if event_fid_out:
-#         with open(event_fid_out, "w") as f:
-#             f.write("# vtk DataFile Version 2.0\n"
-#                     "Source and Receiver VTK file from Pyatoa\n"
-#                     "ASCII\n"
-#                     "DATASET POLYDATA\n"
-#                     )
-#             f.write("POINTS\t1 float\n".format(len(sta_x) + 1))
-#             f.write("{X:18.6E}{Y:18.6E}{E:18.6E}\n".format(
-#                 X=ev_x, Y=ev_y, E=ev_elv)
-#             )
-
-
 def gcd_and_baz(event, sta):
     """
     Calculate great circle distance and backazimuth values for a given
@@ -177,9 +92,8 @@ def gcd_and_baz(event, sta):
 
     :type event: obspy.core.event.Event
     :param event: event object
-    :type inv: obspy.core.inventory.Inventory
-    :param inv: inventory object, assumed only 1 station which takes up the
-        initial index of the inventory
+    :type sta: obspy.core.inventory.station.Station
+    :param sta: station object
     :rtype gcdist: float
     :return gcdist: great circle distance in km
     :rtype baz: float

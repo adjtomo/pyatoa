@@ -44,20 +44,20 @@ class TestWaveformPlot(unittest.TestCase):
         twax_bool = True
         for number_of in range(0, 4):
             axes, twaxes = setup_plot(number_of, twax_bool)
-            assert len(axes) == number_of
-            assert len(twaxes) == number_of
+            self.assertEqual(len(axes), number_of)
+            self.assertEqual(len(twaxes), number_of)
             for ax, tw in zip(axes, twaxes):
-                assert type(ax) == mpl.axes._subplots.Subplot
-                assert type(tw) == mpl.axes._subplots.Subplot
+                self.assertEqual(type(ax), mpl.axes._subplots.Subplot)
+                self.assertEqual(type(tw), mpl.axes._subplots.Subplot)
 
         # Test with not twin ax
         twax_bool = False
         for number_of in range(0, 4):
             axes, twaxes = setup_plot(number_of, twax_bool)
-            assert len(axes) == number_of
-            assert len(twaxes) == 0
+            self.assertEqual(len(axes), number_of)
+            self.assertEqual(len(twaxes), 0)
             for ax in axes:
-                assert type(ax) == mpl.axes._subplots.Subplot
+                self.assertEqual(type(ax), mpl.axes._subplots.Subplot)
 
     def test_window_maker_barebones(self):
         """
@@ -66,15 +66,10 @@ class TestWaveformPlot(unittest.TestCase):
         :return:
         """
         # Test data has uneven lengths, so plotting will throw a value error
-        try:
+        with self.assertRaises(ValueError):
             f = window_maker(
                 st_obs=self.st_obs, st_syn=self.st_syn, config=self.config,
             )
-        except ValueError:
-            pass
-
-
-
         return f
 
     def test_window_maker_only_staltas(self):
