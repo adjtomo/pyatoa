@@ -34,13 +34,19 @@ def stf_convolve(st, half_duration, window="bartlett", time_shift=None):
     # make sure window touches 0 at the end
     if stf[-1] != 0:
         stf = np.append(stf, 0)
-    # stf *= (2/len(stf))  # not sure if this is necessary?
+    # stf *= (2/len(stf))  # not sure if this normalization is necessary?
     st_out = st.copy()
     for tr in st_out:
         if time_shift:
             tr.stats.starttime += time_shift
         data_out = np.convolve(tr.data, stf, mode="same")
         tr.data = data_out
+
+        # Add a processing Tag
+        tr.stats.processing += ["Pyatoa: convolve(window={0}::time_shift={1}::"
+                                "half_duration_in_samples={2}".format(
+            window, time_shift, half_duration_in_samples)
+        ]
     return st_out
 
 

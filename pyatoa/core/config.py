@@ -5,7 +5,7 @@ Configuration object for Pyatoa.
 Fed into the processor class for workflow management, and also used for
 information sharing between objects and functions.
 """
-import warnings
+import pyatoa.utils.configurations.external as extcfg
 
 
 class Config:
@@ -16,14 +16,18 @@ class Config:
                  max_period=30, filter_corners=4, rotate_to_rtz=False,
                  unit_output='DISP', pyflex_config='default',
                  adj_src_type='multitaper_misfit', start_pad=20, end_pad=500,
-                 zero_pad=20, synthetic_unit="DISP",
-                 map_corners=[-42.5007, -36.9488, 172.9998, 179.5077],
-                 paths_to_waveforms=[], paths_to_synthetics=[],
-                 paths_to_responses=[]):
+                 zero_pad=20, synthetic_unit="DISP", observed_tag='observed',
+                 synthetic_tag='synthetic_{model_num}',
+                 map_corners={'lat_min': -42.5007, 'lat_max': -36.9488,
+                              'lon_min': 172.9998, 'lon_max': 179.5077},
+                 paths={'synthetics': [], 'waveforms': [], 'responses': [],
+                        'auxiliary_data': []}):
         """
         Allows the user to control the parameters of the packages called within
         pyatoa, as well as control where the outputs (i.e. pyasdf and plots) are
         sent after processing occurs
+
+        Reasonable default values set on initation
 
         :type model_number: int
         :param model_number: model iteration number for annotations and tags
@@ -40,28 +44,10 @@ class Config:
         :type unit_output: str
         :param unit_output: units of stream, to be fed into preprocessor for
             instrument response removal. Available: 'DISP', 'VEL', 'ACC'
-        :type pyflex_config: (list of floats) or str
-        :param pyflex_config: values to be fed into the pyflex config object.
-            Can give dictionary key for presets: 'default', and 'UAF'
-            or give a manual entry list of floats with the following format:
-            i  Standard Tuning Parameters:
-            0: water level for STA/LTA (short term average/long term average)
-            1: time lag acceptance level
-            2: amplitude ratio acceptance level (dlna)
-            3: normalized cross correlation acceptance level
-            i  Fine Tuning Parameters
-            4: c_0 = for rejection of internal minima
-            5: c_1 = for rejection of short windows
-            6: c_2 = for rejection of un-prominent windows
-            7: c_3a = for rejection of multiple distinct arrivals
-            8: c_3b = for rejection of multiple distinct arrivals
-            9: c_4a = for curtailing windows w/ emergent starts and/or codas
-            10:c_4b = for curtailing windows w/ emergent starts and/or codas
+        :type pyflex_config: str
+        :param pyflex_config: name of pyflex preset config to use
         :type adj_src_type: str
-        :param adj_src_type: method of misfit quantification specified by
-            Pyadjoint.
-            Available: 'waveform', 'cc_traveltime_misfit', 'multitaper_misfit'
-            (http://krischer.github.io/pyadjoint/adjoint_sources/index.html)
+        :param adj_src_type: method of misfit quantification for Pyadjoint
         :type start_pad: int
         :param start_pad: seconds before event origintime to grab waveform data
             for use by data gathering class
@@ -72,16 +58,23 @@ class Config:
             preprocess functions, useful for very small source-receiver
             distances where there may not be much time from origin time
             to first arrival
-        :type paths_to_waveforms: list of str
-        :param paths_to_waveforms: any absolute paths for Pyatoa to search for
+        :type synthetic_unit: str
+        :param synthetic_unit: units of Specfem synthetics, 'DISP', 'VEL', 'ACC'
+        :type observed_tag: str
+        :param observed_tag: Tag to use for asdf dataset to label and search
+            for obspy streams of observation data. Defaults 'observed'
+        :type synthetic_tag: str
+        :param synthetic_tag: Tag to use for asdf dataset to label and search
+            for obspy streams of synthetic data. Defaults 'synthetic_{model_num}
+            Tag must be formatted before use
+        :type paths: dict of str
+        :param paths: any absolute paths for Pyatoa to search for
             waveforms in. If path does not exist, it will automatically be
             skipped. Allows for work on multiple machines, by giving multiple
             paths for the same set of data, without needing to change config.
             Waveforms must be saved in a specific directory structure with a
             specific naming scheme
-        :type paths_to_responses: list of str
-        :param paths_to_responses: any absolute paths for Pyatoa to search for
-            responses in.
+
 
 
         Example call:
@@ -94,6 +87,7 @@ class Config:
             )
         """
         if model_number is not None:
+            # Format the model number to the way Pyatoa expects it
             if isinstance(model_number, str):
                 # If e.g. model_number = "0"
                 if not model_number[0] == "m":
@@ -105,7 +99,7 @@ class Config:
             elif isinstance(model_number, int):
                 self.model_number = 'm{:0>2}'.format(model_number)
         else:
-            self.model_number = model_number
+            self.model_number = None
 
         self.event_id = event_id
         self.min_period = float(min_period)
@@ -114,20 +108,19 @@ class Config:
         self.rotate_to_rtz = rotate_to_rtz
         self.unit_output = unit_output.upper()
         self.synthetic_unit = synthetic_unit.upper()
+        self.observed_tag = observed_tag
+        self.synthetic_tag = synthetic_tag.format(model_num=self.model_number)
         self.pyflex_config = (pyflex_config, None)
         self.pyadjoint_config = (adj_src_type, None)
         self.map_corners = map_corners
-        self.paths = {"waveforms": paths_to_waveforms,
-                      "synthetics": paths_to_synthetics,
-                      "responses": paths_to_responses,
-                      }
+        self.paths = paths
         self.zero_pad = int(zero_pad)
         self.start_pad = int(start_pad)
         self.end_pad = int(end_pad)
 
         # Run internal functions to check the Config object
-        self._generate_component_list()
-        self._checkset_config_parameters()
+        self.component_list = ['Z', 'N', 'E']
+        self._check_config()
 
     def __str__(self):
         """
@@ -158,45 +151,49 @@ class Config:
                          paths_to_resp=self.paths['responses']
                          )
 
-    def _generate_component_list(self):
+    def _check_config(self):
         """
-        create a small list for easy access to orthogonal components
+        Just make sure that some of the configuration parameters are set proper
         """
-        if self.rotate_to_rtz:
-            self.component_list = ['Z', 'R', 'T']
-        else:
-            self.component_list = ['Z', 'N', 'E']
+        # Check period range is acceptable
+        assert(self.min_period < self.max_period)
 
-    def _checkset_config_parameters(self):
-        """
-        just make sure that some of the configuration parameters are set proper
-        :return:
-        """
-        import pyatoa.utils.configurations.external as extcfg
-        
+        # Check that the map corners is a dict and contains proper keys
+        acceptable_keys = ['lat_min', 'lat_max', 'lon_min', 'lon_max']
+        assert(isinstance(self.map_corners, dict)), "map_corners should be dict"
+        for key in self.map_corners.keys():
+            assert(key in acceptable_keys), "key should be in {}".format(
+                acceptable_keys)
+
         # Check if unit output properly set
         acceptable_units = ['DISP', 'VEL', 'ACC']
-        if self.unit_output not in acceptable_units:
-            warnings.warn("'unit_output' must be 'DISP','VEL' or 'ACC'",
-                          UserWarning)
+        assert(self.unit_output in acceptable_units), \
+            "unit_output should be in {}".format(acceptable_units)
 
-        if self.synthetic_unit not in acceptable_units:
-            warnings.warn("'synthetic_units' must be 'DISP','VEL' or 'ACC'",
-                          UserWarning)
-        
-        # Check that Pyflex config is an available preset, else set 'default'
-        if self.pyflex_config[0] not in extcfg.pyflex_configs().keys():
-            warnings.warn(
-                "{} not in preset pyflex configs, setting 'default'".format(
-                    self.pyflex_config)
-            )
-            self.pyflex_config = ("default", None)
-        
+        assert(self.synthetic_unit in acceptable_units), \
+            "synthetic_unit should be in {}".format(acceptable_units)
+
+        assert(self.pyflex_config[0] in extcfg.pyflex_configs().keys()), \
+            "pyflex_config should be in {}".format(
+                extcfg.pyflex_config().keys())
+
+        # Check that paths are in the proper format
+        acceptable_keys = [
+            'synthetics', 'waveforms', 'responses', 'auxiliary_data']
+        assert(isinstance(self.paths, dict)), "paths should be a dict"
+        for key in self.paths.keys():
+            assert(key in acceptable_keys), \
+                "path keys can only be in {}".format(acceptable_keys)
+
+        # Rotate component list if necessary
+        if self.rotate_to_rtz:
+            self.component_list = ['Z', 'R', 'T']
+
+        # If all the assertions pass, set a few behind-the-scenes settings
         # Set Pyflex config as a tuple, (name, pyflex.Config)
         self.pyflex_config = (self.pyflex_config[0], 
                               extcfg.set_pyflex_config(self)
                               )
-
         # Set Pyadjoint Config as a tuple, (adj source type, pyadjoint.Config)
         self.pyadjoint_config = (
             self.pyadjoint_config[0],
@@ -205,21 +202,60 @@ class Config:
                                         max_period=self.max_period)
                                  )
 
-    def write_to_txt_file(self, filename):
+    def write_to_txt(self, filename="./pyatoa_config.txt"):
         """
-        write out conf file to text file
-        :param filename:
-        :return:
+        write out config file to text file
+        :type filename: str
+        :param filename: filename to save config to
         """
-        raise NotImplementedError
+        with open(filename.format(model_num=self.model_number), "w") as f:
+            f.write("PYATOA CONFIGURATION FILE\n\n")
+            f.write("Model Number:            {model_number}\n"
+                    "Event ID:                {event_id}\n\n"
+                    "PROCESSING\n"
+                    "\tMinimum Filter Period: {min_period}\n"
+                    "\tMaximum Filter Period: {max_period}\n"
+                    "\tZero Pad:              {zero_pad}s\n"
+                    "\tStart Pad:             {start_pad}s\n"
+                    "\tEnd Pad:               {end_pad}s\n"
+                    "\tFilter Corners:        {corner}\n"
+                    "\tRotate to RTZ:         {rotate}\n"
+                    "\tUnit Output:           {output}\n"
+                    "\tSynthetic Unit:        {synunit}\n"
+                    "ASDF Dataset\n"
+                    "\tObserved Tag:          {obstag}\n"
+                    "\tSynthetic Tag:         {syntag}\n"
+                    "AUX. CONFIGS\n"
+                    "\tPyflex Config:         {pyflex}\n"
+                    "\tAdjoint Source Type:   {adjoint}\n"
+                    "MISC\n"
+                    "\tMap Corners            {mapcorners}\n"
+                    "\tPaths to waveforms:    {paths_to_wavs}\n"
+                    "\tPaths to synthetics:   {paths_to_syns}\n"
+                    "\tPaths to responses:    {paths_to_resp}".format(
+                        model_number=self.model_number, event_id=self.event_id,
+                        min_period=self.min_period, max_period=self.max_period,
+                        zero_pad=self.zero_pad, start_pad=self.start_pad,
+                        end_pad=self.end_pad, corner=self.filter_corners,
+                        rotate=self.rotate_to_rtz, output=self.unit_output,
+                        synunit=self.synthetic_unit, obstag=self.observed_tag,
+                        syntag=self.synthetic_tag, pyflex=self.pyflex_config[0],
+                        adjoint=self.pyadjoint_config[0],
+                        mapcorners=self.map_corners,
+                        paths_to_wavs=self.paths['waveforms'],
+                        paths_to_syns=self.paths['synthetics'],
+                        paths_to_resp=self.paths['responses'])
+            )
 
     def write_to_asdf(self, ds):
         """
-        save the config values as a dictionary in the pyasdf data format
+        Save the config values as a dictionary in the pyasdf data format
         for easy lookback
         """
+        # Lazy imports because this function isn't always called
         import numpy as np
         from obspy import UTCDateTime
+
         par_dict = {"creation_time": str(UTCDateTime()),
                     "model_number": self.model_number,
                     "event_id": self.event_id,

@@ -11,7 +11,7 @@ import os
 import glob
 import copy
 
-from obspy import Stream, read, read_inventory
+from obspy import Stream, Inventory, read, read_inventory
 
 from pyatoa import logger
 from pyatoa.utils.operations.calculations import overlapping_days
@@ -19,8 +19,7 @@ from pyatoa.utils.operations.conversions import ascii_to_mseed
 
 
 class Fetcher:
-    def __init__(self, config, ds=None, origintime=None, start_pad=20,
-                 end_pad=200):
+    def __init__(self, config, ds=None, origintime=None):
         """
         :type config: pyatoa.core.config.Config
         :param config: configuration object that contains necessary parameters
@@ -38,11 +37,9 @@ class Fetcher:
         """
         self.config = config
         self.ds = ds
-        self.start_pad = start_pad
-        self.end_pad = end_pad
         self.origintime = origintime
 
-    def _asdf_event_fetch(self):
+    def asdf_event_fetch(self):
         """
         return event information from pyasdf
 
@@ -111,22 +108,25 @@ class Fetcher:
         dir_structure = '{sta}.{net}'
         file_template = 'RESP.{net}.{sta}.{loc}.{cha}'
 
-        # TO DO: if paths to responses is None, cannot iterate. Do we want to?
+        inv = None
         for path_ in paths_to_responses:
             if not os.path.exists(path_):
                 continue
-            fid = os.path.join(path_, dir_structure, file_template)
+            # Inventory() requires some positional arguements, use None to skip
             inv = None
-            for filepath in glob.glob(fid.format(
-                                            net=net, sta=sta, cha=cha,loc=loc)):
+            fid = os.path.join(path_, dir_structure, file_template).format(
+                net=net, sta=sta, cha=cha, loc=loc)
+            for filepath in glob.glob(fid):
                 if inv is None:
                     inv = read_inventory(filepath)
                     logger.info("response found at {}".format(filepath))
                 inv += read_inventory(filepath)
-            if inv is not None:
-                return inv
+
+        if inv:
+            return inv
         else:
-            raise FileNotFoundError("No response found for given paths")
+            logger.info("No response found for given paths")
+            raise FileNotFoundError()
 
     def _fetch_by_directory(self, station_code, paths_to_waveforms=None):
         """
@@ -156,8 +156,8 @@ class Fetcher:
         dir_structure = '{year}/{net}/{sta}/{cha}*'
         file_template = '{net}.{sta}.{loc}.{cha}*{year}.{jday:0>3}'
         jdays = overlapping_days(origin_time=self.origintime,
-                                 start_pad=self.start_pad,
-                                 end_pad=self.end_pad
+                                 start_pad=self.config.start_pad,
+                                 end_pad=self.config.end_pad
                                  )
         for path_ in paths_to_waveforms:
             if not os.path.exists(path_):
@@ -177,14 +177,16 @@ class Fetcher:
                         filepath))
             if len(st) > 0:  # is this necessary?
                 st.merge()
-                st.trim(starttime=self.origintime-self.start_pad,
-                        endtime=self.origintime+self.end_pad
+                st.trim(starttime=self.origintime-self.config.start_pad,
+                        endtime=self.origintime+self.config.end_pad
                         )
                 return st
         else:
-            raise FileNotFoundError(
+            logger.info(
                 "No waveforms found for {} for given directories".format(
-                    station_code))
+                    station_code)
+            )
+            raise FileNotFoundError()
 
     def _fetch_by_event(self, station_code):
         """
@@ -237,18 +239,21 @@ class Fetcher:
 
             if len(st) > 0:
                 st.merge()
-                st.trim(starttime=self.origintime - self.start_pad,
-                        endtime=self.origintime + self.end_pad
+                st.trim(starttime=self.origintime - self.config.start_pad,
+                        endtime=self.origintime + self.config.end_pad
                         )
                 return st
         else:
-            raise FileNotFoundError(
+            logger.info(
                 "No synthetic waveforms for {} found for given event".format(
-                    station_code))
+                    station_code)
+            )
+            raise FileNotFoundError()
 
     def obs_waveform_fetch(self, station_code):
         """
-        Main waveform fetching function for observation data
+        Main waveform fetching function for observation data.
+        Will return a FileNotFoundError if no internal data is found.
 
         :type station_code: str
         :param station_code: Station code following SEED naming convention.
@@ -256,16 +261,18 @@ class Fetcher:
             L=location, C=channel). Allows for wildcard naming. By default
             the pyatoa workflow wants three orthogonal components in the N/E/Z
             coordinate system. Example station code: NZ.OPRZ.10.HH?
+        :type tag: str
+        :param tag: The tag to save the waveform by, if an ASDF dataset is given
         :rtype: obspy.core.stream.Stream
         :return: stream object containing relevant waveforms
         """
-        if self.ds is not None:
-            tag = "observed"
+        if self.ds:
             try:
                 return self._asdf_waveform_fetch(station_code, tag=tag)
             except KeyError:
                 st_obs = self._fetch_by_directory(station_code)
-                self.ds.add_waveforms(waveform=st_obs, tag=tag)
+                self.ds.add_waveforms(waveform=st_obs,
+                                      tag=self.config.observed_tag)
                 return st_obs
         else:
             return self._fetch_by_directory(station_code)
@@ -285,20 +292,22 @@ class Fetcher:
         :rtype: obspy.core.stream.Stream
         :return: stream object containing relevant waveforms
         """
-        if self.ds is not None:
-            tag = "synthetic_{}".format(self.config.model_number)
+        if self.ds:
             try:
-                return self._asdf_waveform_fetch(station_code, tag=tag)
+                return self._asdf_waveform_fetch(station_code,
+                                                 tag=self.config.synthetic_tag)
             except KeyError:
                 st_syn = self._fetch_by_event(station_code)
-                self.ds.add_waveforms(waveform=st_syn, tag=tag)
+                self.ds.add_waveforms(waveform=st_syn,
+                                      tag=self.config.synthetic_tag)
                 return st_syn
         else:
             return self._fetch_by_event(station_code)
 
     def station_fetch(self, station_code):
         """
-        Main station fetching function for observation data
+        Main station fetching function for observation data.
+        Will raise a FileNotFoundError if no internal station data is found
 
         :type station_code: str
         :param station_code: Station code following SEED naming convention.
@@ -309,7 +318,7 @@ class Fetcher:
         :rtype: obspy.core.inventory.Inventory
         :return: inventory containing relevant network and stations
         """
-        if self.ds is not None:
+        if self.ds:
             try:
                 return self._asdf_station_fetch(station_code)
             except (KeyError, AttributeError):

@@ -12,8 +12,7 @@ from pyatoa import logger
 
 
 class Getter:
-    def __init__(self, config=None, client="GEONET", event_id=None,
-                 start_pad=20, end_pad=200):
+    def __init__(self, config=None, client="GEONET", event_id=None):
         """
         :type config: pyatoa.core.config.Config
         :param config: configuration object that contains necessary parameters
@@ -36,11 +35,11 @@ class Getter:
         else:
             self.event_id = event_id
         self.client = client
-        self.start_pad = start_pad
-        self.end_pad = end_pad
-        self.Client = None
         self.event = None
         self.origintime = None
+
+        if self.client:
+            self.Client = Client(self.client)
 
     def event_get(self):
         """
@@ -49,8 +48,6 @@ class Getter:
         :rtype event: obspy.core.event.Event
         :return event: event object
         """
-        if self.Client is None:
-            self.Client = Client(self.client)
         event = self.Client.get_events(eventid=self.event_id)[0]
         self.origintime = event.origins[0].time
         return event
@@ -63,15 +60,12 @@ class Getter:
         :rtype: obspy.core.inventory.Inventory
         :return: inventory containing relevant network and stations
         """
-        if self.Client is None:
-            self.Client = Client(self.client)
         net, sta, loc, cha = station_code.split('.')
-        return self.Client.get_stations(network=net, station=sta, location=loc,
-                                        channel=cha,
-                                        starttime=self.origintime-self.start_pad,
-                                        endtime=self.origintime+self.end_pad,
-                                        level=level
-                                        )
+        return self.Client.get_stations(
+            network=net, station=sta, location=loc, channel=cha,
+            starttime=self.origintime-self.config.start_pad,
+            endtime=self.origintime+self.config.end_pad, level=level
+        )
 
     def waveform_get(self, station_code):
         """
@@ -82,16 +76,17 @@ class Getter:
         :rtype stream: obspy.core.stream.Stream
         :return stream: waveform contained in a stre
         """
-        if self.Client is None:
-            self.Client = Client(self.client)
         net, sta, loc, cha = station_code.split('.')
-        st = self.Client.get_waveforms(network=net, station=sta, location=loc,
-                                       channel=cha, starttime=self.origintime-(
-                                                            self.start_pad+10),
-                                       endtime=self.origintime+(self.end_pad+10)
-                                       )
-        st.trim(starttime=self.origintime-self.start_pad,
-                endtime=self.origintime+self.end_pad)
+        st = self.Client.get_waveforms(
+            network=net, station=sta, location=loc, channel=cha,
+            starttime=self.origintime-(self.config.start_pad+5),
+            endtime=self.origintime+(self.config.end_pad+5)
+        )
+        # Sometimes FDSN queries return improperly cut start and end times, so
+        # we retrieve +/-10 seconds and then cut down
+        st.trim(starttime=self.origintime-self.config.start_pad,
+                endtime=self.origintime+self.config.end_pad)
+
         logger.info("stream got external {}".format(station_code))
         return st
 

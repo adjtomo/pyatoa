@@ -8,12 +8,14 @@ Directly called by the processor class in the main Pyatoa workflow
 import copy
 import warnings
 
+import csv
 import obspy
 
 from pyatoa import logger
 from pyatoa.utils.gathering.internal_fetcher import Fetcher
 from pyatoa.utils.gathering.external_getter import Getter
-from pyatoa.utils.gathering.grab_auxiliaries import grab_geonet_moment_tensor
+from pyatoa.utils.gathering.grab_auxiliaries import grab_geonet_moment_tensor,\
+    grab_gcmt_moment_tensor
 from pyatoa.utils.operations.source_receiver import generate_focal_mechanism
 
 
@@ -30,22 +32,12 @@ class Gatherer:
             to run through the Pyatoa workflow
         :type ds: pyasdf.asdf_data_set.ASDFDataSet
         :param ds: dataset for internal data searching and saving
-        :type start_pad: int
-        :param start_pad: padding in seconds before the origin time of an event
-            for waveform fetching, to be fed into lower level functions.
-        :type end_pad: int
-        :param end_pad: padding in seconds after the origin time of an event
-            for wavefomr fetching.
         """
         self.config = config
         self.ds = ds
         self.event = None
-        self.fetcher = Fetcher(config=self.config, ds=self.ds,
-                               start_pad=self.config.start_pad,
-                               end_pad=self.config.end_pad)
-        self.getter = Getter(config=self.config,
-                             start_pad=self.config.start_pad,
-                             end_pad=self.config.end_pad)
+        self.fetcher = Fetcher(config=self.config, ds=self.ds)
+        self.getter = Getter(config=self.config)
 
     def gather_event(self):
         """
@@ -57,42 +49,63 @@ class Gatherer:
         :rtype: obspy.core.event.Event
         :return: event retrieved either via internal or external methods
         """
-        if self.event is not None:
+        # If Gatherer has previously found an event, do nothing
+        if self.event:
             return self.event
-        elif self.ds is not None:
+        # If dataset is given, search for event
+        elif self.ds:
             try:
-                self.event = self.fetcher._asdf_event_fetch()
+                self.event = self.fetcher.asdf_event_fetch()
             except IndexError:
                 self.event = self.getter.event_get()
                 self.gather_focal_mechanism()
                 self.ds.add_quakeml(self.event)
                 logger.info("event got from external, added to pyasdf dataset")
+        # Else, query FDSN for event information
         else:
             self.event = self.getter.event_get()
             self.gather_focal_mechanism()
             logger.info("event got from external")
 
+        # Propogate the origin time to Fetcher and Getter classes
         self.event.preferred_origin().time.precision = 2
         self.fetcher.origintime = self.event.preferred_origin().time
         self.getter.origintime = self.event.preferred_origin().time
+
         return self.event
 
     def gather_focal_mechanism(self):
         """
-        NOTE: hardcoded paths to a .csv file containing GeoNet moment tensor
-        values which have hardcoded variable names.
+        Focal mechanisms are unforunately not something that is standard to
+        store, as calculations differ between regions and agencies.
+
+        That means this function is not always bulletproof.
 
         FDSN fetched events are devoid of a few bits of information that are
         useful for our applications, e.g. moment tensor, focal mechanisms.
         This function will perform the conversions and append the necessary
         information to the event located in the dataset.
 
+        TO DO: test the gcmt moment tensor grabbing
         :return:
         """
         if isinstance(self.event, obspy.core.event.Event):
-            geonet_mtlist = grab_geonet_moment_tensor(self.config.event_id)
-            generate_focal_mechanism(mtlist=geonet_mtlist, event=self.event)
-            logger.info("appending GeoNet moment tensor information to event")
+            if self.getter.client == "GEONET":
+                # Search GeoNet moment tensor catalog, query GitHub repo
+                geonet_mtlist = grab_geonet_moment_tensor(self.config.event_id)
+                generate_focal_mechanism(mtlist=geonet_mtlist, event=self.event)
+                logger.info(
+                    "appending GeoNet moment tensor information to event")
+            else:
+                # NOTE: this has not really been tested
+                try:
+                    event = grab_gcmt_moment_tensor(
+                        datetime=self.event.preferred_origin().time,
+                        magnitude=self.event.preferred_magnitude().mag
+                    )
+                    self.event = event
+                except Exception as e:
+                    print("This needs to be a smarter catch")
 
     def gather_station(self, station_code):
         """
@@ -137,22 +150,14 @@ class Gatherer:
             logger.info("internal observation data unavailable, searching ext.")
             st_obs = self.getter.waveform_get(station_code)
             if self.ds is not None:
-                self.ds.add_waveforms(waveform=st_obs, tag='observed')
-        # if self.config.raw_sampling_rate is not None:
-        #     if self.config.raw_sampling_rate < st_obs[0].stats.sampling_rate:
-        #         st_obs.resample(sampling_rate=self.config.raw_sampling_rate)
-        #     else:
-        #         warnings.warn(
-        #           "Raw sampling rate {r} is greater than original {o}".format(
-        #                 r=self.config.raw_sampling_rate,
-        #                 o=st_obs[0].stats.sampling_rate), UserWarning
-        #                 )
+                self.ds.add_waveforms(waveform=st_obs,
+                                      tag=self.config.observed_tag)
 
         return st_obs
 
     def gather_synthetic(self, station_code):
         """
-        gather synthetic data
+        Gather synthetic data. Can only be provided internally via fetcher
 
         :type station_code: str
         :param station_code: Station code following SEED naming convention.
@@ -164,15 +169,7 @@ class Gatherer:
         :return: stream object containing relevant waveforms
         """
         st_syn = self.fetcher.syn_waveform_fetch(station_code)
-        # if self.config.raw_sampling_rate is not None:
-        #     if self.config.raw_sampling_rate < st_syn[0].stats.sampling_rate:
-        #         st_syn.resample(sampling_rate=self.config.raw_sampling_rate)
-        #     else:
-        #         warnings.warn(
-        #           "Raw sampling rate {r} is greater than original {o}".format(
-        #                 r=self.config.raw_sampling_rate,
-        #                 o=st_syn[0].stats.sampling_rate), UserWarning
-        #                 )
+
         return st_syn
 
 

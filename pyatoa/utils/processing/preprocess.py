@@ -31,6 +31,8 @@ def trimstreams(st_a, st_b, force=None):
     """
     Trim two streams to common start and end times, do some basic preprocessing
     before trimming. Allows user to force one stream to conform to another
+    Assumes all traces in a stream have the same time.
+    Precheck to make sure that the streams are actually different
 
     :type st_a: obspy.stream.Stream
     :param st_a: streams to be trimmed
@@ -42,6 +44,13 @@ def trimstreams(st_a, st_b, force=None):
     :rtype st_?: obspy.stream.Stream
     :return st_?: trimmed stream
     """
+    # Check if the times are already the same
+    diff = 1E-2
+    if st_a[0].stats.starttime - st_b[0].stats.starttime < diff and \
+            st_a[0].stats.endtime - st_b[0].stats.endtime < diff:
+        warnings.warn("Streams are already the same length", UserWarning)
+        return st_a, st_b
+
     if force:
         force = force.lower()
         if force == "a":
@@ -68,6 +77,30 @@ def trimstreams(st_a, st_b, force=None):
         st.taper(max_percentage=0.05)
 
     return st_a, st_b
+
+
+def _is_preprocessed(st):
+    """
+    Small check to make sure a stream object has not yet been run through
+    preprocessing. Simple, as it assumes that a fresh stream will have no
+    processing attribute in their stats, or if they do, will not have been
+    filtered (getting cut waveforms from FDSN appends a 'trim' stat).
+    :type st: obspy.stream.Stream
+    :param st: stream to check processing on
+    :rtype: bool
+    :return: if preprocessing has occurred
+    """
+    for tr in st:
+        if hasattr(tr.stats, 'processing'):
+            for processing in tr.stats.processing:
+                # A little hacky, but processing flag will have the str
+                # ..': filter(options'... to signify that a filter is applied
+                if 'filter(' in processing:
+                    warnings.warn("stream already preprocessed", UserWarning)
+                    return True
+
+    # If nothing found, return False
+    return False
 
 
 def preproc(st, inv=None, resample=None, pad_length_in_seconds=None,
@@ -104,6 +137,8 @@ def preproc(st, inv=None, resample=None, pad_length_in_seconds=None,
     :return st: preprocessed stream object
     """
     warnings.filterwarnings("ignore", category=FutureWarning)
+    if _is_preprocessed(st):
+        return st
 
     # Resample the data if possible
     if resample:

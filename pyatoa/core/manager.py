@@ -5,8 +5,6 @@ Manager is the central workflow control object. It calls on mid and low level
 classes to gather data, and then runs these through Pyflex for misfit window
 identification, and then into Pyadjoint for misfit quantification. Config class
 required to set the necessary parameters
-
-TODO: create a moment tensor object that can be attached to the event object
 """
 import warnings
 
@@ -20,12 +18,15 @@ from obspy.signal.filter import envelope
 from pyatoa import logger
 from pyatoa.utils.asdf.additions import write_adj_src_to_asdf
 from pyatoa.utils.gathering.data_gatherer import Gatherer
-from pyatoa.utils.operations.source_receiver import gcd_and_baz
+from pyatoa.utils.operations.source_receiver import gcd_and_baz,\
+    seismogram_length
 from pyatoa.utils.operations.formatting import create_window_dictionary, \
      channel_codes
 from pyatoa.utils.processing.preprocess import preproc, trimstreams
 from pyatoa.utils.processing.synpreprocess import stf_convolve_gaussian
 from pyatoa.utils.configurations.external import set_pyflex_station_event
+from pyatoa.visuals.mapping import generate_map
+from pyatoa.visuals.waveforms import window_maker
 
 
 class Manager:
@@ -35,7 +36,7 @@ class Manager:
     Workflow management function that internally calls on all other objects
     within the package in order to gather, process and analyze waveform data.
     """
-    def __init__(self, config, ds=None, empty=False, station_code=None,
+    def __init__(self, config, ds=None, empty=True, station_code=None,
                  event=None, st_obs=None, st_syn=None, inv=None, windows=None,
                  staltas=None, adj_srcs=None):
         """
@@ -85,7 +86,7 @@ class Manager:
         self.adj_srcs = adj_srcs
 
         # Internally used statistics
-        self.time_offset = None
+        self.time_offset_sec = None
         self.num_windows = None
         self.total_misfit = None
         self.half_dur = None
@@ -96,6 +97,7 @@ class Manager:
         self.st_obs_num = 0
         self.st_syn_num = 0
         self.inv_name = None
+        self.half_dur_flag = None
         self.obs_process_flag = False
         self.syn_process_flag = False
         self.syn_shift_flag = False
@@ -114,17 +116,17 @@ class Manager:
         """
         self._check()
         return ("DATA\n"
-                "\tDataset:                      {dataset}\n"
-                "\tEvent:                        {event}\n"
-                "\tInventory:                    {inventory}\n"
-                "\tObserved Stream(s):           {obsstream}\n"
-                "\tSynthetic Stream(s):          {synstream}\n"
+                "\tdataset (ds):                 {dataset}\n"
+                "\tevent:                        {event}\n"
+                "\tinventory (inv):              {inventory}\n"
+                "\tobserved data (st_obs):       {obsstream}\n"
+                "\tsynthetic data (st_syn):      {synstream}\n"
                 "WORKFLOW\n"
-                "\tObs Data Preprocessed:        {obsproc}\n"
-                "\tSyn Data Preprocessed:        {synproc}\n"
-                "\tSTF Half Duration:            {synshift}\n"
-                "\tPyflex Windows:               {pyflex}\n"
-                "\tPyadjoint Misfit:             {pyadjoint}\n"
+                "\tobs data preprocessed:        {obsproc}\n"
+                "\tsyn data preprocessed:        {synproc}\n"
+                "\thalf duration (half_dur):     {synshift}\n"
+                "\tpyflex (num_windows):         {pyflex}\n"
+                "\tpyadjoint (total_misfit):     {pyadjoint}\n"
                 ).format(dataset=self.dataset_id,
                          event=self.event_name,
                          obsstream=self.st_obs_num,
@@ -174,7 +176,7 @@ class Manager:
             self.st_syn_num, self.syn_process_flag = 0, False
 
         # Check if preprocessing found a source time function
-        if self.half_dur:
+        if self.half_dur is not None:
             self.half_dur_flag = "{:.3f}".format(self.half_dur)
 
         # Check to see if inv is an Inventory object
@@ -196,6 +198,10 @@ class Manager:
         """
         Convenience function to delete all data in the Manager, and hence start
         the workflow from the start without losing your event or gatherer.
+
+        Soft reset retains event information so that another Station can be
+        gathered for the same event
+
         :type hard_reset: bool
         :param hard_reset: hard or soft, soft reset does not re-instantiate
             gatherer class, and leaves the same event. Useful for short workflow
@@ -207,7 +213,7 @@ class Manager:
         self.windows = None
         self.staltas = None
         self.adj_srcs = None
-        self.time_offset = None
+        self.time_offset_sec = None
         self.num_windows = None
         self.total_misfit = None
         self.half_dur = None
@@ -241,22 +247,23 @@ class Manager:
         :param set_event: if given, will bypass gathering the event and manually
             set to the user given event
         """
-        # Launch the gatherer or Reset the gatherer
+        # First, launch the gatherer or reset the gatherer
         if (self.gatherer is None) or reset:
             logger.info("initiating/resetting gatherer")
             self.gatherer = Gatherer(config=self.config, ds=self.ds)
-            self.event = self.gatherer.event
 
-        # Populate with an event
+        # Second, get event information
         if set_event:
             self.gatherer.event = set_event
             self.event = self.gatherer.event
-        # If no event given by user, query FDSN
+        # If no event given by User, start searching for the event
         else:
-            if self.gatherer.event is not None:
+            # If the gatherer already has an event, have Manager copy it
+            if self.gatherer.event:
                 self.event = self.gatherer.event
+            # If this is the first time launching the gatherer, gather event
             else:
-                if self.config.event_id is not None:
+                if self.config.event_id:
                     self.event = self.gatherer.gather_event()
 
     def gather_data(self, station_code):
@@ -274,7 +281,8 @@ class Manager:
             the pyatoa workflow wants three orthogonal components in the N/E/Z
             coordinate system. Example station code: NZ.OPRZ.10.HH?
         """
-        # if overwriting, don't check before gathering new data
+        if self.gatherer is None:
+            self.launch()
         try:
             self.station_code = station_code
             logger.info("Gathering {station} for {event}".format(
@@ -290,6 +298,35 @@ class Manager:
             print(e)
             return
 
+    def populate_dataset(self):
+        """
+        If gather_data is skipped altogether (e.g. User provides streams,
+        inventory and event information in the Manager init), but data should
+        still be saved into an ASDFDataSet for data storage, this function will
+        fill that dataset in the same fashion as the data_gatherer class, and
+        its internal subclasses.
+        :return:
+        """
+        # Only populate if all requisite parts are given
+        if self.event and self.inv and self.st_obs and self.st_syn:
+            try:
+                self.ds.add_quakeml(self.event)
+            except ValueError:
+                warnings.warn("Event already present, not added", UserWarning)
+            try:
+                self.ds.add_stationxml(self.inv)
+            except TypeError:
+                warnings.warn("Inv already present, not added", UserWarning)
+            # PyASDF has its own warnings if observed data already present
+            self.ds.add_waveforms(waveform=self.st_obs,
+                                  tag=self.config.observed_tag)
+            self.ds.add_waveforms(waveform=self.st_syn,
+                                  tag=self.config.synthetic_tag)
+        else:
+            warnings.warn(
+                "Manager does not contain all data, cannot fill dataset",
+                UserWarning)
+
     def preprocess(self):
         """
         Preprocess observed and synthetic data in place on waveforms.
@@ -298,25 +335,12 @@ class Manager:
         Waveforms are trimmed and sampled to the same values.
         Synthetic waveform is convolved with a source time function.
         """
-        def check_streams(self):
-            """Check to see if data is still stable"""
-            if (isinstance(self.st_obs, obspy.Stream) and
-                    isinstance(self.st_syn, obspy.Stream)):
-                return True
-            elif not isinstance(self.st_obs, obspy.Stream):
-                warnings.warn("No observation waveform data", UserWarning)
-                return False
-            elif not isinstance(self.st_syn, obspy.Stream):
-                warnings.warn("No synthetic waveform data", UserWarning)
-                return False
-            else:
-                return False
-
-        # Pre-check to see if data has already been gathered
-        if not check_streams(self):
+        self._check()
+        if not self.st_obs_num or not self.st_syn_num:
+            warnings.warn("No waveform data", UserWarning)
             return
         if not isinstance(self.inv, obspy.core.inventory.Inventory):
-            warnings.warn("No inventory given", UserWarning)
+            warnings.warn("No inventory", UserWarning)
             return
 
         # Process observation waveforms
@@ -332,8 +356,9 @@ class Manager:
         sampling_rate = self.st_syn[0].stats.sampling_rate
 
         # Run external preprocessing script
-        self.st_obs = preproc(self.st_obs, inv=self.inv, resample=sampling_rate,
-                              synthetic_unit=None, back_azimuth=baz,
+        self.st_obs = preproc(st=self.st_obs, inv=self.inv,
+                              resample=sampling_rate, synthetic_unit=None,
+                              back_azimuth=baz,
                               pad_length_in_seconds=self.config.zero_pad,
                               unit_output=self.config.unit_output,
                               corners=self.config.filter_corners,
@@ -343,7 +368,7 @@ class Manager:
         
         # Run external synthetic waveform preprocesser
         logger.info("preprocessing synthetic data")
-        self.st_syn = preproc(self.st_syn, inv=None, resample=None,
+        self.st_syn = preproc(st=self.st_syn, inv=None, resample=None,
                               synthetic_unit=self.config.synthetic_unit,
                               back_azimuth=baz,
                               pad_length_in_seconds=self.config.zero_pad,
@@ -354,7 +379,9 @@ class Manager:
                               )
         
         # Mid-check to see if preprocessing failed
-        if not check_streams(self):
+        self._check()
+        if not self.obs_process_flag or not self.syn_process_flag:
+            warnings.warn("Preprocessing failed", UserWarning)
             return
 
         # Trim observations and synthetics to the length of synthetics
@@ -362,9 +389,9 @@ class Manager:
             st_a=self.st_obs, st_b=self.st_syn, force="b")
 
         # Retrieve the first timestamp in the .sem? file from Specfem
-        self.time_offset = (self.st_syn[0].stats.starttime -
-                            self.event.preferred_origin().time
-                            )
+        self.time_offset_sec = (self.st_syn[0].stats.starttime -
+                                self.event.preferred_origin().time
+                                )
 
         # Convolve synthetic data with a gaussian source-time-function
         try:
@@ -374,7 +401,7 @@ class Manager:
                 st=self.st_syn, half_duration=self.half_dur, time_shift=False
             )
         except AttributeError:
-            print("half duration value not found for event")
+            logger.info("moment tensor not found for event")
 
     def run_pyflex(self):
         """
@@ -451,7 +478,7 @@ class Manager:
         self.num_windows = num_windows
     
         # If an ASDFDataSet is given, save the windows into auxiliary_data
-        if self.ds and (num_windows != 0):
+        if self.ds is not None and (num_windows != 0):
             logger.info("saving misfit windows to PyASDF")
             for comp in windows.keys():
                 for i, window in enumerate(windows[comp]):
@@ -473,9 +500,7 @@ class Manager:
                                                    path=tag
                                                    )
         # Let the User know the outcomes of Pyflex
-        msg = "{} window(s) total found".format(num_windows)
-        logger.info(msg)
-        print(msg)
+        logger.info("{} window(s) total found".format(num_windows))
 
     def run_pyadjoint(self):
         """
@@ -548,7 +573,7 @@ class Manager:
                         cmp=adj_src.component[-1]
                     )
                     write_adj_src_to_asdf(adj_src=adj_src, ds=self.ds, tag=tag,
-                                          time_offset=self.time_offset)
+                                          time_offset=self.time_offset_sec)
         
         # Save adjoint source for plotting
         self.adj_srcs = adjoint_sources
@@ -557,9 +582,7 @@ class Manager:
         self.total_misfit = 0.5 * total_misfit/self.num_windows
 
         # Let the User know the outcome of Pyadjoint
-        msg = "total misfit {:.3f}".format(self.total_misfit)
-        logger.info(msg)
-        print(msg)
+        logger.info("total misfit {:.3f}".format(self.total_misfit))
 
     def plot_wav(self, append_title='', figsize=(11.69, 8.27), dpi=100,
                  show=True, save=None, return_figure=False):
@@ -584,12 +607,9 @@ class Manager:
         """
         # Precheck for waveform data
         self._check()
-        if not self.obs_process_flag and not self.syn_process.flag:
+        if not self.obs_process_flag and not self.syn_process_flag:
             warnings.warn("cannot plot, no/improper waveform data", UserWarning)
             return
-
-        from pyatoa.visuals.waveforms import window_maker
-        from pyatoa.utils.operations.source_receiver import seismogram_length
 
         # Calculate the seismogram length
         length_s = seismogram_length(
@@ -601,7 +621,7 @@ class Manager:
         fig_window = window_maker(
             st_obs=self.st_obs, st_syn=self.st_syn, windows=self.windows,
             staltas=self.staltas, adj_srcs=self.adj_srcs, length_s=length_s,
-            time_offset=self.time_offset,
+            time_offset=self.time_offset_sec,
             stalta_wl=self.config.pyflex_config[1].stalta_waterlevel,
             unit_output=self.config.unit_output, config=self.config,
             figsize=figsize, total_misfit=self.total_misfit,
@@ -611,7 +631,7 @@ class Manager:
         if return_figure:
             return fig_window
 
-    def plot_map(self, map_corners=None, show_faults=False,
+    def plot_map(self, map_corners, show_nz_faults=False,
                  annotate_names=False, color_by_network=False,
                  figsize=(8, 8.27), dpi=100, show=True, save=None):
         """
@@ -621,8 +641,8 @@ class Manager:
         tensor is given, station of interest highlighted, both are connected
         with a dashed line.
         Source receier information plotted in lower right hand corner of map.
-        :type map_corners: list
-        :param map_corners: [lat_min, lat_max, lon_min, lon_max]
+        :type map_corners: dict
+        :param map_corners: {lat_min, lat_max, lon_min, lon_max}
         :type annotate_names: bool
         :param annotate_names: annotate station names
         :type color_by_network: bool
@@ -631,8 +651,8 @@ class Manager:
         :param show: show the plot once generated, defaults to False
         :type save: str
         :param save: absolute filepath and filename if figure should be saved
-        :type show_faults: bool
-        :param show_faults: plot active faults and hikurangi trench from
+        :type show_nz_faults: bool
+        :param show_nz_faults: plot active faults and hikurangi trench from
             internally saved coordinate files. takes extra time over simple plot
         :type figsize: tuple of floats
         :param figsize: length and width of the figure
@@ -645,16 +665,13 @@ class Manager:
         if not isinstance(self.inv, obspy.Inventory):
             warnings.warn("no inventory given, plotting blank map", UserWarning)
 
-        from pyatoa.visuals.mapping import generate_map
-
         if not map_corners:
             map_corners = self.config.map_corners
 
         # Call external function to generate map
-        generate_map(config=self.config, event_or_cat=self.event,
-                     inv=self.inv, show_faults=show_faults,
-                     annotate_names=annotate_names,
-                     show=show, figsize=figsize, dpi=dpi, save=save,
+        generate_map(map_corners=map_corners, event=self.event, inv=self.inv,
+                     show_nz_faults=show_nz_faults,
                      color_by_network=color_by_network,
-                     map_corners=map_corners
+                     annotate_names=annotate_names, show=show, figsize=figsize,
+                     dpi=dpi, save=save
                      )

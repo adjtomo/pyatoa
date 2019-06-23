@@ -121,8 +121,10 @@ def theoretical_p_arrival(source_depth_in_km, distance_in_degrees,
 
 def parse_inventory(inv, event=None):
     """
+    DEPRECATED
     return information from an inventory object. check data availability based
     on event origin time and return only the available stations
+    Used for mapping.
     """
     network_codes, station_codes, latitudes, longitudes, starts, ends =\
         [], [], [], [], [], []
@@ -312,7 +314,8 @@ def generate_focal_mechanism(mtlist, event=None):
         comments=[comment]
         )
 
-    if event is not None:
+    # Append the focal mechanisms to the event object
+    if event:
         event.focal_mechanisms = [focal_mechanism]
 
     return focal_mechanism

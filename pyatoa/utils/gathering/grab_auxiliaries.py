@@ -5,129 +5,127 @@ New Zealand tomography problem, and therefore paths are hard coded
 """
 import os
 import csv
+import requests
+import warnings
 
 from obspy import UTCDateTime, read_events
 from pyatoa import logger
 
 
-def hardcode_paths():
+def grab_geonet_moment_tensor(event_id, fid=None):
     """
-    TO DO: try to remove this hardcoding, or avoid it if these aren't found
-    personal development convenience function to hardcode in a path dictionary
-    for fetching internally stored information
-
-    :rtype paths: dict
-    :return: dictionary containing hardcoded pathnames
-    """
-    split = os.getcwd().split('/')
-    basecheck = os.path.join(split[0], split[1], split[2])
-    if basecheck == "seis/prj":
-        where = "GNS"
-        datafolder = "/seis/prj/fwi/bchow/data"
-    elif basecheck == "Users/chowbr":
-        where = "VIC"
-        datafolder = "/Users/chowbr/Documents/subduction/data"
-    else:
-        where = "MAUI"
-    
-    # Set hardcoded paths based on system
-    if where != "MAUI":
-        paths = {"faults": os.path.join(datafolder, "FAULTS", ''),
-                 "stations": os.path.join(datafolder, "STATIONXML", "MASTER",
-                                          "master_inventory.xml"),
-                 "geonet_mt": os.path.join(datafolder, "GEONET", "data",
-                                           "moment-tensor",
-                                           "GeoNet_CMT_solutions.csv"),
-                 "gcmt_mt": os.path.join(datafolder, "GCMT")
-                 }
-    else:
-        datafolder = ("/scale_wlg_nobackup/filesets/nobackup/nesi00263/bchow/"
-                      "primer/auxiliary_data")
-
-        paths = {"faults": os.path.join(datafolder, "faults", ''),
-                 "stations": os.path.join(datafolder, "stationxml",
-                                          "master_inventory.xml"),
-                 "geonet_mt": os.path.join(datafolder, "geonet", "data",
-                                           "moment-tensor",
-                                           "GeoNet_CMT_solutions.csv"),
-                 "gcmt_mt": os.path.join(datafolder, "gcmt")
-                 }
-    return paths
-
-
-def grab_geonet_moment_tensor(event_id):
-    """
-    fetch moment tensor information from an internal csv file, only relevant
-    to the new zealand tomography problem. geonet moment tensors stored with
-    a specific column format, csv file can be found here:
-
-    https://github.com/GeoNet/data/tree/master/moment-tensor
+    Get moment tensor information from a internal csv file,
+    or from an external github repository query.
+    Only relevant to the new zealand tomography problem.
+    Geonet moment tensors stored with a specific column format.
 
     :type event_id: str
     :param event_id: unique event identifier
+    :type fid: str
+    :param fid: absolute path to the geonet moment tensor file, if None,
+        search external github repository
     :rtype moment_tensor: dict
     :return moment_tensor: dictionary created from rows of csv file
     """
-    with open(hardcode_paths()['geonet_mt']) as f:
-        reader = csv.reader(f)
-        for i, row in enumerate(reader):
-            if i == 0:
-                tags = row
-            if row[0] == event_id:
-                values = []
-                for t, v in zip(tags, row):
-                    if t == "Date":
-                        values.append(UTCDateTime(v))
-                    elif t == "PublicID":
-                        values.append(v)
-                    else:
-                        values.append(float(v))
+    # If a csv file is given, read that, else check external
+    if fid:
+        with open(fid) as f:
+            reader = csv.reader(f)
+            tag = "internal"
+    else:
+        # Request and open the CSV file. Assumed that GeoNet will keep their
+        # moment-tensor information in their GitHub repository
+        # OK, last accessed 23.6.19
+        geonet_mt_csv = (
+            "https://raw.githubusercontent.com/GeoNet/data/master/"
+            "moment-tensor/GeoNet_CMT_solutions.csv"
+        )
+        response = requests.get(geonet_mt_csv)
+        if not response.ok:
+            warnings.warn("Github repo request failed", UserWarning)
+            return None
 
-                moment_tensor = dict(zip(tags, values))
-                logger.info("geonet moment tensor found for event: {}".format(
-                    event_id))
-                return moment_tensor
-        else:
-            logger.info(
-                "no geonet moment tensor found for event: {}".format(
-                    event_id))
-            raise AttributeError("geonet moment tensor for event {}"
-                                 "doesn't exist".format(event_id))
+        # Use CSV to parse through the returned repsonse
+        reader = csv.reader(response.text.splitlines(), delimiter=',')
+        tag = "external"
+
+    # Parse the CSV file
+    for i, row in enumerate(reader):
+        # First row contains header information
+        if i == 0:
+            tags = row
+        # First column gives event ids
+        if row[0] == event_id:
+            values = []
+            # Grab the relevant information from the file
+            for t, v in zip(tags, row):
+                if t == "Date":
+                    values.append(UTCDateTime(v))
+                elif t == "PublicID":
+                    values.append(v)
+                else:
+                    values.append(float(v))
+
+            moment_tensor = dict(zip(tags, values))
+            logger.info("geonet moment tensor {} for event: {}".format(
+                tag, event_id)
+            )
+            return moment_tensor
+    else:
+        logger.info(
+            "no geonet moment tensor found for event: {}".format(
+                event_id))
+        raise AttributeError("geonet moment tensor for event {}"
+                             "doesn't exist".format(event_id))
 
 
-def grab_gcmt_moment_tensor(datetime, magnitude):
+def grab_gcmt_moment_tensor(datetime, magnitude, path=None):
     """
     Fetch global centroid moment tensor information from internal ndk files,
     if nothing is found then raise some errors. If multiple events found (e.g.
     temporally close foreshock and mainshock), allow user choice.
 
+    Expects GCMT in .ndk files in directory structure following:
+    /path/to/directories/YYYY/mmmyy.ndk
+    e.g. path/to/directories/2009/jun09.ndk
+
     :type datetime: UTCDateTime or str
     :param datetime: event origin time
     :type magnitude: float
     :param magnitude: centroid moment magnitude for event lookup
+    :type path: str
+    :param path: path to the gcmt moment tensor files, separated by year
     :rtype event: obspy.core.event.Event
     :return event: event object for given earthquake
     """
     if not isinstance(datetime, UTCDateTime):
         datetime = UTCDateTime(datetime)
 
-    year = str(datetime.year)
-    month = {1: "jan", 2: "feb", 3: "mar", 4: "apr", 5: "may",
-             6: "jun", 7: "jul", 8: "aug", 9: "sep", 10: "oct",
-             11: "nov", 12: "dec"}[datetime.month]
+    # Determine filename using datetime properties
+    month = datetime.strftime('%b').lower()  # e.g. 'jul'
+    year_short = datetime.strftime('%y')  # e.g. '19'
+    year_long = datetime.strftime('%Y')  # e.g. '2019'
 
-    fid = "{m}{y}.ndk".format(m=month, y=year[2:])
-    fpath = os.path.join(hardcode_paths()['gcmt_mt'], year, fid)
-    try:
+    fid = "{m}{y}.ndk".format(m=month, y=year_short)
+
+    # If a path is given to the GCMT catalogs (hardcoded), search
+    if path:
+        fpath = os.path.join(path, year_long, fid)
         cat = read_events(fpath)
-    except FileNotFoundError:
-        logger.info("no gcmt ndk file found internal, searching external")
+    # If no path, query GCMT directly using Obspy read_events
+    # Try looking at the new files first
+    else:
         # import HTTPerror to be able to catch it
         from urllib.error import HTTPError
+
+        if not isinstance(datetime, UTCDateTime):
+            datetime = UTCDateTime(datetime)
+
+        logger.info("querying GCMT database for moment tensor")
         try:
             cat = read_events(
                 "https://www.ldeo.columbia.edu/~gcmt/projects/CMT/"
-                "catalog/NEW_MONTHLY/{y}/{fid}".format(y=year, fid=fid)
+                "catalog/NEW_MONTHLY/{y}/{fid}".format(y=year_long, fid=fid)
             )
         except HTTPError:
             cat = read_events(
@@ -135,49 +133,34 @@ def grab_gcmt_moment_tensor(datetime, magnitude):
                 "catalog/NEW_QUICK/qcmt.ndk"
             )
 
-    cat_filt = cat.filter("time > {}".format(str(datetime - 60)),
-                          "time < {}".format(str(datetime + 60)),
-                          "magnitude >= {}".format(magnitude - .5),
-                          "magnitude <= {}".format(magnitude + .5)
+    # GCMT catalogs contain all events for a span of time
+    # filter catalogs using Obspy to find events with our specifications.
+    # Magnitudes and origintimes are not always in agreement between agents
+    # So allow fro some wiggle room
+    time_wiggle = 60
+    mag_wiggle = 0.5
+    cat_filt = cat.filter("time > {}".format(str(datetime - time_wiggle)),
+                          "time < {}".format(str(datetime + time_wiggle)),
+                          "magnitude >= {}".format(magnitude - mag_wiggle),
+                          "magnitude <= {}".format(magnitude + mag_wiggle)
                           )
+    # Filtering may remove all events from catalog, return multiple events, or
+    # may return the event of choice
     if not len(cat_filt):
         logger.info(
-            "no gcmt event found for datetime {0} and magnitude {1}".format(
-                datetime, magnitude)
+            "no gcmt event found for {0} and M{1}".format(datetime, magnitude)
         )
         raise FileNotFoundError("No events found")
     elif len(cat_filt) > 1:
         logger.info(
-            "multiple events found for datetime {0} and magnitude{1}".format(
-                datetime,magnitude)
+            "multiple events found for {0} and M{1}".format(datetime, magnitude)
         )
-        print("{} events found, choose from list:".format(len(cat_filt)))
-        print("{0} {1}\n{2}".format(datetime, magnitude, cat_filt))
-        choice = int(input("Event number (index from 0): "))
-        return cat_filt[choice]
+        print("{} events found, choosing first".format(len(cat_filt)))
+        return cat_filt[0]
     else:
         logger.info("gcmt event found matching criteria")
         return cat_filt[0]
 
 
-def timeshift_halfduration(gcmt_event, geonet_list):
-    """
-    Deprecated, and incorrect, will be deleted.
-    calcuate the absolute time shift between centroid time and hypocenter time
-    to shift the synthetic seismogram into absolute time using the equation:
 
-    t_abs = t_pde + time shift + t_syn
-
-    :type gcmt_event: obspy.core.event.Event
-    :param gcmt_event:
-    """
-    import warnings
-    warnings.warn("Incorrect function", DeprecationWarning)
-    hypocenter_time = gcmt_event.origins[0].time
-    centroid_time = [i.time for i in gcmt_event.origins
-                     if i.origin_type == "centroid"][0]
-    time_shift = abs(hypocenter_time - centroid_time)
-    moment_tensor = gcmt_event.focal_mechanisms[0].moment_tensor
-    half_duration = (moment_tensor.source_time_function['duration'])/2
-    return time_shift, half_duration
 
