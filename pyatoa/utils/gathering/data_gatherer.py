@@ -5,10 +5,6 @@ external getter to grab event, station and waveform information.
 
 Directly called by the processor class in the main Pyatoa workflow
 """
-import copy
-import warnings
-
-import csv
 import obspy
 
 from pyatoa import logger
