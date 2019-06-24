@@ -28,7 +28,8 @@ class Getter:
         :param end_pad: padding in seconds after the origin time of an event
             for wavefomr fetching.
         """
-
+        # Priroritize the Config.event_id over a given id, but allow a User
+        # to set their own event id to avoid reliance on a config object
         self.config = config
         if self.config is not None:
             self.event_id = self.config.event_id
@@ -38,6 +39,7 @@ class Getter:
         self.event = None
         self.origintime = None
 
+        # Initiate Obspy FDSN client
         if self.client:
             self.Client = Client(self.client)
 

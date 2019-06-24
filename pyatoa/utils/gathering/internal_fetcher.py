@@ -9,13 +9,13 @@ Hardcoded directory structure and synthetic file name format.
 """
 import os
 import glob
-import copy
 
-from obspy import Stream, Inventory, read, read_inventory
+from obspy import Stream, read, read_inventory
 
 from pyatoa import logger
 from pyatoa.utils.operations.calculations import overlapping_days
 from pyatoa.utils.operations.conversions import ascii_to_mseed
+from pyatoa.utils.operations.source_receiver import merge_inventories
 
 
 class Fetcher:
@@ -28,12 +28,6 @@ class Fetcher:
         :param ds: dataset for internal data searching and saving
         :type origintime: obspy.core.UTCDateTime
         :param origintime: event origin time for event picking
-        :type start_pad: int
-        :param start_pad: padding in seconds before the origin time of an event
-            for waveform fetching, to be fed into lower level functions.
-        :type end_pad: int
-        :param end_pad: padding in seconds after the origin time of an event
-            for wavefomr fetching.
         """
         self.config = config
         self.ds = ds
@@ -41,16 +35,19 @@ class Fetcher:
 
     def asdf_event_fetch(self):
         """
-        return event information from pyasdf
+        Return event information from pyasdf.
+
+        Assumes that the ASDF Dataset will only contain one event, which is
+        dictated by the structure of Pyatoa.
 
         :rtype event: obspy.core.event.Event
         :return event: event object
         """
         event = self.ds.events[0]
-        self.origintime = event.origins[0].time
+        self.origintime = event.preferred_origin().time
         return event
 
-    def _asdf_station_fetch(self, station_code):
+    def asdf_station_fetch(self, station_code):
         """
         return station information from pyasdf based on station tag
 
@@ -63,10 +60,11 @@ class Fetcher:
         :rtype: obspy.core.inventory.network.Network
         :return: network containing relevant station information
         """
-        net, sta, _, _ = station_code.split('.')
-        return self.ds.waveforms['{n}_{s}'.format(n=net, s=sta)].StationXML
+        net, sta, loc, cha = station_code.split('.')
+        return self.ds.waveforms[
+            '{n}_{s}'.format(n=net, s=sta)].StationXML.select(channel=cha)
 
-    def _asdf_waveform_fetch(self, station_code, tag):
+    def asdf_waveform_fetch(self, station_code, tag):
         """
         return stream based on tags from pyasdf
 
@@ -81,14 +79,24 @@ class Fetcher:
         :rtype: obspy.core.stream.Stream
         :return: waveform contained in a stream
         """
-        net, sta, _, _ = station_code.split('.')
-        return self.ds.waveforms['{n}_{s}'.format(n=net, s=sta)][tag]
+        net, sta, loc, cha = station_code.split('.')
+        return self.ds.waveforms[
+            '{n}_{s}'.format(n=net, s=sta)][tag].select(channel=cha)
 
-    def _fetch_response(self, station_code, paths_to_responses=None):
+    def fetch_resp_by_dir(self, station_code, paths_to_responses=None,
+                          dir_structure='{sta}.{net}',
+                          file_template='RESP.{net}.{sta}.{loc}.{cha}'):
         """
         Fetch station xml from given internal pathing. Search through all
         paths given until corresponding inventories are found or until nothing
-        is found
+        is found.
+
+        Note: Obspy does not have any type of inventory merge property, and
+            because SEED format saves response by channel, we must read
+            individual stationxml files in as individual inventory objects, and
+            add them together. This means that the output inventory has multiple
+            networks that are essentially the same. It works, but be careful
+            when looping through an inventory object.
 
         :type station_code: str
         :param station_code: Station code following SEED naming convention.
@@ -98,37 +106,50 @@ class Fetcher:
             coordinate system. Example station code: NZ.OPRZ.10.HH?
         :type paths_to_responses: list of str
         :param paths_to_responses: absolute pathways for response file locations
+        :type dir_structure: str
+        :param dir_structure: a hardcoded directory structure to search for
+            response files. Follows the SEED convention
+        :type file_template: str
+        :param file_template: a hardcoded file naming template to search for
+            response files. Follows the SEED convention
         :rtype inv: obspy.core.inventory.Inventory
         :return inv: inventory containing relevant network and stations
         """
+
         if not paths_to_responses:
             paths_to_responses = self.config.paths['responses']
 
         net, sta, loc, cha = station_code.split('.')
-        dir_structure = '{sta}.{net}'
-        file_template = 'RESP.{net}.{sta}.{loc}.{cha}'
 
         inv = None
         for path_ in paths_to_responses:
             if not os.path.exists(path_):
                 continue
             # Inventory() requires some positional arguements, use None to skip
-            inv = None
             fid = os.path.join(path_, dir_structure, file_template).format(
                 net=net, sta=sta, cha=cha, loc=loc)
             for filepath in glob.glob(fid):
+                # The first inventory becomes the main inv to return
                 if inv is None:
                     inv = read_inventory(filepath)
-                    logger.info("response found at {}".format(filepath))
-                inv += read_inventory(filepath)
+                # All other inventories are appended to the original
+                else:
+                    inv_append = read_inventory(filepath)
+                    inv = merge_inventories(inv, inv_append)
 
-        if inv:
-            return inv
-        else:
+                logger.info("response found at {}".format(filepath))
+
+        # Merge inventory objects
+        if inv is None:
             logger.info("No response found for given paths")
             raise FileNotFoundError()
 
-    def _fetch_by_directory(self, station_code, paths_to_waveforms=None):
+        return inv
+
+    def fetch_obs_by_dir(
+            self, station_code, paths_to_waveforms=None,
+            dir_structure='{year}/{net}/{sta}/{cha}*',
+            file_template='{net}.{sta}.{loc}.{cha}*{year}.{jday:0>3}'):
         """
         waveform directory structure formatting is hardcoded in here, it is
         assumed that data is saved as miniseeds in the following structure:
@@ -144,21 +165,26 @@ class Fetcher:
             coordinate system. Example station code: NZ.OPRZ.10.HH?
         :type paths_to_waveforms: list of str
         :param paths_to_waveforms: absolute pathways for mseed file locations
+        :type dir_structure: str
+        :param dir_structure: a hardcoded directory structure to search for
+            observation data. Follows the SEED convention
+        :type file_template: str
+        :param file_template: a hardcoded file naming template to search for
+            observation data. Follows the SEED convention
         :rtype stream: obspy.core.stream.Stream
         :return stream: stream object containing relevant waveforms
         """
         if self.origintime is None:
             raise AttributeError("'origintime' must be specified")
-        if not paths_to_waveforms:
+        if paths_to_waveforms is None:
             paths_to_waveforms = self.config.paths['waveforms']
 
         net, sta, loc, cha = station_code.split('.')
-        dir_structure = '{year}/{net}/{sta}/{cha}*'
-        file_template = '{net}.{sta}.{loc}.{cha}*{year}.{jday:0>3}'
         jdays = overlapping_days(origin_time=self.origintime,
                                  start_pad=self.config.start_pad,
                                  end_pad=self.config.end_pad
                                  )
+
         for path_ in paths_to_waveforms:
             if not os.path.exists(path_):
                 continue
@@ -168,7 +194,7 @@ class Fetcher:
                 pathlist.append(full_path.format(net=net, sta=sta, cha=cha,
                                                  loc=loc, jday=jday,
                                                  year=self.origintime.year)
-                                                 )
+                                )
             st = Stream()
             for fid in pathlist:
                 for filepath in glob.glob(fid):
@@ -188,7 +214,8 @@ class Fetcher:
             )
             raise FileNotFoundError()
 
-    def _fetch_by_event(self, station_code):
+    def fetch_syn_by_dir(self, station_code, event_id='',
+                         specfem_fid_template='{net}.{sta}.*{cmp}.sem{dva}'):
         """
         Synthetic data is saved by event id and model number,
         give a hardcoded search path to get to the data.
@@ -202,6 +229,13 @@ class Fetcher:
             L=location, C=channel). Allows for wildcard naming. By default
             the pyatoa workflow wants three orthogonal components in the N/E/Z
             coordinate system. Example station code: NZ.OPRZ.10.HH?
+        :type specfem_fid_template: str
+        :param specfem_fid_template: The naming template of Specfem ascii files
+        :type event_id: str
+        :param event_id: The event id, if given, this function will search
+            the directory for the event id first, rather than just searching the
+            given directory. Useful for when data is stored by event id
+            e.g. /path/to/synthetics/{event_id}/*
         :type paths_to_waveforms: list of str
         :param paths_to_waveforms: absolute pathways for mseed file locations
         :rtype stream: obspy.core.stream.Stream
@@ -216,14 +250,17 @@ class Fetcher:
         specfem_id = self.config.synthetic_unit[0].lower()
 
         # Generate information necessary to search for data
-        net, sta, _, cha = station_code.split('.')
-        specfem_fid_template = '{net}.{sta}.*{cmp}.sem{dva}'
+        net, sta, loc, cha = station_code.split('.')
 
         # Check through paths given in Config
         for path_ in self.config.paths['synthetics']:
             if not os.path.exists(path_):
                 continue
-            full_path = os.path.join(path_, specfem_fid_template)
+
+            # Here the path is determined for search. If event_id is given,
+            # the function will search for an event_id directory.
+            full_path = os.path.join(path_, event_id, specfem_fid_template)
+
             st = Stream()
             for filepath in glob.glob(full_path.format(
                     net=net, sta=sta, cmp=cha[2:], dva=specfem_id)):
@@ -268,14 +305,17 @@ class Fetcher:
         """
         if self.ds:
             try:
-                return self._asdf_waveform_fetch(station_code, tag=tag)
+                # Search the given asdf dataset first
+                return self.asdf_waveform_fetch(station_code,
+                                                tag=self.config.observed_tag)
             except KeyError:
-                st_obs = self._fetch_by_directory(station_code)
+                # If asdf dataset does not contain data, search internal dir.
+                st_obs = self.fetch_obs_by_dir(station_code)
                 self.ds.add_waveforms(waveform=st_obs,
                                       tag=self.config.observed_tag)
                 return st_obs
         else:
-            return self._fetch_by_directory(station_code)
+            return self.fetch_obs_by_dir(station_code)
 
     def syn_waveform_fetch(self, station_code):
         """
@@ -294,15 +334,15 @@ class Fetcher:
         """
         if self.ds:
             try:
-                return self._asdf_waveform_fetch(station_code,
-                                                 tag=self.config.synthetic_tag)
+                return self.asdf_waveform_fetch(station_code,
+                                                tag=self.config.synthetic_tag)
             except KeyError:
-                st_syn = self._fetch_by_event(station_code)
+                st_syn = self.fetch_syn_by_dir(station_code)
                 self.ds.add_waveforms(waveform=st_syn,
                                       tag=self.config.synthetic_tag)
                 return st_syn
         else:
-            return self._fetch_by_event(station_code)
+            return self.fetch_syn_by_dir(station_code)
 
     def station_fetch(self, station_code):
         """
@@ -320,13 +360,13 @@ class Fetcher:
         """
         if self.ds:
             try:
-                return self._asdf_station_fetch(station_code)
+                return self.asdf_station_fetch(station_code)
             except (KeyError, AttributeError):
-                inv = self._fetch_response(station_code)
+                inv = self.fetch_resp_by_dir(station_code)
                 self.ds.add_stationxml(inv)
                 return inv
         else:
-            return self._fetch_response(station_code)
+            return self.fetch_resp_by_dir(station_code)
 
 
 

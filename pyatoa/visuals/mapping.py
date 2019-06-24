@@ -15,9 +15,9 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.basemap import Basemap
 from obspy.imaging.beachball import beach
 
-from pyatoa.utils.operations.source_receiver import gcd_and_baz, parse_inventory
+from pyatoa.utils.operations.source_receiver import gcd_and_baz
 from pyatoa.utils.operations.calculations import myround
-from pyatoa.visuals.mapping import map_extras
+from pyatoa.visuals import map_extras
 
 
 def legend():
@@ -201,6 +201,7 @@ def plot_stations(m, inv, event=None, **kwargs):
                              xy=(x,y), xytext=(x,y), zorder=6, fontsize=7,
                              bbox=dict(facecolor='w', edgecolor='k',
                                        boxstyle='round')
+                             )
 
 
 def annotate_srcrcv_information(m, event, inv):

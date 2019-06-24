@@ -113,6 +113,13 @@ class Config:
         self.pyflex_config = (pyflex_config, None)
         self.pyadjoint_config = (adj_src_type, None)
         self.map_corners = map_corners
+
+        # Path searching looks for lists, but this allows the User to provide
+        # a path of type(str), the Config object will just wrap it in a list
+        for key in paths.keys():
+            if isinstance(paths[key], str):
+                paths[key] = [paths[key]]
+
         self.paths = paths
         self.zero_pad = int(zero_pad)
         self.start_pad = int(start_pad)
@@ -128,18 +135,18 @@ class Config:
         :return:
         """
         return ("CONFIG\n"
-                "\tModel Number:          {model_number}\n"
-                "\tEvent ID:              {event_id}\n"
-                "\tMinimum Filter Period: {min_period}\n"
-                "\tMaximum Filter Period: {max_period}\n"
-                "\tFilter Corners:        {corner}\n"
-                "\tRotate to RTZ:         {rotate}\n"
-                "\tUnit Output:           {output}\n"
-                "\tPyflex Config:         {pyflex}\n"
-                "\tAdjoint Source Type:   {adjoint}\n"
-                "\tPaths to waveforms:    {paths_to_wavs}\n"
-                "\tPaths to synthetics:   {paths_to_syns}\n"
-                "\tPaths to responses:    {paths_to_resp}"
+                "\tmodel_number:          {model_number}\n"
+                "\tevent_id:              {event_id}\n"
+                "\tmin_period:            {min_period}\n"
+                "\tmax_period:            {max_period}\n"
+                "\tfilter_corners:        {corner}\n"
+                "\trotate_to_rtz:         {rotate}\n"
+                "\tunit_output:           {output}\n"
+                "\tpyflex_config:         {pyflex}\n"
+                "\tpyadjoint_config:      {adjoint}\n"
+                "\tpaths['waveforms']:    {paths_to_wavs}\n"
+                "\tpaths['synthetics']:   {paths_to_syns}\n"
+                "\tpaths['responses']:    {paths_to_resp}"
                 ).format(model_number=self.model_number,
                          event_id=self.event_id, min_period=self.min_period,
                          max_period=self.max_period, corner=self.filter_corners,

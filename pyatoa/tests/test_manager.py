@@ -53,37 +53,6 @@ class TestManager(unittest.TestCase):
             mgmt.run_pyadjoint()
             mgmt.plot_wav()
 
-    def test_get_data(self):
-        """
-        Check that the data gathering process works
-        Requires a working internet connection for FDSN query
-        :return:
-        """
-        comp = "Z"
-        station_code = self.st_obs.select(component=comp)[0].get_id()
-        station_code = station_code[:-1] + "?"
-
-        mgmt = Manager(config=self.config, event=self.event)
-        mgmt.gather_data(station_code=station_code)
-
-        # Make sure gatherer downloaded the right data
-        self.assertIsInstance(mgmt.st_obs, obspy.core.stream.Stream)
-        self.assertIs(mgmt.st_syn, None)
-        self.assertEqual(len(mgmt.st_obs), 3)
-        self.assertIsInstance(mgmt.inv, obspy.core.inventory.Inventory)
-        self.assertIsInstance(mgmt.event, obspy.core.event.Event)
-
-        # Check waveforms gathered are the same by checking their max values
-        self.assertEqual(mgmt.st_obs.select(component=comp)[0].data.max(),
-                         self.st_obs.select(component=comp)[0].data.max())
-
-        # Check inventory captured the correct network
-        self.assertEqual(mgmt.inv[0].code, self.inv[0].code)
-
-        # Check event has the right origin time
-        self.assertEqual(mgmt.event.preferred_origin().time,
-                         self.event.preferred_origin().time)
-
     def test_preprocess(self):
         """
         Test that the preprocess function works

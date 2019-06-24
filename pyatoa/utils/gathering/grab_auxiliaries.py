@@ -79,7 +79,8 @@ def grab_geonet_moment_tensor(event_id, fid=None):
                              "doesn't exist".format(event_id))
 
 
-def grab_gcmt_moment_tensor(datetime, magnitude, path=None):
+def grab_gcmt_moment_tensor(datetime, magnitude, path=None,
+                            time_wiggle_sec=120, mag_wiggle=0.5):
     """
     Fetch global centroid moment tensor information from internal ndk files,
     if nothing is found then raise some errors. If multiple events found (e.g.
@@ -95,6 +96,11 @@ def grab_gcmt_moment_tensor(datetime, magnitude, path=None):
     :param magnitude: centroid moment magnitude for event lookup
     :type path: str
     :param path: path to the gcmt moment tensor files, separated by year
+    :type time_wiggle_sec: int
+    :param time_wiggle_sec: padding on catalog filtering criteria realted to
+        event origin time
+    :type mag_wiggle: float
+    :param mag_wiggle: padding on catalog filter for magnitude
     :rtype event: obspy.core.event.Event
     :return event: event object for given earthquake
     """
@@ -137,10 +143,8 @@ def grab_gcmt_moment_tensor(datetime, magnitude, path=None):
     # filter catalogs using Obspy to find events with our specifications.
     # Magnitudes and origintimes are not always in agreement between agents
     # So allow fro some wiggle room
-    time_wiggle = 60
-    mag_wiggle = 0.5
-    cat_filt = cat.filter("time > {}".format(str(datetime - time_wiggle)),
-                          "time < {}".format(str(datetime + time_wiggle)),
+    cat_filt = cat.filter("time > {}".format(str(datetime - time_wiggle_sec)),
+                          "time < {}".format(str(datetime + time_wiggle_sec)),
                           "magnitude >= {}".format(magnitude - mag_wiggle),
                           "magnitude <= {}".format(magnitude + mag_wiggle)
                           )

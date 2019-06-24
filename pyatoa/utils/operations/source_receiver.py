@@ -1,6 +1,57 @@
 """
 Functions used in determining source receiver information
 """
+import os
+
+
+def merge_inventories(inv_a, inv_b):
+    """
+    Adding inventories together duplicates network and station codes, which is
+    kind of annoying for looping. This function will add two inventories
+    together while minimizing the amount of redundant networks, stations,
+    channels inside the merged inventory.
+
+    :type inv_a: obspy.core.inventory.Inventory
+    :param inv_a: inventory to merge into, will be returned
+    :type inv_b: obspy.core.inventory.Inventory
+    :param inv_b: inventory to merge into inv_a
+    :rtype: obspy.core.inventory.Inventory
+    :return: merged inventories
+    """
+    # Network, loop through 'a' and look for matches in 'b'
+    for net_a in inv_a.networks:
+        for net_b in inv_b.networks:
+            # If the network codes match, need to go deeper
+            if net_a.code == net_b.code:
+                # Station, Loop through 'a' and look for matches in 'b'
+                for sta_a in net_a.stations:
+                    for sta_b in net_b.stations:
+                        # If station codes match, go deeper
+                        if sta_a.code == sta_b.code:
+                            # Channel, loop through 'a', look in 'b'
+                            for i, cha_a in enumerate(sta_a.channels):
+                                for cha_b in sta_b.channels:
+                                    # If channel codes match, these
+                                    # inventories are probably the same.
+                                    # This won't work if they contain the
+                                    # same channel but different time
+                                    # ranges. But I assume that
+                                    # case won't arise.
+                                    if cha_a.code == cha_b.code:
+                                        continue
+                                    # If channels don't match, merge and return
+                                    else:
+                                        sta_a.channels += sta_b.channels
+                                        return inv_a
+                        # If station codes don't match, merge and return
+                        else:
+                            net_a.stations += net_b.stations
+                            return inv_a
+            # If the network codes don't match, merge and return
+            else:
+                inv_a.networks += inv_b.networks
+                return inv_a
+    return inv_a + inv_b
 
 
 def seismogram_length(distance_km, slow_wavespeed_km_s=2, binsize=50,
@@ -117,34 +168,6 @@ def theoretical_p_arrival(source_depth_in_km, distance_in_degrees,
     model = TauPyModel(model=model)
     return model.get_travel_times(source_depth_in_km, distance_in_degrees,
                                   phase_list=["P"])
-
-
-def parse_inventory(inv, event=None):
-    """
-    DEPRECATED
-    return information from an inventory object. check data availability based
-    on event origin time and return only the available stations
-    Used for mapping.
-    """
-    network_codes, station_codes, latitudes, longitudes, starts, ends =\
-        [], [], [], [], [], []
-    for net in inv:
-        for sta in net:
-            if event is not None:
-                if sta.is_active(time=event.preferred_origin().time):
-                    network_codes.append(net.code)
-                    station_codes.append(sta.code)
-                    latitudes.append(float(sta.latitude))
-                    longitudes.append(float(sta.longitude))
-                    # starts.append(sta.start_date)
-                    # ends.append(sta.end_date)
-            else:
-                network_codes.append(net.code)
-                station_codes.append(sta.code)
-                latitudes.append(float(sta.latitude))
-                longitudes.append(float(sta.longitude))
-
-    return network_codes, station_codes, latitudes, longitudes
 
 
 def half_duration_from_m0(moment):
@@ -309,13 +332,17 @@ def generate_focal_mechanism(mtlist, event=None):
 
     # FOCAL MECHANISM
     focal_mechanism = eventcore.FocalMechanism(
-        force_resource_id=False, nodal_planes=nodal_planes,
+        force_resource_id=True, nodal_planes=nodal_planes,
         moment_tensor=moment_tensor, principal_axes=principal_axes,
         comments=[comment]
         )
 
-    # Append the focal mechanisms to the event object
+    # Append the focal mechanisms to the event object. Set the preferred
+    # focal mechanism so that this attribute can be used in the future
     if event:
         event.focal_mechanisms = [focal_mechanism]
-
-    return focal_mechanism
+        event.preferred_focal_mechanism_id = focal_mechanism.resource_id
+        return event, focal_mechanism
+    # If no event is given, just return the focal mechanism
+    else:
+        return None, focal_mechanism

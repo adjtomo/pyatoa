@@ -35,13 +35,15 @@ class Gatherer:
         self.fetcher = Fetcher(config=self.config, ds=self.ds)
         self.getter = Getter(config=self.config)
 
-    def gather_event(self):
+    def gather_event(self, append_focal_mechanism=True):
         """
         Get event information, check internally first. Keep the event as an
         attribute and check if the event has already be retrieved as this
         only needs to be done once per Pyatoa workflow.
         Set the event time precision equal to 2 points after the decimal to keep
         the origin time the same as that saved into the CMTSOLUTION file.
+        :type append_focal_mechanism: bool
+        :param append_focal_mechanism: will also run append_focal_mechanism()
         :rtype: obspy.core.event.Event
         :return: event retrieved either via internal or external methods
         """
@@ -54,13 +56,15 @@ class Gatherer:
                 self.event = self.fetcher.asdf_event_fetch()
             except IndexError:
                 self.event = self.getter.event_get()
-                self.gather_focal_mechanism()
+                if append_focal_mechanism:
+                    self.append_focal_mechanism()
                 self.ds.add_quakeml(self.event)
                 logger.info("event got from external, added to pyasdf dataset")
         # Else, query FDSN for event information
         else:
             self.event = self.getter.event_get()
-            self.gather_focal_mechanism()
+            if append_focal_mechanism:
+                self.append_focal_mechanism()
             logger.info("event got from external")
 
         # Propogate the origin time to Fetcher and Getter classes
@@ -70,7 +74,7 @@ class Gatherer:
 
         return self.event
 
-    def gather_focal_mechanism(self):
+    def append_focal_mechanism(self, overwrite=False):
         """
         Focal mechanisms are unforunately not something that is standard to
         store, as calculations differ between regions and agencies.
@@ -82,26 +86,35 @@ class Gatherer:
         This function will perform the conversions and append the necessary
         information to the event located in the dataset.
 
-        TO DO: test the gcmt moment tensor grabbing
-        :return:
+        TO DO: only take focal mechanism from GCMT? Maybe centroid information
+            is not as accurate as a regional network FDSN event
+
+        :type overwrite: bool
+        :param overwrite: If the event already has a focal mechanism, this will
+            overwrite that focal mechanism
         """
         if isinstance(self.event, obspy.core.event.Event):
+            # If the event already has a focal mechanism attribute, don't gather
+            if hasattr(self.event, 'focal_mechanisms') and \
+                    self.event.focal_mechanisms and not overwrite:
+                return
             if self.getter.client == "GEONET":
                 # Search GeoNet moment tensor catalog, query GitHub repo
                 geonet_mtlist = grab_geonet_moment_tensor(self.config.event_id)
-                generate_focal_mechanism(mtlist=geonet_mtlist, event=self.event)
+                self.event, _ = generate_focal_mechanism(
+                    mtlist=geonet_mtlist, event=self.event
+                )
                 logger.info(
                     "appending GeoNet moment tensor information to event")
             else:
-                # NOTE: this has not really been tested
+                # Query GCMT .ndk files for matching event
                 try:
-                    event = grab_gcmt_moment_tensor(
+                    self.event = grab_gcmt_moment_tensor(
                         datetime=self.event.preferred_origin().time,
                         magnitude=self.event.preferred_magnitude().mag
                     )
-                    self.event = event
-                except Exception as e:
-                    print("This needs to be a smarter catch")
+                except FileNotFoundError:
+                    logger.info("No GCMT event found")
 
     def gather_station(self, station_code):
         """
