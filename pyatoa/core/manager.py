@@ -25,8 +25,8 @@ from pyatoa.utils.operations.formatting import create_window_dictionary, \
 from pyatoa.utils.processing.preprocess import preproc, trimstreams
 from pyatoa.utils.processing.synpreprocess import stf_convolve_gaussian
 from pyatoa.utils.configurations.external import set_pyflex_station_event
-from pyatoa.visuals.mapping import generate_map
-from pyatoa.visuals.waveforms import window_maker
+from pyatoa.utils.visuals.mapping import generate_map
+from pyatoa.utils.dvisuals.waveforms import window_maker
 
 
 class Manager:

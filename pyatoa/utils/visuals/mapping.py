@@ -17,7 +17,7 @@ from obspy.imaging.beachball import beach
 
 from pyatoa.utils.operations.source_receiver import gcd_and_baz
 from pyatoa.utils.operations.calculations import myround
-from pyatoa.visuals import map_extras
+from pyatoa.utils.visuals import map_extras
 
 
 def legend():

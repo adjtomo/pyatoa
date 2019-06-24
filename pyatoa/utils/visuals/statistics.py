@@ -6,7 +6,8 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 
 from pyatoa.utils.operations.calculations import myround
-from pyatoa.visuals.plot_utils import align_yaxis, pretty_grids, format_axis
+from pyatoa.utils.visuals.plot_utils import align_yaxis, pretty_grids, \
+    format_axis
 
 mpl.rcParams['font.size'] = 12
 mpl.rcParams['lines.linewidth'] = 1.25

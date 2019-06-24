@@ -5,7 +5,7 @@ e.g. catalog maps, ray density maps. etc.
 
 """
 import matplotlib.pyplot as plt
-import pyatoa.visuals.plot_map as plot_map
+import pyatoa.utils.visuals.plot_map as plot_map
 
 
 def ray_density(cat, inv, map_corners=[-42.5007, -36.9488, 172.9998, 179.5077],

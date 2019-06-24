@@ -284,7 +284,7 @@ def process(args, usrcfg):
 
         # Combine .png images into a composite .pdf for easy fetching
         if usrcfg["tile_and_combine"]:
-            from pyatoa.visuals.convert_images import tile_and_combine
+            from pyatoa.utils.visuals.convert_images import tile_and_combine
             tile_and_combine(ds=ds, model=args.model_number, step=step_number,
                              figure_path=paths["PYATOA_FIGURES"],
                              purge_originals=usrcfg["purge_originals"],

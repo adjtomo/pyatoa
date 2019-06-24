@@ -131,6 +131,9 @@ class TestDataGatherMethods(unittest.TestCase):
         Test fetching by an ASDF dataset
         :return:
         """
+        # Check that an empty fetcher throws the correct errors when
+        # an empty dataset is given
+
         fetcher = Fetcher(config=self.config, ds=self.ds,
                           origintime=self.origintime)
 
