@@ -6,10 +6,9 @@ import pyasdf
 import unittest
 import matplotlib as mpl
 
-from obspy import read, read_events, read_inventory, UTCDateTime
-
+import obspy
 from pyatoa import Config, Manager
-from pyatoa.visuals.waveforms import setup_plot, window_maker
+from pyatoa.utils.visuals.waveforms import setup_plot, window_maker
 
 
 class TestWaveformPlot(unittest.TestCase):
@@ -20,17 +19,20 @@ class TestWaveformPlot(unittest.TestCase):
         """
         cls.test_data_path = os.path.join(os.path.abspath(
             os.path.dirname(__file__)), 'test_data', '')
-        cls.ds = pyasdf.ASDFDataSet(
-            os.path.join(cls.test_data_path, 'test_dataset.h5'))
-        cls.st_obs = read(os.path.join(cls.test_data_path, 'test_obs_data.ms'))
-        cls.st_syn = read(
-            os.path.join(cls.test_data_path, 'test_syn_m00_data.ms'))
-        cls.event = read_events(
+
+        cls.st_obs = obspy.read(
+            os.path.join(cls.test_data_path, 'test_obs_data.ascii')
+        )
+        cls.st_syn = obspy.read(
+            os.path.join(cls.test_data_path, 'test_syn_m00_data.ascii')
+        )
+        cls.event = obspy.read_events(
             os.path.join(cls.test_data_path, 'test_event.xml'))
         cls.config = Config(
             model_number="m00",
             event_id=cls.event.resource_id.resource_id.split('/')[1],
         )
+
         cls.mgmt = Manager(cls.config, empty=True)
         cls.mgmt.launch(set_event=cls.event)
 

@@ -9,7 +9,8 @@ import obspy
 import pyasdf
 from pyatoa.core.config import Config
 from pyatoa.core.manager import Manager
-from pyatoa.utils.gathering.data_gatherer import Gatherer
+from pyatoa.core.gatherer import Gatherer
+
 from pyatoa.utils.gathering.external_getter import Getter
 from pyatoa.utils.gathering.internal_fetcher import Fetcher
 from pyatoa.utils.gathering import grab_auxiliaries
@@ -133,6 +134,8 @@ class TestDataGatherMethods(unittest.TestCase):
         """
         # Check that an empty fetcher throws the correct errors when
         # an empty dataset is given
+        fetcher = Fetcher(config=self.config, origintime=self.origintime)
+
 
         fetcher = Fetcher(config=self.config, ds=self.ds,
                           origintime=self.origintime)

@@ -22,11 +22,6 @@ class TestManager(unittest.TestCase):
         cls.inv = obspy.read_inventory(
             os.path.join(cls.test_data_path, 'test_inv.xml')
         )
-        cls.st_obs = obspy.read(os.path.join(
-            cls.test_data_path, 'test_obs_data.ascii'))
-        cls.st_syn = obspy.read(
-            os.path.join(cls.test_data_path, 'test_syn_m00_data.ascii')
-        )
         cls.catalog = obspy.read_events(
             os.path.join(cls.test_data_path, 'test_event.xml')
         )
@@ -47,6 +42,18 @@ class TestManager(unittest.TestCase):
         """
         # Remove the empty dataset
         os.remove(cls.empty_ds_fid)
+
+    def setUp(self):
+        """
+        Reset the data so that preprocessing doesn't get passed
+        between each of the tests
+        :return:
+        """
+        self.st_obs = obspy.read(os.path.join(
+            self.test_data_path, 'test_obs_data.ascii'))
+        self.st_syn = obspy.read(
+            os.path.join(self.test_data_path, 'test_syn_m00_data.ascii')
+        )
 
     def test_manager_init(self):
         """
@@ -128,15 +135,16 @@ class TestManager(unittest.TestCase):
         mgmt.preprocess()
 
         # Simple check to make sure Pyflex found windows using default params
+        expected_windows = 3
         mgmt.run_pyflex()
-        self.assertEqual(len(mgmt.windows), 2)
-        self.assertEqual(len(mgmt.staltas), 2)
-        self.assertEqual(mgmt.num_windows, 2)
+        self.assertEqual(len(mgmt.windows), expected_windows)
+        self.assertEqual(len(mgmt.staltas), expected_windows)
+        self.assertEqual(mgmt.num_windows, expected_windows)
 
         # Check that Pyadjoint multitaper retrieves the correct misfit value
-        misfit_check = 0.06395629407523007
+        misfit_check = 3.8941854578615973
         mgmt.run_pyadjoint()
-        self.assertEqual(len(mgmt.adj_srcs), 2)
+        self.assertEqual(len(mgmt.adj_srcs), 3)
         self.assertAlmostEqual(mgmt.total_misfit, misfit_check)
 
     def test_fill_dataset(self):
