@@ -66,7 +66,9 @@ class Fetcher:
 
     def asdf_waveform_fetch(self, station_code, tag):
         """
-        return stream based on tags from pyasdf
+        Return stream based on tags from pyasdf. Allows for wildcard selection
+        of component. Does not select by channel because synthetic channels
+        will differ from observation channels. Select only by component.
 
         :type station_code: str
         :param station_code: Station code following SEED naming convention.
@@ -81,7 +83,7 @@ class Fetcher:
         """
         net, sta, loc, cha = station_code.split('.')
         return self.ds.waveforms[
-            '{n}_{s}'.format(n=net, s=sta)][tag].select(channel=cha)
+            '{n}_{s}'.format(n=net, s=sta)][tag].select(component=cha[-1])
 
     def fetch_resp_by_dir(self, station_code, paths_to_responses=None,
                           dir_structure='{sta}.{net}',

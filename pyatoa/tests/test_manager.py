@@ -11,32 +11,42 @@ from pyatoa.utils.asdf.deletions import clean_ds
 
 
 class TestManager(unittest.TestCase):
-    def setUp(self):
+    @classmethod
+    def setUpClass(cls):
         """
         set up the class
         :return:
         """
-        self.test_data_path = os.path.join(os.path.abspath(
+        cls.test_data_path = os.path.join(os.path.abspath(
             os.path.dirname(__file__)), 'data', '')
-        self.inv = obspy.read_inventory(
-            os.path.join(self.test_data_path, 'test_inv.xml')
+        cls.inv = obspy.read_inventory(
+            os.path.join(cls.test_data_path, 'test_inv.xml')
         )
-        self.st_obs = obspy.read(os.path.join(
-            self.test_data_path, 'test_obs_data.ms'))
-        self.st_syn = obspy.read(
-            os.path.join(self.test_data_path, 'test_syn_m00_data.ms')
+        cls.st_obs = obspy.read(os.path.join(
+            cls.test_data_path, 'test_obs_data.ascii'))
+        cls.st_syn = obspy.read(
+            os.path.join(cls.test_data_path, 'test_syn_m00_data.ascii')
         )
-        self.catalog = obspy.read_events(
-            os.path.join(self.test_data_path, 'test_event.xml')
+        cls.catalog = obspy.read_events(
+            os.path.join(cls.test_data_path, 'test_event.xml')
         )
-        self.event = self.catalog[0]
-        self.config = Config(
+        cls.event = cls.catalog[0]
+        cls.config = Config(
             model_number="m00",
-            event_id=self.event.resource_id.resource_id.split('/')[1]
+            event_id=cls.event.resource_id.resource_id.split('/')[1]
         )
-        self.empty_ds_fid = os.path.join(
-            self.test_data_path, 'test_empty_ds.h5'
+        cls.empty_ds_fid = os.path.join(
+            cls.test_data_path, 'test_empty_ds.h5'
         )
+
+    @classmethod
+    def tearDownClass(cls):
+        """
+        Testing finalizations
+        :return:
+        """
+        # Remove the empty dataset
+        os.remove(cls.empty_ds_fid)
 
     def test_manager_init(self):
         """
@@ -166,7 +176,6 @@ class TestManager(unittest.TestCase):
             clean_ds(test_ds)
 
         del test_ds
-        os.remove(self.empty_ds_fid)
 
 
 if __name__ == "__main__":

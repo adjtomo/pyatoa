@@ -16,45 +16,49 @@ from pyatoa.utils.gathering import grab_auxiliaries
 
 
 class TestDataGatherMethods(unittest.TestCase):
-    def setUp(self):
+    @classmethod
+    def setUpClass(cls):
         """
-        set up the classls
+        Set up class with test data to check against gathered data
         :return:
         """
-        self.test_data_path  = os.path.join(os.path.abspath(
+        # Set up data to use
+        cls.test_data_path  = os.path.join(os.path.abspath(
             os.path.dirname(__file__)), 'data')
-        self.ds = pyasdf.ASDFDataSet(
-            os.path.join(self.test_data_path, 'test_dataset.h5')
+        cls.ds = pyasdf.ASDFDataSet(
+            os.path.join(cls.test_data_path, 'test_dataset.h5')
         )
-        self.inv = obspy.read_inventory(
-            os.path.join(self.test_data_path, 'test_inv.xml')
+        cls.inv = obspy.read_inventory(
+            os.path.join(cls.test_data_path, 'test_inv.xml')
         )
-        self.st_obs = obspy.read(
-            os.path.join(self.test_data_path, 'test_obs_data.ms')
+
+        cls.st_obs = obspy.read(
+            os.path.join(cls.test_data_path, 'test_obs_data.ascii')
         )
-        self.st_syn = obspy.read(
-            os.path.join(self.test_data_path, 'test_syn_m00_data.ms')
+        cls.st_syn = obspy.read(
+            os.path.join(cls.test_data_path, 'test_syn_m00_data.ascii')
         )
 
         # For internal file searching
-        self.station_name = self.st_obs[0].get_id()
-        self.station_code = self.station_name[:-1] + '?'
+        cls.station_name = cls.st_obs[0].get_id()
+        cls.station_code = cls.station_name[:-1] + '?'
 
-        self.catalog = obspy.read_events(
-            os.path.join(self.test_data_path, 'test_event.xml')
+        # Create event information
+        cls.catalog = obspy.read_events(
+            os.path.join(cls.test_data_path, 'test_event.xml')
         )
-        self.event = self.catalog[0]
-        self.origintime = self.event.preferred_origin().time
+        cls.event = cls.catalog[0]
+        cls.origintime = cls.event.preferred_origin().time
 
-        self.test_comp = "Z"
+        cls.test_comp = "Z"
 
-        self.test_dir = os.path.join(self.test_data_path, 'test_directories')
-        self.config = Config(
+        cls.test_dir = os.path.join(cls.test_data_path, 'test_directories')
+        cls.config = Config(
             model_number="m00",
-            event_id=self.event.resource_id.resource_id.split('/')[1],
-            paths={"waveforms": os.path.join(self.test_dir, "waveforms"),
-                   "synthetics": os.path.join(self.test_dir, "synthetics"),
-                   "responses": os.path.join(self.test_dir, "responses")
+            event_id=cls.event.resource_id.resource_id.split('/')[1],
+            paths={"waveforms": os.path.join(cls.test_dir, "waveforms"),
+                   "synthetics": os.path.join(cls.test_dir, "synthetics"),
+                   "responses": os.path.join(cls.test_dir, "responses")
                    }
         )
 
@@ -93,6 +97,7 @@ class TestDataGatherMethods(unittest.TestCase):
             st_obs.select(component=self.test_comp)[0].data.max(),
             self.st_obs.select(component=self.test_comp)[0].data.max()
         )
+        import ipdb;ipdb.set_trace()
         st_syn = fetcher.fetch_syn_by_dir(station_code=self.station_code)
         self.assertEqual(len(st_syn), 3)
         self.assertEqual(
@@ -142,7 +147,6 @@ class TestDataGatherMethods(unittest.TestCase):
             st_obs.select(component=self.test_comp)[0].data.max(),
             self.st_obs.select(component=self.test_comp)[0].data.max()
         )
-
         st_syn = fetcher.asdf_waveform_fetch(station_code=self.station_code,
                                              tag=self.config.synthetic_tag)
         self.assertEqual(
@@ -238,7 +242,7 @@ class TestDataGatherMethods(unittest.TestCase):
             self.st_obs.select(component=self.test_comp)[0].data.max()
         )
 
-        st_syn = gatherer.gather_observed(station_code=self.station_code)
+        st_syn = gatherer.gather_synthetic(station_code=self.station_code)
         self.assertEqual(
             st_syn.select(component=self.test_comp)[0].data.max(),
             self.st_syn.select(component=self.test_comp)[0].data.max()
