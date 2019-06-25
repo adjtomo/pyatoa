@@ -4,6 +4,7 @@ Make sure the Manager class works as advertised
 import unittest
 
 import os
+import obspy
 from pyatoa import Config
 
 
@@ -52,15 +53,15 @@ class TestConfig(unittest.TestCase):
         """
         with self.assertRaises(AssertionError):
             # Check period range
-            config = Config(min_period=100, max_period=10)
+            Config(min_period=100, max_period=10)
             # Check map corner dictionary
-            config = Config(map_corners={'test': None})
+            Config(map_corners={'test': None})
             # Check unit output
-            config = Config(unit_output='test')
+            Config(unit_output='test')
             # Check synthetic output
-            config = Config(synthetic_ouput='test')
+            Config(synthetic_ouput='test')
             # Check pyflex output
-            config = Config(pyflex_config='incorrect_config')
+            Config(pyflex_config='incorrect_config')
 
 
 

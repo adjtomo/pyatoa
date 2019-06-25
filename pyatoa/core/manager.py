@@ -51,8 +51,9 @@ class Manager:
         :type ds: pyasdf.asdf_data_set.ASDFDataSet
         :param ds: ASDF data set from which to read and write data
         :type empty: bool
-        :param empty: Do not instantiate Gatherer and look for event.
-            Useful for when User provides own event object
+        :param empty: Do not instantiate Gatherer or look for event.
+            Useful for when User provides own event object. if 'event' is given
+            then this parameter does not do anything.
         :type station_code: str
         :param station_code: station code for data gather, e.g. 'NZ.BFZ.10.HH?'
         :type event: obspy.core.event.Event
@@ -87,10 +88,10 @@ class Manager:
         self.adj_srcs = adj_srcs
 
         # Internally used statistics
-        self.time_offset_sec = None
+        self.time_offset_sec = 0
         self.num_windows = None
         self.total_misfit = None
-        self.half_dur = None
+        self.half_dur = 0
 
         # Flags to show status of workflow
         self.dataset_id = None
@@ -214,10 +215,10 @@ class Manager:
         self.windows = None
         self.staltas = None
         self.adj_srcs = None
-        self.time_offset_sec = None
+        self.time_offset_sec = 0
         self.num_windows = None
         self.total_misfit = None
-        self.half_dur = None
+        self.half_dur = 0
 
         if hard_reset:
             self.launch(reset=True)
@@ -585,8 +586,9 @@ class Manager:
         # Let the User know the outcome of Pyadjoint
         logger.info("total misfit {:.3f}".format(self.total_misfit))
 
-    def plot_wav(self, append_title='', figsize=(11.69, 8.27), dpi=100,
-                 show=True, save=None, return_figure=False):
+    def plot_wav(self, append_title='', dynamic_length=True,
+                 figsize=(11.69, 8.27), dpi=100, show=True, save=None,
+                 return_figure=False):
         """
         Waveform plots for all given components.
         If specific components are not given (e.g. adjoint source waveform),
@@ -595,6 +597,9 @@ class Manager:
         should be generated in the figure.
         :type append_title: str
         :param append_title: any string to append the title of the plot
+        :type dynamic_length: bool
+        :param dynamic_length: If true, sets the seismogram length based on
+            theoretical travel times
         :type show: bool
         :param show: show the plot once generated, defaults to False
         :type save: str
@@ -613,20 +618,21 @@ class Manager:
             return
 
         # Calculate the seismogram length
-        length_s = seismogram_length(
-            distance_km=gcd_and_baz(event=self.event, sta=self.inv[0][0])[0],
-            slow_wavespeed_km_s=2, binsize=50, minimum_length=100
-        )
-        
+        if dynamic_length:
+            length_sec = seismogram_length(
+                distance_km=gcd_and_baz(event=self.event, sta=self.inv[0][0])[0],
+                slow_wavespeed_km_s=2, binsize=50, minimum_length=100
+            )
+        else:
+            length_sec = None
+
         # Call on window making function to produce waveform plots
         fig_window = window_maker(
-            st_obs=self.st_obs, st_syn=self.st_syn, windows=self.windows,
-            staltas=self.staltas, adj_srcs=self.adj_srcs, length_s=length_s,
-            time_offset=self.time_offset_sec,
-            stalta_wl=self.config.pyflex_config[1].stalta_waterlevel,
-            unit_output=self.config.unit_output, config=self.config,
-            figsize=figsize, total_misfit=self.total_misfit,
-            append_title=append_title, dpi=dpi, show=show, save=save
+            st_obs=self.st_obs, st_syn=self.st_syn, config=self.config,
+            time_offset_sec=self.time_offset_sec, windows=self.windows,
+            staltas=self.staltas, adj_srcs=self.adj_srcs, length_sec=length_sec,
+            append_title=append_title, figsize=figsize, dpi=dpi, show=show,
+            save=save
         )
 
         if return_figure:

@@ -7,9 +7,8 @@ import unittest
 
 import obspy
 import pyasdf
-from pyatoa.core.config import Config
-from pyatoa.core.manager import Manager
-from pyatoa.core.gatherer import Gatherer
+
+from pyatoa import Config, Manager, Gatherer
 
 from pyatoa.utils.gathering.external_getter import Getter
 from pyatoa.utils.gathering.internal_fetcher import Fetcher
@@ -21,10 +20,11 @@ class TestDataGatherMethods(unittest.TestCase):
     def setUpClass(cls):
         """
         Set up class with test data to check against gathered data
+
         :return:
         """
-        # Set up data to use
-        cls.test_data_path  = os.path.join(os.path.abspath(
+        # Single set up data to use
+        cls.test_data_path = os.path.join(os.path.abspath(
             os.path.dirname(__file__)), 'data')
         cls.ds = pyasdf.ASDFDataSet(
             os.path.join(cls.test_data_path, 'test_dataset.h5')
@@ -32,27 +32,21 @@ class TestDataGatherMethods(unittest.TestCase):
         cls.inv = obspy.read_inventory(
             os.path.join(cls.test_data_path, 'test_inv.xml')
         )
-
-        cls.st_obs = obspy.read(
-            os.path.join(cls.test_data_path, 'test_obs_data.ascii')
-        )
-        cls.st_syn = obspy.read(
-            os.path.join(cls.test_data_path, 'test_syn_m00_data.ascii')
+        cls.empty_ds_fid = os.path.join(
+            cls.test_data_path, 'test_empty_ds.h5'
         )
 
-        # For internal file searching
-        cls.station_name = cls.st_obs[0].get_id()
-        cls.station_code = cls.station_name[:-1] + '?'
-
-        # Create event information
+        # Create event information for searching
         cls.catalog = obspy.read_events(
             os.path.join(cls.test_data_path, 'test_event.xml')
         )
         cls.event = cls.catalog[0]
         cls.origintime = cls.event.preferred_origin().time
 
+        # Set the test component rather than testing each
         cls.test_comp = "Z"
 
+        # Initiate the config object with the proper pathing
         cls.test_dir = os.path.join(cls.test_data_path, 'test_directories')
         cls.config = Config(
             model_number="m00",
@@ -62,6 +56,33 @@ class TestDataGatherMethods(unittest.TestCase):
                    "responses": os.path.join(cls.test_dir, "responses")
                    }
         )
+
+    @classmethod
+    def tearDownClass(cls):
+        """
+        Testing finalizations
+        :return:
+        """
+        # Remove the empty dataset
+        if os.path.exists(cls.empty_ds_fid):
+            os.remove(cls.empty_ds_fid)
+
+    def setUp(self):
+        """
+        Make sure that the streams are not affected by preprocessing,
+        read them in fresh each test
+        :return:
+        """
+        self.st_obs = obspy.read(
+            os.path.join(self.test_data_path, 'test_obs_data.ascii')
+        )
+        self.st_syn = obspy.read(
+            os.path.join(self.test_data_path, 'test_syn_m00_data.ascii')
+        )
+
+        # For internal file searching
+        self.station_name = self.st_obs[0].get_id()
+        self.station_code = self.station_name[:-1] + '?'
 
     def test_external_getter_geonet(self):
         """
@@ -98,12 +119,12 @@ class TestDataGatherMethods(unittest.TestCase):
             st_obs.select(component=self.test_comp)[0].data.max(),
             self.st_obs.select(component=self.test_comp)[0].data.max()
         )
-        import ipdb;ipdb.set_trace()
         st_syn = fetcher.fetch_syn_by_dir(station_code=self.station_code)
         self.assertEqual(len(st_syn), 3)
-        self.assertEqual(
+        self.assertAlmostEqual(
             st_syn.select(component=self.test_comp)[0].data.max(),
-            self.st_syn.select(component=self.test_comp)[0].data.max()
+            self.st_syn.select(component=self.test_comp)[0].data.max(),
+            places=4
         )
 
         # Make sure specific station naming works
@@ -132,11 +153,36 @@ class TestDataGatherMethods(unittest.TestCase):
         Test fetching by an ASDF dataset
         :return:
         """
-        # Check that an empty fetcher throws the correct errors when
-        # an empty dataset is given
+        # Check that an empty fetcher with no ds throws attribute errors
         fetcher = Fetcher(config=self.config, origintime=self.origintime)
+        with self.assertRaises(AttributeError):
+            fetcher.asdf_event_fetch()
+            fetcher.station_fetch(station_code=self.station_code)
+            fetcher.asdf_waveform_fetch(station_code=self.station_code,
+                                        tag=self.config.observed_tag
+                                        )
+            fetcher.asdf_waveform_fetch(station_code=self.station_code,
+                                        tag=self.config.synthetic_tag
+                                        )
 
+        # Check that an empty fetcher throws the correct errors when
+        # an empty dataset is given, which the main functions look for
+        # to move onto fetching by directory
+        with pyasdf.ASDFDataSet(self.empty_ds_fid) as test_ds:
+            fetcher = Fetcher(
+                config=self.config, origintime=self.origintime, ds=test_ds)
+            with self.assertRaises(IndexError):
+                fetcher.asdf_event_fetch()
+            with self.assertRaises(KeyError):
+                fetcher.station_fetch(station_code=self.station_code)
+                fetcher.asdf_waveform_fetch(station_code=self.station_code,
+                                            tag=self.config.observed_tag
+                                            )
+                fetcher.asdf_waveform_fetch(station_code=self.station_code,
+                                            tag=self.config.synthetic_tag
+                                            )
 
+        # Make sure the fetcher produces the correct files given a ds
         fetcher = Fetcher(config=self.config, ds=self.ds,
                           origintime=self.origintime)
 
@@ -155,9 +201,10 @@ class TestDataGatherMethods(unittest.TestCase):
         )
         st_syn = fetcher.asdf_waveform_fetch(station_code=self.station_code,
                                              tag=self.config.synthetic_tag)
-        self.assertEqual(
+        self.assertAlmostEqual(
             st_syn.select(component=self.test_comp)[0].data.max(),
-            self.st_syn.select(component=self.test_comp)[0].data.max()
+            self.st_syn.select(component=self.test_comp)[0].data.max(),
+            places=4
         )
 
     def test_internal_fetcher_main(self):
@@ -173,9 +220,10 @@ class TestDataGatherMethods(unittest.TestCase):
         )
 
         st_syn = fetcher.syn_waveform_fetch(station_code=self.station_code)
-        self.assertEqual(
+        self.assertAlmostEqual(
             st_syn.select(component=self.test_comp)[0].data.max(),
-            self.st_syn.select(component=self.test_comp)[0].data.max()
+            self.st_syn.select(component=self.test_comp)[0].data.max(),
+            places=4
         )
 
         inv = fetcher.station_fetch(station_code=self.station_code)
@@ -249,9 +297,10 @@ class TestDataGatherMethods(unittest.TestCase):
         )
 
         st_syn = gatherer.gather_synthetic(station_code=self.station_code)
-        self.assertEqual(
+        self.assertAlmostEqual(
             st_syn.select(component=self.test_comp)[0].data.max(),
-            self.st_syn.select(component=self.test_comp)[0].data.max()
+            self.st_syn.select(component=self.test_comp)[0].data.max(),
+            places=4
         )
 
     def test_manager_gather_data(self):
@@ -269,8 +318,11 @@ class TestDataGatherMethods(unittest.TestCase):
 
         # Make sure gatherer downloaded the right data
         self.assertIsInstance(mgmt.st_obs, obspy.core.stream.Stream)
-        self.assertIs(mgmt.st_syn, None)
+        self.assertIsInstance(mgmt.st_syn, obspy.core.stream.Stream)
+
         self.assertEqual(len(mgmt.st_obs), 3)
+        self.assertEqual(len(mgmt.st_syn), 3)
+
         self.assertIsInstance(mgmt.inv, obspy.core.inventory.Inventory)
         self.assertIsInstance(mgmt.event, obspy.core.event.Event)
 

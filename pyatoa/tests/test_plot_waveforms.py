@@ -33,8 +33,7 @@ class TestWaveformPlot(unittest.TestCase):
             event_id=cls.event.resource_id.resource_id.split('/')[1],
         )
 
-        cls.mgmt = Manager(cls.config, empty=True)
-        cls.mgmt.launch(set_event=cls.event)
+        cls.mgmt = Manager(cls.config, event=cls.event)
 
     def test_setup_plot(self):
         """

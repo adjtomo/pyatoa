@@ -41,7 +41,8 @@ class TestManager(unittest.TestCase):
         :return:
         """
         # Remove the empty dataset
-        os.remove(cls.empty_ds_fid)
+        if os.path.exists(cls.empty_ds_fid):
+            os.remove(cls.empty_ds_fid)
 
     def setUp(self):
         """
@@ -49,8 +50,8 @@ class TestManager(unittest.TestCase):
         between each of the tests
         :return:
         """
-        self.st_obs = obspy.read(os.path.join(
-            self.test_data_path, 'test_obs_data.ascii'))
+        self.st_obs = obspy.read(
+            os.path.join(self.test_data_path, 'test_obs_data.ascii'))
         self.st_syn = obspy.read(
             os.path.join(self.test_data_path, 'test_syn_m00_data.ascii')
         )
@@ -142,7 +143,7 @@ class TestManager(unittest.TestCase):
         self.assertEqual(mgmt.num_windows, expected_windows)
 
         # Check that Pyadjoint multitaper retrieves the correct misfit value
-        misfit_check = 3.8941854578615973
+        misfit_check = 4.115253378447238
         mgmt.run_pyadjoint()
         self.assertEqual(len(mgmt.adj_srcs), 3)
         self.assertAlmostEqual(mgmt.total_misfit, misfit_check)
@@ -166,7 +167,7 @@ class TestManager(unittest.TestCase):
             # Check that the dataset contains the correct auxiliary data
             check_model = self.config.model_number
             check_window = 'NZ_BFZ_E_0'
-            check_param = ("left_index", 4111)
+            check_param = ("left_index", 4102)
 
             self.assertTrue(hasattr(mgmt.ds.auxiliary_data, 'MisfitWindows'))
             self.assertTrue(hasattr(mgmt.ds.auxiliary_data.MisfitWindows,

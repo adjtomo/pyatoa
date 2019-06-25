@@ -55,7 +55,10 @@ def setup_plot(number_of, twax=True):
     return axes, twaxes
 
 
-def window_maker(st_obs, st_syn, config, **kwargs):
+def window_maker(st_obs, st_syn, config, time_offset_sec=0., windows=None,
+                 staltas=None, adj_srcs=None, length_sec=None,
+                 append_title=None, dpi=100, figsize=(11.69, 8.27), show=False,
+                 save=None):
     """
     Plot streams and windows. assumes you have N observation traces and
     N synthetic traces for a 2N length stream object
@@ -64,35 +67,49 @@ def window_maker(st_obs, st_syn, config, **kwargs):
     same axis object, normalize them both -1 to 1 and remove the
     mean of the adjoint source to set everything onto 0
 
-    :type st_*: obspy.stream.Stream
-    :param st_*: stream object to plot
+    :type st_obs: obspy.stream.Stream
+    :param st_obs: observation stream object to plot
+    :type st_syn: obspy.stream.Stream
+    :param st_syn: synthetic stream object to plot
     :type config: pyatoa.core.config.Config
+    :param config: Configuration that must contain:
+        required: component_list, unit_output, event_id, min_period, max_period
+        optional: pyflex_config
+    :type dpi: int
+    :param dpi: dots per inch of figure
+    :type figsize: tuple of floats
+    :param figsize: size of the waveform plot, defaults to A4 paper in landscape
+    :type time_offset_sec: float
+    :param time_offset_sec: Offset from origintime. Origintime is set as time=0
+    :type windows: dict of pyflex.Window objects
+    :param windows: If given, will plot all the misfit windows in the dictionary
+    :type staltas: dict of pyflex.sta_lta objects
+    :param staltas: Output of stalta analysis to plot in background, if given
+    :type adj_srcs: dict of pyadjoint.Adjoint_Source objects
+    :param adj_srcs: if given, plots the adjoint sources in the background
+    :type length_sec: int
+    :param length_sec: sets the seismogram length, useful for short waveforms
+        that have lots of zeros in the back
+    :type append_title: str
+    :param append_title: appends any extra information after the stock title
+    :type show: bool or str
+    :param show: show the plot after it is created. if 'hold', will just return
+        the figure object, so the User can show it later
+    :type save: str
+    :param save: pathname to save the figure, if not given, will not save
     """
-    # Get keyword arguments
-    dpi = kwargs.get("dpi", 100)
-    figsize = kwargs.get("figsize", (11.69, 8.27))  #A4
-    time_offset = kwargs.get("time_offset", 0)
-    windows = kwargs.get("windows", None)
-    staltas = kwargs.get("staltas", None)
-    adj_srcs = kwargs.get("adj_srcs", None)
-    length_s = kwargs.get("length_s", None)
-    stalta_wl = kwargs.get("stalta_wl", None)
-    unit_output = kwargs.get("unit_output", None)
-    total_misfit = kwargs.get("total_misfit", None)
-    append_title = kwargs.get("append_title", None)
-    show_fig = kwargs.get("show", False)
-    save = kwargs.get("save", None)
-
     # Set some parameters necessary for flexible plotting
     middle_trace = len(st_obs)//2
     unit_dict = {"DISP": "displacement [m]", 
                  "VEL": "velocity [m/s]",
                  "ACC": "acceleration [m/s^2]"}
+    if staltas:
+        stalta_wl = config.pyflex_config[1].stalta_waterlevel
 
     # Instantiate plotting instances
     f = plt.figure(figsize=figsize, dpi=dpi)
     axes, twaxes = setup_plot(number_of=len(st_obs), twax=True)
-    t = np.linspace(time_offset,
+    t = np.linspace(time_offset_sec,
                     st_obs[0].stats.endtime-st_obs[0].stats.starttime,
                     len(st_obs[0].data))
     
@@ -156,7 +173,7 @@ def window_maker(st_obs, st_syn, config, **kwargs):
             twaxes[i].set_ylabel("adjoint source (normalized) &\n"
                                  "STA/LTA (waterlevel = {})".format(stalta_wl),
                                  rotation=270, labelpad=20)
-            comp = "{}\n{}".format(unit_dict[unit_output], comp)
+            comp = "{}\n{}".format(unit_dict[config.unit_output], comp)
 
         labels = [l.get_label() for l in lines_for_legend]
         axes[i].legend(lines_for_legend, labels, prop={"size": 9},
@@ -164,9 +181,9 @@ def window_maker(st_obs, st_syn, config, **kwargs):
         axes[i].set_ylabel(comp)
 
         # Dynamic seismogram length
-        if not length_s:
-            length_s = t[-1]
-        axes[i].set_xlim([t[0], length_s])
+        if not length_sec:
+            length_sec = t[-1]
+        axes[i].set_xlim([t[0], length_sec])
 
         # Format axes and align
         twaxes[i].set_yticklabels([])
@@ -179,19 +196,17 @@ def window_maker(st_obs, st_syn, config, **kwargs):
         net=st_obs[0].stats.network, sta=st_obs[0].stats.station,
         evt=config.event_id, t0=config.min_period, t1=config.max_period
         )
-    # append extra information to the title
-    if total_misfit:
-        title = " ".join([title, "misfit={:.3f}".format(total_misfit)])
-    if append_title:
+    # Append extra information to title
+    if append_title is not None:
         title = " ".join([title, append_title])
+
     axes[0].set_title(title)
-    
     axes[-1].set_xlabel("time [s]")
     
     if save:
         plt.savefig(save, figsize=figsize, dpi=dpi)
-    if show_fig:
-        if show_fig == "hold":
+    if show:
+        if show == "hold":
             return f
         else:
             plt.show()

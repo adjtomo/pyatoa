@@ -54,7 +54,7 @@ class Gatherer:
         elif self.ds:
             try:
                 self.event = self.fetcher.asdf_event_fetch()
-            except IndexError:
+            except (AttributeError, IndexError):
                 self.event = self.getter.event_get()
                 if append_focal_mechanism:
                     self.append_focal_mechanism()
