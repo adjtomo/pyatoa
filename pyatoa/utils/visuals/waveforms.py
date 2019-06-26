@@ -135,15 +135,6 @@ def window_maker(st_obs, st_syn, config, time_offset_sec=0., windows=None,
             for window in windows[comp]:
                 xwindow = np.arange(window.left, window.right, 1)
 
-                # Old representation of misfit window, however the windows were
-                # too small, so rectangle representation was taken
-                # twindow = t[xwindow]
-                # axes[i].fill_between(x=twindow, y1=ymin, y2=ymax,
-                #                      facecolor='orange', edgecolor='k',
-                #                      linewidth=0.5, zorder=z-1,
-                #                      alpha=(window.max_cc_value ** 2) * 0.25
-                #                      )
-
                 # Rectangle to represent misfit windows; taken from Pyflex
                 tleft = window.left * window.dt
                 tright = window.right * window.dt
