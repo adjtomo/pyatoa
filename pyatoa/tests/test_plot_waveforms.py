@@ -26,14 +26,18 @@ class TestWaveformPlot(unittest.TestCase):
         cls.st_syn = obspy.read(
             os.path.join(cls.test_data_path, 'test_syn_m00_data.ascii')
         )
-        cls.event = obspy.read_events(
-            os.path.join(cls.test_data_path, 'test_event.xml'))
+        cls.catalog = obspy.read_events(
+            os.path.join(cls.test_data_path, 'test_cat.xml')
+        )
+        cls.event = cls.catalog[0]
         cls.config = Config(
             model_number="m00",
             event_id=cls.event.resource_id.resource_id.split('/')[1],
         )
 
-        cls.mgmt = Manager(cls.config, event=cls.event)
+        cls.mgmt = Manager(cls.config, st_obs=cls.st_obs, st_syn=cls.st_syn,
+                           event=cls.event
+                           )
 
     def test_setup_plot(self):
         """
@@ -68,15 +72,31 @@ class TestWaveformPlot(unittest.TestCase):
         """
         # Test data has uneven lengths, so plotting will throw a value error
         with self.assertRaises(ValueError):
-            f = window_maker(
-                st_obs=self.st_obs, st_syn=self.st_syn, config=self.config,
-            )
-        return f
+            f = window_maker(st_obs=self.mgmt.st_obs, st_syn=self.mgmt.st_syn,
+                             config=self.config)
+        # Preprocess data and plot
+        self.mgmt.preprocess()
+        f = window_maker(st_obs=self.mgmt.st_obs, st_syn=self.mgmt.st_syn,
+                         config=self.config)
+
+        # Run pyflex and plot staltas and windows
+        self.mgmt.run_pyflex()
+        f = window_maker(st_obs=self.mgmt.st_obs, st_syn=self.mgmt.st_syn,
+                         config=self.config, staltas=self.mgmt.staltas,
+                         windows=self.mgmt.windows)
+
+        self.mgmt.run_pyadjoint()
+        f = window_maker(st_obs=self.mgmt.st_obs, st_syn=self.mgmt.st_syn,
+                         config=self.config, staltas=self.mgmt.staltas,
+                         windows=self.mgmt.windows)
+
+
 
     def test_window_maker_only_staltas(self):
         """
         Check that window maker works plotting waveforms with STA/LTA info only
         """
+        self.mgmt.preprocess()
         f = window_maker(
             st_obs=self.st_obs, st_syn=self.st_syn, config=self.config)
         )

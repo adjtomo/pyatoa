@@ -103,15 +103,15 @@ def _is_preprocessed(st):
     return False
 
 
-def preproc(st, inv=None, resample=None, pad_length_in_seconds=None,
+def preproc(st_original, inv=None, resample=None, pad_length_in_seconds=None,
             unit_output="VEL", synthetic_unit=None, back_azimuth=None,
             filter_bounds=(10,30), water_level=60, corners=4,
             taper_percentage=0.05):
     """
     Preprocess waveform data. Assumes synthetics are in units of displacement.
 
-    :type st: obspy.stream.Stream
-    :param st: stream object to process
+    :type st_original: obspy.stream.Stream
+    :param st_original: stream object to process
     :type inv: obspy.core.inventory.Inventory
     :param inv: inventory containing relevant network and stations
     :type resample: int
@@ -136,6 +136,9 @@ def preproc(st, inv=None, resample=None, pad_length_in_seconds=None,
     :rtype st: obspy.stream.Stream
     :return st: preprocessed stream object
     """
+    # Copy the stream to avoid editing in place
+    st = st_original.copy()
+
     warnings.filterwarnings("ignore", category=FutureWarning)
     if _is_preprocessed(st):
         return st

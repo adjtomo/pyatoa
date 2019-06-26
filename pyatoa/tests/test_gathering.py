@@ -32,13 +32,24 @@ class TestDataGatherMethods(unittest.TestCase):
         cls.inv = obspy.read_inventory(
             os.path.join(cls.test_data_path, 'test_inv.xml')
         )
+        cls.st_obs = obspy.read(
+            os.path.join(cls.test_data_path, 'test_obs_data.ascii')
+        )
+        cls.st_syn = obspy.read(
+            os.path.join(cls.test_data_path, 'test_syn_m00_data.ascii')
+        )
+        cls.station_name = cls.st_obs[0].get_id()
+        cls.station_code = (cls.station_name[:-1] + '?').replace('10', '*')
+
+        # For internal file searching
+
         cls.empty_ds_fid = os.path.join(
             cls.test_data_path, 'test_empty_ds.h5'
         )
 
         # Create event information for searching
         cls.catalog = obspy.read_events(
-            os.path.join(cls.test_data_path, 'test_event.xml')
+            os.path.join(cls.test_data_path, 'test_cat.xml')
         )
         cls.event = cls.catalog[0]
         cls.origintime = cls.event.preferred_origin().time
@@ -66,23 +77,6 @@ class TestDataGatherMethods(unittest.TestCase):
         # Remove the empty dataset
         if os.path.exists(cls.empty_ds_fid):
             os.remove(cls.empty_ds_fid)
-
-    def setUp(self):
-        """
-        Make sure that the streams are not affected by preprocessing,
-        read them in fresh each test
-        :return:
-        """
-        self.st_obs = obspy.read(
-            os.path.join(self.test_data_path, 'test_obs_data.ascii')
-        )
-        self.st_syn = obspy.read(
-            os.path.join(self.test_data_path, 'test_syn_m00_data.ascii')
-        )
-
-        # For internal file searching
-        self.station_name = self.st_obs[0].get_id()
-        self.station_code = self.station_name[:-1] + '?'
 
     def test_external_getter_geonet(self):
         """

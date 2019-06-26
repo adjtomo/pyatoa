@@ -75,12 +75,18 @@ class Manager:
         self.config = config
         self.ds = ds
         self.gatherer = None
-
-        # Data required for each workflow
         self.station_code = station_code
-        self.st_obs = st_obs
-        self.st_syn = st_syn
+
+        # Make sure streams are copied to avoid affecting original data
         self.inv = inv
+        if st_obs is not None:
+            self.st_obs = st_obs.copy()
+        else:
+            self.st_obs = None
+        if st_syn is not None:
+            self.st_syn = st_syn.copy()
+        else:
+            self.st_syn = None
 
         # Data produced by the workflow
         self.windows = windows
@@ -88,9 +94,9 @@ class Manager:
         self.adj_srcs = adj_srcs
 
         # Internally used statistics
-        self.time_offset_sec = 0
         self.num_windows = None
         self.total_misfit = None
+        self.time_offset_sec = 0
         self.half_dur = 0
 
         # Flags to show status of workflow
@@ -106,11 +112,13 @@ class Manager:
         self.pyflex_windows = 0
         self.pyadjoint_misfit = 0
 
-        # Launch the Manager class
-        if not empty and not event:
-            self.launch()
+        # If an event is given, manual set event, otherwise event will
+        # be None and gatherer will launch and try to gather an event
+        # If empty and no event, no gatherer is launched, event forced to None
+        if not empty or event is not None:
+            self.launch(set_event=event)
         else:
-            self.event = event
+            self.event = None
 
     def __str__(self):
         """
@@ -146,7 +154,7 @@ class Manager:
         Update flag information for the User to know location in the workflow
         """
         # Give dataset filename if available
-        if self.ds:
+        if self.ds is not None:
             self.dataset_id = basename(self.ds.filename)
 
         # Check to see if event is an Event object
@@ -256,7 +264,13 @@ class Manager:
 
         # Second, get event information
         if set_event:
-            self.gatherer.event = set_event
+            # If a catalog and not an event is given, take the first entry
+            if isinstance(set_event, obspy.core.event.catalog.Catalog):
+                warnings.warn(
+                    "event given as catalog, taking first entry", UserWarning)
+                set_event = set_event[0]
+            # Populate the gatherer and self
+            self.gatherer.set_event(set_event)
             self.event = self.gatherer.event
         # If no event given by User, start searching for the event
         else:
@@ -268,7 +282,7 @@ class Manager:
                 if self.config.event_id:
                     self.event = self.gatherer.gather_event()
 
-    def gather_data(self, station_code):
+    def gather_data(self, station_code, choice=None):
         """
         Launch a gatherer object and gather event, station and waveform
         information given a station code. Fills the manager based on information
@@ -282,6 +296,9 @@ class Manager:
             L=location, C=channel). Allows for wildcard naming. By default
             the pyatoa workflow wants three orthogonal components in the N/E/Z
             coordinate system. Example station code: NZ.OPRZ.10.HH?
+        :type choice: list
+        :param choice: allows user to gather individual bits of data, rather
+            than gathering all. Allowed: 'inv', 'st_obs', 'st_syn'
         """
         if self.gatherer is None:
             self.launch()
@@ -290,12 +307,25 @@ class Manager:
             logger.info("Gathering {station} for {event}".format(
                 station=station_code, event=self.config.event_id)
             )
-            logger.info("gathering station information")
-            self.inv = self.gatherer.gather_station(station_code)
-            logger.info("gathering observation waveforms")
-            self.st_obs = self.gatherer.gather_observed(station_code)
-            logger.info("gathering synthetic waveforms")
-            self.st_syn = self.gatherer.gather_synthetic(station_code)
+            # Gather all data
+            if choice is None:
+                logger.info("gathering station information")
+                self.inv = self.gatherer.gather_station(station_code)
+                logger.info("gathering observation waveforms")
+                self.st_obs = self.gatherer.gather_observed(station_code)
+                logger.info("gathering synthetic waveforms")
+                self.st_syn = self.gatherer.gather_synthetic(station_code)
+            # Gather specific data based on user defined choice
+            else:
+                if "inv" in choice:
+                    logger.info("gathering station information")
+                    self.inv = self.gatherer.gather_station(station_code)
+                if "st_obs" in choice:
+                    logger.info("gathering observation waveforms")
+                    self.st_obs = self.gatherer.gather_observed(station_code)
+                if "st_syn" in choice:
+                    logger.info("gathering synthetic waveforms")
+                    self.st_syn = self.gatherer.gather_synthetic(station_code)
         except Exception as e:
             print(e)
             return
@@ -358,7 +388,7 @@ class Manager:
         sampling_rate = self.st_syn[0].stats.sampling_rate
 
         # Run external preprocessing script
-        self.st_obs = preproc(st=self.st_obs, inv=self.inv,
+        self.st_obs = preproc(st_original=self.st_obs, inv=self.inv,
                               resample=sampling_rate, synthetic_unit=None,
                               back_azimuth=baz,
                               pad_length_in_seconds=self.config.zero_pad,
@@ -370,7 +400,7 @@ class Manager:
         
         # Run external synthetic waveform preprocesser
         logger.info("preprocessing synthetic data")
-        self.st_syn = preproc(st=self.st_syn, inv=None, resample=None,
+        self.st_syn = preproc(st_original=self.st_syn, inv=None, resample=None,
                               synthetic_unit=self.config.synthetic_unit,
                               back_azimuth=baz,
                               pad_length_in_seconds=self.config.zero_pad,
@@ -402,7 +432,7 @@ class Manager:
             self.st_syn = stf_convolve_gaussian(
                 st=self.st_syn, half_duration=self.half_dur, time_shift=False
             )
-        except AttributeError:
+        except (AttributeError, IndexError):
             logger.info("moment tensor not found for event")
 
     def run_pyflex(self):
@@ -616,6 +646,13 @@ class Manager:
         if not self.obs_process_flag and not self.syn_process_flag:
             warnings.warn("cannot plot, no/improper waveform data", UserWarning)
             return
+
+        # Make sure the streams are the same length, otherwise plot will fail
+        for comp in self.config.comp_list:
+            if len(self.st_obs.select(component=comp)[0].data) != \
+                    len(self.st_syn.select(component=comp)[0].data):
+                warnings.warn("obs and syn data not same length", UserWarning)
+                return
 
         # Calculate the seismogram length
         if dynamic_length:

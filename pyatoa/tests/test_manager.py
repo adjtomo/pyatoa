@@ -23,9 +23,15 @@ class TestManager(unittest.TestCase):
             os.path.join(cls.test_data_path, 'test_inv.xml')
         )
         cls.catalog = obspy.read_events(
-            os.path.join(cls.test_data_path, 'test_event.xml')
+            os.path.join(cls.test_data_path, 'test_cat.xml')
         )
         cls.event = cls.catalog[0]
+        cls.st_obs = obspy.read(
+            os.path.join(cls.test_data_path, 'test_obs_data.ascii')
+        )
+        cls.st_syn = obspy.read(
+            os.path.join(cls.test_data_path, 'test_syn_m00_data.ascii')
+        )
         cls.config = Config(
             model_number="m00",
             event_id=cls.event.resource_id.resource_id.split('/')[1]
@@ -43,18 +49,6 @@ class TestManager(unittest.TestCase):
         # Remove the empty dataset
         if os.path.exists(cls.empty_ds_fid):
             os.remove(cls.empty_ds_fid)
-
-    def setUp(self):
-        """
-        Reset the data so that preprocessing doesn't get passed
-        between each of the tests
-        :return:
-        """
-        self.st_obs = obspy.read(
-            os.path.join(self.test_data_path, 'test_obs_data.ascii'))
-        self.st_syn = obspy.read(
-            os.path.join(self.test_data_path, 'test_syn_m00_data.ascii')
-        )
 
     def test_manager_init(self):
         """

@@ -244,9 +244,18 @@ def process(args, usrcfg):
 
                 mgmt.run_pyadjoint()
 
+                # Format some strings to append to the waveform plot title
+                title_append = (
+                    "{md} misfit={mf:.3f}, pyflex={pf}, pyadjoint={pa}".format(
+                        md=config.model_number, mf=mgmt.total_misfit,
+                        pf=config.pyflex_config[0],
+                        pa=config.pyadjoint_config[0])
+                )
+
                 # Plot waveforms with misfit windows and adjoint sources
                 if usrcfg["plot_waveforms"]:
                     mgmt.plot_wav(
+                        title_append=title_append,
                         save=os.path.join(
                                   paths["EVENT_FIGURES"], "wav_{}".format(sta)), 
                         show=False

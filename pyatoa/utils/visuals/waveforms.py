@@ -125,7 +125,7 @@ def window_maker(st_obs, st_syn, config, time_offset_sec=0., windows=None,
         lines_for_legend = [a1, a2]
         
         # If STA/LTA information from Pyflex given, plot behind waveforms
-        if staltas is not None:
+        if (staltas is not None) and (comp in staltas.keys()):
             stalta_ = normalize_a_to_b(staltas[comp], -1, 1)
             twaxes[i].plot(t, stalta_, 'gray', alpha=0.4, zorder=z-1)
             twaxes[i].axhline(y=stalta_wl-1, xmin=t[0], xmax=t[-1],
@@ -133,16 +133,16 @@ def window_maker(st_obs, st_syn, config, time_offset_sec=0., windows=None,
                               linestyle='--')
 
         # If misfit windows given, plot each window and annotate information
-        if windows is not None:
+        if (windows is not None) and (comp in windows.keys()):
             ymin, ymax = axes[i].get_ylim()
-            window_anno = "maxCC:{mcc:.4f}\nccShift:{ccs:.2f}s\ndlnA:{dln:.4f}"
+            window_anno = "max_cc={mcc:.4f}\ncc_shift={ccs:.2f}s\ndlnA={dln:.4f}"
             try:
                 for window in windows[comp]:
                     xwindow = np.arange(window.left, window.right, 1)
                     twindow = t[xwindow]
                     axes[i].fill_between(twindow, ymin, ymax,
                                          facecolor='orange', edgecolor='k',
-                                         linewidth=0.5,
+                                         linewidth=0.5, zorder=z-1,
                                          alpha=(window.max_cc_value ** 2) * 0.25
                                          )
                     anno_str = window_anno.format(
@@ -150,17 +150,17 @@ def window_maker(st_obs, st_syn, config, time_offset_sec=0., windows=None,
                         ccs=window.cc_shift * st_obs[0].stats.delta,
                         dln=window.dlnA)
                     axes[i].annotate(s=anno_str, xy=(twindow[10], ymax * 0.5),
-                                     zorder=z-1, fontsize=7)
+                                     zorder=z+1, fontsize=8)
                 
                 # If Adjoint Sources given, plot and provide legend information
-                if adj_srcs is not None:
+                if (adj_srcs is not None) and (comp in adj_srcs.keys()):
                     _adj_src = normalize_a_to_b(adj_srcs[comp].adjoint_source,
                                                 a=-1, b=1)
                     _adj_src = detrend(_adj_src, type="constant")
 
                     # Plot adjoint source time reversed, line up with waveforms
-                    b1, = twaxes[i].plot(t, _adj_src[::-1], 'g', alpha=0.5,
-                                         linestyle='-.',
+                    b1, = twaxes[i].plot(t, _adj_src[::-1], 'g', alpha=0.55,
+                                         linestyle='--', zorder=z-1,
                                          label="Adjoint Source, Misfit={:.4f}".
                                          format(adj_srcs[comp].misfit)
                                          )
@@ -170,15 +170,21 @@ def window_maker(st_obs, st_syn, config, time_offset_sec=0., windows=None,
 
         # The y-label of the middle trace contains common info from Pyflex
         if i == middle_trace:
-            twaxes[i].set_ylabel("adjoint source (normalized) &\n"
-                                 "STA/LTA (waterlevel = {})".format(stalta_wl),
-                                 rotation=270, labelpad=20)
+            # If STA/LTA information given, create a custom label
+            if staltas is not None:
+                _label = "STA/LTA (waterlevel = {})".format(stalta_wl)
+                if adj_srcs is not None:
+                    _label += "\nadjoint source (normalized)"
+                twaxes[i].set_ylabel(_label, rotation=270, labelpad=25)
+
+            # Middle trace contains units for all traces, overwrite comp var.
             comp = "{}\n{}".format(unit_dict[config.unit_output], comp)
 
+        axes[i].set_ylabel(comp)
+        # Accumulate legend labels
         labels = [l.get_label() for l in lines_for_legend]
         axes[i].legend(lines_for_legend, labels, prop={"size": 9},
                        loc="upper right")
-        axes[i].set_ylabel(comp)
 
         # Dynamic seismogram length
         if not length_sec:
@@ -192,10 +198,17 @@ def window_maker(st_obs, st_syn, config, time_offset_sec=0., windows=None,
         align_yaxis(axes[i], twaxes[i])
 
     # Set plot title with relevant information
-    title = "{net}.{sta} {evt} [{t0}s, {t1}s] ".format(
-        net=st_obs[0].stats.network, sta=st_obs[0].stats.station,
-        evt=config.event_id, t0=config.min_period, t1=config.max_period
-        )
+    title = "{net}.{sta}".format(net=st_obs[0].stats.network,
+                                 sta=st_obs[0].stats.station
+                                 )
+
+    # Account for the fact that event id may not be given
+    if config.event_id is not None:
+        title = " ".join([title, config.event_id])
+
+    # Add filter bounds to plot title
+    title += " [{0}s, {1}s]".format(config.min_period, config.max_period)
+
     # Append extra information to title
     if append_title is not None:
         title = " ".join([title, append_title])

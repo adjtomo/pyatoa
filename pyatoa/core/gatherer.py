@@ -35,6 +35,18 @@ class Gatherer:
         self.fetcher = Fetcher(config=self.config, ds=self.ds)
         self.getter = Getter(config=self.config)
 
+    def set_event(self, event):
+        """
+        If event is provided by User, propogate origintime to fetcher and
+        getter classes so they can look for the correct data
+        :type: obspy.core.event.Event
+        :param: event supplied by User
+        """
+        self.event = event
+        self.event.preferred_origin().time.precision = 2
+        self.fetcher.origintime = self.event.preferred_origin().time
+        self.getter.origintime = self.event.preferred_origin().time
+
     def gather_event(self, append_focal_mechanism=True):
         """
         Get event information, check internally first. Keep the event as an
