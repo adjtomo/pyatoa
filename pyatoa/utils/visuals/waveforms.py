@@ -7,7 +7,8 @@ outputted by pyflex as well as adjoint sources from pyadjoint
 import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
-from scipy.signal import detrend
+
+from matplotlib.patches import Rectangle
 
 from pyatoa.utils.operations.calculations import normalize_a_to_b
 from pyatoa.utils.visuals.plot_utils import align_yaxis, pretty_grids, \
@@ -42,6 +43,7 @@ def setup_plot(number_of, twax=True):
             ax = plt.subplot(gs[i],sharex=axes[0])
         if twax:
             twinax = ax.twinx()
+            pretty_grids(twinax, twax=True)
             twaxes.append(twinax)
         else:
             twax = None
@@ -123,59 +125,80 @@ def window_maker(st_obs, st_syn, config, time_offset_sec=0., windows=None,
         a2, = axes[i].plot(t, syn[0].data, 'r', zorder=z,
                            label="{} (SYN)".format(syn[0].get_id()))
         lines_for_legend = [a1, a2]
-        
-        # If STA/LTA information from Pyflex given, plot behind waveforms
-        if (staltas is not None) and (comp in staltas.keys()):
-            stalta_ = normalize_a_to_b(staltas[comp], -1, 1)
-            twaxes[i].plot(t, stalta_, 'gray', alpha=0.4, zorder=z-1)
-            twaxes[i].axhline(y=stalta_wl-1, xmin=t[0], xmax=t[-1],
-                              alpha=0.2, zorder=z-2, linewidth=1.5, c='k',
-                              linestyle='--')
 
         # If misfit windows given, plot each window and annotate information
         if (windows is not None) and (comp in windows.keys()):
             ymin, ymax = axes[i].get_ylim()
-            window_anno = "max_cc={mcc:.4f}\ncc_shift={ccs:.2f}s\ndlnA={dln:.4f}"
-            try:
-                for window in windows[comp]:
-                    xwindow = np.arange(window.left, window.right, 1)
-                    twindow = t[xwindow]
-                    axes[i].fill_between(twindow, ymin, ymax,
-                                         facecolor='orange', edgecolor='k',
-                                         linewidth=0.5, zorder=z-1,
-                                         alpha=(window.max_cc_value ** 2) * 0.25
-                                         )
-                    anno_str = window_anno.format(
-                        mcc=window.max_cc_value,
-                        ccs=window.cc_shift * st_obs[0].stats.delta,
-                        dln=window.dlnA)
-                    axes[i].annotate(s=anno_str, xy=(twindow[10], ymax * 0.5),
-                                     zorder=z+1, fontsize=8)
-                
-                # If Adjoint Sources given, plot and provide legend information
-                if (adj_srcs is not None) and (comp in adj_srcs.keys()):
-                    _adj_src = normalize_a_to_b(adj_srcs[comp].adjoint_source,
-                                                a=-1, b=1)
-                    _adj_src = detrend(_adj_src, type="constant")
+            window_anno = ("max_cc={mcc:.4f}\n"
+                           "cc_shift={ccs:.2f}s\n"
+                           "dlnA={dln:.4f}")
+            for window in windows[comp]:
+                xwindow = np.arange(window.left, window.right, 1)
 
-                    # Plot adjoint source time reversed, line up with waveforms
-                    b1, = twaxes[i].plot(t, _adj_src[::-1], 'g', alpha=0.55,
-                                         linestyle='--', zorder=z-1,
-                                         label="Adjoint Source, Misfit={:.4f}".
-                                         format(adj_srcs[comp].misfit)
-                                         )
-                    lines_for_legend += [b1]
-            except KeyError:
-                pass
+                # Old representation of misfit window, however the windows were
+                # too small, so rectangle representation was taken
+                # twindow = t[xwindow]
+                # axes[i].fill_between(x=twindow, y1=ymin, y2=ymax,
+                #                      facecolor='orange', edgecolor='k',
+                #                      linewidth=0.5, zorder=z-1,
+                #                      alpha=(window.max_cc_value ** 2) * 0.25
+                #                      )
+
+                # Rectangle to represent misfit windows; taken from Pyflex
+                tleft = window.left * window.dt
+                tright = window.right * window.dt
+                rectangle = Rectangle(xy=(tleft, ymin), width=tright-tleft,
+                                      height=ymax-ymin, color='orange',
+                                      alpha=(window.max_cc_value ** 2) * 0.25,
+                                      )
+                axes[i].add_patch(rectangle)
+
+                # Annotate window information into the windows
+                anno_str = window_anno.format(
+                    mcc=window.max_cc_value,
+                    ccs=window.cc_shift * st_obs[0].stats.delta,
+                    dln=window.dlnA)
+                axes[i].annotate(s=anno_str, xy=(t[xwindow][10], ymax * 0.5),
+                                 zorder=z+1, fontsize=8)
+
+            # If Adjoint Sources given, plot and provide legend information
+            if (adj_srcs is not None) and (comp in adj_srcs.keys()):
+                adj_src = adj_srcs[comp]
+
+                # Plot adjoint source time reversed, line up with waveforms
+                b1, = twaxes[i].plot(
+                    t, adj_src.adjoint_source[::-1], 'g', alpha=0.55,
+                    linestyle='--', zorder=z-1,
+                    label="Adjoint Source, Misfit={:.4f}".format(adj_src.misfit)
+                )
+                lines_for_legend += [b1]
+
+            # If STA/LTA information from Pyflex given, plot behind waveforms
+            if (staltas is not None) and (comp in staltas.keys()):
+                # Normalize to the min and max of the adjoint source
+                if adj_src:
+                    tymin, tymax = twaxes[i].get_ylim()
+                    stalta = normalize_a_to_b(staltas[comp], tymin, tymax)
+                    waterlevel = (tymax - tymin) * stalta_wl + tymin
+                # If no adjoint source, simply plot STA/LTA
+                else:
+                    stalta = staltas[comp]
+                twaxes[i].plot(t, stalta, 'gray', alpha=0.4, zorder=z - 1)
+                twaxes[i].axhline(y=waterlevel, xmin=t[0], xmax=t[-1],
+                                  alpha=0.2, zorder=z - 2, linewidth=1.5, c='k',
+                                  linestyle='--')
+        else:
+            # If no Windows for given component, turn off the twin axis
+            twaxes[i].set_yticklabels([])
 
         # The y-label of the middle trace contains common info from Pyflex
         if i == middle_trace:
             # If STA/LTA information given, create a custom label
             if staltas is not None:
-                _label = "STA/LTA (waterlevel = {})".format(stalta_wl)
+                _label = "sta/lta (waterlevel = {})".format(stalta_wl)
                 if adj_srcs is not None:
                     _label += "\nadjoint source (normalized)"
-                twaxes[i].set_ylabel(_label, rotation=270, labelpad=25)
+                twaxes[i].set_ylabel(_label, rotation=270, labelpad=27.5)
 
             # Middle trace contains units for all traces, overwrite comp var.
             comp = "{}\n{}".format(unit_dict[config.unit_output], comp)
@@ -192,7 +215,6 @@ def window_maker(st_obs, st_syn, config, time_offset_sec=0., windows=None,
         axes[i].set_xlim([t[0], length_sec])
 
         # Format axes and align
-        twaxes[i].set_yticklabels([])
         for AX in [axes[i], twaxes[i]]:
             format_axis(AX)
         align_yaxis(axes[i], twaxes[i])

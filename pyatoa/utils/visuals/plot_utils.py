@@ -20,20 +20,24 @@ def align_yaxis(ax1, ax2):
     ax2.set_ylim(ymin_a2+dy, ymax_a2+dy)
 
 
-def pretty_grids(input_ax):
+def pretty_grids(input_ax, twax=False):
     """
     standard plot skeleton formatting, thick lines and internal tick marks etc.
 
     :type input_ax: matplotlib axis
     :param input_ax: axis to prettify
+    :type twax: bool
+    :param twax: If twax (twin axis), do not set grids
     """
     input_ax.set_axisbelow(True)
-    input_ax.tick_params(which='both', direction='in', top=True, right=True)
-    input_ax.minorticks_on()
     input_ax.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
-    for axis_ in ['major', 'minor']:
-        input_ax.grid(which=axis_, linestyle=':', linewidth='0.5', color='k',
-                      alpha=0.25)
+    input_ax.tick_params(which='both', direction='in', top=True, right=True)
+    # If main axis, set the grids on
+    if not twax:
+        input_ax.minorticks_on()
+        for axis_ in ['major', 'minor']:
+            input_ax.grid(which=axis_, linestyle=':', linewidth='0.5',
+                          color='k', alpha=0.25)
 
 
 def format_axis(input_ax):
