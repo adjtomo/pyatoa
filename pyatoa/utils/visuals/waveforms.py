@@ -133,24 +133,22 @@ def window_maker(st_obs, st_syn, config, time_offset_sec=0., windows=None,
                            "cc_shift={ccs:.2f}s\n"
                            "dlnA={dln:.4f}")
             for window in windows[comp]:
-                xwindow = np.arange(window.left, window.right, 1)
-
                 # Rectangle to represent misfit windows; taken from Pyflex
                 tleft = window.left * window.dt
                 tright = window.right * window.dt
-                rectangle = Rectangle(xy=(tleft, ymin), width=tright-tleft,
-                                      height=ymax-ymin, color='orange',
-                                      alpha=(window.max_cc_value ** 2) * 0.25,
-                                      )
-                axes[i].add_patch(rectangle)
+                axes[i].add_patch(Rectangle(
+                    xy=(tleft, ymin), width=tright-tleft, height=ymax-ymin,
+                    color='orange', alpha=(window.max_cc_value ** 2) * 0.25)
+                )
 
                 # Annotate window information into the windows
-                anno_str = window_anno.format(
+                t_anno = (tright - tleft) * 0.1 + tleft
+                axes[i].annotate(s=window_anno.format(
                     mcc=window.max_cc_value,
                     ccs=window.cc_shift * st_obs[0].stats.delta,
-                    dln=window.dlnA)
-                axes[i].annotate(s=anno_str, xy=(t[xwindow][10], ymax * 0.5),
-                                 zorder=z+1, fontsize=8)
+                    dln=window.dlnA), xy=(t_anno, ymax * 0.5),
+                    zorder=z+1, fontsize=8
+                )
 
             # If Adjoint Sources given, plot and provide legend information
             if (adj_srcs is not None) and (comp in adj_srcs.keys()):
