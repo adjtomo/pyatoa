@@ -94,8 +94,8 @@ class Manager:
         self.adj_srcs = adj_srcs
 
         # Internally used statistics
-        self.num_windows = None
-        self.total_misfit = None
+        self.num_windows = 0
+        self.total_misfit = 0
         self.time_offset_sec = 0
         self.half_dur = 0
 
@@ -165,7 +165,7 @@ class Manager:
 
         # Make sure observed waveforms are Stream objects,
         # Check if the observed waveforms have been preprocessed
-        if isinstance(self.st_obs, obspy.Stream):
+        if isinstance(self.st_obs, obspy.Stream) and len(self.st_obs):
             self.st_obs_num = len(self.st_obs)
             self.obs_process_flag = (
                     hasattr(self.st_obs[0].stats, "processing") and
@@ -224,8 +224,8 @@ class Manager:
         self.staltas = None
         self.adj_srcs = None
         self.time_offset_sec = 0
-        self.num_windows = None
-        self.total_misfit = None
+        self.num_windows = 0
+        self.total_misfit = 0
         self.half_dur = 0
 
         if hard_reset:
@@ -266,8 +266,7 @@ class Manager:
         if set_event:
             # If a catalog and not an event is given, take the first entry
             if isinstance(set_event, obspy.core.event.catalog.Catalog):
-                warnings.warn(
-                    "event given as catalog, taking first entry", UserWarning)
+                logger.info("event given as catalog, taking first entry")
                 set_event = set_event[0]
             # Populate the gatherer and self
             self.gatherer.set_event(set_event)
@@ -304,27 +303,27 @@ class Manager:
             self.launch()
         try:
             self.station_code = station_code
-            logger.info("Gathering {station} for {event}".format(
+            logger.info("gathering {station} for {event}".format(
                 station=station_code, event=self.config.event_id)
             )
             # Gather all data
             if choice is None:
-                logger.info("gathering station information")
+                logger.debug("gathering station information")
                 self.inv = self.gatherer.gather_station(station_code)
-                logger.info("gathering observation waveforms")
+                logger.debug("gathering observation waveforms")
                 self.st_obs = self.gatherer.gather_observed(station_code)
-                logger.info("gathering synthetic waveforms")
+                logger.debug("gathering synthetic waveforms")
                 self.st_syn = self.gatherer.gather_synthetic(station_code)
             # Gather specific data based on user defined choice
             else:
                 if "inv" in choice:
-                    logger.info("gathering station information")
+                    logger.debug("gathering station information")
                     self.inv = self.gatherer.gather_station(station_code)
                 if "st_obs" in choice:
-                    logger.info("gathering observation waveforms")
+                    logger.debug("gathering observation waveforms")
                     self.st_obs = self.gatherer.gather_observed(station_code)
                 if "st_syn" in choice:
-                    logger.info("gathering synthetic waveforms")
+                    logger.debug("gathering synthetic waveforms")
                     self.st_syn = self.gatherer.gather_synthetic(station_code)
         except Exception as e:
             print(e)
@@ -344,20 +343,19 @@ class Manager:
             try:
                 self.ds.add_quakeml(self.event)
             except ValueError:
-                warnings.warn("Event already present, not added", UserWarning)
+                logger.debug("event already present, not added")
             try:
                 self.ds.add_stationxml(self.inv)
             except TypeError:
-                warnings.warn("Inv already present, not added", UserWarning)
+                logger.debug("inv already present, not added")
             # PyASDF has its own warnings if observed data already present
             self.ds.add_waveforms(waveform=self.st_obs,
                                   tag=self.config.observed_tag)
             self.ds.add_waveforms(waveform=self.st_syn,
                                   tag=self.config.synthetic_tag)
         else:
-            warnings.warn(
-                "Manager does not contain all data, cannot fill dataset",
-                UserWarning)
+            logger.debug(
+                "manager does not contain all data, cannot fill dataset")
 
     def preprocess(self):
         """
@@ -369,10 +367,10 @@ class Manager:
         """
         self._check()
         if not self.st_obs_num or not self.st_syn_num:
-            warnings.warn("No waveform data", UserWarning)
+            logger.info("cannot preprocess, no waveform data")
             return
         if not isinstance(self.inv, obspy.core.inventory.Inventory):
-            warnings.warn("No inventory", UserWarning)
+            logger.info("cannot preprocess, no inventory")
             return
 
         # Process observation waveforms
@@ -413,7 +411,7 @@ class Manager:
         # Mid-check to see if preprocessing failed
         self._check()
         if not self.obs_process_flag or not self.syn_process_flag:
-            warnings.warn("Preprocessing failed", UserWarning)
+            logger.info("preprocessing failed")
             return
 
         # Trim observations and synthetics to the length of synthetics
@@ -463,8 +461,11 @@ class Manager:
         # Pre-check to see if data has already been gathered
         self._check()
         if not self.obs_process_flag or not self.syn_process_flag:
-            warnings.warn("can't run Pyflex, no waveforms, or not processed")
+            logger.info("cannot run Pyflex, no waveforms, or not processed")
             return
+
+        logger.info("running Pyflex type {}".format(
+            self.config.pyflex_config[0]))
 
         # Create Pyflex Station and Event objects
         pf_sta, pf_ev = set_pyflex_station_event(inv=self.inv, event=self.event)
@@ -502,7 +503,7 @@ class Manager:
 
         # Let the User know that no windows were found for this station
         if num_windows == 0:
-            warnings.warn("Empty windows", UserWarning)
+            logger.info("empty windows")
 
         # Store information for Pyadjoint and plotting
         self.windows = windows
@@ -511,7 +512,7 @@ class Manager:
     
         # If an ASDFDataSet is given, save the windows into auxiliary_data
         if self.ds is not None and (num_windows != 0):
-            logger.info("saving misfit windows to PyASDF")
+            logger.debug("saving misfit windows to PyASDF")
             for comp in windows.keys():
                 for i, window in enumerate(windows[comp]):
                     tag = "{mod}/{net}_{sta}_{cmp}_{num}".format(
@@ -555,8 +556,8 @@ class Manager:
         """
         # Precheck to see if Pyflex has been run already
         self._check()
-        if not self.pyflex_windows and self.num_windows != 0:
-            warnings.warn("can't run Pyadjoint, no Pyflex windows", UserWarning)
+        if not self.pyflex_windows or self.num_windows == 0:
+            logger.info("cannot run Pyadjoint, no Pyflex windows")
             return
 
         logger.info("running Pyadjoint type {} ".format(
@@ -592,7 +593,7 @@ class Manager:
 
             # If ASDFDataSet given, save Adjoint source into auxiliary data
             if self.ds:
-                logger.info("saving adjoint sources {} to PyASDF".format(key))
+                logger.debug("saving adjoint sources {} to PyASDF".format(key))
                 with warnings.catch_warnings():
                     warnings.simplefilter("ignore")
                     # The tag hardcodes an X as the second channel index
@@ -644,14 +645,15 @@ class Manager:
         # Precheck for waveform data
         self._check()
         if not self.obs_process_flag and not self.syn_process_flag:
-            warnings.warn("cannot plot, no/improper waveform data", UserWarning)
+            logger.info("cannot plot, no/improper waveform data")
             return
+        logger.info("plotting waveform")
 
         # Make sure the streams are the same length, otherwise plot will fail
         for comp in self.config.component_list:
             if len(self.st_obs.select(component=comp)[0].data) != \
                     len(self.st_syn.select(component=comp)[0].data):
-                warnings.warn("obs and syn data not same length", UserWarning)
+                logger.info("obs and syn data not same length")
                 return
 
         # Calculate the seismogram length
@@ -675,7 +677,7 @@ class Manager:
         if return_figure:
             return fig_window
 
-    def plot_map(self, map_corners=None, background_inv=None,
+    def plot_map(self, map_corners=None, stations=None,
                  show_nz_faults=False, annotate_names=False,
                  color_by_network=False, figsize=(8, 8.27), dpi=100, show=True,
                  save=None):
@@ -708,18 +710,18 @@ class Manager:
         :param dpi: dots per inch of the figure
         """
         self._check()
+        logger.info("plotting map")
 
         # Warn user if no inventory is given
         if not isinstance(self.inv, obspy.Inventory):
-            warnings.warn("no inventory given, plotting blank map", UserWarning)
+            logger.info("no inventory given, plotting blank map")
 
         if map_corners is None:
             map_corners = self.config.map_corners
 
         # Call external function to generate map
         generate_map(map_corners=map_corners, inv=self.inv, event=self.event,
-                     background_inv=background_inv,
-                     show_nz_faults=show_nz_faults,
+                     stations=stations, show_nz_faults=show_nz_faults,
                      color_by_network=color_by_network,
                      annotate_names=annotate_names, show=show, figsize=figsize,
                      dpi=dpi, save=save

@@ -83,7 +83,7 @@ class Fetcher:
         """
         net, sta, loc, cha = station_code.split('.')
         return self.ds.waveforms[
-            '{n}_{s}'.format(n=net, s=sta)][tag].select(component=cha[-1])
+            '{n}_{s}'.format(n=net, s=sta)][tag].select(component=cha[2:])
 
     def fetch_resp_by_dir(self, station_code, paths_to_responses=None,
                           dir_structure='{sta}.{net}',
@@ -117,9 +117,8 @@ class Fetcher:
         :rtype inv: obspy.core.inventory.Inventory
         :return inv: inventory containing relevant network and stations
         """
-
         if not paths_to_responses:
-            paths_to_responses = self.config.paths['responses']
+            paths_to_responses = self.config.cfgpaths['responses']
 
         net, sta, loc, cha = station_code.split('.')
 
@@ -139,11 +138,11 @@ class Fetcher:
                     inv_append = read_inventory(filepath)
                     inv = merge_inventories(inv, inv_append)
 
-                logger.info("response found at {}".format(filepath))
+                logger.debug("response found at {}".format(filepath))
 
         # Merge inventory objects
         if inv is None:
-            logger.info("No response found for given paths")
+            logger.debug("no response found for given paths")
             raise FileNotFoundError()
 
         return inv
@@ -179,7 +178,7 @@ class Fetcher:
         if self.origintime is None:
             raise AttributeError("'origintime' must be specified")
         if paths_to_waveforms is None:
-            paths_to_waveforms = self.config.paths['waveforms']
+            paths_to_waveforms = self.config.cfgpaths['waveforms']
 
         net, sta, loc, cha = station_code.split('.')
         jdays = overlapping_days(origin_time=self.origintime,
@@ -201,7 +200,7 @@ class Fetcher:
             for fid in pathlist:
                 for filepath in glob.glob(fid):
                     st += read(filepath)
-                    logger.info("stream fetched from directory {}".format(
+                    logger.debug("stream fetched from directory {}".format(
                         filepath))
             if len(st) > 0:  # is this necessary?
                 st.merge()
@@ -210,8 +209,8 @@ class Fetcher:
                         )
                 return st
         else:
-            logger.info(
-                "No waveforms found for {} for given directories".format(
+            logger.debug(
+                "no waveforms found for {} for given directories".format(
                     station_code)
             )
             raise FileNotFoundError()
@@ -238,8 +237,6 @@ class Fetcher:
             the directory for the event id first, rather than just searching the
             given directory. Useful for when data is stored by event id
             e.g. /path/to/synthetics/{event_id}/*
-        :type paths_to_waveforms: list of str
-        :param paths_to_waveforms: absolute pathways for mseed file locations
         :rtype stream: obspy.core.stream.Stream
         :return stream: stream object containing relevant waveforms
         """
@@ -255,7 +252,7 @@ class Fetcher:
         net, sta, loc, cha = station_code.split('.')
 
         # Check through paths given in Config
-        for path_ in self.config.paths['synthetics']:
+        for path_ in self.config.cfgpaths['synthetics']:
             if not os.path.exists(path_):
                 continue
 
@@ -272,7 +269,7 @@ class Fetcher:
                 except UnicodeDecodeError:
                     # If the data file is for some reason already in miniseed
                     st += read(filepath)
-                logger.info("stream fetched by event {}".format(
+                logger.debug("stream fetched by event {}".format(
                     os.path.basename(filepath))
                 )
 
@@ -284,7 +281,7 @@ class Fetcher:
                 return st
         else:
             logger.info(
-                "No synthetic waveforms for {} found for given event".format(
+                "no synthetic waveforms for {} found for given event".format(
                     station_code)
             )
             raise FileNotFoundError()
@@ -308,9 +305,11 @@ class Fetcher:
         if self.ds:
             try:
                 # Search the given asdf dataset first
+                logger.debug("fetching obs internal asdf")
                 return self.asdf_waveform_fetch(station_code,
                                                 tag=self.config.observed_tag)
             except KeyError:
+                logger.debug("obs internal asdf failed, fetching by dir")
                 # If asdf dataset does not contain data, search internal dir.
                 st_obs = self.fetch_obs_by_dir(station_code)
                 self.ds.add_waveforms(waveform=st_obs,
@@ -336,9 +335,11 @@ class Fetcher:
         """
         if self.ds:
             try:
+                logger.debug("fetching syn internal asdf")
                 return self.asdf_waveform_fetch(station_code,
                                                 tag=self.config.synthetic_tag)
             except KeyError:
+                logger.debug("syn internal asdf failed, fetching by dir")
                 st_syn = self.fetch_syn_by_dir(station_code)
                 self.ds.add_waveforms(waveform=st_syn,
                                       tag=self.config.synthetic_tag)
@@ -362,8 +363,10 @@ class Fetcher:
         """
         if self.ds:
             try:
+                logger.debug("searching station internal asdf")
                 return self.asdf_station_fetch(station_code)
             except (KeyError, AttributeError):
+                logger.debug("internal asdf station ")
                 inv = self.fetch_resp_by_dir(station_code)
                 self.ds.add_stationxml(inv)
                 return inv

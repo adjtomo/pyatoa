@@ -71,13 +71,13 @@ class Gatherer:
                 if append_focal_mechanism:
                     self.append_focal_mechanism()
                 self.ds.add_quakeml(self.event)
-                logger.info("event got from external, added to pyasdf dataset")
+                logger.debug("event got from external, added to pyasdf dataset")
         # Else, query FDSN for event information
         else:
             self.event = self.getter.event_get()
             if append_focal_mechanism:
                 self.append_focal_mechanism()
-            logger.info("event got from external")
+            logger.debug("event got from external")
 
         # Propogate the origin time to Fetcher and Getter classes
         self.event.preferred_origin().time.precision = 2
@@ -145,7 +145,7 @@ class Gatherer:
         try:
             return self.fetcher.station_fetch(station_code)
         except FileNotFoundError:
-            logger.info(
+            logger.debug(
                 "internal station information not found, searching ext.")
             inv = self.getter.station_get(station_code)
             if self.ds is not None:
@@ -168,7 +168,7 @@ class Gatherer:
         try:
             st_obs = self.fetcher.obs_waveform_fetch(station_code)
         except FileNotFoundError:
-            logger.info("internal observation data unavailable, searching ext.")
+            logger.debug("internal obs data unavailable, searching external")
             st_obs = self.getter.waveform_get(station_code)
             if self.ds is not None:
                 self.ds.add_waveforms(waveform=st_obs,

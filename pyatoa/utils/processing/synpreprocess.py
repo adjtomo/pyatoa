@@ -27,9 +27,9 @@ def stf_convolve(st, half_duration, window="bartlett", time_shift=None):
     half_duration_in_samples = round(half_duration * sampling_rate)
     stf = signal.get_window(window=window,
                             Nx=(half_duration_in_samples * 2) - 1)
-    logger.info("convolve syn  w/ {0} of T_half={1:.2f}s".format(
+    logger.debug("convolve syn  w/ {0} of T_half={1:.2f}s".format(
                                                           window, half_duration)
-                )
+                 )
 
     # make sure window touches 0 at the end
     if stf[-1] != 0:
@@ -66,9 +66,9 @@ def stf_convolve_gaussian(st, half_duration, time_shift=None):
     :param time_shift:
     :return:
     """
-    logger.info("convolving synthetic data with gaussian "
-                "window of half duration {:.2f}s".format(half_duration)
-                )
+    logger.debug("convolving synthetic data with gaussian "
+                 "window of half duration {:.2f}s".format(half_duration)
+                 )
     sampling_rate = st[0].stats.sampling_rate
     half_duration_in_samples = round(half_duration * sampling_rate)
 

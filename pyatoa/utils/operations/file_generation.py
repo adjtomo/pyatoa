@@ -61,11 +61,11 @@ def write_misfit_json(ds, model, step_count=0, fidout="./misfits.json"):
     while True:
         # another process has control of the misfit file
         if os.path.exists(fidout_lock):
-            print("file is locked, waiting")
+            # print("file is locked, waiting")
             time.sleep(5)
         # misfit file is available for writing
         elif os.path.exists(fidout) and not os.path.exists(fidout_lock):
-            print("file is available at {}".format(time.asctime()))
+            # print("file is available at {}".format(time.asctime()))
             os.rename(fidout, fidout_lock)
             with open(fidout_lock, "r") as f:
                 misfit_dict = json.load(f)
@@ -100,7 +100,7 @@ def write_misfit_json(ds, model, step_count=0, fidout="./misfits.json"):
             return
         # misfit file has not been written yet
         else:
-            print("file has not been written")
+            # print("file has not been written")
             with open(fidout, "w") as f:
                 json.dump(misfit_dict, f, indent=4, separators=(',', ':'),
                           sort_keys=True)
@@ -263,6 +263,9 @@ def create_srcrcv_vtk_multiple(pathin, pathout, model, utm_zone=60):
 
     # Loop through available datasets
     datasets = glob.glob(os.path.join(pathin, '*.h5'))
+    if not datasets:
+        return
+
     ev_x, ev_y, sta_x, sta_y, sta_elv, sta_ids = [], [], [], [], [], []
     for fid in datasets:
         with pyasdf.ASDFDataSet(fid) as ds:

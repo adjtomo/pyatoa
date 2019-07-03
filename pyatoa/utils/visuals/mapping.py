@@ -204,6 +204,22 @@ def plot_stations(m, inv, event=None, **kwargs):
                              )
 
 
+def plot_stations_simple(m, lats, lons):
+    """
+    Fill map with stations based on latitude longitude values, nothing fancy
+    :type m: Basemap
+    :param m: basemap object
+    :type lats: np.ndarray
+    :param lats: array of latitude values
+    :type lons: np.ndarray
+    :param lons: array of longitude values
+    """
+    x, y = m(lons, lats)
+    m.scatter(x, y, marker='v', color='None', edgecolor='k', linestyle='-',
+              s=95, linewidth=1.75, zorder=100
+              )
+
+
 def annotate_srcrcv_information(m, event, inv):
     """
     Annotate event receiver information into hard coded map area
@@ -260,11 +276,11 @@ def connect_source_receiver(m, event, sta, **kwargs):
                          event.preferred_origin().latitude)
     station_x, station_y = m(sta.longitude, sta.latitude)
     m.plot([event_x, station_x], [event_y, station_y], linestyle, linewidth,
-           c=linecolor, zorder=998)
+           c=linecolor, zorder=zorder-10)
     m.scatter(station_x, station_y, marker=marker, color=markercolor,
               edgecolor='k', linestyle='-', s=75, zorder=zorder)
     m.scatter(event_x, event_y, marker="o", color=markercolor, edgecolor="k",
-              s=75, zorder=zorder)
+              s=105, zorder=zorder, linewidth=1.75)
 
 
 def initiate_basemap(map_corners, scalebar=True, **kwargs):
@@ -307,7 +323,7 @@ def initiate_basemap(map_corners, scalebar=True, **kwargs):
     return m
 
 
-def generate_map(map_corners, inv=None, event=None, background_inv=None,
+def generate_map(map_corners, inv=None, event=None, stations=None,
                  annotate_names=False, show_nz_faults=False,
                  color_by_network=False, figsize=(10, 9.4), dpi=100, show=True,
                  save=None):
@@ -324,9 +340,10 @@ def generate_map(map_corners, inv=None, event=None, background_inv=None,
     :param event: event object
     :type inv: obspy.core.inventory.Inventory
     :param inv: inventory containing relevant network and stations
-    :type background_inv: obspy.core.inventory.Inventory
-    :param background_inv: background stations to plot on the map that will not
-        interact with the source
+    :type stations: obspy.core.inventory.Inventory or numpy.ndarray
+    :param stations: background stations to plot on the map that will not
+        interact with the source. if given as an inventory object, plotting
+        will be more complex.
     :type annotate_names: bool
     :param annotate_names: annotate station names next to markers
     :type show_nz_faults: bool
@@ -357,18 +374,21 @@ def generate_map(map_corners, inv=None, event=None, background_inv=None,
         map_extras.plot_geonet_active_faults(m)
 
     # If given, plot all background stations for this given event.
-    if background_inv:
-        plot_stations(m, inv=background_inv, event=event,
-                      annotate_names=annotate_names,
-                      color_by_network=color_by_network
-                      )
+    if stations is not None:
+        if isinstance(stations, np.ndarray):
+            plot_stations_simple(m, lats=stations[:, 0], lons=stations[:, 1])
+        else:
+            plot_stations(m, inv=stations, event=event,
+                          annotate_names=annotate_names,
+                          color_by_network=color_by_network
+                          )
 
     # If an event is given, try to plot the focal-mechanism beachball
-    if event:
+    if event is not None:
         event_beachball(m, event)
 
     # If an inventory object is given, plot source receiver line, and info
-    if inv:
+    if inv is not None:
         connect_source_receiver(m, event=event, sta=inv[0][0])
         annotate_srcrcv_information(m, event=event, inv=inv)
 

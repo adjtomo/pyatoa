@@ -5,7 +5,6 @@ Wrapper class used to quickly interact with obspy fdsn Client, based on configs.
 Defaults are set up for local earthquake trace lengths taken from GeoNet fdsn
 webservice.
 """
-import copy
 from obspy.clients.fdsn import Client
 
 from pyatoa import logger
@@ -50,6 +49,7 @@ class Getter:
         :rtype event: obspy.core.event.Event
         :return event: event object
         """
+        logger.debug("fetching event from {}".format(self.client))
         event = self.Client.get_events(eventid=self.event_id)[0]
         self.origintime = event.origins[0].time
         return event
@@ -62,6 +62,7 @@ class Getter:
         :rtype: obspy.core.inventory.Inventory
         :return: inventory containing relevant network and stations
         """
+        logger.debug("fetching station from {}".format(self.client))
         net, sta, loc, cha = station_code.split('.')
         return self.Client.get_stations(
             network=net, station=sta, location=loc, channel=cha,
@@ -78,6 +79,7 @@ class Getter:
         :rtype stream: obspy.core.stream.Stream
         :return stream: waveform contained in a stre
         """
+        logger.debug("fetching observations from {}".format(self.client))
         net, sta, loc, cha = station_code.split('.')
         st = self.Client.get_waveforms(
             network=net, station=sta, location=loc, channel=cha,
@@ -89,7 +91,7 @@ class Getter:
         st.trim(starttime=self.origintime-self.config.start_pad,
                 endtime=self.origintime+self.config.end_pad)
 
-        logger.info("stream got external {}".format(station_code))
+        logger.debug("stream got external {}".format(station_code))
         return st
 
     def get_all(self, station_code):

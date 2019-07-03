@@ -1,0 +1,1 @@
+/Users/Chow/Documents/academic/vuw_seismo/packages/pyatoa/pyatoa/plugins/seisflows/sfconfig.py

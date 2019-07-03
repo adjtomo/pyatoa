@@ -164,7 +164,7 @@ def preproc(st_original, inv=None, resample=None, pad_length_in_seconds=None,
         except ValueError:
             return None
     
-        logger.info("remove response, units of {}".format(unit_output))
+        logger.debug("remove response, units of {}".format(unit_output))
 
         # Clean up streams after response removal
         st.detrend("linear")
@@ -177,7 +177,7 @@ def preproc(st_original, inv=None, resample=None, pad_length_in_seconds=None,
     # No inventory means synthetic data
     elif not inv:
         if unit_output != synthetic_unit:
-            logger.info(
+            logger.debug(
                 "unit output and synthetic output do not match, adjusting")
             # Determine the difference between synthetic unit and observed unit
             diff_dict = {"DISP": 1, "VEL": 2, "ACC": 3}
@@ -185,12 +185,16 @@ def preproc(st_original, inv=None, resample=None, pad_length_in_seconds=None,
 
             # Integrate or differentiate stream to retrieve correct units
             if difference == 1:
+                logger.debug("integrating synthetic data")
                 st.integrate(method="cumtrapz")
             elif difference == 2:
+                logger.debug("double integrating synthetic data")
                 st.integrate(method="cumtrapz").integrate(method="cumtrapz")
             elif difference == -1:
+                logger.debug("differentiating synthetic data")
                 st.differentiate(method="gradient")
             elif difference == -2:
+                logger.debug("double differentiating synthetic data")
                 st.differentiate(
                     method="gradient").differentiate(method="gradient")
 
@@ -202,12 +206,12 @@ def preproc(st_original, inv=None, resample=None, pad_length_in_seconds=None,
     # Rotate the given stream from standard North East to Radial Transverse
     if back_azimuth:
         st.rotate(method="NE->RT", back_azimuth=back_azimuth)
-        logger.info("rotating NE->RT by {} degrees".format(back_azimuth))
+        logger.debug("rotating NE->RT by {} degrees".format(back_azimuth))
     
     # Zero pad the stream if value is given
     if pad_length_in_seconds:
         st = zero_pad_stream(st, pad_length_in_seconds)
-        logger.info(
+        logger.debug(
             "zero padding front and back by {}s".format(pad_length_in_seconds))
     
     # Filter data using ObsPy Butterworth filters
@@ -216,7 +220,7 @@ def preproc(st_original, inv=None, resample=None, pad_length_in_seconds=None,
                   freqmax=1/filter_bounds[0], corners=corners, zerophase=True
                   )
         msg = "filter streams {t0}s to {t1}s w/ {c} corner {f}"
-        logger.info(msg.format(t0=filter_bounds[0], t1=filter_bounds[1],
+        logger.debug(msg.format(t0=filter_bounds[0], t1=filter_bounds[1],
                                c=corners, f="Butterworth"))
 
     return st

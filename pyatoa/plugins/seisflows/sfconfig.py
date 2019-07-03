@@ -69,24 +69,23 @@ def sfconfig():
         "filter_corners": 4,
         "rotate_to_rtz": False,
         "unit_output": "DISP",
-        "pyflex_config": "hikurangi_strict",
+        "pyflex_config": "default",
         "adj_src_type": "multitaper_misfit",
         "paths_to_waveforms": [],
         "paths_to_responses": [],
 
         # Pyatoa Considerations
         "set_logging": True,
-        "fix_windows": True,
+        "fix_windows": False,
         "plot_waveforms": True,
         "plot_maps": True,
 
         # Pyatoa Outputs
         "write_misfit_json": True,
-        "tile_and_combine": True,
+        "tile_and_combine": False,
         "purge_originals": False,
         "purge_tiles": True,
         "create_srcrcv_vtk": True,
-        "create_src_vtk": False,
 
         # Pyatoa Paths (output directory set in Seisflows)
         "figure_dir": "figures",

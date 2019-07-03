@@ -24,157 +24,138 @@ from pyatoa.utils.operations.file_generation import create_stations_adjoint, \
                 write_misfit_json, write_adj_src_to_ascii, write_misfit_stats
 
 
-def initialize_parser():
+def initialize_parser(args):
     """
     Seisflows calls pyatoa via subprocess, so we use an argparser to provide
     Pyatoa with information that it requires
-        
+
     :return:
     """
-    parser = argparse.ArgumentParser(description="Inputs from Seisflows")
+    argparser = argparse.ArgumentParser(description="Inputs from Seisflows")
 
     # Required arguments for all modes
-    parser.add_argument("-m", "--mode", type=str,
-                        help="Allows for single Seisflows entry point,"
-                             "available: initialize, process, finalize")
-    parser.add_argument("--working_dir", type=str,
-                        help="Working dir: main Seisflows directory")
+    argparser.add_argument("-m", "--mode", type=str,
+                           help="Allows for single Seisflows entry point,"
+                                "available: initialize, process, finalize")
+    argparser.add_argument("--working_dir", type=str,
+                           help="Working dir: main Seisflows directory")
 
     # Processing arguments
-    parser.add_argument("--event_id", type=str, default=None,
-                        help="Event Identifier")
-    parser.add_argument("--model_number", type=str, default=None,
-                        help="Model Number, e.g. 'm00'")
-    parser.add_argument("--step_count", type=int, default=None,
-                        help="Step Count, e.g. 0")
-    parser.add_argument("--current_dir", type=str,
-                        help="Event Specfem directory, with 'DATA', 'traces'")
-    parser.add_argument("--suffix", type=str, default=None,
-                        help="Seisflows suffix")
+    argparser.add_argument("--event_id", type=str, default=None,
+                           help="Event Identifier")
+    argparser.add_argument("--model_number", type=str, default=None,
+                           help="Model Number, e.g. 'm00'")
+    argparser.add_argument("--step_count", type=int, default=None,
+                           help="Step Count, e.g. 0")
+    argparser.add_argument("--current_dir", type=str,
+                           help="Event Specfem directory, w/ 'DATA', 'traces'")
+    argparser.add_argument("--suffix", type=str, default=None,
+                           help="Seisflows suffix")
 
-    return parser.parse_args()
+    return argparser.parse_args(args)
 
 
-def initialize(args):
+def assemble_paths(parser, mode=''):
     """
-    Create necessary directories for Pyatoa to operate with Seisflows
-
-    :type args: arparse.Parser
-    :param args: arguments from Seisflows
-    :type usrcfg: dict
-    :param usrcfg: user configuration, from sfconfig.py
-    """
-    pt_paths, _ = pyatoa_paths(args)
-
-    for key in pt_paths.keys():
-        # Don't make any filenames
-        if "FILE" in key:
-            continue
-        elif not os.path.exists(pt_paths[key]):
-            os.makedirs(pt_paths[key])
-
-
-def finalize(args):
-    """
-    Before finishing the iteration, create some final objects
-
-    :type ds: pyasdf.ASDFDataSet
-    :param ds: processed dataset that now contains misfit windows/adjoint srcs
-    :type model: str
-    :param model: model number, e.g. "m00"
-    :type paths: dict
-    :param paths: return of get_paths() containing relevant paths
-    """
-    paths, usrcfg = assemble_paths(args)
-
-    # Loop through all available datasets
-    for fid in glob.glob(os.path.join(paths["PYATOA_DATA"], "*.h5")):
-        with pyasdf.ASDFDataSet(fid) as ds:
-            # Generate .vtk files for given source and receivers
-            # TO DO: only create one .vtk file for all datasets
-            if usrcfg["create_srcrcv_vtk"]:
-                from pyatoa.utils.operations.file_generation import \
-                    create_srcrcv_vtk
-                create_srcrcv_vtk(ds=ds, model=model,
-                                  path_out=paths["PYATOA_VTKS"],
-                                  event_separate=usrcfg["create_src_vtk"],
-                                  )
-
-
-def pyatoa_paths(args):
-    """
-    Pyatoa requires pre-built directories to save data and figures. This only
-    needs to be run once at the beginning of the inversion workflow.
-
-    :type args: arparse.Parser
-    :param args: arguments from Seisflows
-    :type usrcfg: dict
-    :param usrcfg: user configuration, from sfconfig.py
+    Make the necessary output directories for Pyatoa
+    :type parser: argparse.Parser
+    :param parser: arguments passed in from seisflows
+    :type mode: str
+    :param mode: if process, extra paths are appended
+    :rtype *_paths: dict
+    :return *_paths: dictionaries for given pyatoa and seisflows pathing
     """
     # Get paths from Seisflows outputs .json file
-    sf_json = os.path.join(args.working_dir, "output", "seisflows_paths.json")
-    sf_paths = json.load(open(sf_json, "r"))
+    sf_json = os.path.join(parser.working_dir, "output", "seisflows_paths.json")
+    with open(sf_json, "r") as f:
+        sf_paths = json.load(f)
 
     # User defined configuration for Pyatoa, controlling processing params
     # pathing and switches for outputs and logging. Import from user supplied
     # output directory
     os.chdir(sf_paths["PYATOA"])
-    from config import sfconfig
+    from .sfconfig import sfconfig
     usrcfg = sfconfig()
 
     # Set Pyatoa paths based on user configurations
     figs = os.path.join(sf_paths["PYATOA"], usrcfg["figure_dir"])
     vtks = os.path.join(figs, "vtks")
-
     data = os.path.join(sf_paths["PYATOA"], usrcfg["data_dir"])
     misfits = os.path.join(data, "misfits")
-
     misfit_file = os.path.join(sf_paths["PYATOA"], usrcfg["misfits_json"])
 
-    pt_paths = {"PYATOA_FIGURES": figs, "PYATOA_DATA": data,
-                "PYATOA_VTKS": vtks, "PYATOA_MISFITS": misfits,
-                "MISFIT_FILE": misfit_file
-                }
+    paths = {"PYATOA_FIGURES": figs, "PYATOA_DATA": data,
+             "PYATOA_VTKS": vtks, "PYATOA_MISFITS": misfits,
+             "MISFIT_FILE": misfit_file
+             }
 
-    return pt_paths, usrcfg
+    # Processing requires extra process dependent paths
+    if mode == "process":
+        event_paths = {
+            "ADJ_TRACES": os.path.join(parser.current_dir, "traces", "adj"),
+            "SYN_TRACES": os.path.join(parser.current_dir, "traces", "syn"),
+            "EVENT_DATA": os.path.join(parser.current_dir, "DATA"),
+            "STATIONS": os.path.join(parser.current_dir, "DATA", "STATIONS"),
+            "EVENT_FIGURES": os.path.join(paths["PYATOA_FIGURES"],
+                                          parser.model_number, parser.event_id
+                                          )
+        }
+        # Make the event figure if necessary
+        if not os.path.exists(event_paths["EVENT_FIGURES"]):
+            os.makedirs(event_paths["EVENT_FIGURES"])
 
-
-def assemble_paths(args, usrcfg):
-    """
-    Make the necessary output directories for Pyatoa
-    :type args: argparse.Parser
-    :param args: arguments passed in from seisflows
-    :rtype *_paths: dict
-    :return *_paths: dictionaries for given pyatoa and seisflows pathing
-    """
-    pt_paths, usrcfg = pyatoa_paths(args, usrcfg)
-
-    event_paths = {
-        "ADJ_TRACES": os.path.join(args.current_dir, "traces", "adj"),
-        "SYN_TRACES": os.path.join(args.current_dir, "traces", "syn"),
-        "EVENT_DATA": os.path.join(args.current_dir, "DATA"),
-        "STATIONS": os.path.join(args.current_dir, "DATA", "STATIONS"),
-        "EVENT_FIGURES": os.path.join(pt_paths["PYATOA_FIGURES"],
-                                      args.model_number, args.event_id
-                                      )
-    }
-
-    paths = {**pt_paths, **event_paths}
+        paths = {**paths, **event_paths}
 
     return paths, usrcfg
 
 
-def process(args, usrcfg):
+def initialize(parser):
     """
-    Main workflow calling on the core functionality of Pyatoa to process 
+    Create necessary directories for Pyatoa to operate with Seisflows
+
+    :type parser: argparse.Parser
+    :param parser: arguments from Seisflows
+    """
+    paths, _ = assemble_paths(parser)
+
+    for key in paths.keys():
+        # Don't make any filenames
+        if "FILE" in key:
+            continue
+        elif not os.path.exists(paths[key]):
+            os.makedirs(paths[key])
+
+
+def finalize(parser):
+    """
+    Before finishing the iteration, create some final objects
+
+    :type parser: argparse.Parser
+    :param parser: arguments passed in from Seisflows
+    """
+    paths, usrcfg = assemble_paths(parser)
+
+    # Generate .vtk files for given source and receivers
+    if usrcfg["create_srcrcv_vtk"]:
+        from pyatoa.utils.operations.file_generation import \
+            create_srcrcv_vtk_multiple
+        create_srcrcv_vtk_multiple(
+            pathin=paths["PYATOA_DATA"], pathout=paths["PYATOA_VTKS"],
+            model=parser.model_number
+        )
+
+
+def process(parser):
+    """
+    Main workflow calling on the core functionality of Pyatoa to process
     observed and synthetic waveforms and perform misfit quantification
-   
-    :type args: argparse.Parser 
-    :param args: arguments passed in from Seisflows
+
+    :type parser: argparse.Parser
+    :param parser: arguments passed in from Seisflows
     :type usrcfg: dict
     :param usrcfg: user configuration, from sfconfig.py
     """
-    paths, usrcfg = assemble_paths(args, usrcfg)
+    paths, usrcfg = assemble_paths(parser, mode="process")
 
     # Set loggging output
     if usrcfg["set_logging"]:
@@ -183,8 +164,8 @@ def process(args, usrcfg):
 
     # Set the Pyatoa Config object for misfit quantification
     config = pyatoa.Config(
-        event_id=args.event_id,
-        model_number=args.model_number,
+        event_id=parser.event_id,
+        model_number=parser.model_number,
         min_period=usrcfg["min_period"],
         max_period=usrcfg["max_period"],
         filter_corners=usrcfg["filter_corners"],
@@ -199,10 +180,10 @@ def process(args, usrcfg):
         )
 
     # The trial step number is only used sparsely, e.g. the Statistics subgroup
-    step_number = "s{:0>2}".format(args.step_count)
+    step_number = "s{:0>2}".format(parser.step_count)
 
     # Save HDF5 output by event id
-    ds_name = os.path.join(paths["PYATOA_DATA"], 
+    ds_name = os.path.join(paths["PYATOA_DATA"],
                            "{}.h5".format(config.event_id)
                            )
     with pyasdf.ASDFDataSet(ds_name) as ds:
@@ -216,22 +197,26 @@ def process(args, usrcfg):
 
         # Calculate misfit by station, get stations from Specfem STATIONS file
         mgmt = pyatoa.Manager(config=config, ds=ds)
-        stations = np.loadtxt(paths["STATIONS"], usecols=[0, 1], dtype=str)
+
+        # Station file has the form NET STA LAT LON ...
+        stations = np.loadtxt(paths["STATIONS"], usecols=[0, 1, 2, 3],
+                              dtype=str)
+        coords = stations[:, 2:]
 
         # Loop through stations and invoke Pyatoa workflow
         for station in stations:
-            sta, net = station
+            sta, net = station[:2]
             print("{}.{}".format(net, sta))
             try:
                 mgmt.reset()
-                
+
                 # Gather data, searching internal pathways, else fetching from
                 # external pathways if possible. Preprocess identically
                 mgmt.gather_data(station_code="{net}.{sta}.{loc}.{cha}".format(
                                  net=net, sta=sta, loc="*", cha="HH[NZE]")
                                  )
                 mgmt.preprocess()
-                
+
                 # Either no fixed misfit windows or no windows exist yet
                 if not usrcfg["fix_windows"] or \
                         not hasattr(ds.auxiliary_data.MisfitWindows,
@@ -241,32 +226,35 @@ def process(args, usrcfg):
                     # If windows exist and fixed windows, grab from ASDF dataset
                     misfit_windows = windows_from_ds(
                                               ds, config.model_number, net, sta)
-                    mgmt.overwrite_windows(misfit_windows)
+                    mgmt.windows = misfit_windows
 
                 mgmt.run_pyadjoint()
 
-                # Format some strings to append to the waveform plot title
-                title_append = (
-                    "{md} misfit={mf:.3f}, pyflex={pf}, pyadjoint={pa}".format(
-                        md=config.model_number, mf=mgmt.total_misfit,
-                        pf=config.pyflex_config[0],
-                        pa=config.pyadjoint_config[0])
-                )
-
                 # Plot waveforms with misfit windows and adjoint sources
                 if usrcfg["plot_waveforms"]:
-                    mgmt.plot_wav(
-                        title_append=title_append,
-                        save=os.path.join(
-                                  paths["EVENT_FIGURES"], "wav_{}".format(sta)), 
-                        show=False
+                    # Format some strings to append to the waveform plot title
+                    append_title = (
+                        "\n{md}, pyflex={pf}, pyadjoint={pa}".format(
+                            md=config.model_number, pf=config.pyflex_config[0],
+                            pa=config.pyadjoint_config[0])
+                    )
+                    if mgmt.total_misfit is not None:
+                        append_title = " ".join([
+                            append_title,
+                            "misfit={:.2f}".format(mgmt.total_misfit)]
                         )
-               
-                # Plot source-receiver maps  
-                if usrcfg["plot_maps"]:
-                    mgmt.plot_map(
+                    f = mgmt.plot_wav(
+                        append_title=append_title,
                         save=os.path.join(
-                                  paths["EVENT_FIGURES"], "map_{}".format(sta)),
+                                  paths["EVENT_FIGURES"], "wav_{}".format(sta)),
+                        show=False, return_figure=True
+                        )
+
+                # Plot source-receiver maps, don't make a map if no wav data
+                if usrcfg["plot_maps"] and f:
+                    mgmt.plot_map(
+                        stations=coords, save=os.path.join(
+                            paths["EVENT_FIGURES"], "map_{}".format(sta)),
                         show=False
                         )
                 print("\n")
@@ -277,7 +265,7 @@ def process(args, usrcfg):
                 continue
 
         # Add statistics to auxiliary_data
-        write_stats_to_asdf(ds, config.model_number, args.step_count)
+        write_stats_to_asdf(ds, config.model_number, parser.step_count)
 
         # Create the .sem ascii files required by specfem
         write_adj_src_to_ascii(ds, config.model_number, paths["ADJ_TRACES"])
@@ -285,45 +273,45 @@ def process(args, usrcfg):
         # Create the STATIONS_ADJOINT file required by specfem
         create_stations_adjoint(ds, config.model_number,
                                 specfem_station_file=paths["STATIONS"],
-                                filepath=paths["EVENT_DATA"])
+                                pathout=paths["EVENT_DATA"])
 
         # Write misfits for seisflows into individual text files
         write_misfit_stats(ds, config.model_number, paths["PYATOA_MISFITS"])
 
         # Sum and write misfits information to a JSON file
-        write_misfit_json(ds, args.model_number, args.step_count,
+        write_misfit_json(ds, parser.model_number, parser.step_count,
                           paths["MISFIT_FILE"])
 
         # Combine .png images into a composite .pdf for easy fetching
         if usrcfg["tile_and_combine"]:
             from pyatoa.utils.visuals.convert_images import tile_and_combine
-            tile_and_combine(ds=ds, model=args.model_number, step=step_number,
+            tile_and_combine(ds=ds, model=parser.model_number, step=step_number,
                              figure_path=paths["PYATOA_FIGURES"],
                              purge_originals=usrcfg["purge_originals"],
                              purge_tiles=usrcfg["purge_tiles"]
                              )
 
-    
+
 if __name__ == "__main__":
     # Ignoring warnings due to H5PY deprecation warning
     warnings.filterwarnings("ignore")
 
     # Arguments passed in by Seisflows
-    args = initialize_parser()
+    parser = initialize_parser(sys.argv[1:])
 
     # Initialize Pyatoa directory structure
-    if args.mode == "initialize":
-        initialize(args)
+    if parser.mode == "initialize":
+        initialize(parser)
 
     # Run some cleanup scripts at the end of an iteration
-    elif args.mode == "finalize":
-        finalize(args)
+    elif parser.mode == "finalize":
+        finalize(parser)
 
     # Process misfit values
-    elif args.mode == "process":
+    elif parser.mode == "process":
         # Run Pyatoa, return successful exit code
         try:
-            process(args)
+            process(parser)
             sys.exit(0)
         except Exception as e:
             traceback.print_exc()
