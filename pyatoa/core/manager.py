@@ -648,7 +648,7 @@ class Manager:
             return
 
         # Make sure the streams are the same length, otherwise plot will fail
-        for comp in self.config.comp_list:
+        for comp in self.config.component_list:
             if len(self.st_obs.select(component=comp)[0].data) != \
                     len(self.st_syn.select(component=comp)[0].data):
                 warnings.warn("obs and syn data not same length", UserWarning)
@@ -675,9 +675,10 @@ class Manager:
         if return_figure:
             return fig_window
 
-    def plot_map(self, map_corners, show_nz_faults=False,
-                 annotate_names=False, color_by_network=False,
-                 figsize=(8, 8.27), dpi=100, show=True, save=None):
+    def plot_map(self, map_corners=None, background_inv=None,
+                 show_nz_faults=False, annotate_names=False,
+                 color_by_network=False, figsize=(8, 8.27), dpi=100, show=True,
+                 save=None):
         """
         Map plot showing a map of the given target region. All stations that
         show data availability (according to the station master list) are
@@ -687,6 +688,9 @@ class Manager:
         Source receier information plotted in lower right hand corner of map.
         :type map_corners: dict
         :param map_corners: {lat_min, lat_max, lon_min, lon_max}
+        :type background_inv: obspy.core.inventory.Inventory
+        :param background_inv: background stations to plot on the map that will
+        not interact with the source
         :type annotate_names: bool
         :param annotate_names: annotate station names
         :type color_by_network: bool
@@ -709,11 +713,12 @@ class Manager:
         if not isinstance(self.inv, obspy.Inventory):
             warnings.warn("no inventory given, plotting blank map", UserWarning)
 
-        if not map_corners:
+        if map_corners is None:
             map_corners = self.config.map_corners
 
         # Call external function to generate map
-        generate_map(map_corners=map_corners, event=self.event, inv=self.inv,
+        generate_map(map_corners=map_corners, inv=self.inv, event=self.event,
+                     background_inv=background_inv,
                      show_nz_faults=show_nz_faults,
                      color_by_network=color_by_network,
                      annotate_names=annotate_names, show=show, figsize=figsize,

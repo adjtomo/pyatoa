@@ -90,22 +90,5 @@ class TestWaveformPlot(unittest.TestCase):
                          config=self.config, staltas=self.mgmt.staltas,
                          windows=self.mgmt.windows)
 
-
-
-    def test_window_maker_only_staltas(self):
-        """
-        Check that window maker works plotting waveforms with STA/LTA info only
-        """
-        self.mgmt.preprocess()
-        f = window_maker(
-            st_obs=self.st_obs, st_syn=self.st_syn, config=self.config)
-        )
-
-
-
-
-
-
-
 if __name__ == "__main__":
     test_external_getter()

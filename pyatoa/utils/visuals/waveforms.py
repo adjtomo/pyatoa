@@ -15,7 +15,7 @@ from pyatoa.utils.visuals.plot_utils import align_yaxis, pretty_grids, \
     format_axis
 
 mpl.rcParams['font.size'] = 12
-mpl.rcParams['lines.linewidth'] = 1.25
+mpl.rcParams['lines.linewidth'] = 1.6
 mpl.rcParams['lines.markersize'] = 10
 mpl.rcParams['axes.linewidth'] = 2
 
@@ -105,6 +105,10 @@ def window_maker(st_obs, st_syn, config, time_offset_sec=0., windows=None,
     unit_dict = {"DISP": "displacement [m]", 
                  "VEL": "velocity [m/s]",
                  "ACC": "acceleration [m/s^2]"}
+    adj_dict = {"DISP": "[m^-1]",
+                "VEL": "[m^-1 s]",
+                "ACC": "[m^-s s^-2]"}
+
     if staltas:
         stalta_wl = config.pyflex_config[1].stalta_waterlevel
 
@@ -129,31 +133,35 @@ def window_maker(st_obs, st_syn, config, time_offset_sec=0., windows=None,
         # If misfit windows given, plot each window and annotate information
         if (windows is not None) and (comp in windows.keys()):
             ymin, ymax = axes[i].get_ylim()
-            window_anno = ("max_cc={mcc:.4f}\n"
+            window_anno = ("max_cc={mcc:.2f}\n"
                            "cc_shift={ccs:.2f}s\n"
-                           "dlnA={dln:.4f}")
+                           "dlnA={dln:.3f}\n"
+                           "left={lft:.1f}s\n"
+                           "right={rgt:.1f}s\n"
+                           "length={lgt:.1f}s")
             for window in windows[comp]:
                 # Rectangle to represent misfit windows; taken from Pyflex
-                tleft = window.left * window.dt
-                tright = window.right * window.dt
+                tleft = window.left * window.dt + time_offset_sec
+                tright = window.right * window.dt + time_offset_sec
                 axes[i].add_patch(Rectangle(
                     xy=(tleft, ymin), width=tright-tleft, height=ymax-ymin,
                     color='orange', alpha=(window.max_cc_value ** 2) * 0.25)
                 )
 
                 # Annotate window information into the windows
-                t_anno = (tright - tleft) * 0.1 + tleft
+                t_anno = (tright - tleft) * 0.025 + tleft
                 axes[i].annotate(s=window_anno.format(
                     mcc=window.max_cc_value,
                     ccs=window.cc_shift * st_obs[0].stats.delta,
-                    dln=window.dlnA), xy=(t_anno, ymax * 0.5),
+                    dln=window.dlnA, lft=tleft, rgt=tright, lgt=tright-tleft),
+                    xy=(t_anno, ymax * 0.2),
                     zorder=z+1, fontsize=8
                 )
 
             # If Adjoint Sources given, plot and provide legend information
+            adj_src = None
             if (adj_srcs is not None) and (comp in adj_srcs.keys()):
                 adj_src = adj_srcs[comp]
-
                 # Plot adjoint source time reversed, line up with waveforms
                 b1, = twaxes[i].plot(
                     t, adj_src.adjoint_source[::-1], 'g', alpha=0.55,
@@ -165,19 +173,21 @@ def window_maker(st_obs, st_syn, config, time_offset_sec=0., windows=None,
             # If STA/LTA information from Pyflex given, plot behind waveforms
             if (staltas is not None) and (comp in staltas.keys()):
                 # Normalize to the min and max of the adjoint source
-                if adj_src:
+                if adj_src is not None:
                     tymin, tymax = twaxes[i].get_ylim()
                     stalta = normalize_a_to_b(staltas[comp], tymin, tymax)
                     waterlevel = (tymax - tymin) * stalta_wl + tymin
                 # If no adjoint source, simply plot STA/LTA
                 else:
                     stalta = staltas[comp]
+                    waterlevel = stalta_wl
                 twaxes[i].plot(t, stalta, 'gray', alpha=0.4, zorder=z - 1)
                 twaxes[i].axhline(y=waterlevel, xmin=t[0], xmax=t[-1],
                                   alpha=0.2, zorder=z - 2, linewidth=1.5, c='k',
                                   linestyle='--')
+
+        # If no adjoint source for given component, turn off twin ax label
         else:
-            # If no Windows for given component, turn off the twin axis
             twaxes[i].set_yticklabels([])
 
         # The y-label of the middle trace contains common info from Pyflex
@@ -186,7 +196,9 @@ def window_maker(st_obs, st_syn, config, time_offset_sec=0., windows=None,
             if staltas is not None:
                 _label = "sta/lta (waterlevel = {})".format(stalta_wl)
                 if adj_srcs is not None:
-                    _label += "\nadjoint source (normalized)"
+                    _label += "\nadjoint source {}".format\
+                        (adj_dict[config.unit_output]
+                         )
                 twaxes[i].set_ylabel(_label, rotation=270, labelpad=27.5)
 
             # Middle trace contains units for all traces, overwrite comp var.

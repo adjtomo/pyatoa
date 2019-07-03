@@ -3,6 +3,7 @@ For generation of input files for Specfem, or for any external files required
 for codes that interact with Pyatoa
 """
 import os
+import glob
 import json
 import time
 import numpy as np
@@ -106,10 +107,9 @@ def write_misfit_json(ds, model, step_count=0, fidout="./misfits.json"):
             return
 
          
-def write_misfit_stats(ds, model, pathout):
+def write_misfit_stats(ds, model, pathout="./", fidout=None):
     """
-    A simpler alternative to write_misfit_json(), which relies on a crude file
-    renaming lock system to deal with multiple nodes accessing the same file.
+    A simpler alternative to write_misfit_json()
 
     This function simply writes a new text file for each event, which contains 
     the total misfit for that event.
@@ -122,15 +122,18 @@ def write_misfit_stats(ds, model, pathout):
     :param ds: processed dataset, assumed to contain auxiliary_data.Statistics
     :type model: str
     :param model: model number, e.g. "m00"
-    :type step: int
-    :param step: line search step count
+    :type pathout: str
+    :param pathout: output path to write the misfit. fid will be the event name
     :type fidout: str
-    :param fidout: output file to write the misfit
+    :param fidout: allow user defined filename, otherwise default to name of ds
+        note: if given, var 'pathout' is not used, this must be a full path
     """
     from pyatoa.utils.asdf.extractions import sum_misfits
-    
-    event_id = os.path.basename(ds.filename).split(".")[0]
-    fidout = os.path.join(pathout, event_id)    
+
+    # By default, name the file after the name of the asdf dataset
+    if fidout is None:
+        event_id = os.path.basename(ds.filename).split(".")[0]
+        fidout = os.path.join(pathout, event_id)
     
     # calculate misfit 
     misfit = sum_misfits(ds, model)
@@ -139,70 +142,77 @@ def write_misfit_stats(ds, model, pathout):
     np.savetxt(fidout, [misfit], '%11.6e')
 
            
-def create_srcrcv_vtk(ds, model, path_out, event_separate=False, utm_zone=60):
+def create_srcrcv_vtk_single(ds, model, pathout, event_separate=False,
+                             utm_zone=60):
     """
     It's useful to visualize source receiver locations in Paraview, alongside
     sensitivity kernels. VTK files are produced by Specfem, however they are for
     all receivers, and a source at depth which is sometimes confusing. 
-    This function will create source_receiver vtk files using the asdf h5 files,
+
+    -This function will create source_receiver vtk files using the asdf h5 files
     with only those receiver that were used in the misfit analysis, and only
     an epicentral source location, such that the source is visible on a top
     down view from Paraview.
-    
-    Gives the option to create an event vtk file separate to receivers, for
+    -Useful for visualizing event kernels
+    -Gives the option to create an event vtk file separate to receivers, for
     more flexibility in the visualization.
     
-    :type h5_fid: str
-    :param h5_fid: path to pyasdf h5 file outputted by pyatoa
-    :type fid_out: str
-    :param fid_out: output path and filename to save vtk file e.g. 'test.vtk'
+    :type ds: pyasdf.ASDFDataSet
+    :param ds: pyasdf dataset outputted by pyatoa
     :type model: str
-    :param model: h5 is split up by model iteration, e.g. 'm00'
+    :param model: model number, e.g. 'm00'
+    :type pathout: str
+    :param pathout: output path to save vtk file
+    :type event_separate: str
+    :param event_separate: if event vtk file to be made separately
     :type utm_zone: int
     :param utm_zone: the utm zone of the mesh, 60 for NZ
-    :type event_fid: str
-    :param event_fid: if event vtk file to be made separately
     """
     from pyatoa.utils.operations.source_receiver import lonlat_utm
 
+    # Check that this can be run, if dataset contains adjoint sources
+    if not bool(ds.auxiliary_data.AdjointSources):
+        return
+
+    # Some information that is used a few times
+    vtk_header = ("# vtk DataFile Version 2.0\n"
+                  "Source and Receiver VTK file from Pyatoa\n"
+                  "ASCII\n"
+                  "DATASET POLYDATA\n"
+                  )
+
+    # Get receiver location information in lat-lon,
     event_id = os.path.basename(ds.filename).split(".")[0]
-
-    # get receiver location information in UTM_60 coordinate system from
-    # pyasdf auxiliary_data. make sure no repeat stations
     sta_x, sta_y, sta_elv, sta_ids = [], [], [], []
-    if bool(ds.auxiliary_data):
-        for adjsrc in ds.auxiliary_data.AdjointSources[model].list():
-            sta = ds.auxiliary_data.AdjointSources[model][adjsrc]
-            station_id = sta.parameters["station_id"]
-            if station_id in sta_ids:
-                continue
-            latitude = sta.parameters["latitude"]
-            longitude = sta.parameters["longitude"]
-            elevation_in_m = sta.parameters["elevation_in_m"]
 
-            x, y = lonlat_utm(lon_or_x=longitude, lat_or_y=latitude,
-                              utm_zone=utm_zone, inverse=False)
-            sta_x.append(x)
-            sta_y.append(y)
-            sta_elv.append(elevation_in_m)
-            sta_ids.append(station_id)
+    for adjsrc in ds.auxiliary_data.AdjointSources[model].list():
+        sta = ds.auxiliary_data.AdjointSources[model][adjsrc]
 
-    # get event location information in UTM_60. 
+        # make sure no repeat stations
+        if sta.parameters["station_id"] in sta_ids:
+            continue
+
+        # Convert lat lon to UTM
+        x, y = lonlat_utm(lon_or_x=sta.parameters["longitude"],
+                          lat_or_y=sta.parameters["latitude"],
+                          utm_zone=utm_zone, inverse=False)
+        sta_x.append(x)
+        sta_y.append(y)
+        sta_elv.append(sta.parameters["elevation_in_m"])
+        sta_ids.append(sta.parameters["station_id"])
+
+    # Get event location information in UTM
     ev_x, ev_y = lonlat_utm(lon_or_x=ds.events[0].preferred_origin().longitude,
                             lat_or_y=ds.events[0].preferred_origin().latitude,
                             utm_zone=utm_zone, inverse=False
                             )
     # set event epicentral depth to 100km to keep it above topography
-    ev_elv = 100.0
+    ev_elv = 100.
 
-    # write header for vtk file and then print values for source receivers
-    fid_out = os.path.join(path_out, "{}_{}.vtk".format(event_id, model)) 
+    # Write header for VTK file and then print values for source receivers
+    fid_out = os.path.join(pathout, "{}_{}.vtk".format(event_id, model))
     with open(fid_out, "w") as f:
-        f.write("# vtk DataFile Version 2.0\n"
-                "Source and Receiver VTK file from Pyatoa\n"
-                "ASCII\n"
-                "DATASET POLYDATA\n"
-                )
+        f.write(vtk_header)
         # num points equal to number of stations plus 1 event
         f.write("POINTS\t{} float\n".format(len(sta_x)+1))
         f.write("{X:18.6E}{Y:18.6E}{E:18.6E}\n".format(
@@ -211,26 +221,114 @@ def create_srcrcv_vtk(ds, model, path_out, event_separate=False, utm_zone=60):
         for x, y, e in zip(sta_x, sta_y, sta_elv):
             f.write("{X:18.6E}{Y:18.6E}{E:18.6E}\n".format(X=x, Y=y, E=e))
 
-    # make a separate vtk file for the source
+    # Make a separate VTK file for the source
     if event_separate:
         event_fid_out = os.path.join(
-                             fid_out, "{}_{}_event.vtk".format(event_id, model))
+                             pathout, "{}_{}_event.vtk".format(event_id, model))
         with open(event_fid_out, "w") as f:
-            f.write("# vtk DataFile Version 2.0\n"
-                    "Source and Receiver VTK file from Pyatoa\n"
-                    "ASCII\n"
-                    "DATASET POLYDATA\n"
-                    )
-            f.write("POINTS\t1 float\n".format(len(sta_x) + 1))
+            f.write(vtk_header)
+            f.write("POINTS\t1 float\n")
             f.write("{X:18.6E}{Y:18.6E}{E:18.6E}\n".format(
                 X=ev_x, Y=ev_y, E=ev_elv)
             )
 
 
-def create_stations_adjoint(ds, model, filepath=None):
+def create_srcrcv_vtk_multiple(pathin, pathout, model, utm_zone=60):
     """
-    TO DO: remove the hardcoded paths for station list
-    
+    Same as create_srcrcv_vtk_single, except instead of taking an asdf
+    dataset input, takes a path, reads in datasets and creates one
+    large vtk file containing all stations and all events.
+
+    -Useful for visualizations of misfit kernels and gradients.
+    -Automatically creates a separate event vtk file.
+
+    :type pathin: str
+    :param pathin: path containing .h5 files, will loop through all
+        available h5 files in the folder
+    :type model: str
+    :param model: model number, e.g. 'm00'
+    :type pathout: str
+    :param pathout: output path to save vtk file
+    :type utm_zone: int
+    :param utm_zone: the utm zone of the mesh, 60 for NZ
+    """
+    import pyasdf
+    from pyatoa.utils.operations.source_receiver import lonlat_utm
+
+    vtk_header = ("# vtk DataFile Version 2.0\n"
+                  "Source and Receiver VTK file from Pyatoa\n"
+                  "ASCII\n"
+                  "DATASET POLYDATA\n"
+                  )
+
+    # Loop through available datasets
+    datasets = glob.glob(os.path.join(pathin, '*.h5'))
+    ev_x, ev_y, sta_x, sta_y, sta_elv, sta_ids = [], [], [], [], [], []
+    for fid in datasets:
+        with pyasdf.ASDFDataSet(fid) as ds:
+            # Check if dataset contains adjoint sources
+            if not bool(ds.auxiliary_data.AdjointSources):
+                continue
+            # Loop through stations with adjoint sources
+            for adjsrc in ds.auxiliary_data.AdjointSources[model].list():
+                sta = ds.auxiliary_data.AdjointSources[model][adjsrc]
+
+                # make sure no repeat stations
+                if sta.parameters["station_id"] in sta_ids:
+                    continue
+
+                # Convert lat lon to UTM
+                sx, sy = lonlat_utm(lon_or_x=sta.parameters["longitude"],
+                                    lat_or_y=sta.parameters["latitude"],
+                                    utm_zone=utm_zone, inverse=False
+                                    )
+                sta_x.append(sx)
+                sta_y.append(sy)
+                sta_elv.append(sta.parameters["elevation_in_m"])
+                sta_ids.append(sta.parameters["station_id"])
+
+            # Get event location information in UTM
+            ex, ey = lonlat_utm(
+                lon_or_x=ds.events[0].preferred_origin().longitude,
+                lat_or_y=ds.events[0].preferred_origin().latitude,
+                utm_zone=utm_zone, inverse=False
+            )
+            ev_x.append(ex)
+            ev_y.append(ey)
+
+    # set event epicentral depth to 100km to keep it above topography
+    ev_elv = 100.
+
+    # Write header for VTK file and then print values for source receivers
+    fid_out = os.path.join(
+        pathout, "srcrcv_{}_{}.vtk".format(model, len(ev_x)))
+    with open(fid_out, "w") as f:
+        f.write(vtk_header)
+        # num points equal to number of stations plus number of events
+        f.write("POINTS\t{} float\n".format(len(sta_x) + len(ev_x)))
+        # Loop through events
+        for ex, ey in zip(ev_x, ev_y):
+            f.write("{X:18.6E}{Y:18.6E}{E:18.6E}\n".format(
+                X=ex, Y=ey, E=ev_elv)
+            )
+        # Loop through stations
+        for sx, sy, se in zip(sta_x, sta_y, sta_elv):
+            f.write("{X:18.6E}{Y:18.6E}{E:18.6E}\n".format(X=sx, Y=sy, E=se))
+
+    # Make a separate VTK file for the events
+    event_fid_out = os.path.join(
+        pathout, "events_{}_{}.vtk".format(model, len(ev_x)))
+    with open(event_fid_out, "w") as f:
+        f.write(vtk_header)
+        f.write("POINTS\t{} float\n".format(len(ev_x)))
+        for ex, ey in zip(ev_x, ev_y):
+            f.write("{X:18.6E}{Y:18.6E}{E:18.6E}\n".format(
+                X=ex, Y=ey, E=ev_elv)
+            )
+
+
+def create_stations_adjoint(ds, model, specfem_station_file, pathout=None):
+    """
     Generate an adjoint stations file for Specfem input by reading in the master
     station list and checking which adjoint sources are available in the
     pyasdf dataset
@@ -239,96 +337,116 @@ def create_stations_adjoint(ds, model, filepath=None):
     :param ds: dataset containing AdjointSources auxiliary data
     :type model: str
     :param model: model number, e.g. "m00"
-    :type filepath: str
-    :param filepath: path/to/specfem/DATA/STATIONS
-    :return:
+    :type specfem_station_file: str
+    :param specfem_station_file: path/to/specfem/DATA/STATIONS
+    :type pathout: str
+    :param pathout: path to save file 'STATIONS_ADJOINT'
     """
-    for f in ['/seis/prj/fwi/bchow/data/STATIONXML/MASTER/'
-              'master_station_list.txt',
-              '/Users/chowbr/Documents/subduction/data/'
-              'STATIONXML/MASTER/master_station_list.txt',
-              '/scale_wlg_nobackup/filesets/nobackup/nesi00263/bchow/primer/'
-              'auxiliary_data/stationxml/master_station_list.txt',
-              ]:
-        if os.path.exists(f):
-            master_station_list = f
+    event_id = os.path.basename(ds.filename).split('.')[0]
 
+    # Check which stations have adjoint sources
     stas_with_adjsrcs = []
     for code in ds.auxiliary_data.AdjointSources[model].list():
         stas_with_adjsrcs.append(code.split('_')[1])
     stas_with_adjsrcs = set(stas_with_adjsrcs)
 
-    with open(master_station_list, "r") as f:
+    # Figure out which stations were simulated
+    with open(specfem_station_file, "r") as f:
         lines = f.readlines()
-
-    event_id = ds.filename.split('/')[-1].split('.')[0]
 
     # if no output path is specified, save into current working directory with
     # an event_id tag to avoid confusion with other files, else normal naming
-    if not filepath:
-        pathout = "./STATIONS_ADJOINT_{}".format(event_id)
+    if pathout is None:
+        write_out = "./STATIONS_ADJOINT_{}".format(event_id)
     else:
-        pathout = os.path.join(filepath, "STATIONS_ADJOINT")
-    with open(pathout, "w") as f:
+        write_out = os.path.join(pathout, "STATIONS_ADJOINT")
+
+    # Rewrite the Station file but only with stations that contain adjoint srcs
+    with open(write_out, "w") as f:
         for line in lines:
             if line.split()[0] in stas_with_adjsrcs:
                     f.write(line)
 
 
-def write_adj_src_to_ascii(ds, model, filepath=None,
-                           comp_list=["N", "E", "Z"]):
+def write_adj_src_to_ascii(ds, model, pathout=None, comp_list=["N", "E", "Z"]):
     """
-    take AdjointSource auxiliary data from a pyasdf dataset and write out
+    Take AdjointSource auxiliary data from a pyasdf dataset and write out
     the adjoint sources into ascii files with proper formatting, for input
     into PyASDF
-    :param ds:
-    :param model_number:
-    :param comp_list:
-    :return:
+
+    Note: Specfem dictates that if a station is given as an adjoint source,
+        all components must be present, even if some components don't have
+        any misfit windows. This function writes blank adjoint sources (0's)
+        to satisfy this requirement.
+
+    :type ds: pyasdf.ASDFDataSet
+    :param ds: dataset containing adjoint sources
+    :type model: str
+    :param model: model number, e.g. "m00"
+    :type pathout: str
+    :param pathout: path to write the adjoint sources to
+    :type comp_list: list of str
+    :param comp_list: component list to check when writing blank adjoint sources
+        defaults to N, E, Z, but can also be e.g. R, T, Z
     """
     import numpy as np
+
     def write_to_ascii(f, array):
         """
-        function used to write the ascii in the correct format
-        :param array:
-        :return:
+        Function used to write the ascii in the correct format
+
+        :type f: _io.TextIO
+        :param f: the open file to write to
+        :type array: numpy.ndarray
+        :param array: array of data from obspy stream
         """
         for dt, amp in array:
-            if dt == 0. and not amp == 0.:
+            if dt == 0. and amp != 0.:
                 dt = 0
                 adj_formatter = "{dt:>14}{amp:18.6f}\n"
-            if not dt == 0 and amp == 0.:
+            elif dt != 0. and amp == 0.:
                 amp = 0
                 adj_formatter = "{dt:14.6f}{amp:>18}\n"
             else:
                 adj_formatter = "{dt:14.6f}{amp:18.6f}\n"
+
             f.write(adj_formatter.format(dt=dt, amp=amp))
-    
+
+    # Shortcuts
     adjsrcs = ds.auxiliary_data.AdjointSources[model]
     event_id = ds.filename.split('/')[-1].split('.')[0]
-    
-    if not filepath:
-        pathcheck = os.path.join("./", event_id)
-    else:
-        pathcheck = filepath
 
-    if not os.path.exists(pathcheck):
-        os.makedirs(pathcheck)
+    # Set the path to write the data to.
+    # If no path is given, default to current working directory
+    if pathout is None:
+        pathout = os.path.join("./", event_id)
+    if not os.path.exists(pathout):
+        os.makedirs(pathout)
+
+    # Loop through adjoint sources and write out ascii files
+    already_written = []
     for adj_src in adjsrcs.list():
-        station = adjsrcs[adj_src].path.replace('_', '.')
-        fid = "{path}/{sta}.adj".format(path=pathcheck, sta=station)
+        station = adj_src.replace('_', '.')
+        fid = os.path.join(pathout, "{}.adj".format(station))
         with open(fid, "w") as f:
             write_to_ascii(f, adjsrcs[adj_src].data.value)
-        # write blank adjoint sources for components with no misfit windows
-        if comp_list:
-            for comp in comp_list:
-                station_check = station[:-1] + comp
-                if station_check.replace('.', '_') not in adjsrcs.list():
-                    blank_adj_src = adjsrcs[adj_src].data.value
-                    blank_adj_src[:, 1] = np.zeros(len(blank_adj_src[:, 1]))
-                    blank_template = "{path}/{sta}.adj".format(
-                                           path=pathcheck, sta=station_check
-                                                               )
-                    with open(blank_template, "w") as b:
-                        write_to_ascii(b, blank_adj_src)
+
+        # Write blank adjoint sources for components with no misfit windows
+        for comp in comp_list:
+            station_blank = (adj_src[:-1] + comp).replace('_', '.')
+            if station_blank.replace('.', '_') not in adjsrcs.list() and \
+                    station_blank not in already_written:
+                # Use the same adjoint source, but set the data to zeros
+                blank_adj_src = adjsrcs[adj_src].data.value
+                blank_adj_src[:, 1] = np.zeros(len(blank_adj_src[:, 1]))
+
+                # Write out the blank adjoint source
+                fid_blank = os.path.join(
+                    pathout, "{}.adj".format(station_blank)
+                )
+                with open(fid_blank, "w") as b:
+                    write_to_ascii(b, blank_adj_src)
+
+                # Append to a list to make sure we don't write doubles
+                already_written.append(station_blank)
 

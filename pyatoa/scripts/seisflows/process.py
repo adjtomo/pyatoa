@@ -192,9 +192,10 @@ def process(args, usrcfg):
         unit_output=usrcfg["unit_output"],
         pyflex_config=usrcfg["pyflex_config"],
         adj_src_type=usrcfg["adj_src_type"],
-        paths_to_synthetics=[paths["SYN_TRACES"]],
-        paths_to_waveforms=usrcfg["paths_to_waveforms"],
-        paths_to_responses=usrcfg["paths_to_responses"]
+        cfgpaths={"synthetics": paths["SYN_TRACES"],
+                  "waveforms": usrcfg["paths_to_waveforms"],
+                  "responses": usrcfg["paths_to_responses"]
+                  }
         )
 
     # The trial step number is only used sparsely, e.g. the Statistics subgroup
@@ -282,7 +283,9 @@ def process(args, usrcfg):
         write_adj_src_to_ascii(ds, config.model_number, paths["ADJ_TRACES"])
 
         # Create the STATIONS_ADJOINT file required by specfem
-        create_stations_adjoint(ds, config.model_number, paths["EVENT_DATA"])
+        create_stations_adjoint(ds, config.model_number,
+                                specfem_station_file=paths["STATIONS"],
+                                filepath=paths["EVENT_DATA"])
 
         # Write misfits for seisflows into individual text files
         write_misfit_stats(ds, config.model_number, paths["PYATOA_MISFITS"])

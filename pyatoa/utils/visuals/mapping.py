@@ -309,7 +309,7 @@ def initiate_basemap(map_corners, scalebar=True, **kwargs):
 
 def generate_map(map_corners, inv=None, event=None, background_inv=None,
                  annotate_names=False, show_nz_faults=False,
-                 color_by_network=False, figsize=(10,9.4), dpi=100, show=True,
+                 color_by_network=False, figsize=(10, 9.4), dpi=100, show=True,
                  save=None):
     """
     Initiate and populate a basemap object for New Zealands north island.
@@ -354,7 +354,7 @@ def generate_map(map_corners, inv=None, event=None, background_inv=None,
     # Plot fault lines, hardcoded into structure
     if show_nz_faults:
         map_extras.plot_hikurangi_trench(m)
-        map_extras.plot_active_faults(m)
+        map_extras.plot_geonet_active_faults(m)
 
     # If given, plot all background stations for this given event.
     if background_inv:

@@ -20,8 +20,8 @@ class Config:
                  synthetic_tag='synthetic_{model_num}',
                  map_corners={'lat_min': -42.5007, 'lat_max': -36.9488,
                               'lon_min': 172.9998, 'lon_max': 179.5077},
-                 paths={'synthetics': [], 'waveforms': [], 'responses': [],
-                        'auxiliary_data': []}):
+                 cfgpaths={'synthetics': [], 'waveforms': [], 'responses': [],
+                           'auxiliary_data': []}):
         """
         Allows the user to control the parameters of the packages called within
         pyatoa, as well as control where the outputs (i.e. pyasdf and plots) are
@@ -67,8 +67,8 @@ class Config:
         :param synthetic_tag: Tag to use for asdf dataset to label and search
             for obspy streams of synthetic data. Defaults 'synthetic_{model_num}
             Tag must be formatted before use
-        :type paths: dict of str
-        :param paths: any absolute paths for Pyatoa to search for
+        :type cfgpaths: dict of str
+        :param cfgpaths: any absolute paths for Pyatoa to search for
             waveforms in. If path does not exist, it will automatically be
             skipped. Allows for work on multiple machines, by giving multiple
             paths for the same set of data, without needing to change config.
@@ -116,11 +116,11 @@ class Config:
 
         # Path searching looks for lists, but this allows the User to provide
         # a path of type(str), the Config object will just wrap it in a list
-        for key in paths.keys():
-            if isinstance(paths[key], str):
-                paths[key] = [paths[key]]
+        for key in cfgpaths.keys():
+            if isinstance(cfgpaths[key], str):
+                cfgpaths[key] = [cfgpaths[key]]
 
-        self.paths = paths
+        self.cfgpaths = cfgpaths
         self.zero_pad = int(zero_pad)
         self.start_pad = int(start_pad)
         self.end_pad = int(end_pad)
@@ -153,9 +153,9 @@ class Config:
                          rotate=self.rotate_to_rtz, output=self.unit_output,
                          pyflex=self.pyflex_config[0],
                          adjoint=self.pyadjoint_config[0],
-                         paths_to_wavs=self.paths['waveforms'],
-                         paths_to_syns=self.paths['synthetics'],
-                         paths_to_resp=self.paths['responses']
+                         paths_to_wavs=self.cfgpaths['waveforms'],
+                         paths_to_syns=self.cfgpaths['synthetics'],
+                         paths_to_resp=self.cfgpaths['responses']
                          )
 
     def _check_config(self):
@@ -187,8 +187,8 @@ class Config:
         # Check that paths are in the proper format
         acceptable_keys = [
             'synthetics', 'waveforms', 'responses', 'auxiliary_data']
-        assert(isinstance(self.paths, dict)), "paths should be a dict"
-        for key in self.paths.keys():
+        assert(isinstance(self.cfgpaths, dict)), "paths should be a dict"
+        for key in self.cfgpaths.keys():
             assert(key in acceptable_keys), \
                 "path keys can only be in {}".format(acceptable_keys)
 
@@ -249,9 +249,9 @@ class Config:
                         syntag=self.synthetic_tag, pyflex=self.pyflex_config[0],
                         adjoint=self.pyadjoint_config[0],
                         mapcorners=self.map_corners,
-                        paths_to_wavs=self.paths['waveforms'],
-                        paths_to_syns=self.paths['synthetics'],
-                        paths_to_resp=self.paths['responses'])
+                        paths_to_wavs=self.cfgpaths['waveforms'],
+                        paths_to_syns=self.cfgpaths['synthetics'],
+                        paths_to_resp=self.cfgpaths['responses'])
             )
 
     def write_to_asdf(self, ds):
