@@ -57,13 +57,14 @@ class TestManager(unittest.TestCase):
         """
         with self.assertRaises(TypeError):
             mgmt = Manager()
+        # Test that empty gathering works
         mgmt = Manager(config=self.config, empty=True)
         self.assertIsNone(mgmt.event)
-        with self.assertWarns(UserWarning):
-            mgmt.preprocess()
-            mgmt.run_pyflex()
-            mgmt.run_pyadjoint()
-            mgmt.plot_wav()
+        # Assert empty Manager returns nothing
+        self.assertIsNone(mgmt.preprocess())
+        self.assertIsNone(mgmt.run_pyflex())
+        self.assertIsNone(mgmt.run_pyadjoint())
+        self.assertIsNone(mgmt.plot_wav())
 
     def test_preprocess(self):
         """

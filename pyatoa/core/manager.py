@@ -711,7 +711,10 @@ class Manager:
         """
         self._check()
         logger.info("plotting map")
-
+        if self.event is None:
+            logger.info("cannot plot map, no event given")
+            return
+ 
         # Warn user if no inventory is given
         if not isinstance(self.inv, obspy.Inventory):
             logger.info("no inventory given, plotting blank map")
