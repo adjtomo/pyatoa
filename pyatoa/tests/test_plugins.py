@@ -60,11 +60,6 @@ class TestSeisflowsPlugin(unittest.TestCase):
                     dst=os.path.join(data_dir, "2018p130600.h5")
                     )
 
-        # Copy the config file into the pyatoa dir
-        shutil.copy(src=os.path.join(cls.test_data_path, "sfconfig.py"),
-                    dst=os.path.join(cls.pyatoa_dir, "sfconfig.py")
-                    )
-
         # Copy the synthetic data into the current dir
         syn_dir = os.path.join(cls.current_dir, 'traces', 'syn')
         os.makedirs(syn_dir)
@@ -144,6 +139,8 @@ class TestSeisflowsPlugin(unittest.TestCase):
         :return:
         """
         sfprocess.initialize(self.parser)
+
+        # sfconfig will be read from pyatoa.plugins.seisflows.sfconfig
         sfprocess.process(self.parser)
 
         # Quick check to make sure all expected output files were created

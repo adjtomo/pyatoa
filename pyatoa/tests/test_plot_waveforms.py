@@ -1,5 +1,5 @@
 """
-make sure the fdsn getter works
+UNFINISHED 4-7-19
 """
 import os
 import pyasdf

@@ -75,7 +75,7 @@ def sfconfig():
         "paths_to_responses": [],
 
         # Pyatoa Considerations
-        "set_logging": True,
+        "set_logging": "info",
         "fix_windows": False,
         "plot_waveforms": True,
         "plot_maps": True,

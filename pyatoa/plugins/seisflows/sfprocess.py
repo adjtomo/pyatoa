@@ -157,10 +157,13 @@ def process(parser):
     """
     paths, usrcfg = assemble_paths(parser, mode="process")
 
-    # Set loggging output
+    # Set loggging output, allow user to specify less output using 'info'
     if usrcfg["set_logging"]:
         logger = logging.getLogger("pyatoa")
-        logger.setLevel(logging.DEBUG)
+        if usrcfg["set_logging"].lower() == "info":
+            logger.setLevel(logging.INFO)
+        else:          
+            logger.setLevel(logging.DEBUG)
 
     # Set the Pyatoa Config object for misfit quantification
     config = pyatoa.Config(

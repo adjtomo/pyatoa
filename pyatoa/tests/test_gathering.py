@@ -62,10 +62,10 @@ class TestDataGatherMethods(unittest.TestCase):
         cls.config = Config(
             model_number="m00",
             event_id=cls.event.resource_id.resource_id.split('/')[1],
-            paths={"waveforms": os.path.join(cls.test_dir, "waveforms"),
-                   "synthetics": os.path.join(cls.test_dir, "synthetics"),
-                   "responses": os.path.join(cls.test_dir, "responses")
-                   }
+            cfgpaths={"waveforms": os.path.join(cls.test_dir, "waveforms"),
+                      "synthetics": os.path.join(cls.test_dir, "synthetics"),
+                      "responses": os.path.join(cls.test_dir, "responses")
+                      }
         )
 
     @classmethod
