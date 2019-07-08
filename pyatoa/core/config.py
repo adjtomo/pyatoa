@@ -16,7 +16,7 @@ class Config:
                  max_period=30, filter_corners=4, rotate_to_rtz=False,
                  unit_output='DISP', pyflex_config='default',
                  adj_src_type='multitaper_misfit', start_pad=20, end_pad=500,
-                 zero_pad=20, synthetic_unit="DISP", observed_tag='observed',
+                 zero_pad=0, synthetic_unit="DISP", observed_tag='observed',
                  synthetic_tag='synthetic_{model_num}',
                  map_corners={'lat_min': -42.5007, 'lat_max': -36.9488,
                               'lon_min': 172.9998, 'lon_max': 179.5077},

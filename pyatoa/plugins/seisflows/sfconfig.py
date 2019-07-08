@@ -90,8 +90,6 @@ def sfconfig(fidout='./sfconfig.json'):
         "create_srcrcv_vtk": True,
 
         # Pyatoa Paths (output directory set in Seisflows)
-        "figure_dir": "figures",
-        "data_dir": "data",
         "misfits_json": "misfits.json",
     }
 

@@ -42,6 +42,33 @@ class Getter:
         if self.client:
             self.Client = Client(self.client)
 
+    def _parse_channel(value):
+        """
+        fdsn clients cannot handle [xyz] unix style wildcards, although it can
+        handle * and ?, small function to address this so that these wildcard
+        styles can still be used in pyatoa
+        """
+        raise NotImplementedError
+
+        if "[" not in value:
+             return value
+        else:
+            code, components = value.split('[')  
+            components = components.split(']')[0]
+            # If only one component given in wildcard, return 
+            if len(components) == 1:
+                return code + components
+            # If three components given in wildcard, return unix '?' wildcard
+            elif len(components) == 3:
+                return code + "?"
+            # Else, return a list of components to add together
+            else:
+                return_channels = []
+                for component in components:
+                    return_channels.append(code + component)
+                return return_channels 
+        
+    
     def event_get(self):
         """
         return event information parameters pertaining to a given event id
@@ -69,7 +96,7 @@ class Getter:
             starttime=self.origintime-self.config.start_pad,
             endtime=self.origintime+self.config.end_pad, level=level
         )
-
+ 
     def waveform_get(self, station_code):
         """
         Call for obspy to download data. For some reason obspy can return traces

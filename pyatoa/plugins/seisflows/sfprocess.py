@@ -80,9 +80,9 @@ def assemble_paths(parser, mode=''):
         usrcfg = json.load(f)
 
     # Set Pyatoa paths based on user configurations
-    figs = os.path.join(pyatoa_io, usrcfg["figure_dir"])
+    figs = os.path.join(pyatoa_io, "figures")
     vtks = os.path.join(figs, "vtks")
-    data = os.path.join(pyatoa_io, usrcfg["data_dir"])
+    data = os.path.join(pyatoa_io, "data")
     misfits = os.path.join(data, "misfits")
     misfit_file = os.path.join(pyatoa_io, usrcfg["misfits_json"])
 
@@ -218,7 +218,7 @@ def process(parser):
                 # Gather data, searching internal pathways, else fetching from
                 # external pathways if possible. Preprocess identically
                 mgmt.gather_data(station_code="{net}.{sta}.{loc}.{cha}".format(
-                                 net=net, sta=sta, loc="*", cha="HH[NZE]")
+                                 net=net, sta=sta, loc="*", cha="HH*")
                                  )
                 mgmt.preprocess()
 
