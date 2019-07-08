@@ -69,20 +69,22 @@ def assemble_paths(parser, mode=''):
     sf_json = os.path.join(parser.working_dir, "output", "seisflows_paths.json")
     with open(sf_json, "r") as f:
         sf_paths = json.load(f)
+    
+    # Pyatoa input/output directory, supplied by User in seisflows paths 
+    pyatoa_io = sf_paths["PYATOA_IO"]
 
     # User defined configuration for Pyatoa, controlling processing params
-    # pathing and switches for outputs and logging. Import from user supplied
-    # output directory
-    os.chdir(sf_paths["PYATOA"])
-    from .sfconfig import sfconfig
-    usrcfg = sfconfig()
+    # pathing and switches for outputs and logging
+    usrcfg_json = os.path.join(pyatoa_io, "sfconfig.json")
+    with open(usrcfg_json, "r") as f:
+        usrcfg = json.load(f)
 
     # Set Pyatoa paths based on user configurations
-    figs = os.path.join(sf_paths["PYATOA"], usrcfg["figure_dir"])
+    figs = os.path.join(pyatoa_io, usrcfg["figure_dir"])
     vtks = os.path.join(figs, "vtks")
-    data = os.path.join(sf_paths["PYATOA"], usrcfg["data_dir"])
+    data = os.path.join(pyatoa_io, usrcfg["data_dir"])
     misfits = os.path.join(data, "misfits")
-    misfit_file = os.path.join(sf_paths["PYATOA"], usrcfg["misfits_json"])
+    misfit_file = os.path.join(pyatoa_io, usrcfg["misfits_json"])
 
     paths = {"PYATOA_FIGURES": figs, "PYATOA_DATA": data,
              "PYATOA_VTKS": vtks, "PYATOA_MISFITS": misfits,
@@ -304,11 +306,21 @@ if __name__ == "__main__":
 
     # Initialize Pyatoa directory structure
     if parser.mode == "initialize":
-        initialize(parser)
+        try:
+            initialize(parser)
+            sys.exit(0)
+        except Exception as e:
+            traceback.print_exc()
+            sys.exit(1)
 
     # Run some cleanup scripts at the end of an iteration
     elif parser.mode == "finalize":
-        finalize(parser)
+        try:
+            finalize(parser)
+            sys.exit(0)
+        except Exception as e:
+            traceback.print_exc()
+            sys.exit(1)
 
     # Process misfit values
     elif parser.mode == "process":

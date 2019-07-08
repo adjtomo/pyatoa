@@ -10,6 +10,7 @@ import shutil
 
 from pyatoa.core.config import Config
 import pyatoa.plugins.seisflows.sfprocess as sfprocess
+import pyatoa.plugins.seisflows.sfconfig as sfconfig
 
 
 class TestSeisflowsPlugin(unittest.TestCase):
@@ -41,7 +42,7 @@ class TestSeisflowsPlugin(unittest.TestCase):
 
         # Make a fake Json file in the output directory
         jsonfid = os.path.join(cls.output_dir, "seisflows_paths.json")
-        jsondata = {"PYATOA": cls.pyatoa_dir}
+        jsondata = {"PYATOA_IO": cls.pyatoa_dir}
         with open(jsonfid, 'w') as f:
             json.dump(jsondata, f)
 
@@ -59,6 +60,10 @@ class TestSeisflowsPlugin(unittest.TestCase):
         shutil.copy(src=os.path.join(cls.test_data_path, "test_dataset.h5"),
                     dst=os.path.join(data_dir, "2018p130600.h5")
                     )
+
+        # Create the config file
+        sfconfig_fid = os.path.join(cls.pyatoa_dir, "sfconfig.json")
+        sfconfig.sfconfig(fidout=sfconfig_fid)
 
         # Copy the synthetic data into the current dir
         syn_dir = os.path.join(cls.current_dir, 'traces', 'syn')

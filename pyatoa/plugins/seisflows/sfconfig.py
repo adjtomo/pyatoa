@@ -1,12 +1,14 @@
 """
+Create a config file in .json format
+
 As with all packages, a configuration file provides a simple, single-entry
 point for the User with the package. Here we provide a python script that will
 create a .json file that will be parsed by process.py, containing
 parameters that control the expectations and outputs of Pyatoa
 """
+import json
 
-
-def sfconfig():
+def sfconfig(fidout='./sfconfig.json'):
     """
     user set dictionary parameters
     :type min_period: int
@@ -92,9 +94,12 @@ def sfconfig():
         "data_dir": "data",
         "misfits_json": "misfits.json",
     }
+
+    with open(fidout, "w") as f:
+        json.dump(pd, f, indent=4, separators=(',', ':'))     
+
     return pd
 
 
 if __name__ == "__main__":
-    pass
-
+    sfconfig()
