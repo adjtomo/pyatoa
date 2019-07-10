@@ -93,20 +93,19 @@ def del_auxiliary_data(ds, model=None, step=None):
     subgroups_with_step = ["Statistics"]
     for aux in ds.auxiliary_data.list():
         if model:
-            # Grrr. Hardcoded check on auxiliary subgroup, because only
-            # "Statistics" has a 'step' subgroup
-            if step:
-                # if 'step' is in this subgroup, check and delete
-                if aux in subgroups_with_step:
-                    if hasattr(ds.auxiliary_data[aux][model], step):
-                        del ds.auxiliary_data[aux][model][step]
-                # if 'step' is not in this subgroup, just delete the model
-                else:
-                    if hasattr(ds.auxiliary_data[aux], model):
+            # If the aux data doesn't contain this model, nothing to clean
+            if hasattr(ds.auxiliary_data[aux], model):
+                if step:
+                # Check that this auxiliary data contains this model
+                    if aux in subgroups_with_step:
+                        # If this is one of the subgroups with a step attr.
+                        if hasattr(ds.auxiliary_data[aux][model], step):
+                            del ds.auxiliary_data[aux][model][step]
+                    # if 'step' is not in this subgroup, just delete the model
+                    else:
                         del ds.auxiliary_data[aux][model]
-            # If no step given, simply delete the model subgroup if available
-            else:
-                if hasattr(ds.auxiliary_data[aux], model):
+                # If no 'step' given, simply delete the model subgroup if avail.
+                else:
                     del ds.auxiliary_data[aux][model]
         else:
             del ds.auxiliary_data[aux]
