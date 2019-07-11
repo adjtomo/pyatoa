@@ -272,23 +272,27 @@ def create_srcrcv_vtk_multiple(pathin, pathout, model, utm_zone=60):
             # Check if dataset contains adjoint sources
             if not bool(ds.auxiliary_data.AdjointSources):
                 continue
+            
             # Loop through stations with adjoint sources
-            for adjsrc in ds.auxiliary_data.AdjointSources[model].list():
-                sta = ds.auxiliary_data.AdjointSources[model][adjsrc]
+            if hasattr(ds.auxiliary_data.AdjointSources, model):
+                for adjsrc in ds.auxiliary_data.AdjointSources[model].list():
+                    sta = ds.auxiliary_data.AdjointSources[model][adjsrc]
 
-                # make sure no repeat stations
-                if sta.parameters["station_id"] in sta_ids:
-                    continue
+                    # make sure no repeat stations
+                    if sta.parameters["station_id"] in sta_ids:
+                        continue
 
-                # Convert lat lon to UTM
-                sx, sy = lonlat_utm(lon_or_x=sta.parameters["longitude"],
-                                    lat_or_y=sta.parameters["latitude"],
-                                    utm_zone=utm_zone, inverse=False
-                                    )
-                sta_x.append(sx)
-                sta_y.append(sy)
-                sta_elv.append(sta.parameters["elevation_in_m"])
-                sta_ids.append(sta.parameters["station_id"])
+                    # Convert lat lon to UTM
+                    sx, sy = lonlat_utm(lon_or_x=sta.parameters["longitude"],
+                                        lat_or_y=sta.parameters["latitude"],
+                                        utm_zone=utm_zone, inverse=False
+                                        )
+                    sta_x.append(sx)
+                    sta_y.append(sy)
+                    sta_elv.append(sta.parameters["elevation_in_m"])
+                    sta_ids.append(sta.parameters["station_id"])
+            else:
+                continue
 
             # Get event location information in UTM
             ex, ey = lonlat_utm(

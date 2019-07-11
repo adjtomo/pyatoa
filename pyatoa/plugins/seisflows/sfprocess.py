@@ -11,6 +11,7 @@ import json
 import glob
 import pyasdf
 import pyatoa
+import shutil
 import logging
 import argparse
 import warnings
@@ -145,7 +146,17 @@ def finalize(parser):
             pathin=paths["PYATOA_DATA"], pathout=paths["PYATOA_VTKS"],
             model=parser.model_number
         )
+    # Create copies of .h5 files at the end of each iteration, because .h5
+    # files are easy to corrupt so it's good to have a backup
+    if usrcfg["snapshot"]:
+        snapshot_path = os.path.join(paths["PYATOA_DATA"], "snapshot")
+        if not os.path.exists(snapshot_path):
+            os.makedirs(snapshot_path)
+        srcs = glob.glob(os.path.join(paths["PYATOA_DATA"], "*.h5"))
+        for src in srcs:
+            shutil.copy(src, os.path.join(snapshot_path, os.path.basename(src))) 
 
+        
 
 def process(parser):
     """

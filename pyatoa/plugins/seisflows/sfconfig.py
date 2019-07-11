@@ -88,6 +88,7 @@ def sfconfig(fidout='./sfconfig.json'):
         "purge_originals": False,
         "purge_tiles": True,
         "create_srcrcv_vtk": True,
+        "snapshot": True,
 
         # Pyatoa Paths (output directory set in Seisflows)
         "misfits_json": "misfits.json",

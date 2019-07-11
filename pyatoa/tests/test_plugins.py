@@ -132,11 +132,17 @@ class TestSeisflowsPlugin(unittest.TestCase):
         """
         sfprocess.initialize(self.parser)
         sfprocess.finalize(self.parser)
-
+        import ipdb;ipdb.set_trace()
         # Check that the vtk generation worked
         check_file = os.path.join(
             self.pyatoa_dir, 'figures', 'vtks', 'srcrcv_m00_1.vtk')
         self.assertTrue(os.path.exists(check_file))
+
+        # Check that snapshot works
+        self.assertTrue(os.path.exists(
+            self.pyatoa_dir, 'data', 'snapshot', '2018p130600.h5')
+            )
+
 
     def test_process(self):
         """

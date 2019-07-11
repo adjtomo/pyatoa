@@ -165,7 +165,7 @@ def window_maker(st_obs, st_syn, config, time_offset_sec=0., windows=None,
                 # Plot adjoint source time reversed, line up with waveforms
                 b1, = twaxes[i].plot(
                     t, adj_src.adjoint_source[::-1], 'g', alpha=0.55,
-                    linestyle='--', zorder=z-1,
+                    linestyle='-.', zorder=z-1,
                     label="Adjoint Source, Misfit={:.4f}".format(adj_src.misfit)
                 )
                 lines_for_legend += [b1]
