@@ -202,12 +202,10 @@ class Config:
                               extcfg.set_pyflex_config(self)
                               )
         # Set Pyadjoint Config as a tuple, (adj source type, pyadjoint.Config)
-        self.pyadjoint_config = (
-            self.pyadjoint_config[0],
-            extcfg.get_pyadjoint_config(choice=self.pyadjoint_config[0],
-                                        min_period=self.min_period,
-                                        max_period=self.max_period)
-                                 )
+        self.pyadjoint_config = extcfg.get_pyadjoint_config(
+            choice=self.pyadjoint_config[0], min_period=self.min_period,
+            max_period=self.max_period
+        )
 
     def write_to_txt(self, filename="./pyatoa_config.txt"):
         """

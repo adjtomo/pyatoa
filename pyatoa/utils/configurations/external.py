@@ -197,11 +197,16 @@ def pyflex_configs():
             "c_4b": 12.0
         },
         # values tested for the Hikurangi tomography problem, strict criteria
+        # choice considerations
         "hikurangi_strict": {
             "stalta_waterlevel": 0.08,
-            "tshift_acceptance_level": 10.0,
-            "dlna_acceptance_level": 0.75,
-            "cc_acceptance_level": 0.9,
+            "tshift_acceptance_level": 5.0,  # based on sign flip waveforms
+            "dlna_acceptance_level": 1.3,
+            "cc_acceptance_level": 0.85,
+            "s2n_limit": 10.,
+            "max_time_before_first_arrival": 0.,  # min start of window (s)
+            "c_0": 5.,  # internal minima, reject low amplitude arrivals
+            "c_1": 2.5,  # min win length - 2 * min_period ~= 20s min
         },
     }
 
@@ -345,47 +350,45 @@ def get_pyadjoint_config(choice, min_period, max_period):
     """
     import pyadjoint
 
+    # Default parameters
     if choice == "waveform":
-        cfgout = pyadjoint.ConfigWaveForm(
-            min_period=min_period,
-            max_period=max_period,
-            taper_type="hann",
-            taper_percentage=0.15
-        )
+        cfgout = (choice, pyadjoint.ConfigWaveForm(min_period=min_period,
+                                                   max_period=max_period)
+                  )
     elif choice == "cc_traveltime_misfit":
-        cfgout = pyadjoint.ConfigCrossCorrelation(
-            min_period=min_period,
-            max_period=max_period,
-            taper_type='hann',
-            taper_percentage=0.3,
-            measure_type='dt',
-            use_cc_error=True,
-            dt_sigma_min=1.0,
-            dlna_sigma_min=0.5
-        )
+        cfgout = (choice, pyadjoint.ConfigCrossCorrelation(
+            min_period=min_period, max_period=max_period)
+                  )
     elif choice == "multitaper_misfit":
-        cfgout = pyadjoint.ConfigMultiTaper(
-            min_period=min_period,
-            max_period=max_period,
-            lnpt=15,
-            transfunc_waterlevel=1e-10,
-            water_threshold=0.02,
-            ipower_costaper=10,
-            min_cycle_in_window=3,  # The default is 0.5 but that's incorrect
-            taper_type='hann',
-            taper_percentage=0.3,
-            mt_nw=4.0,
-            num_taper=5,
-            dt_fac=2.0,
-            phase_step=1.5,
-            err_fac=2.5,
-            dt_max_scale=3.5,
-            measure_type='dt',
-            dt_sigma_min=1.0,
-            dlna_sigma_min=0.5,
-            use_cc_error=True,
-            use_mt_error=False
-        )
+        cfgout = (choice, pyadjoint.ConfigMultiTaper(min_period=min_period,
+                                                     max_period=max_period,
+                                                     min_cycle_in_window=3)
+                  )
+    # Custom configurations
+    elif choice == "mtm_hikurangi_strict":
+        cfgout = ("multitaper_misfit",
+                  pyadjoint.ConfigMultiTaper(
+                      min_period=min_period,
+                      max_period=max_period,
+                      lnpt=15,
+                      transfunc_waterlevel=1e-10,
+                      water_threshold=0.02,
+                      ipower_costaper=2,  # default=10, 2=broader smoothing
+                      min_cycle_in_window=3,  # default 0.5 but that's incorrect
+                      taper_type='hann',
+                      taper_percentage=0.5,  # % of window to taper at each end
+                      mt_nw=4.0,  # bin width of multitapers
+                      num_taper=5,  # number of tapers
+                      dt_fac=2.0,
+                      phase_step=1.5,
+                      err_fac=2.5,
+                      dt_max_scale=3.5,
+                      measure_type='dt',
+                      dt_sigma_min=1.0,
+                      dlna_sigma_min=0.5,
+                      use_cc_error=True,
+                      use_mt_error=False)
+                  )
     else:
         raise KeyError("adjoint source type incorrectly specified, "
                        "must be: 'waveform', 'cc_traveltime_misfit', "

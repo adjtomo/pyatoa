@@ -119,8 +119,15 @@ def window_maker(st_obs, st_syn, config, time_offset_sec=0., windows=None,
                     st_obs[0].stats.endtime-st_obs[0].stats.starttime,
                     len(st_obs[0].data))
     
-    # Plot per component
     z = 5
+    # Set the annotation for misfit windows
+    window_anno_template = ("max_cc={mcc:.2f}\n"
+                            "cc_shift={ccs:.2f}s\n"
+                            "dlnA={dln:.3f}\n"
+                            "left={lft:.1f}s\n"
+                            "length={lgt:.1f}s\n"
+                            )
+    # Plot per component
     for i, comp in enumerate(config.component_list):
         obs = st_obs.select(component=comp)
         syn = st_syn.select(component=comp)
@@ -133,13 +140,8 @@ def window_maker(st_obs, st_syn, config, time_offset_sec=0., windows=None,
         # If misfit windows given, plot each window and annotate information
         if (windows is not None) and (comp in windows.keys()):
             ymin, ymax = axes[i].get_ylim()
-            window_anno = ("max_cc={mcc:.2f}\n"
-                           "cc_shift={ccs:.2f}s\n"
-                           "dlnA={dln:.3f}\n"
-                           "left={lft:.1f}s\n"
-                           "right={rgt:.1f}s\n"
-                           "length={lgt:.1f}s")
-            for window in windows[comp]:
+
+            for j, window in enumerate(windows[comp]):
                 # Rectangle to represent misfit windows; taken from Pyflex
                 tleft = window.left * window.dt + time_offset_sec
                 tright = window.right * window.dt + time_offset_sec
@@ -147,26 +149,49 @@ def window_maker(st_obs, st_syn, config, time_offset_sec=0., windows=None,
                     xy=(tleft, ymin), width=tright-tleft, height=ymax-ymin,
                     color='orange', alpha=(window.max_cc_value ** 2) * 0.25)
                 )
-
                 # Annotate window information into the windows
                 t_anno = (tright - tleft) * 0.025 + tleft
-                axes[i].annotate(s=window_anno.format(
+                y_anno = ymax * 0.2
+                window_anno = window_anno_template.format(
                     mcc=window.max_cc_value,
                     ccs=window.cc_shift * st_obs[0].stats.delta,
-                    dln=window.dlnA, lft=tleft, rgt=tright, lgt=tright-tleft),
-                    xy=(t_anno, ymax * 0.2),
-                    zorder=z+1, fontsize=8
+                    dln=window.dlnA, lft=tleft, lgt=tright - tleft
                 )
+                # If an adjoint source is given, add a bit more information
+                # Adjoint source measurements should line up with the misfit win
+                if adj_srcs is not None:
+                    y_anno = ymax * 0.005
+                    window_anno = "type={typ}\nmsft={mft:.1E}\n".format(
+                        typ=adj_srcs[comp].measurement[j]["type"],
+                        mft=adj_srcs[comp].measurement[j]["misfit_dt"]
+                    ) + window_anno
+                axes[i].annotate(s=window_anno, xy=(t_anno, y_anno),
+                                 zorder=z + 1, fontsize=8,
+                                 )
+
+            # Plot the direct arrivals from the first window in each subplot
+            # as vertical ticks in blue
+            for phase_arrivals in windows[comp][0].phase_arrivals:
+                if phase_arrivals["name"] in ["s", "p"]:
+                    axes[i].axvline(x=phase_arrivals["time"], ymin=0, ymax=0.15,
+                                    color='b', alpha=0.2
+                                    )
+                    axes[i].annotate(s=phase_arrivals["name"],
+                                     xy=(0.975 * phase_arrivals["time"],
+                                         0.10 * (ymax-ymin) + ymin),
+                                     fontsize=8
+                                     )
 
             # If Adjoint Sources given, plot and provide legend information
             adj_src = None
             if (adj_srcs is not None) and (comp in adj_srcs.keys()):
                 adj_src = adj_srcs[comp]
+
                 # Plot adjoint source time reversed, line up with waveforms
                 b1, = twaxes[i].plot(
                     t, adj_src.adjoint_source[::-1], 'g', alpha=0.55,
                     linestyle='-.', zorder=z-1,
-                    label="Adjoint Source, Misfit={:.4f}".format(adj_src.misfit)
+                    label="Adjoint Source, Misfit={:.2E}".format(adj_src.misfit)
                 )
                 lines_for_legend += [b1]
 
