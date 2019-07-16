@@ -7,19 +7,14 @@ but they can be difficult to navigate and to ascertain information from
 The diver is a wrapper class which provies convenience functions for returning
 statistics, information and counts of information inside a pyasdf datset
 """
-import os
-import copy
-import glob
-import sys
-import pyasdf
-import numpy as np
+import json
 
 
 class Diver:
     """
     Information parsing class
     """
-    def __init__(self, ds, config=None):
+    def __init__(self):
         """
         Instantiate with a pyasdf dataset
 
@@ -27,7 +22,7 @@ class Diver:
         :param ds: dataset to deep dive into
         """
         self.ds = ds
-        self.config = copy.deepcopy(config)
+        self.config = config
         self.misfit_values = None
         self.source_receiver_info = None
         self.cc_time_shifts = {}
@@ -46,71 +41,36 @@ class Diver:
                                noa=len(self.adj_srcs)
                                )
 
-
-    def _available_synthetics(self):
+    def suggest(self, json_fid):
         """
-        given a config, determine which synthetic stations are available and
-        pretty print everything for ease of checking
+        Takes the misfit json fid that should be outputted by the Pyatoa
+        workflow, analyze the number of misfit windows and total misfits
+        and provide some suggestions to the User about what the events may look
+        like to avoid having to visualize kernels or waveforms
+        :param fid:
         :return:
         """
-        if not self.config:
-            return
-        for path in self.config.paths["synthetics"]:
-            if not os.path.exists(path):
-               continue
-            for model in glob.glob(os.path.join(path, "m*")):
-                for event in glob.glob(os.path.join(model, "*")):
-                    available = glob.glob(os.path.join(event, "*sem?*"))
-                    networks, stations, components = [], [], []
-                    for individual in available:
-                        individual = individual.split('/')[-1]
-                        if len(individual.split('.')) != 4:
-                            continue
-                        networks.append(individual.split('.')[0])
-                        stations.append((individual.split('.')[0] + "." +
-                                         individual.split('.')[1])
-                        )
-                        components.append(individual.split('.')[3])
-                    networks = list(set(networks))
-                    stations = list(set(stations))
-                    components = list(set(components))
-                    print("Model: {}".format(model))
-                    print("\tNetworks: ", end=" ")
-                    networks.sort()
-                    for net in networks:
-                        print(net, end=" ")
-                    print(' ')
-                    print("\tStations: ", end=" ")
-                    stations.sort()
-                    # break list into chunks for pretty printing
-                    chunks_of = 15
-                    chunks = [stations[x:x + chunks_of] for x in
-                              range(0, len(stations), chunks_of)]
-                    for sta in chunks[0]:
-                        print(sta, end=" ")
-                    print("\n")
-                    for chunk in chunks[1:]:
-                        print("\t\t", end=" ")
-                        for sta in chunk:
-                            print(sta, end=" ")
-                        print("\n")
-                    print(' ')
-                    print("\tComponents: ", end=" ")
-                    for comp in components:
-                        print(comp, end=" ")
-                    print(' ')
+        with open(json_fid, "r") as f:
+            mft = json.load(f)
+        for model in mft.keys():
+            print("MODEL {}".format(model))
+            for step in mft[model].keys():
+                print("\tSTEP {}".format(step))
+                extra_keys = ["misfit", "adjsrcs", "windows"]
+                number_events = len(mft[model][step].keys()) - len(extra_keys)
+                total_misfit = mft[model][step]["misfit"]
+                for key in mft[model][step].keys():
+                    if key not in extra_keys:
+                        percent_misfit = (
+                            (mft[model][step][key]["misfit"]/number_events) /
+                            total_misfit
+                        ) * 100
+                        print(
+                            "\t\t{ev}, {pc:.2f}% misfit w/ {wi} windows".format(
+                                ev=key, pc=percent_misfit,
+                                wi=mft[model][step][key]["windows"]
+                            ))
 
-
-    def available(self, choice):
-        """
-        higher function to call on availability functions
-        :param choice:
-        :return:
-        """
-        if choice == "synthetic":
-            self._available_synthetics()
-        else:
-            return
 
     def count_windows(self):
         """

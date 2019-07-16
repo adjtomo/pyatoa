@@ -4,7 +4,6 @@ various bits of data required. functions here will aid in reshaping data
 into the correct formats
 """
 import os
-import numpy as np
 
 
 def channel_codes(dt):
