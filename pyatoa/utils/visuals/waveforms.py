@@ -238,7 +238,7 @@ def window_maker(st_obs, st_syn, config, time_offset_sec=0., windows=None,
         # Dynamic seismogram length
         if not length_sec:
             length_sec = t[-1]
-        axes[i].set_xlim([t[0], length_sec])
+        axes[i].set_xlim([0, length_sec])
 
         # Format axes and align
         for AX in [axes[i], twaxes[i]]:

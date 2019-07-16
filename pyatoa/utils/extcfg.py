@@ -202,7 +202,7 @@ def pyflex_configs():
             "stalta_waterlevel": 0.08,
             "tshift_acceptance_level": 5.0,  # based on sign flip waveforms
             "dlna_acceptance_level": 1.3,
-            "cc_acceptance_level": 0.85,
+            "cc_acceptance_level": 0.9,
             "s2n_limit": 10.,
             "max_time_before_first_arrival": 0.,  # min start of window (s)
             "c_0": 5.,  # internal minima, reject low amplitude arrivals
