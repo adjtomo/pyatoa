@@ -5,7 +5,7 @@ Configuration object for Pyatoa.
 Fed into the processor class for workflow management, and also used for
 information sharing between objects and functions.
 """
-import pyatoa.utils.configurations.external as extcfg
+import pyatoa.utils.extcfg as extcfg
 
 
 class Config:
