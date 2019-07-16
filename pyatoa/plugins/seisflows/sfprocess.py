@@ -80,7 +80,7 @@ def assemble_paths(parser, mode=''):
     with open(usrcfg_json, "r") as f:
         usrcfg = json.load(f)
 
-    # Set Pyatoa paths based on user configurations
+    # Set Pyatoa paths
     figs = os.path.join(pyatoa_io, "figures")
     vtks = os.path.join(figs, "vtks")
     data = os.path.join(pyatoa_io, "data")
@@ -97,6 +97,7 @@ def assemble_paths(parser, mode=''):
         event_paths = {
             "ADJ_TRACES": os.path.join(parser.current_dir, "traces", "adj"),
             "SYN_TRACES": os.path.join(parser.current_dir, "traces", "syn"),
+            "OBS_TRACES": os.path.join(parser.current_dir, "traces", "obs"),
             "EVENT_DATA": os.path.join(parser.current_dir, "DATA"),
             "STATIONS": os.path.join(parser.current_dir, "DATA", "STATIONS"),
             "EVENT_FIGURES": os.path.join(paths["PYATOA_FIGURES"],
@@ -156,7 +157,6 @@ def finalize(parser):
         for src in srcs:
             shutil.copy(src, os.path.join(snapshot_path, os.path.basename(src))) 
 
-        
 
 def process(parser):
     """
@@ -165,18 +165,18 @@ def process(parser):
 
     :type parser: argparse.Parser
     :param parser: arguments passed in from Seisflows
-    :type usrcfg: dict
-    :param usrcfg: user configuration, from sfconfig.py
     """
     paths, usrcfg = assemble_paths(parser, mode="process")
 
     # Set loggging output, allow user to specify less output using 'info'
     if usrcfg["set_logging"]:
-        logger = logging.getLogger("pyatoa")
+        logger_pyatoa = logging.getLogger("pyatoa")
         if usrcfg["set_logging"].lower() == "info":
-            logger.setLevel(logging.INFO)
-        else:          
-            logger.setLevel(logging.DEBUG)
+            logger_pyatoa.setLevel(logging.INFO)
+        else:
+            logger_pyatoa.setLevel(logging.DEBUG)
+            logger_pyflex = logging.getLogger("pyflex")
+            logger_pyflex.setLevel(logging.DEBUG)
 
     # Set the Pyatoa Config object for misfit quantification
     config = pyatoa.Config(
@@ -189,8 +189,10 @@ def process(parser):
         unit_output=usrcfg["unit_output"],
         pyflex_config=usrcfg["pyflex_config"],
         adj_src_type=usrcfg["adj_src_type"],
+        synthetics_only=usrcfg["synthetics_only"],
         cfgpaths={"synthetics": paths["SYN_TRACES"],
-                  "waveforms": usrcfg["paths_to_waveforms"],
+                  "waveforms": usrcfg["paths_to_waveforms"] +
+                               [paths["OBS_TRACES"]],
                   "responses": usrcfg["paths_to_responses"]
                   }
         )

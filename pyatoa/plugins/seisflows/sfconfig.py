@@ -8,13 +8,24 @@ parameters that control the expectations and outputs of Pyatoa
 """
 import json
 
-def sfconfig(fidout='./sfconfig.json'):
+
+def sfconfig(min_period=10, max_period=30, filter_corners=4,
+             rotate_to_rtz=False, unit_output="DISP", pyflex_config="default",
+             adj_src_type="multitaper_misfit", paths_to_waveforms=[],
+             paths_to_responses=[], set_logging="info", fix_windows=False,
+             plot_waveforms=True, plot_maps=True, synthetics_only=False,
+             write_misfit_json=True, tile_and_combine=False,
+             purge_originals=False, purge_tiles=True,
+             create_srcrcv_vtk=True, snapshot=True, misfits_json="misfits.json",
+             fidout='./sfconfig.json'):
     """
     user set dictionary parameters
     :type min_period: int
     :param min_period: minimum filter period in seconds
     :type max_period: int
     :param max_period: maximum filter period in seconds
+    :type filter_corners: int
+    :param filter_corners: number of corners to use on the waveform filter
     :type rotate_to_rtz: bool
     :param rotate_to_rtz: rotate compoments from north east to radial transverse
     :type unit_output: str
@@ -27,8 +38,6 @@ def sfconfig(fidout='./sfconfig.json'):
     :param adj_src_type: adjoint source calculation method for Pyadjoint,
         available: 'waveform', 'cc_traveltime_misfit', 'multitaper_misfit'
     :type paths_to_*: list of str
-    :param paths_to_synthetics: paths to folder containing synthetic data
-        Pyatoa expects .sem files inside, e.g. paths_to_synthetics/*semd
     :param paths_to_waveforms: paths to folder containg observation data
         Pyatoa expects the resulting folder structure to follow SEED convention
     :param paths_to_responses: paths to STATIONXML files for observations
@@ -44,8 +53,11 @@ def sfconfig(fidout='./sfconfig.json'):
         and adjoint sources, save them into 'figure_directory'
     :type plot_maps: bool
     :param plot_maps: plot source-receiver map and save into 'figure_directory'
-    :type write_misfits_json: bool
-    :param write_misfits_json: write misfit information, number of windows,
+    :type synthetics_only: bool
+    :param synthetics_only: synthetic synthetic example, will search for
+        observation data based on synthetic search routines
+    :type write_misfit_json: bool
+    :param write_misfit_json: write misfit information, number of windows,
         number of adjoint sources to a json file with name 'misfit_json_file'
     :type tile_and_combine: bool
     :param tile_and_combine: combine the waveforms and maps into a single pdf
@@ -55,43 +67,46 @@ def sfconfig(fidout='./sfconfig.json'):
         if 'tile_and_combine'==True
     :param purge_tiles: purge intermediate tile files which combine wav and map
         only if 'tile_and_combine'==True
-    :type *_diry: str
-    :param figure_dir: name of the figure directory, default='figures'
-    :param data_dir: name of the data directory, default='data'
-    :param misfit_dir: name of scratch misfit directory, default='misfits'
-    :type misfit_json: str
-    :param misfit_json: name of the misfits json file, only if
+    :type create_srcrcv_vtk: bool
+    :param create_srcrcv_vtk: If finalize should create vtk files for src n rcvs
+    :type snapshot: bool
+    :param snapshot: save a copy of the HDF5 files from each iteration, incase
+        e.g. file corruption, allows for temporary backups
+    :type misfits_json: str
+    :param misfits_json: name of the misfits json file, only if
         write_misfits_json==True, default='misfits.json'
-
+    :type fidout: str
+    :param fidout: filename to save the .json config file
     """
     pd = {
         # Pyatoa Config object
-        "min_period": 10,
-        "max_period": 30,
-        "filter_corners": 4,
-        "rotate_to_rtz": False,
-        "unit_output": "DISP",
-        "pyflex_config": "default",
-        "adj_src_type": "multitaper_misfit",
-        "paths_to_waveforms": [],
-        "paths_to_responses": [],
+        "min_period": min_period,
+        "max_period": max_period,
+        "filter_corners": filter_corners,
+        "rotate_to_rtz": rotate_to_rtz,
+        "unit_output": unit_output,
+        "pyflex_config": pyflex_config,
+        "adj_src_type": adj_src_type,
+        "paths_to_waveforms": paths_to_waveforms,
+        "paths_to_responses": paths_to_responses,
 
         # Pyatoa Considerations
-        "set_logging": "info",
-        "fix_windows": False,
-        "plot_waveforms": True,
-        "plot_maps": True,
+        "set_logging": set_logging,
+        "fix_windows": fix_windows,
+        "plot_waveforms": plot_waveforms,
+        "plot_maps": plot_maps,
+        "synthetics_only": synthetics_only,
 
         # Pyatoa Outputs
-        "write_misfit_json": True,
-        "tile_and_combine": False,
-        "purge_originals": False,
-        "purge_tiles": True,
-        "create_srcrcv_vtk": True,
-        "snapshot": True,
+        "write_misfit_json": write_misfit_json,
+        "tile_and_combine": tile_and_combine,
+        "purge_originals": purge_originals,
+        "purge_tiles": purge_tiles,
+        "create_srcrcv_vtk": create_srcrcv_vtk,
+        "snapshot": snapshot,
 
         # Pyatoa Paths (output directory set in Seisflows)
-        "misfits_json": "misfits.json",
+        "misfits_json": misfits_json,
     }
 
     with open(fidout, "w") as f:

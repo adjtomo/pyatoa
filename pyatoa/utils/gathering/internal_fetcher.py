@@ -215,7 +215,7 @@ class Fetcher:
             )
             raise FileNotFoundError()
 
-    def fetch_syn_by_dir(self, station_code, event_id='',
+    def fetch_syn_by_dir(self, station_code, event_id='', pathname='synthetics',
                          specfem_fid_template='{net}.{sta}.*{cmp}.sem{dva}'):
         """
         Synthetic data is saved by event id and model number,
@@ -237,6 +237,8 @@ class Fetcher:
             the directory for the event id first, rather than just searching the
             given directory. Useful for when data is stored by event id
             e.g. /path/to/synthetics/{event_id}/*
+        :type pathname: str
+        :param pathname: the key in cfgpaths dictionary to search for data
         :rtype stream: obspy.core.stream.Stream
         :return stream: stream object containing relevant waveforms
         """
@@ -252,7 +254,7 @@ class Fetcher:
         net, sta, loc, cha = station_code.split('.')
 
         # Check through paths given in Config
-        for path_ in self.config.cfgpaths['synthetics']:
+        for path_ in self.config.cfgpaths[pathname]:
             if not os.path.exists(path_):
                 continue
 
@@ -310,8 +312,17 @@ class Fetcher:
                                                 tag=self.config.observed_tag)
             except KeyError:
                 logger.debug("obs internal asdf failed, fetching by dir")
-                # If asdf dataset does not contain data, search internal dir.
-                st_obs = self.fetch_obs_by_dir(station_code)
+                # If asdf dataset does not contain data, search internal
+                # If this is a synthetic-synthetic example, search the waveforms
+                # directory, using the synthetic search
+                if self.config.synthetics_only:
+                    logger.debug("synthetics only case, searching for syn data")
+                    st_obs = self.fetch_syn_by_dir(station_code,
+                                                   pathname='waveforms'
+                                                   )
+                # Else look for observations using SEED convention
+                else:
+                    st_obs = self.fetch_obs_by_dir(station_code)
                 self.ds.add_waveforms(waveform=st_obs,
                                       tag=self.config.observed_tag)
                 return st_obs

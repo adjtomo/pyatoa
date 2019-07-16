@@ -17,7 +17,7 @@ class Config:
                  unit_output='DISP', pyflex_config='default',
                  adj_src_type='multitaper_misfit', start_pad=20, end_pad=500,
                  zero_pad=0, synthetic_unit="DISP", observed_tag='observed',
-                 synthetic_tag='synthetic_{model_num}',
+                 synthetic_tag='synthetic_{model_num}', synthetics_only=False,
                  map_corners={'lat_min': -42.5007, 'lat_max': -36.9488,
                               'lon_min': 172.9998, 'lon_max': 179.5077},
                  cfgpaths={'synthetics': [], 'waveforms': [], 'responses': [],
@@ -60,6 +60,11 @@ class Config:
             to first arrival
         :type synthetic_unit: str
         :param synthetic_unit: units of Specfem synthetics, 'DISP', 'VEL', 'ACC'
+        :type synthetics_only: bool
+        :param synthetics_only: If the user is doing a synthetic-synthetic
+            example, e.g. in a checkerboard test, this will tell the internal
+            fetcher to search for observation data in the 'waveforms' path
+            in the same manner that it searches for synthetic data.
         :type observed_tag: str
         :param observed_tag: Tag to use for asdf dataset to label and search
             for obspy streams of observation data. Defaults 'observed'
@@ -113,6 +118,7 @@ class Config:
         self.pyflex_config = (pyflex_config, None)
         self.pyadjoint_config = (adj_src_type, None)
         self.map_corners = map_corners
+        self.synthetics_only = synthetics_only
 
         # Path searching looks for lists, but this allows the User to provide
         # a path of type(str), the Config object will just wrap it in a list

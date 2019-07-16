@@ -25,7 +25,7 @@ from pyatoa.utils.operations.formatting import create_window_dictionary, \
      channel_codes
 from pyatoa.utils.processing.preprocess import preproc, trimstreams
 from pyatoa.utils.processing.synpreprocess import stf_convolve_gaussian
-from pyatoa.utils.configurations.external import set_pyflex_station_event
+from pyatoa.utils.extcfg import set_pyflex_station_event
 from pyatoa.utils.visuals.mapping import generate_map
 from pyatoa.utils.visuals.waveforms import window_maker
 
@@ -385,10 +385,17 @@ class Manager:
         # Adjoint sources require the same sampling_rate as the synthetics
         sampling_rate = self.st_syn[0].stats.sampling_rate
 
-        # Run external preprocessing script
-        self.st_obs = preproc(st_original=self.st_obs, inv=self.inv,
-                              resample=sampling_rate, synthetic_unit=None,
-                              back_azimuth=baz,
+        # Run external preprocessing script, change some things if running a
+        # synthetic-synthetic case
+        if self.config.synthetics_only:
+            inv_ = None
+            synthetic_unit_ = self.config.synthetic_unit
+        else:
+            inv_ = self.inv
+            synthetic_unit_ = None
+        self.st_obs = preproc(st_original=self.st_obs, inv=inv_,
+                              resample=sampling_rate,
+                              synthetic_unit=synthetic_unit_, back_azimuth=baz,
                               pad_length_in_seconds=self.config.zero_pad,
                               unit_output=self.config.unit_output,
                               corners=self.config.filter_corners,
@@ -430,6 +437,12 @@ class Manager:
             self.st_syn = stf_convolve_gaussian(
                 st=self.st_syn, half_duration=self.half_dur, time_shift=False
             )
+            # If a synthetic-synthetic case, convolve observations
+            if self.config.synthetics_only:
+                self.st_obs = stf_convolve_gaussian(
+                    st=self.st_obs, half_duration=self.half_dur,
+                    time_shift=False
+                )
         except (AttributeError, IndexError):
             logger.info("moment tensor not found for event")
 
