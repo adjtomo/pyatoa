@@ -115,9 +115,11 @@ def window_maker(st_obs, st_syn, config, time_offset_sec=0., windows=None,
     # Instantiate plotting instances
     f = plt.figure(figsize=figsize, dpi=dpi)
     axes, twaxes = setup_plot(number_of=len(st_obs), twax=True)
-    t = np.linspace(time_offset_sec,
-                    st_obs[0].stats.endtime-st_obs[0].stats.starttime,
-                    len(st_obs[0].data))
+    t = np.linspace(
+        time_offset_sec,
+        st_obs[0].stats.endtime-st_obs[0].stats.starttime+time_offset_sec,
+        len(st_obs[0].data)
+        )
     
     z = 5
     # Set the annotation for misfit windows
