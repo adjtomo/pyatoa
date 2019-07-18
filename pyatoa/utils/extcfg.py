@@ -204,10 +204,20 @@ def pyflex_configs():
             "dlna_acceptance_level": 1.3,
             "cc_acceptance_level": 0.9,
             "s2n_limit": 10.,
-            "max_time_before_first_arrival": 0.,  # min start of window (s)
+            "max_time_before_first_arrival": 10.,  # min start of window (s)
             "c_0": 5.,  # internal minima, reject low amplitude arrivals
             "c_1": 2.5,  # min win length - 2 * min_period ~= 20s min
         },
+        # random values used to test out Pyflex rejection criteria
+        "testing": {"stalta_waterlevel": 0.08,
+                    "tshift_acceptance_level": 5.0,
+                    "dlna_acceptance_level": 1.3,
+                    "cc_acceptance_level": 0.9,
+                    "s2n_limit": 10.,
+                    "max_time_before_first_arrival": 10.,
+                    # min start of window (s)
+
+                    }
     }
 
     return configs

@@ -41,7 +41,7 @@ class Diver:
                                noa=len(self.adj_srcs)
                                )
 
-    def suggest(self, json_fid):
+    def suggest(json_fid):
         """
         Takes the misfit json fid that should be outputted by the Pyatoa
         workflow, analyze the number of misfit windows and total misfits
@@ -64,12 +64,13 @@ class Diver:
                         percent_misfit = (
                             (mft[model][step][key]["misfit"]/number_events) /
                             total_misfit
-                        ) * 100
-                        print(
-                            "\t\t{ev}, {pc:.2f}% misfit w/ {wi} windows".format(
-                                ev=key, pc=percent_misfit,
-                                wi=mft[model][step][key]["windows"]
-                            ))
+                        )
+                        print(mft[model][step][key]["windows"] * percent_misfit)
+                        # print(
+                        #     "\t\t{ev}, {pc:.2f}% misfit w/ {wi} windows".format(
+                        #         ev=key, pc=percent_misfit,
+                        #         wi=mft[model][step][key]["windows"]
+                        #     ))
 
 
     def count_windows(self):

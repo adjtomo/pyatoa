@@ -212,7 +212,6 @@ def window_maker(st_obs, st_syn, config, time_offset_sec=0., windows=None,
                 twaxes[i].axhline(y=waterlevel, xmin=t[0], xmax=t[-1],
                                   alpha=0.2, zorder=z - 2, linewidth=1.5, c='k',
                                   linestyle='--')
-
         # If no adjoint source for given component, turn off twin ax label
         else:
             twaxes[i].set_yticklabels([])
@@ -237,10 +236,12 @@ def window_maker(st_obs, st_syn, config, time_offset_sec=0., windows=None,
         axes[i].legend(lines_for_legend, labels, prop={"size": 9},
                        loc="upper right")
 
-        # Dynamic seismogram length
+        # Dynamic seismogram length, min starttime of -10 seconds before origin
         if not length_sec:
             length_sec = t[-1]
-        axes[i].set_xlim([0, length_sec])
+        axes[i].set_xlim([np.maximum(time_offset_sec, -10),
+                          np.minimum(length_sec, t[-1])
+                          ])
 
         # Format axes and align
         for AX in [axes[i], twaxes[i]]:

@@ -466,7 +466,10 @@ def generate_standalone_map(map_corners, inv, catalog, annotate_names=False,
     if save:
         plt.savefig(save, figsize=figsize, dpi=dpi)
     if show:
-        plt.show()
+        if show == "hold":
+            return f, m
+        else:
+            plt.show()
     plt.close()
 
     return f, m

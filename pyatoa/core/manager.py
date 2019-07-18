@@ -657,7 +657,7 @@ class Manager:
         """
         # Precheck for waveform data
         self._check()
-        if not self.obs_process_flag and not self.syn_process_flag:
+        if not self.obs_process_flag or not self.syn_process_flag:
             logger.info("cannot plot, no/improper waveform data")
             return
         logger.info("plotting waveform")
@@ -673,7 +673,7 @@ class Manager:
         if dynamic_length:
             length_sec = seismogram_length(
                 distance_km=gcd_and_baz(event=self.event, sta=self.inv[0][0])[0],
-                slow_wavespeed_km_s=2, binsize=50, minimum_length=100
+                slow_wavespeed_km_s=1, binsize=50, minimum_length=100
             )
         else:
             length_sec = None

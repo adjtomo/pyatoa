@@ -1,7 +1,6 @@
 """
 Functions used in determining source receiver information
 """
-import os
 
 
 def merge_inventories(inv_a, inv_b):
@@ -63,9 +62,11 @@ def seismogram_length(distance_km, slow_wavespeed_km_s=2, binsize=50,
     """
     from pyatoa.utils.operations.calculations import myround
 
+    # determine based on slowest wavespeed travelling from source to receiver
     rough_length_s = distance_km / slow_wavespeed_km_s
     if rough_length_s < minimum_length:
         rough_length_s = minimum_length
+
     return myround(rough_length_s, base=binsize, choice='up')
 
 
