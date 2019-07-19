@@ -157,6 +157,48 @@ def misfit_stats(ds, model, include_lists=False):
     return stats
 
 
+def count_misfit_windows(ds, count_by_stations=False):
+    """
+    Figure out which stations contain which windows, return a dictionary
+    which lists available components.
+    :type ds: pyasdf.ADSFDataSet
+    :param ds: dataset to count misfit windows from
+    :type count_by_stations: bool
+    :param count_by_stations: if not, count by components
+    :rtype counted_windows: dict
+    :return counted_windows: station name as key, number of windows as value
+    """
+    components = []
+    for model_number in ds.auxiliary_data.MisfitWindows.list():
+        for window in ds.auxiliary_data.MisfitWindows[model_number].list():
+            components.append(
+                ds.auxiliary_data.MisfitWindows[model_number]
+                [window].parameters['channel_id']
+            )
+
+    counted_windows = {}
+    # Count by component
+    if count_by_stations:
+        stations = []
+        # Remove the component tag from the name
+        for comp in components:
+            stations.append("{net}.{sta}".format(net=comp.split(".")[0],
+                                                 sta=comp.split(".")[1])
+                            )
+        uniqueid = set(stations)
+        quantity_out = stations
+    # Count  by station
+    else:
+        uniqueid = set(components)
+        quantity_out = components
+
+    # Count up the number of unique instances
+    for id_ in uniqueid:
+        counted_windows[id_] = quantity_out.count(id_)
+
+    return counted_windows
+
+
 def _count_waveforms(ds_waveforms, model):
     """
     Count the number of waveforms for each station for a given model, return
@@ -171,7 +213,6 @@ def _count_waveforms(ds_waveforms, model):
     :rtype obs_n: list of int
     :return obs_n: number of observed  waveforms for a given station
     """
-    from pyasdf import WaveformNotInFileException
     syn_n, obs_n = [],[]
     for sta in ds_waveforms.list():
         try:

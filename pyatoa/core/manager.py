@@ -26,7 +26,7 @@ from pyatoa.utils.operations.formatting import create_window_dictionary, \
 from pyatoa.utils.processing.preprocess import preproc, trimstreams
 from pyatoa.utils.processing.synpreprocess import stf_convolve_gaussian
 from pyatoa.utils.extcfg import set_pyflex_station_event
-from pyatoa.utils.visuals.mapping import generate_map
+from pyatoa.utils.visuals.mapping import manager_map
 from pyatoa.utils.visuals.waveforms import window_maker
 
 
@@ -703,8 +703,8 @@ class Manager:
         Source receier information plotted in lower right hand corner of map.
         :type map_corners: dict
         :param map_corners: {lat_min, lat_max, lon_min, lon_max}
-        :type background_inv: obspy.core.inventory.Inventory
-        :param background_inv: background stations to plot on the map that will
+        :type stations: obspy.core.inventory.Inventory
+        :param stations: background stations to plot on the map that will
         not interact with the source
         :type annotate_names: bool
         :param annotate_names: annotate station names
@@ -736,9 +736,9 @@ class Manager:
             map_corners = self.config.map_corners
 
         # Call external function to generate map
-        generate_map(map_corners=map_corners, inv=self.inv, event=self.event,
-                     stations=stations, show_nz_faults=show_nz_faults,
-                     color_by_network=color_by_network,
-                     annotate_names=annotate_names, show=show, figsize=figsize,
-                     dpi=dpi, save=save
-                     )
+        manager_map(map_corners=map_corners, inv=self.inv, event=self.event,
+                    stations=stations, show_nz_faults=show_nz_faults,
+                    color_by_network=color_by_network,
+                    annotate_names=annotate_names, show=show, figsize=figsize,
+                    dpi=dpi, save=save
+                    )

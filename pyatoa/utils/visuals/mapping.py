@@ -114,15 +114,18 @@ def event_beachball(m, event, fm_type="focal_mechanism", **kwargs):
     :type event: obspy.core.event.Event
     :param event: event object which should contain focal mechanism
     """
-    if not hasattr(event, 'focal_mechanisms'):
-        return
-
     width = kwargs.get("width", 2.6E4)
     facecolor = kwargs.get("facecolor", 'r')
 
     eventx, eventy = m(event.preferred_origin().longitude,
                        event.preferred_origin().latitude
                        )
+
+    # No focal mechanism? Just plot a ploint
+    if not hasattr(event, 'focal_mechanisms'):
+        m.scatter(eventx, eventy, marker="o", color=facecolor,
+                  edgecolor="k", s=105, zorder=1000, linewidth=1.75)
+
     if fm_type == "focal_mechanism":
         beach_input = [
             event.focal_mechanisms[0].moment_tensor.tensor['m_rr'],
@@ -323,88 +326,9 @@ def initiate_basemap(map_corners, scalebar=True, **kwargs):
     return m
 
 
-def generate_map(map_corners, inv=None, event=None, stations=None,
-                 annotate_names=False, show_nz_faults=False,
-                 color_by_network=False, figsize=(10, 9.4), dpi=100, show=True,
-                 save=None):
-    """
-    Initiate and populate a basemap object for New Zealands north island.
-    Functionality to manually ignore stations based on user quality control
-    Takes station coordinates and coloring from npz files
-    Choice to annotate two stations which correspond to waveforms
-    Calls beachball and trench tracer to populate basemap
-
-    :type map_corners: dict of floats
-    :param map_corners: {lat_min,lat_max,lon_min,lon_max}
-    :type event: obspy.core.event.Event
-    :param event: event object
-    :type inv: obspy.core.inventory.Inventory
-    :param inv: inventory containing relevant network and stations
-    :type stations: obspy.core.inventory.Inventory or numpy.ndarray
-    :param stations: background stations to plot on the map that will not
-        interact with the source. if given as an inventory object, plotting
-        will be more complex.
-    :type annotate_names: bool
-    :param annotate_names: annotate station names next to markers
-    :type show_nz_faults: bool
-    :param show_nz_faults: call hardcoded fault plotting scripts (TO DO change)
-    :type color_by_network: bool
-    :param color_by_network: color station markers based on network name
-    :type figsize: tuple
-    :param figsize: size of the figure
-    :type dpi: int
-    :param dpi: dots per inch for resolution
-    :type show: bool
-    :param show: show the plot once generated, defaults to False
-    :type save: str
-    :param save: absolute filepath and filename if figure should be saved
-    :rtype f: matplotlib figure
-    :return f: figure object
-    :rtype m: Basemap
-    :return m: basemap object
-    """
-    # Initiate matplotlib instances
-    f = plt.figure(figsize=figsize, dpi=dpi)
-    m = initiate_basemap(map_corners=map_corners, scalebar=True)
-
-    # TO DO: remove hard coding
-    # Plot fault lines, hardcoded into structure
-    if show_nz_faults:
-        map_extras.plot_hikurangi_trench(m)
-        map_extras.plot_geonet_active_faults(m)
-
-    # If given, plot all background stations for this given event.
-    if stations is not None:
-        if isinstance(stations, np.ndarray):
-            plot_stations_simple(m, lats=stations[:, 0], lons=stations[:, 1])
-        else:
-            plot_stations(m, inv=stations, event=event,
-                          annotate_names=annotate_names,
-                          color_by_network=color_by_network
-                          )
-
-    # If an event is given, try to plot the focal-mechanism beachball
-    if event is not None:
-        event_beachball(m, event)
-
-    # If an inventory object is given, plot source receiver line, and info
-    if inv is not None:
-        connect_source_receiver(m, event=event, sta=inv[0][0])
-        annotate_srcrcv_information(m, event=event, inv=inv)
-
-    # Finality
-    if save:
-        plt.savefig(save, figsize=figsize, dpi=dpi)
-    if show:
-        plt.show()
-    plt.close()
-
-    return f, m
-
-
-def generate_standalone_map(map_corners, inv, catalog, annotate_names=False,
-                            show_nz_faults=False, color_by_network=False,
-                            figsize=(10,9.4), dpi=100, show=True, save=None):
+def standalone_map(map_corners, inv, catalog, annotate_names=False,
+                   show_nz_faults=False, color_by_network=False,
+                   figsize=(10,9.4), dpi=100, show=True, save=None):
     """
     To be used in a standalone mapmaker. Plots a catalog and an inventory
     to show all events and all stations for e.g. a given tomographic inversino
@@ -474,4 +398,154 @@ def generate_standalone_map(map_corners, inv, catalog, annotate_names=False,
 
     return f, m
 
+
+def event_misfit_map(map_corners, ds, model, annotate_names=False,
+                     show_nz_faults=False, color_by_network=False,
+                     figsize=(10, 9.4), dpi=100, show=True, save=None):
+    """
+    To be used to plot misfit information from a pyasdf Dataset
+
+    :type map_corners: dict of floats
+    :param map_corners: [lat_bot,lat_top,lon_left,lon_right]
+    :type ds: pyasdf.ASDFDataSet
+    :param ds: dataset containing things to plot
+    :type map_corners: dict of floats
+    :param map_corners: {lat_min,lat_max,lon_min,lon_max}
+    :type annotate_names: bool
+    :param annotate_names: annotate station names next to markers
+    :type show_nz_faults: bool
+    :param show_nz_faults: call hardcoded fault plotting scripts (TO DO change)
+    :type color_by_network: bool
+    :param color_by_network: color station markers based on network name
+    :type figsize: tuple
+    :param figsize: size of the figure
+    :type dpi: int
+    :param dpi: dots per inch for resolution
+    :type show: bool
+    :param show: show the plot once generated, defaults to False
+    :type save: str
+    :param save: absolute filepath and filename if figure should be saved
+    :rtype f: matplotlib figure
+    :return f: figure object
+    :rtype m: Basemap
+    :return m: basemap object
+    """
+    # Initiate matplotlib instances
+    f = plt.figure(figsize=figsize, dpi=dpi)
+    m = initiate_basemap(map_corners=map_corners, scalebar=True)
+
+    # If catalog in dataset, try plot the focal-mechanism beachball
+    if hasattr(ds, 'events'):
+        event = ds.events[0]
+        event_beachball(m, event)
+
+    # If waveforms in dataset, plot the stations
+    if hasattr(ds, 'waveforms'):
+        for sta in ds.waveforms.list():
+            if hasattr(ds.waveforms[sta], 'StationXML')
+                # Plot waveforms with data differently than those without
+                if hasattr(ds.waveforms[sta], 'observed'):
+                    sta_x, sta_y = m(, lat)
+                else:
+
+
+    # TO DO: remove hard coding
+    # Plot fault lines, hardcoded into structure
+    if show_nz_faults:
+        map_extras.plot_hikurangi_trench(m)
+        map_extras.plot_active_faults(m)
+
+    # Finality
+    if save:
+        plt.savefig(save, figsize=figsize, dpi=dpi)
+    if show:
+        if show == "hold":
+            return f, m
+        else:
+            plt.show()
+    plt.close()
+
+    return f, m
+
+
+def manager_map(map_corners, inv=None, event=None, stations=None,
+                annotate_names=False, show_nz_faults=False,
+                color_by_network=False, figsize=(10, 9.4), dpi=100,
+                show=True, save=None):
+    """
+    Initiate and populate a basemap object for New Zealands north island.
+    Functionality to manually ignore stations based on user quality control
+    Takes station coordinates and coloring from npz files
+    Choice to annotate two stations which correspond to waveforms
+    Calls beachball and trench tracer to populate basemap
+
+    :type map_corners: dict of floats
+    :param map_corners: {lat_min,lat_max,lon_min,lon_max}
+    :type event: obspy.core.event.Event
+    :param event: event object
+    :type inv: obspy.core.inventory.Inventory
+    :param inv: inventory containing relevant network and stations
+    :type stations: obspy.core.inventory.Inventory or numpy.ndarray
+    :param stations: background stations to plot on the map that will not
+        interact with the source. if given as an inventory object, plotting
+        will be more complex.
+    :type annotate_names: bool
+    :param annotate_names: annotate station names next to markers
+    :type show_nz_faults: bool
+    :param show_nz_faults: call hardcoded fault plotting scripts (TO DO change)
+    :type color_by_network: bool
+    :param color_by_network: color station markers based on network name
+    :type figsize: tuple
+    :param figsize: size of the figure
+    :type dpi: int
+    :param dpi: dots per inch for resolution
+    :type show: bool
+    :param show: show the plot once generated, defaults to False
+    :type save: str
+    :param save: absolute filepath and filename if figure should be saved
+    :rtype f: matplotlib figure
+    :return f: figure object
+    :rtype m: Basemap
+    :return m: basemap object
+    """
+    # Initiate matplotlib instances
+    f = plt.figure(figsize=figsize, dpi=dpi)
+    m = initiate_basemap(map_corners=map_corners, scalebar=True)
+
+    # TO DO: remove hard coding
+    # Plot fault lines, hardcoded into structure
+    if show_nz_faults:
+        map_extras.plot_hikurangi_trench(m)
+        map_extras.plot_geonet_active_faults(m)
+
+    # If given, plot all background stations for this given event.
+    if stations is not None:
+        if isinstance(stations, np.ndarray):
+            plot_stations_simple(m, lats=stations[:, 0], lons=stations[:, 1])
+        else:
+            plot_stations(m, inv=stations, event=event,
+                          annotate_names=annotate_names,
+                          color_by_network=color_by_network
+                          )
+
+    # If an event is given, try to plot the focal-mechanism beachball
+    if event is not None:
+        event_beachball(m, event)
+
+    # If an inventory object is given, plot source receiver line, and info
+    if inv is not None:
+        connect_source_receiver(m, event=event, sta=inv[0][0])
+        annotate_srcrcv_information(m, event=event, inv=inv)
+
+    # Finality
+    if save:
+        plt.savefig(save, figsize=figsize, dpi=dpi)
+    if show:
+        if show == "hold":
+            return f, m
+        else:
+            plt.show()
+    plt.close()
+
+    return f, m
 
