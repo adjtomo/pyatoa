@@ -18,6 +18,7 @@ class Config:
                  adj_src_type='multitaper_misfit', start_pad=20, end_pad=500,
                  zero_pad=0, synthetic_unit="DISP", observed_tag='observed',
                  synthetic_tag='synthetic_{model_num}', synthetics_only=False,
+                 window_amplitude_ratio=0,
                  map_corners={'lat_min': -42.5007, 'lat_max': -36.9488,
                               'lon_min': 172.9998, 'lon_max': 179.5077},
                  cfgpaths={'synthetics': [], 'waveforms': [], 'responses': [],
@@ -119,6 +120,7 @@ class Config:
         self.pyadjoint_config = (adj_src_type, None)
         self.map_corners = map_corners
         self.synthetics_only = synthetics_only
+        self.window_amplitude_ratio = window_amplitude_ratio
 
         # Path searching looks for lists, but this allows the User to provide
         # a path of type(str), the Config object will just wrap it in a list

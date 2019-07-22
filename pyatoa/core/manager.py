@@ -23,6 +23,7 @@ from pyatoa.utils.operations.source_receiver import gcd_and_baz,\
     seismogram_length
 from pyatoa.utils.operations.formatting import create_window_dictionary, \
      channel_codes
+from pyatoa.utils.operations.calculations import abs_max
 from pyatoa.utils.processing.preprocess import preproc, trimstreams
 from pyatoa.utils.processing.synpreprocess import stf_convolve_gaussian
 from pyatoa.utils.extcfg import set_pyflex_station_event
@@ -489,16 +490,41 @@ class Manager:
         windows, staltas = {}, {}
         for comp in self.config.component_list:
             try:
-                # Run Pyflex to select misfit windows as Window objects
+                # Run Pyflex to select misfit windows as list of Window objects
                 window = pyflex.select_windows(
                     observed=self.st_obs.select(component=comp),
                     synthetic=self.st_syn.select(component=comp),
                     config=self.config.pyflex_config[1], event=pf_ev,
                     station=pf_sta,
                     )
+
+                # Suppress windows that contain signals smaller than some
+                # fraction of the peak amplitude contained in the waveform
+                if window and self.config.window_amplitude_ratio > 0:
+                    windows_by_amplitude = []
+                    for win_ in window:
+                        waveform_peak = abs_max(
+                            self.st_syn.select(component=comp)[0].data
+                        )
+                        window_peak = abs_max(
+                            self.st_syn.select(
+                                component=comp)[0].data[win_.left:win_.right]
+                        )
+                        if (abs(window_peak / waveform_peak) >
+                                self.config.window_amplitude_ratio):
+                            windows_by_amplitude.append(win_)
+                        else:
+                            logger.info("removing window due to global "
+                                        "amplitude ratio: {0} < {1}".format(
+                                            abs(window_peak / waveform_peak),
+                                            self.config.window_amplitude_ratio)
+                                        )
+                            continue
+                    window = windows_by_amplitude
+
+                # If still misfit windows, calculate the STA/LTA for plotting,
+                # add misfit window and stalta to dictionary object
                 if window:
-                    # Run Pyflex to collect STA/LTA information for plotting
-                    # Only collect STA/LTA if windows are also collected
                     stalta = pyflex.stalta.sta_lta(
                         dt=self.st_syn.select(component=comp)[0].stats.delta,
                         min_period=self.config.min_period,
@@ -507,6 +533,7 @@ class Manager:
                     )
                     staltas[comp] = stalta
                     windows[comp] = window
+
             except IndexError:
                 window = []
 

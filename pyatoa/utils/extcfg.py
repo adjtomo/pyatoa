@@ -214,7 +214,7 @@ def pyflex_configs():
                     "dlna_acceptance_level": 1.3,
                     "cc_acceptance_level": 0.9,
                     "s2n_limit": 10.,
-                    "max_time_before_first_arrival": 10.,
+                    "max_time_before_first_arrival": -10.,
                     # min start of window (s)
 
                     }
@@ -396,8 +396,8 @@ def get_pyadjoint_config(choice, min_period, max_period):
                       measure_type='dt',
                       dt_sigma_min=1.0,
                       dlna_sigma_min=0.5,
-                      use_cc_error=True,
-                      use_mt_error=False)
+                      use_cc_error=False,
+                      use_mt_error=True)
                   )
     else:
         raise KeyError("adjoint source type incorrectly specified, "

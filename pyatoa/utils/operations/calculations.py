@@ -4,6 +4,15 @@ Functions for calculating values for use in other functions
 import numpy as np
 
 
+def abs_max(array):
+    """
+    Find the maximum of an array, regardless of sign
+    :param array:
+    :return:
+    """
+    return max(array.min(), array.max(), key=abs)
+
+
 def myround(x, base=5, choice='near'):
     """
     Round value x to nearest base, round 'up','down' or to 'near'est base
