@@ -163,7 +163,7 @@ def window_maker(st_obs, st_syn, config, time_offset_sec=0., windows=None,
             # Annotate the window amplitude ratio specified by User
             if i == middle_trace:
                 axes[i].annotate(
-                    s="{:.0f}% peak amplitude".format(
+                    s="{:.0f}% peak amp. obs.".format(
                         config.window_amplitude_ratio * 100), alpha=0.7,
                     xy=(0.85 * (xmax-xmin) + xmin, threshold_amp), fontsize=8,
                 )

@@ -401,7 +401,7 @@ def standalone_map(map_corners, inv, catalog, annotate_names=False,
     return f, m
 
 
-def event_misfit_map(map_corners, ds, model, annotate_names=False,
+def event_misfit_map(map_corners, ds, model, annotate_station_info=False,
                      show_nz_faults=False, color_by=False,
                      figsize=(10, 9.4), dpi=100, show=True, save=None):
     """
@@ -413,8 +413,8 @@ def event_misfit_map(map_corners, ds, model, annotate_names=False,
     :param ds: dataset containing things to plot
     :type map_corners: dict of floats
     :param map_corners: {lat_min,lat_max,lon_min,lon_max}
-    :type annotate_names: bool
-    :param annotate_names: annotate station names next to markers
+    :type annotate_station_info: bool
+    :param annotate_station_info: annotate station names and info next to marker
     :type show_nz_faults: bool
     :param show_nz_faults: call hardcoded fault plotting scripts (TO DO change)
     :type color_by_network: bool
@@ -452,8 +452,8 @@ def event_misfit_map(map_corners, ds, model, annotate_names=False,
                 type=event.preferred_magnitude().magnitude_type,
                 mag=event.preferred_magnitude().mag,
             ),
-            xy=(m.xmin + (m.xmax - m.xmin) * 0.6,
-                m.ymin + (m.ymax - m.ymin) * 0.025),
+            xy=(m.xmin + (m.xmax - m.xmin) * 0.61,
+                m.ymin + (m.ymax - m.ymin) * 0.01),
             multialignment='right', fontsize=10
         )
 
@@ -509,7 +509,7 @@ def event_misfit_map(map_corners, ds, model, annotate_names=False,
                 S.append(total_misfit)
 
                 # Plot waveforms with data differently than those without
-                if hasattr(ds.waveforms[sta], 'observed'):
+                if 'observed' in ds.waveforms[sta].list():
                     markersize = 75
                     linewidth = 1.75
                     alpha = 1.0
@@ -523,18 +523,31 @@ def event_misfit_map(map_corners, ds, model, annotate_names=False,
                       edgecolor='k', linestyle='-', s=markersize,
                       linewidth=linewidth, zorder=100)
             # Annotate station information
-            plt.annotate(s=sta_anno,
-                         xy=(sta_x - (m.xmax - m.xmin) * 0.01,
-                             sta_y - (m.ymax - m.ymin) * 0.0025),
-                         bbox=dict(boxstyle="round", fc="white",
-                                   ec="k", lw=1.25, alpha=0.75),
-                         multialignment='left', fontsize=6,
-                         zorder=101
-                         )
+            if annotate_station_info:
+                plt.annotate(s=sta_anno,
+                             xy=(sta_x - (m.xmax - m.xmin) * 0.01,
+                                 sta_y - (m.ymax - m.ymin) * 0.0025),
+                             bbox=dict(boxstyle="round", fc="white",
+                                       ec="k", lw=1.25, alpha=0.75),
+                             multialignment='left', fontsize=6,
+                             zorder=101
+                             )
+
+    # grid data
+    lenx, leny = 100 , 200
+
+    xi = np.linspace(min(X), max(X), lenx)
+    yi = np.linspace(min(Y), max(Y), leny)
+    xi, yi = np.meshgrid(xi, yi)
+
+    # interpolate
+    zi = mpl.mlab.griddata(X, Y, S, xi, yi, interp="linear")
+    con = m.contourf(xi, yi, zi, zorder=100, alpha=0.6, cmap='viridis')
 
     m.scatter(X, Y, c=S, alpha=alpha,
               edgecolor='k', linestyle='-', s=100,
               linewidth=2, zorder=100)
+    m.scatter(xi.flatten(), yi.flatten(), marker='o', s=5, c='k')
 
     # Plot fault lines, hardcoded into structure
     if show_nz_faults:
