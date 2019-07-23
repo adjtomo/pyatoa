@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 
 from matplotlib.patches import Rectangle
 
-from pyatoa.utils.operations.calculations import normalize_a_to_b
+from pyatoa.utils.operations.calculations import normalize_a_to_b, abs_max
 from pyatoa.utils.visuals.plot_utils import align_yaxis, pretty_grids, \
     format_axis
 
@@ -131,6 +131,7 @@ def window_maker(st_obs, st_syn, config, time_offset_sec=0., windows=None,
                             )
     # Plot per component
     for i, comp in enumerate(config.component_list):
+        # Plot waveforms following the convention of black for obs, red for syn
         obs = st_obs.select(component=comp)
         syn = st_syn.select(component=comp)
         a1, = axes[i].plot(t, obs[0].data, 'k', zorder=z,
@@ -139,10 +140,34 @@ def window_maker(st_obs, st_syn, config, time_offset_sec=0., windows=None,
                            label="{} (SYN)".format(syn[0].get_id()))
         lines_for_legend = [a1, a2]
 
+        # Set the seismogram length, min starttime of -10 seconds before origin
+        if not length_sec:
+            length_sec = t[-1]
+        axes[i].set_xlim([np.maximum(time_offset_sec, -10),
+                          np.minimum(length_sec, t[-1])
+                          ])
+        # Get plot bounds for use in setting objects at correct positions
+        xmin, xmax = axes[i].get_xlim()
+        ymin, ymax = axes[i].get_ylim()
+
+        # Plot the amplitude ratio criteria if given by User
+        if config.window_amplitude_ratio > 0:
+            threshold_amp = config.window_amplitude_ratio * abs_max(obs[0].data)
+            # Plot both negative and positive bounds
+            for sign in [-1, 1]:
+                axes[i].axhline(y=sign * threshold_amp, xmin=t[0], xmax=t[-1],
+                                alpha=0.35, zorder=z - 4, linewidth=1.25, c='k',
+                                linestyle=':')
+            # Annotate the window amplitude ratio specified by User
+            if i == middle_trace:
+                axes[i].annotate(
+                    s="{:.0f}% peak amplitude".format(
+                        config.window_amplitude_ratio * 100), alpha=0.7,
+                    xy=(0.85 * (xmax-xmin) + xmin, threshold_amp), fontsize=8,
+                )
+
         # If misfit windows given, plot each window and annotate information
         if (windows is not None) and (comp in windows.keys()):
-            ymin, ymax = axes[i].get_ylim()
-
             for j, window in enumerate(windows[comp]):
                 # Rectangle to represent misfit windows; taken from Pyflex
                 tleft = window.left * window.dt + time_offset_sec
@@ -159,7 +184,7 @@ def window_maker(st_obs, st_syn, config, time_offset_sec=0., windows=None,
                     ccs=window.cc_shift * st_obs[0].stats.delta,
                     dln=window.dlnA, lft=tleft, lgt=tright - tleft
                 )
-                # If an adjoint source is given, add a bit more information
+                # If an adjoint source is given, add info from measurement
                 # Adjoint source measurements should line up with the misfit win
                 if adj_srcs is not None:
                     y_anno = ymax * 0.005
@@ -204,23 +229,30 @@ def window_maker(st_obs, st_syn, config, time_offset_sec=0., windows=None,
                     tymin, tymax = twaxes[i].get_ylim()
                     stalta = normalize_a_to_b(staltas[comp], tymin, tymax)
                     waterlevel = (tymax - tymin) * stalta_wl + tymin
-                # If no adjoint source, simply plot STA/LTA
+                # If no adjoint source, simply plot STA/LTA with its own bounds
                 else:
                     stalta = staltas[comp]
                     waterlevel = stalta_wl
+                # Plot the STA/LTA, waterlevel and annotate the waterlevel %
                 twaxes[i].plot(t, stalta, 'gray', alpha=0.4, zorder=z - 1)
                 twaxes[i].axhline(y=waterlevel, xmin=t[0], xmax=t[-1],
                                   alpha=0.2, zorder=z - 2, linewidth=1.5, c='k',
                                   linestyle='--')
+                if i == middle_trace:
+                    twaxes[i].annotate(
+                        s="waterlevel = {}".format(stalta_wl), alpha=0.7,
+                        xy=(0.85 * (xmax-xmin) + xmin, waterlevel), fontsize=8
+                    )
+
         # If no adjoint source for given component, turn off twin ax label
         else:
             twaxes[i].set_yticklabels([])
 
-        # The y-label of the middle trace contains common info from Pyflex
+        # The y-label of the middle trace contains common info
         if i == middle_trace:
             # If STA/LTA information given, create a custom label
             if staltas is not None:
-                _label = "sta/lta (waterlevel = {})".format(stalta_wl)
+                _label = "sta/lta"
                 if adj_srcs is not None:
                     _label += "\nadjoint source {}".format\
                         (adj_dict[config.unit_output]
@@ -235,13 +267,6 @@ def window_maker(st_obs, st_syn, config, time_offset_sec=0., windows=None,
         labels = [l.get_label() for l in lines_for_legend]
         axes[i].legend(lines_for_legend, labels, prop={"size": 9},
                        loc="upper right")
-
-        # Dynamic seismogram length, min starttime of -10 seconds before origin
-        if not length_sec:
-            length_sec = t[-1]
-        axes[i].set_xlim([np.maximum(time_offset_sec, -10),
-                          np.minimum(length_sec, t[-1])
-                          ])
 
         # Format axes and align
         for AX in [axes[i], twaxes[i]]:

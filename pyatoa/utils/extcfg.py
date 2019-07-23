@@ -396,7 +396,7 @@ def get_pyadjoint_config(choice, min_period, max_period):
                       measure_type='dt',
                       dt_sigma_min=1.0,
                       dlna_sigma_min=0.5,
-                      use_cc_error=False,
+                      use_cc_error=True,
                       use_mt_error=True)
                   )
     else:

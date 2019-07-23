@@ -430,6 +430,7 @@ def event_misfit_map(map_corners, ds, model, annotate_names=False,
     :rtype m: Basemap
     :return m: basemap object
     """
+    pass
     # Initiate matplotlib instances
     f = plt.figure(figsize=figsize, dpi=dpi)
     m = initiate_basemap(map_corners=map_corners, scalebar=True)
@@ -442,14 +443,22 @@ def event_misfit_map(map_corners, ds, model, annotate_names=False,
     # If waveforms in dataset, plot the stations
     if hasattr(ds, 'waveforms'):
         for sta in ds.waveforms.list():
-            if hasattr(ds.waveforms[sta], 'StationXML')
+            if hasattr(ds.waveforms[sta], 'StationXML'):
+                sta_x, sta_y = m(
+                    ds.waveforms[sta].StationXML[0][0].longitude,
+                    ds.waveforms[sta].StationXML[0][0].latitude
+                )
                 # Plot waveforms with data differently than those without
                 if hasattr(ds.waveforms[sta], 'observed'):
-                    sta_x, sta_y = m(, lat)
+                    markersize = 75
+                    alpha = 1.0
                 else:
+                    markersize = 50
+                    alpha = 0.5
+            m.scatter(sta_x, sta_y, marker='v', color='None', alpha=alpha,
+                      edgecolor='k', linestyle='-', s=markersize,
+                      zorder=100)
 
-
-    # TO DO: remove hard coding
     # Plot fault lines, hardcoded into structure
     if show_nz_faults:
         map_extras.plot_hikurangi_trench(m)
