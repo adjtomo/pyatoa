@@ -14,8 +14,8 @@ def sfconfig(min_period=10, max_period=30, filter_corners=4,
              adj_src_type="multitaper_misfit", paths_to_waveforms=[],
              paths_to_responses=[], set_logging="info", fix_windows=False,
              plot_waveforms=True, plot_maps=True, synthetics_only=False,
-             write_misfit_json=True, tile_and_combine=False,
-             purge_originals=False, purge_tiles=True,
+             window_amplitude_ratio=.0, write_misfit_json=True, 
+             tile_and_combine=False,  purge_originals=False, purge_tiles=True,
              create_srcrcv_vtk=True, snapshot=True, misfits_json="misfits.json",
              fidout='./sfconfig.json'):
     """
@@ -56,6 +56,9 @@ def sfconfig(min_period=10, max_period=30, filter_corners=4,
     :type synthetics_only: bool
     :param synthetics_only: synthetic synthetic example, will search for
         observation data based on synthetic search routines
+    :type window_amplitude_ratio: float
+    :param window_amplitude_ratio: global amplitude ratio to exclude misfit
+        windows. Evaluates as peak_window/peak_waveform > window_amplitude_ratio
     :type write_misfit_json: bool
     :param write_misfit_json: write misfit information, number of windows,
         number of adjoint sources to a json file with name 'misfit_json_file'
@@ -96,6 +99,7 @@ def sfconfig(min_period=10, max_period=30, filter_corners=4,
         "plot_waveforms": plot_waveforms,
         "plot_maps": plot_maps,
         "synthetics_only": synthetics_only,
+        "window_amplitude_ratio": window_amplitude_ratio,
 
         # Pyatoa Outputs
         "write_misfit_json": write_misfit_json,

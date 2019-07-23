@@ -190,6 +190,7 @@ def process(parser):
         pyflex_config=usrcfg["pyflex_config"],
         adj_src_type=usrcfg["adj_src_type"],
         synthetics_only=usrcfg["synthetics_only"],
+        window_amplitude_ratio=usrcfg["window_amplitude_ratio"],
         cfgpaths={"synthetics": paths["SYN_TRACES"],
                   "waveforms": usrcfg["paths_to_waveforms"] +
                                [paths["OBS_TRACES"]],
