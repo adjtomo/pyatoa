@@ -152,7 +152,9 @@ def window_maker(st_obs, st_syn, config, time_offset_sec=0., windows=None,
 
         # Plot the amplitude ratio criteria if given by User
         if config.window_amplitude_ratio > 0:
-            threshold_amp = config.window_amplitude_ratio * abs_max(obs[0].data)
+            threshold_amp = abs(
+                config.window_amplitude_ratio * abs_max(obs[0].data)
+            )
             # Plot both negative and positive bounds
             for sign in [-1, 1]:
                 axes[i].axhline(y=sign * threshold_amp, xmin=t[0], xmax=t[-1],
