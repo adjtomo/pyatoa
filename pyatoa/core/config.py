@@ -18,7 +18,7 @@ class Config:
                  adj_src_type='multitaper_misfit', start_pad=20, end_pad=500,
                  zero_pad=0, synthetic_unit="DISP", observed_tag='observed',
                  synthetic_tag='synthetic_{model_num}', synthetics_only=False,
-                 window_amplitude_ratio=0,
+                 window_amplitude_ratio=0.,
                  map_corners={'lat_min': -42.5007, 'lat_max': -36.9488,
                               'lon_min': 172.9998, 'lon_max': 179.5077},
                  cfgpaths={'synthetics': [], 'waveforms': [], 'responses': [],
@@ -190,7 +190,7 @@ class Config:
 
         assert(self.pyflex_config[0] in extcfg.pyflex_configs().keys()), \
             "pyflex_config should be in {}".format(
-                extcfg.pyflex_config().keys())
+                extcfg.pyflex_configs().keys())
 
         # Check that paths are in the proper format
         acceptable_keys = [
@@ -214,6 +214,11 @@ class Config:
             choice=self.pyadjoint_config[0], min_period=self.min_period,
             max_period=self.max_period
         )
+
+        # Check that the amplitude ratio is a reasonable number
+        if self.window_amplitude_ratio > 0:
+            assert(self.window_amplitude_ratio < 1), \
+                "window amplitude ratio should be < 1"
 
     def write_to_txt(self, filename="./pyatoa_config.txt"):
         """

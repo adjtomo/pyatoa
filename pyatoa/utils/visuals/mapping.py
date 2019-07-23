@@ -17,6 +17,7 @@ from obspy.imaging.beachball import beach
 
 from pyatoa.utils.operations.source_receiver import gcd_and_baz
 from pyatoa.utils.operations.calculations import myround
+from pyatoa.utils.asdf import extractions
 from pyatoa.utils.visuals import map_extras
 
 
@@ -116,6 +117,7 @@ def event_beachball(m, event, fm_type="focal_mechanism", **kwargs):
     """
     width = kwargs.get("width", 2.6E4)
     facecolor = kwargs.get("facecolor", 'r')
+    zorder = kwargs.get("zorder", 1000)
 
     eventx, eventy = m(event.preferred_origin().longitude,
                        event.preferred_origin().latitude
@@ -124,7 +126,7 @@ def event_beachball(m, event, fm_type="focal_mechanism", **kwargs):
     # No focal mechanism? Just plot a ploint
     if not hasattr(event, 'focal_mechanisms'):
         m.scatter(eventx, eventy, marker="o", color=facecolor,
-                  edgecolor="k", s=105, zorder=1000, linewidth=1.75)
+                  edgecolor="k", s=105, zorder=zorder, linewidth=1.75)
 
     if fm_type == "focal_mechanism":
         beach_input = [
@@ -143,7 +145,7 @@ def event_beachball(m, event, fm_type="focal_mechanism", **kwargs):
         ]
     b = beach(beach_input, xy=(eventx, eventy), width=width, linewidth=1,
               facecolor=facecolor)
-    b.set_zorder(1000)
+    b.set_zorder(zorder)
     ax = plt.gca()
     ax.add_collection(b)
 
@@ -400,7 +402,7 @@ def standalone_map(map_corners, inv, catalog, annotate_names=False,
 
 
 def event_misfit_map(map_corners, ds, model, annotate_names=False,
-                     show_nz_faults=False, color_by_network=False,
+                     show_nz_faults=False, color_by=False,
                      figsize=(10, 9.4), dpi=100, show=True, save=None):
     """
     To be used to plot misfit information from a pyasdf Dataset
@@ -435,21 +437,105 @@ def event_misfit_map(map_corners, ds, model, annotate_names=False,
     m = initiate_basemap(map_corners=map_corners, scalebar=True)
 
     # If catalog in dataset, try plot the focal-mechanism beachball
+    event = None
     if hasattr(ds, 'events'):
         event = ds.events[0]
-        event_beachball(m, event)
+        event_id = event.resource_id.id.split('/')[-1]
+        event_beachball(m, event, zorder=50)
+        plt.annotate(
+            s=("{id}\n"
+               "{date}\n"
+               "{type}={mag:.2f}\n"
+               "Depth(km)={depth:.2f}\n").format(
+                id=event_id, date=event.preferred_origin().time,
+                depth=event.preferred_origin().depth * 1E-3,
+                type=event.preferred_magnitude().magnitude_type,
+                mag=event.preferred_magnitude().mag,
+            ),
+            xy=(m.xmin + (m.xmax - m.xmin) * 0.6,
+                m.ymin + (m.ymax - m.ymin) * 0.025),
+            multialignment='right', fontsize=10
+        )
+
+    # Get some event-wide values
+    if hasattr(ds, 'auxiliary_data'):
+        if hasattr(ds.auxiliary_data, 'MisfitWindows'):
+            window_dict = extractions.count_misfit_windows(
+                ds, model, count_by_stations=True
+            )
 
     # If waveforms in dataset, plot the stations
+    X, Y, S = [],[],[]
     if hasattr(ds, 'waveforms'):
         for sta in ds.waveforms.list():
-            if hasattr(ds.waveforms[sta], 'StationXML')
+            sta_anno = ""
+            if hasattr(ds.waveforms[sta], 'StationXML'):
+                sta_anno += "{}\n".format(sta)
+                # Get distance and backazimuth between event and station
+                if event is not None:
+                    gcdist, baz = gcd_and_baz(event,
+                                              ds.waveforms[sta].StationXML[0][0]
+                                              )
+                    sta_anno += "{dist:.1f}km\n{baz:.1f}deg".format(
+                        dist=gcdist, baz=baz
+                    )
+                # If auxiliary data is given, add some extra information to anno
+                if hasattr(ds, 'auxiliary_data'):
+                    # Determine the total number of windows for the given model
+                    if hasattr(ds.auxiliary_data, 'MisfitWindows'):
+                        try:
+                            num_windows = window_dict[sta]
+                        except KeyError:
+                            num_windows = 0
+                        sta_anno += "\n{}".format(num_windows)
+
+                    # Determine the total misfit for a given model
+                    if hasattr(ds.auxiliary_data, 'AdjointSources'):
+                        total_misfit = extractions.sum_misfits(
+                            ds, model, station=sta
+                        )
+                        if total_misfit:
+                            sta_anno += "/{:.2E}".format(total_misfit)
+                        else:
+                            total_misfit = 0
+
+                # Determine the station coordinates on the map object
+                sta_x, sta_y = m(
+                    ds.waveforms[sta].StationXML[0][0].longitude,
+                    ds.waveforms[sta].StationXML[0][0].latitude
+                )
+                X.append(sta_x)
+                Y.append(sta_y)
+                S.append(total_misfit)
+
                 # Plot waveforms with data differently than those without
                 if hasattr(ds.waveforms[sta], 'observed'):
-                    sta_x, sta_y = m(, lat)
+                    markersize = 75
+                    linewidth = 1.75
+                    alpha = 1.0
                 else:
+                    markersize = 50
+                    linewidth = 1.0
+                    alpha = 0.5
 
+            # Plot station locations
+            m.scatter(sta_x, sta_y, marker='v', color='None', alpha=alpha,
+                      edgecolor='k', linestyle='-', s=markersize,
+                      linewidth=linewidth, zorder=100)
+            # Annotate station information
+            plt.annotate(s=sta_anno,
+                         xy=(sta_x - (m.xmax - m.xmin) * 0.01,
+                             sta_y - (m.ymax - m.ymin) * 0.0025),
+                         bbox=dict(boxstyle="round", fc="white",
+                                   ec="k", lw=1.25, alpha=0.75),
+                         multialignment='left', fontsize=6,
+                         zorder=101
+                         )
 
-    # TO DO: remove hard coding
+    m.scatter(X, Y, c=S, alpha=alpha,
+              edgecolor='k', linestyle='-', s=100,
+              linewidth=2, zorder=100)
+
     # Plot fault lines, hardcoded into structure
     if show_nz_faults:
         map_extras.plot_hikurangi_trench(m)
