@@ -62,7 +62,7 @@ def windows_from_ds(ds, model, net, sta):
     return window_dict
 
 
-def sum_misfits(ds, model):
+def sum_misfits(ds, model, station=None):
     """
     Misfits are stored in adjoint trace dictionaries, and are needed for
     Seisflows. This will sum the misfits and place them into a specific
@@ -85,20 +85,34 @@ def sum_misfits(ds, model):
     :param ds: asdf dataset which must contain AdjointSource auxiliary data
     :type model: str 
     :param model: model number, e.g "m00"
+    :type station: str
+    :param station: station code to check, e.g. 'NZ.BFZ'
     :rtype summed_misfit: float
     :return summed_misfit: total misfit for a given dataset and model
     """
-    adjoint_sources = ds.auxiliary_data.AdjointSources[model]
-    number_windows = len(ds.auxiliary_data.MisfitWindows[model])
     misfits = []
+    adjoint_sources = ds.auxiliary_data.AdjointSources[model]
 
-    # collect the total misfit calculated by Pyadjoint
-    for adjsrc in adjoint_sources.list():
-        misfits.append(adjoint_sources[adjsrc].parameters["misfit_value"])
-    
-    summed_misfits = 0.5 * sum(misfits)/number_windows
+    # Sum misfits only for a given station
+    if station:
+        try:
+            number_windows = count_misfit_windows(ds, model, True)[station]
+        except KeyError:
+            return
+        for adjsrc in adjoint_sources.list():
+            if adjoint_sources[adjsrc].parameters['station_id'] == station:
+                misfits.append(
+                    adjoint_sources[adjsrc].parameters['misfit_value']
+                )
 
-    return summed_misfits
+    # Sum misfits for all given adjoint sources
+    else:
+        number_windows = len(ds.auxiliary_data.MisfitWindows[model])
+        # collect the total misfit calculated by Pyadjoint
+        for adjsrc in adjoint_sources.list():
+            misfits.append(adjoint_sources[adjsrc].parameters["misfit_value"])
+
+    return 0.5 * sum(misfits)/number_windows
 
 
 def misfit_stats(ds, model, include_lists=False):
@@ -157,24 +171,28 @@ def misfit_stats(ds, model, include_lists=False):
     return stats
 
 
-def count_misfit_windows(ds, count_by_stations=False):
+def count_misfit_windows(ds, model, count_by_stations=False):
     """
     Figure out which stations contain which windows, return a dictionary
     which lists available components.
     :type ds: pyasdf.ADSFDataSet
     :param ds: dataset to count misfit windows from
+    :type model: str
+    :param model: model number e.g. 'm00'
     :type count_by_stations: bool
     :param count_by_stations: if not, count by components
     :rtype counted_windows: dict
     :return counted_windows: station name as key, number of windows as value
     """
     components = []
-    for model_number in ds.auxiliary_data.MisfitWindows.list():
-        for window in ds.auxiliary_data.MisfitWindows[model_number].list():
+    if hasattr(ds.auxiliary_data.MisfitWindows, model):
+        for window in ds.auxiliary_data.MisfitWindows[model].list():
             components.append(
-                ds.auxiliary_data.MisfitWindows[model_number]
+                ds.auxiliary_data.MisfitWindows[model]
                 [window].parameters['channel_id']
             )
+    else:
+        return
 
     counted_windows = {}
     # Count by component
@@ -187,7 +205,7 @@ def count_misfit_windows(ds, count_by_stations=False):
                             )
         uniqueid = set(stations)
         quantity_out = stations
-    # Count  by station
+    # Count by station
     else:
         uniqueid = set(components)
         quantity_out = components
