@@ -14,6 +14,7 @@ import matplotlib.pyplot as plt
 
 from mpl_toolkits.basemap import Basemap
 from obspy.imaging.beachball import beach
+from scipy.interpolate import griddata
 
 from pyatoa.utils.operations.source_receiver import gcd_and_baz
 from pyatoa.utils.operations.calculations import myround
@@ -441,7 +442,7 @@ def event_misfit_map(map_corners, ds, model, annotate_station_info=False,
     if hasattr(ds, 'events'):
         event = ds.events[0]
         event_id = event.resource_id.id.split('/')[-1]
-        event_beachball(m, event, zorder=50)
+        event_beachball(m, event, zorder=102)
         plt.annotate(
             s=("{id}\n"
                "{date}\n"
@@ -465,7 +466,7 @@ def event_misfit_map(map_corners, ds, model, annotate_station_info=False,
             )
 
     # If waveforms in dataset, plot the stations
-    X, Y, S = [],[],[]
+    x_values, y_values, z_values = [],[],[]
     if hasattr(ds, 'waveforms'):
         for sta in ds.waveforms.list():
             sta_anno = ""
@@ -504,9 +505,9 @@ def event_misfit_map(map_corners, ds, model, annotate_station_info=False,
                     ds.waveforms[sta].StationXML[0][0].longitude,
                     ds.waveforms[sta].StationXML[0][0].latitude
                 )
-                X.append(sta_x)
-                Y.append(sta_y)
-                S.append(total_misfit)
+                x_values.append(sta_x)
+                y_values.append(sta_y)
+                z_values.append(total_misfit)
 
                 # Plot waveforms with data differently than those without
                 if 'observed' in ds.waveforms[sta].list():
@@ -530,24 +531,31 @@ def event_misfit_map(map_corners, ds, model, annotate_station_info=False,
                              bbox=dict(boxstyle="round", fc="white",
                                        ec="k", lw=1.25, alpha=0.75),
                              multialignment='left', fontsize=6,
-                             zorder=101
+                             zorder=103
                              )
 
-    # grid data
-    lenx, leny = 100 , 200
+    # Matplotlib mlab is deprecated, but this works
+    # len_x, len_y = 100, 200
+    # xi = np.linspace(min(x_values), max(x_values), len_x)
+    # yi = np.linspace(min(y_values), max(y_values), len_y)
+    # xi, yi = np.meshgrid(xi, yi)
+    # zi = mpl.mlab.griddata(x_values, y_values, z_values, xi, yi,
+    #                        interp="linear")
 
-    xi = np.linspace(min(X), max(X), lenx)
-    yi = np.linspace(min(Y), max(Y), leny)
-    xi, yi = np.meshgrid(xi, yi)
+    # Create a grid of data to interpolate data onto
+    len_xi, len_yi = 100, 200
+    xi, yi = np.mgrid[min(x_values):max(x_values):len_xi,
+                      min(y_values):max(y_values):len_yi]
 
-    # interpolate
-    zi = mpl.mlab.griddata(X, Y, S, xi, yi, interp="linear")
-    con = m.contourf(xi, yi, zi, zorder=100, alpha=0.6, cmap='viridis')
+    # Interpolate the data and plot as a contour overlay
+    colormap = 'viridis'
+    zi = griddata((x_values, y_values), z_values, (xi, yi), method='cubic')
+    m.contourf(xi, yi, zi, zorder=100, alpha=0.6, cmap=colormap)
 
-    m.scatter(X, Y, c=S, alpha=alpha,
-              edgecolor='k', linestyle='-', s=100,
-              linewidth=2, zorder=100)
-    m.scatter(xi.flatten(), yi.flatten(), marker='o', s=5, c='k')
+    # Plot the points that were used in the interpolation
+    m.scatter(x_values, y_values, c=z_values, alpha=alpha,
+              edgecolor='k', linestyle='-', s=100, cmap=colormap,
+              linewidth=2, zorder=101)
 
     # Plot fault lines, hardcoded into structure
     if show_nz_faults:
