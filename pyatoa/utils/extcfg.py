@@ -399,6 +399,19 @@ def get_pyadjoint_config(choice, min_period, max_period):
                       use_cc_error=True,
                       use_mt_error=True)
                   )
+    elif choice == "cc_hikurangi_strict":
+        cfgout = ("cc_traveltime_misfit",
+                  pyadjoint.ConfigCrossCorrelation(
+                      min_period=min_period,
+                      max_period=max_period,
+                      taper_type='hann',
+                      measure_type='dt',
+                      use_cc_error=True,
+                      dt_sigma_min=1.0,
+                      dlna_sigma_min=0.5)
+                  )
+
+        
     else:
         raise KeyError("adjoint source type incorrectly specified, "
                        "must be: 'waveform', 'cc_traveltime_misfit', "

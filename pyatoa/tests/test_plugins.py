@@ -268,8 +268,6 @@ class TestSeisflowsPluginSynOnly(unittest.TestCase):
         sfprocess.initialize(self.parser)
 
         sfprocess.process(self.parser)
-        import ipdb;ipdb.set_trace()
-
 
 
 
