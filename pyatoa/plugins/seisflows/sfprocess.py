@@ -260,7 +260,7 @@ def process(parser):
                     if mgmt.total_misfit is not None:
                         append_title = " ".join([
                             append_title,
-                            "misfit={:.2f}".format(mgmt.total_misfit)]
+                            ", misfit={:.2f}".format(mgmt.total_misfit)]
                         )
                     f = mgmt.plot_wav(
                         append_title=append_title,
