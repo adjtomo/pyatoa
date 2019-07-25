@@ -578,7 +578,7 @@ def event_misfit_map(map_corners, ds, model, step=None,
                 z_values.append(total_misfit)
 
                 # Plot waveforms with data differently than those without
-                if 'observed' in ds.waveforms[sta].list():
+                if 'observed' in ds.waveforms[sta].get_waveform_tags():
                     markersize = 75
                     linewidth = 1.75
                     alpha = 1.0

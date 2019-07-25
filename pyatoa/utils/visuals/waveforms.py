@@ -46,7 +46,7 @@ def setup_plot(number_of, twax=True):
             pretty_grids(twinax, twax=True)
             twaxes.append(twinax)
         else:
-            twax = None
+            twaxes = None
         pretty_grids(ax)
         axes.append(ax)
 
@@ -64,10 +64,6 @@ def window_maker(st_obs, st_syn, config, time_offset_sec=0., windows=None,
     """
     Plot streams and windows. assumes you have N observation traces and
     N synthetic traces for a 2N length stream object
-
-    NOTE: real hacky way of putting sta/lta and adjoint source on the
-    same axis object, normalize them both -1 to 1 and remove the
-    mean of the adjoint source to set everything onto 0
 
     :type st_obs: obspy.stream.Stream
     :param st_obs: observation stream object to plot
