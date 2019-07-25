@@ -40,7 +40,7 @@ def setup_plot(number_of, twax=True):
         if i == 0:
             ax = plt.subplot(gs[i])
         else:
-            ax = plt.subplot(gs[i],sharex=axes[0])
+            ax = plt.subplot(gs[i], sharex=axes[0])
         if twax:
             twinax = ax.twinx()
             pretty_grids(twinax, twax=True)

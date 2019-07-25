@@ -289,6 +289,67 @@ def connect_source_receiver(m, event, sta, **kwargs):
               s=105, zorder=zorder, linewidth=1.75)
 
 
+def interpolate_and_contour(m, x, y, z, len_xi, len_yi, fill=True,
+                            colormap='viridis', interpolation_method='cubic'):
+    """
+    Interpolate over scatter points on a regular grid, and create a contour plot
+
+    Station locations are irregular over the map and it's sometimes difficult to
+    visualize data based soley on the colors of the station markers. This
+    function will interpolate the station values (e.g. misfit) over the area
+    covered by the stations, and create a contour plot that can be overlaid onto
+    the map object
+    :type m: Basemap
+    :param m: basemap object
+    :type x: list
+    :param x: x coordinates
+    :type y: list
+    :param y: y coordinates
+    :type z: list
+    :param z: values to interpolate
+    :type len_xi: int
+    :param len_xi: x-axis length of the regular grid to interpolate onto
+    :type len_yi: int
+    :param len_yi: y-axis length of the regular grid to interpolate onto
+    :type fill: bool
+    :param fill: contourf or countour
+    :type colormap: str
+    :param colormap: matplotlib colorscale to be shared between contour, scatter
+    :type interpolation_method: str
+    :param interpolation_method: 'linear', 'nearest', 'cubic', passed to
+        scipy.interpolate.griddata
+    """
+    # Create a grid of data to interpolate data onto
+    xi, yi = np.mgrid[min(x):max(y):len_xi,
+                      min(x):max(y):len_yi]
+
+    # np meshgrid can also be used, but it gives a jagged edge to contourf
+    # xi, yi = np.meshgrid(np.linspace(min(x), max(y), len_xi),
+    #                      np.linspace(min(x), max(y), len_yi)
+    #                      )
+
+    # Interpolate the data and plot as a contour overlay
+    zi = griddata((x, y), z, (xi, yi), method=interpolation_method)
+
+    # Use contourf, for filled contours
+    if fill:
+        cs = m.contourf(xi, yi, zi, vmin=0, zorder=100, alpha=0.6,
+                        cmap=colormap)
+        # Add a colorbar
+        cbar = m.colorbar(cs, location='right', pad="5%")
+        cbar.set_label("misfit")
+    # Use contour for only lines, places values inline with contour
+    else:
+        cs = m.contour(xi, yi, zi, vmin=0, zorder=100, alpha=0.6, cmap=colormap)
+        # Label the contour values
+        plt.clabel(cs, cs.levels, fontsize=8, inline=True, fmt='%.1E')
+
+    # Plot the points that were used in the interpolation
+    m.scatter(x, y, c=z, alpha=0.75, edgecolor='k', linestyle='-', s=100,
+              cmap=colormap, linewidth=2, zorder=101
+              )
+
+
 def initiate_basemap(map_corners, scalebar=True, **kwargs):
     """
     set up the basemap object in the same way each time
@@ -402,9 +463,10 @@ def standalone_map(map_corners, inv, catalog, annotate_names=False,
     return f, m
 
 
-def event_misfit_map(map_corners, ds, model, annotate_station_info=False,
-                     show_nz_faults=False, color_by=False,
-                     figsize=(10, 9.4), dpi=100, show=True, save=None):
+def event_misfit_map(map_corners, ds, model, step=None,
+                     annotate_station_info=False, contour_overlay=True,
+                     show_nz_faults=False, figsize=(10, 9.4), dpi=100,
+                     show=True, save=None):
     """
     To be used to plot misfit information from a pyasdf Dataset
 
@@ -412,14 +474,19 @@ def event_misfit_map(map_corners, ds, model, annotate_station_info=False,
     :param map_corners: [lat_bot,lat_top,lon_left,lon_right]
     :type ds: pyasdf.ASDFDataSet
     :param ds: dataset containing things to plot
+    :type model: str
+    :param model: model number, e.g. 'm00'
+    :type step: str
+    :param step: step number, e.g. 's00', used for title plotting only
     :type map_corners: dict of floats
     :param map_corners: {lat_min,lat_max,lon_min,lon_max}
-    :type annotate_station_info: bool
+    :type annotate_station_info: bool or str
     :param annotate_station_info: annotate station names and info next to marker
+        can also be 'simple'
+    :type contour_overlay: bool
+    :param contour_overlay: interpolate z_values and create contour
     :type show_nz_faults: bool
     :param show_nz_faults: call hardcoded fault plotting scripts (TO DO change)
-    :type color_by_network: bool
-    :param color_by_network: color station markers based on network name
     :type figsize: tuple
     :param figsize: size of the figure
     :type dpi: int
@@ -441,6 +508,7 @@ def event_misfit_map(map_corners, ds, model, annotate_station_info=False,
     event = None
     if hasattr(ds, 'events'):
         event = ds.events[0]
+        event.origins[0].time.precision = 0
         event_id = event.resource_id.id.split('/')[-1]
         event_beachball(m, event, zorder=102)
         plt.annotate(
@@ -453,7 +521,7 @@ def event_misfit_map(map_corners, ds, model, annotate_station_info=False,
                 type=event.preferred_magnitude().magnitude_type,
                 mag=event.preferred_magnitude().mag,
             ),
-            xy=(m.xmin + (m.xmax - m.xmin) * 0.61,
+            xy=(m.xmax - (m.xmax - m.xmin) * 0.3,
                 m.ymin + (m.ymax - m.ymin) * 0.01),
             multialignment='right', fontsize=10
         )
@@ -470,7 +538,7 @@ def event_misfit_map(map_corners, ds, model, annotate_station_info=False,
     if hasattr(ds, 'waveforms'):
         for sta in ds.waveforms.list():
             sta_anno = ""
-            if hasattr(ds.waveforms[sta], 'StationXML'):
+            if 'StationXML' in ds.waveforms[sta].list():
                 sta_anno += "{}\n".format(sta)
                 # Get distance and backazimuth between event and station
                 if event is not None:
@@ -483,7 +551,7 @@ def event_misfit_map(map_corners, ds, model, annotate_station_info=False,
                 # If auxiliary data is given, add some extra information to anno
                 if hasattr(ds, 'auxiliary_data'):
                     # Determine the total number of windows for the given model
-                    if hasattr(ds.auxiliary_data, 'MisfitWindows'):
+                    if 'MisfitWindows' in ds.auxiliary_data.list():
                         try:
                             num_windows = window_dict[sta]
                         except KeyError:
@@ -491,7 +559,7 @@ def event_misfit_map(map_corners, ds, model, annotate_station_info=False,
                         sta_anno += "\n{}".format(num_windows)
 
                     # Determine the total misfit for a given model
-                    if hasattr(ds.auxiliary_data, 'AdjointSources'):
+                    if 'AdjointSources' in ds.auxiliary_data:
                         total_misfit = extractions.sum_misfits(
                             ds, model, station=sta
                         )
@@ -523,44 +591,65 @@ def event_misfit_map(map_corners, ds, model, annotate_station_info=False,
             m.scatter(sta_x, sta_y, marker='v', color='None', alpha=alpha,
                       edgecolor='k', linestyle='-', s=markersize,
                       linewidth=linewidth, zorder=100)
+
             # Annotate station information
             if annotate_station_info:
-                plt.annotate(s=sta_anno,
-                             xy=(sta_x - (m.xmax - m.xmin) * 0.01,
-                                 sta_y - (m.ymax - m.ymin) * 0.0025),
-                             bbox=dict(boxstyle="round", fc="white",
-                                       ec="k", lw=1.25, alpha=0.75),
-                             multialignment='left', fontsize=6,
-                             zorder=103
-                             )
+                # Just annotate the station names
+                if annotate_station_info == "simple":
+                    plt.annotate(s=sta_anno.split('\n')[0],
+                                 xy=(sta_x - (m.xmax - m.xmin) * 0.01,
+                                     sta_y + (m.ymax - m.ymin) * 0.01),
+                                 fontsize=10, zorder=103,
+                                 )
+                # Annotate as much information as possible, use background box
+                else:
+                    plt.annotate(s=sta_anno,
+                                 xy=(sta_x - (m.xmax - m.xmin) * 0.01,
+                                     sta_y - (m.ymax - m.ymin) * 0.0025),
+                                 bbox=dict(boxstyle="round", fc="white",
+                                           ec="k", lw=1.25, alpha=0.75),
+                                 multialignment='left', fontsize=6,
+                                 zorder=103
+                                 )
 
-    # Matplotlib mlab is deprecated, but this works
-    # len_x, len_y = 100, 200
-    # xi = np.linspace(min(x_values), max(x_values), len_x)
-    # yi = np.linspace(min(y_values), max(y_values), len_y)
-    # xi, yi = np.meshgrid(xi, yi)
-    # zi = mpl.mlab.griddata(x_values, y_values, z_values, xi, yi,
-    #                        interp="linear")
-
-    # Create a grid of data to interpolate data onto
-    len_xi, len_yi = 100, 200
-    xi, yi = np.mgrid[min(x_values):max(x_values):len_xi,
-                      min(y_values):max(y_values):len_yi]
-
-    # Interpolate the data and plot as a contour overlay
-    colormap = 'viridis'
-    zi = griddata((x_values, y_values), z_values, (xi, yi), method='cubic')
-    m.contourf(xi, yi, zi, zorder=100, alpha=0.6, cmap=colormap)
-
-    # Plot the points that were used in the interpolation
-    m.scatter(x_values, y_values, c=z_values, alpha=alpha,
-              edgecolor='k', linestyle='-', s=100, cmap=colormap,
-              linewidth=2, zorder=101)
+    # Plot a contour of a given Z value based on receiver locations
+    # Fill can be changed to make the contour just lines without a colorbar
+    if contour_overlay:
+        interpolate_and_contour(m=m, x=x_values, y=y_values, z=z_values,
+                                len_xi=100, len_yi=150, colormap='viridis',
+                                interpolation_method='cubic', fill=True,
+                                )
 
     # Plot fault lines, hardcoded into structure
     if show_nz_faults:
         map_extras.plot_hikurangi_trench(m)
         map_extras.plot_active_faults(m)
+
+    # Set a title
+    if step:
+        title = "{m}.{s} misfit map, {r} stations".format(
+            m=model, s=step, r=len(x_values)
+        )
+        if "Statistics" in ds.auxiliary_data.list():
+            if model in ds.auxiliary_data.Statistics.list():
+                if step in ds.auxiliary_data.Statistics[model].list():
+                    pars = ds.auxiliary_data.Statistics[model][step].parameters
+                    title += (
+                        "\navg misfit: {a:.2f}, num windows: {w}\n"
+                        "max misfit comp: {m1:.2f}/{m2}\n " 
+                        "min misfit comp: {m3:.2f}/{m4}"
+                       .format(
+                            a=pars["average_misfit"], m1=pars["max_misfit"],
+                            m2=pars["max_misfit_component"],
+                            m3=pars["min_misfit"],
+                            m4=pars["min_misfit_component"],
+                            w=pars["number_misfit_windows"])
+                    )
+
+    else:
+        title = "{m} misfit map, {r} stations".format(m=model,
+                                                            r=len(x_values))
+    plt.title(title)
 
     # Finality
     if save:
