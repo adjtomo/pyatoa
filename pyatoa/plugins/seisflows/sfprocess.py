@@ -267,6 +267,7 @@ def process(parser):
                                  )
                 mgmt.preprocess()
 
+                import ipdb;ipdb.set_trace()
                 # Either no fixed misfit windows or no windows exist yet
                 if not usrcfg["fix_windows"] or \
                         not hasattr(ds.auxiliary_data.MisfitWindows,
