@@ -80,12 +80,12 @@ def assemble_paths(parser, mode=''):
     with open(usrcfg_json, "r") as f:
         usrcfg = json.load(f)
 
-    # Set Pyatoa paths
+    # Set Pyatoa paths, these is a hardcoded directory structure
     figs = os.path.join(pyatoa_io, "figures")
     vtks = os.path.join(figs, "vtks")
     data = os.path.join(pyatoa_io, "data")
     misfits = os.path.join(data, "misfits")
-    misfit_file = os.path.join(pyatoa_io, usrcfg["misfits_json"])
+    misfit_file = os.path.join(pyatoa_io, "misfits.json")
 
     paths = {"PYATOA_FIGURES": figs, "PYATOA_DATA": data,
              "PYATOA_VTKS": vtks, "PYATOA_MISFITS": misfits,
@@ -155,7 +155,38 @@ def finalize(parser):
             os.makedirs(snapshot_path)
         srcs = glob.glob(os.path.join(paths["PYATOA_DATA"], "*.h5"))
         for src in srcs:
-            shutil.copy(src, os.path.join(snapshot_path, os.path.basename(src))) 
+            shutil.copy(src, os.path.join(snapshot_path, os.path.basename(src)))
+
+    # Create misfit maps for each event with contour overlay showing misfit
+    if usrcfg["plot_misfit_maps"]:
+        from pyatoa.utils.visuals.mapping import event_misfit_map
+
+        # Set the proper pathing so the misfit map can be found easily
+        map_dir = os.path.join(paths["PYATOA_FIGURES"], "maps")
+        if not os.path.exists(map_dir):
+            os.makedirs(map_dir)
+
+        step_number = "s{:0>2}".format(parser.step_count)
+        name_template = "{eid}_{m}_{s}_misfit_map.png"
+
+        # Loop through each available dataset to create misfit map
+        datasets = glob.glob(os.path.join(paths["PYATOA_DATA"], "*.h5"))
+        for dataset in datasets:
+            with pyasdf.ASDFDataSet(dataset) as ds:
+                fidout = os.path.join(
+                    map_dir, name_template.format(
+                        eid=ds.events[0].resource_id.id.split('/')[-1],
+                        m=parser.model_number, s=step_number
+                    )
+                )
+                # TO DO: set map corners using usrcfg, and not default Config?
+                event_misfit_map(map_corners=pyatoa.Config().map_corners,
+                                 ds=ds, model=parser.model_number,
+                                 step=step_number,
+                                 annotate_station_info='simple',
+                                 contour_overlay=True, filled_contours=True,
+                                 show=False, save=fidout
+                                 )
 
 
 def process(parser):

@@ -345,7 +345,7 @@ def interpolate_and_contour(m, x, y, z, len_xi, len_yi, fill=True,
         plt.clabel(cs, cs.levels, fontsize=8, inline=True, fmt='%.1E')
 
     # Plot the points that were used in the interpolation
-    m.scatter(x, y, c=z, alpha=0.75, edgecolor='k', linestyle='-', s=100,
+    m.scatter(x, y, c=z, alpha=1., edgecolor='k', linestyle='-', s=100,
               cmap=colormap, linewidth=2, zorder=101
               )
 
@@ -465,8 +465,8 @@ def standalone_map(map_corners, inv, catalog, annotate_names=False,
 
 def event_misfit_map(map_corners, ds, model, step=None,
                      annotate_station_info=False, contour_overlay=True,
-                     show_nz_faults=False, figsize=(10, 9.4), dpi=100,
-                     show=True, save=None):
+                     filled_contours=True, show_nz_faults=False,
+                     figsize=(10, 9.4), dpi=100, show=True, save=None):
     """
     To be used to plot misfit information from a pyasdf Dataset
 
@@ -485,6 +485,8 @@ def event_misfit_map(map_corners, ds, model, step=None,
         can also be 'simple'
     :type contour_overlay: bool
     :param contour_overlay: interpolate z_values and create contour
+    :type filled_contours: bool
+    :param filled_contours: if True, use countourf, else use contour
     :type show_nz_faults: bool
     :param show_nz_faults: call hardcoded fault plotting scripts (TO DO change)
     :type figsize: tuple
@@ -617,7 +619,8 @@ def event_misfit_map(map_corners, ds, model, step=None,
     if contour_overlay:
         interpolate_and_contour(m=m, x=x_values, y=y_values, z=z_values,
                                 len_xi=100, len_yi=150, colormap='viridis',
-                                interpolation_method='cubic', fill=True,
+                                interpolation_method='cubic',
+                                fill=filled_contours
                                 )
 
     # Plot fault lines, hardcoded into structure
@@ -637,8 +640,7 @@ def event_misfit_map(map_corners, ds, model, step=None,
                     title += (
                         "\navg misfit: {a:.2f}, num windows: {w}\n"
                         "max misfit comp: {m1:.2f}/{m2}\n " 
-                        "min misfit comp: {m3:.2f}/{m4}"
-                       .format(
+                        "min misfit comp: {m3:.2f}/{m4}".format(
                             a=pars["average_misfit"], m1=pars["max_misfit"],
                             m2=pars["max_misfit_component"],
                             m3=pars["min_misfit"],
@@ -647,8 +649,7 @@ def event_misfit_map(map_corners, ds, model, step=None,
                     )
 
     else:
-        title = "{m} misfit map, {r} stations".format(m=model,
-                                                            r=len(x_values))
+        title = "{m} misfit map, {r} stations".format(m=model, r=len(x_values))
     plt.title(title)
 
     # Finality

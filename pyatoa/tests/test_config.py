@@ -20,12 +20,12 @@ class TestConfig(unittest.TestCase):
             os.path.join(self.test_data_path, 'test_inv.xml')
         )
         self.st_obs = obspy.read(os.path.join(
-            self.test_data_path, 'test_obs_data.ms'))
+            self.test_data_path, 'test_obs_data.ascii'))
         self.st_syn = obspy.read(
-            os.path.join(self.test_data_path, 'test_syn_m00_data.ms')
+            os.path.join(self.test_data_path, 'test_syn_m00_data.ascii')
         )
         self.catalog = obspy.read_events(
-            os.path.join(self.test_data_path, 'test_event.xml')
+            os.path.join(self.test_data_path, 'test_cat.xml')
         )
         self.event = self.catalog[0]
         self.config = Config(

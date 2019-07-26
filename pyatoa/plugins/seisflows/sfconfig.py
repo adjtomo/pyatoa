@@ -11,12 +11,12 @@ import json
 
 def sfconfig(min_period=10, max_period=30, filter_corners=4,
              rotate_to_rtz=False, unit_output="DISP", pyflex_config="default",
-             adj_src_type="multitaper_misfit", paths_to_waveforms=[],
+             adj_src_type="cc_traveltime_misfit", paths_to_waveforms=[],
              paths_to_responses=[], set_logging="info", fix_windows=False,
              plot_waveforms=True, plot_maps=True, synthetics_only=False,
-             window_amplitude_ratio=.0, write_misfit_json=True, 
+             window_amplitude_ratio=.0, write_misfit_json=True,
              tile_and_combine=False,  purge_originals=False, purge_tiles=True,
-             create_srcrcv_vtk=True, snapshot=True, misfits_json="misfits.json",
+             create_srcrcv_vtk=True, snapshot=True, plot_misfit_maps=True,
              fidout='./sfconfig.json'):
     """
     user set dictionary parameters
@@ -61,11 +61,12 @@ def sfconfig(min_period=10, max_period=30, filter_corners=4,
         windows. Evaluates as peak_window/peak_waveform > window_amplitude_ratio
     :type write_misfit_json: bool
     :param write_misfit_json: write misfit information, number of windows,
-        number of adjoint sources to a json file with name 'misfit_json_file'
+        number of adjoint sources to a json file
     :type tile_and_combine: bool
     :param tile_and_combine: combine the waveforms and maps into a single pdf
         file, saved into 'figures'/composites
-    :type purge_*: bool
+    :type purge_originals: bool
+    :type purge_tiles: bool
     :param purge_originals: purge the wav_*.png and map_*.png from Pyatoa, only
         if 'tile_and_combine'==True
     :param purge_tiles: purge intermediate tile files which combine wav and map
@@ -75,9 +76,9 @@ def sfconfig(min_period=10, max_period=30, filter_corners=4,
     :type snapshot: bool
     :param snapshot: save a copy of the HDF5 files from each iteration, incase
         e.g. file corruption, allows for temporary backups
-    :type misfits_json: str
-    :param misfits_json: name of the misfits json file, only if
-        write_misfits_json==True, default='misfits.json'
+    :type plot_misfit_maps: bool
+    :param plot_misfit_maps: after each iteration, plot a misfit map with a
+        contour overlay that shows the misfit at each station, for all data
     :type fidout: str
     :param fidout: filename to save the .json config file
     """
@@ -108,9 +109,7 @@ def sfconfig(min_period=10, max_period=30, filter_corners=4,
         "purge_tiles": purge_tiles,
         "create_srcrcv_vtk": create_srcrcv_vtk,
         "snapshot": snapshot,
-
-        # Pyatoa Paths (output directory set in Seisflows)
-        "misfits_json": misfits_json,
+        "plot_misfit_maps": plot_misfit_maps,
     }
 
     with open(fidout, "w") as f:

@@ -47,7 +47,7 @@ class TestSeisflowsPlugin(unittest.TestCase):
         with open(jsonfid, 'w') as f:
             json.dump(jsondata, f)
 
-        # Copy the STATION file to the current dir for 'process'
+        # Copy the 'STATION' file to the current dir for 'process'
         sem_data_dir = os.path.join(cls.current_dir, "DATA")
         os.makedirs(sem_data_dir)
         shutil.copy(src=os.path.join(cls.test_data_path, "test_STATIONS"),
@@ -62,11 +62,11 @@ class TestSeisflowsPlugin(unittest.TestCase):
                     dst=os.path.join(data_dir, "2018p130600.h5")
                     )
 
-        # Create the config file
+        # Create the 'sfconfig' file
         sfconfig_fid = os.path.join(cls.pyatoa_dir, "sfconfig.json")
         sfconfig.sfconfig(fidout=sfconfig_fid)
 
-        # Copy the synthetic data into the current dir
+        # Copy the synthetic data into the 'current dir'
         syn_dir = os.path.join(cls.current_dir, 'traces', 'syn')
         os.makedirs(syn_dir)
         synthetics = glob.glob(
@@ -139,9 +139,16 @@ class TestSeisflowsPlugin(unittest.TestCase):
         self.assertTrue(os.path.exists(check_file))
 
         # Check that snapshot works
-        self.assertTrue(os.path.exists(
+        check_file = os.path.join(
             self.pyatoa_dir, 'data', 'snapshot', '2018p130600.h5')
-            )
+        self.assertTrue(os.path.exists(check_file))
+
+        # Check that misfit map works
+        check_file = os.path.join(
+            self.pyatoa_dir, 'figures', 'maps',
+            '2018p130600_m00_s00_misfit_map.png'
+        )
+        self.assertTrue(os.path.exists(check_file))
 
     def test_process(self):
         """
@@ -266,9 +273,7 @@ class TestSeisflowsPluginSynOnly(unittest.TestCase):
         :return:
         """
         sfprocess.initialize(self.parser)
-
         sfprocess.process(self.parser)
-
 
 
 if __name__ == "__main__":

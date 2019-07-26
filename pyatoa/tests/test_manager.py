@@ -34,7 +34,8 @@ class TestManager(unittest.TestCase):
         )
         cls.config = Config(
             model_number="m00",
-            event_id=cls.event.resource_id.resource_id.split('/')[1]
+            event_id=cls.event.resource_id.resource_id.split('/')[1],
+
         )
         cls.empty_ds_fid = os.path.join(
             cls.test_data_path, 'test_empty_ds.h5'
@@ -162,7 +163,7 @@ class TestManager(unittest.TestCase):
             # Check that the dataset contains the correct auxiliary data
             check_model = self.config.model_number
             check_window = 'NZ_BFZ_E_0'
-            check_param = ("left_index", 4102)
+            check_param = ("left_index", 1596)
 
             self.assertTrue(hasattr(mgmt.ds.auxiliary_data, 'MisfitWindows'))
             self.assertTrue(hasattr(mgmt.ds.auxiliary_data.MisfitWindows,
@@ -171,7 +172,7 @@ class TestManager(unittest.TestCase):
                 mgmt.ds.auxiliary_data.MisfitWindows[check_model], check_window)
             )
 
-            # Shorten call for cleanliness
+            # Shorten call for cleanliness, check that misfit windows picked ok
             wd = mgmt.ds.auxiliary_data.MisfitWindows[check_model][check_window]
             self.assertTrue(hasattr(wd, 'parameters'))
             self.assertEqual(wd.parameters[check_param[0]], check_param[1])
