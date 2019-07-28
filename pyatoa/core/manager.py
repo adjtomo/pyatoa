@@ -110,7 +110,6 @@ class Manager:
         self.obs_process_flag = False
         self.syn_process_flag = False
         self.syn_shift_flag = False
-        self.pyflex_windows = 0
         self.pyadjoint_misfit = 0
 
         # If an event is given, manual set event, otherwise event will
@@ -146,7 +145,7 @@ class Manager:
                          obsproc=self.obs_process_flag,
                          synproc=self.syn_process_flag,
                          synshift=self.half_dur_flag,
-                         pyflex=self.pyflex_windows,
+                         pyflex=self.num_windows,
                          pyadjoint=self.pyadjoint_misfit
                          )
 
@@ -198,8 +197,10 @@ class Manager:
             self.inv_name = None
 
         # Check if Pyflex has been run, if so return the number of windows made
+        self.num_windows = 0
         if isinstance(self.windows, dict):
-            self.pyflex_windows = self.num_windows
+            for key in self.windows.keys():
+                self.num_windows += len(self.windows[key])
 
         # Check if Pyadjoint has been run, if so return the total misfit
         if isinstance(self.adj_srcs, dict):
@@ -594,9 +595,14 @@ class Manager:
 
         Lion's version of Pyadjoint does not contain some of these functions
         """
-        # Precheck to see if Pyflex has been run already
         self._check()
-        if not self.pyflex_windows or self.num_windows == 0:
+
+        # Check that data is available
+        if not self.obs_process_flag or not self.syn_process_flag:
+            logger.info("cannot run Pyadjoint, no waveforms, or not processed")
+            return
+        # Check that windows are available
+        if self.num_windows == 0:
             logger.info("cannot run Pyadjoint, no Pyflex windows")
             return
 
@@ -648,7 +654,7 @@ class Manager:
                     write_adj_src_to_asdf(adj_src=adj_src, ds=self.ds, tag=tag,
                                           time_offset=self.time_offset_sec)
         
-        # Save adjoint source for plotting
+        # Save adjoint source internally for plotting
         self.adj_srcs = adjoint_sources
         
         # Save total misfit, calucalated a la Tape (2010) Eq. 6

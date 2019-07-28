@@ -63,8 +63,8 @@ class TestSeisflowsPlugin(unittest.TestCase):
                     )
 
         # Create the 'sfconfig' file
-        sfconfig_fid = os.path.join(cls.pyatoa_dir, "sfconfig.json")
-        sfconfig.sfconfig(fidout=sfconfig_fid)
+        cls.sfconfig_fid = os.path.join(cls.pyatoa_dir, "sfconfig.json")
+        sfconfig.sfconfig(fidout=cls.sfconfig_fid)
 
         # Copy the synthetic data into the 'current dir'
         syn_dir = os.path.join(cls.current_dir, 'traces', 'syn')
@@ -174,6 +174,21 @@ class TestSeisflowsPlugin(unittest.TestCase):
             os.path.join(self.pyatoa_dir, 'misfits.json')
         ]:
             self.assertTrue(check_path)
+
+    def test_process_fix_windows(self):
+        """
+        Test the fix windows processing parameter
+        :return:
+        """
+        sfconfig.sfconfig(fidout=self.sfconfig_fid, fix_windows=True)
+
+        sfprocess.process(self.parser)
+
+        # Reset the config file for other tests
+        sfconfig.sfconfig(fidout=self.sfconfig_fid)
+
+
+
 
 
 class TestSeisflowsPluginSynOnly(unittest.TestCase):
