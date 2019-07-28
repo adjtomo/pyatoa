@@ -203,6 +203,8 @@ def event_by_distance(cat, filter_type=False, filter_bounds=None, random=False):
     :return:
     """
     from obspy.geodetics import locations2degrees
+    from obspy.core.event import Catalog
+
     # filter the catalog by e.g. magnitude before sorting
     if filter_type:
         cat = cat.filter("{f} >= {lb}".format(
@@ -246,17 +248,17 @@ def event_by_distance(cat, filter_type=False, filter_bounds=None, random=False):
         lon = cat[dist_list.index(max(dist_list))].preferred_origin().longitude
 
     # event id list
-    event_list = []
+    events = []
     for i in index_list:
-        event_list.append(cat[i].resource_id.id.split('/')[1])
+        events.append(cat[i])
 
-    return index_list, event_list
+    # Return a new catalog
+    return Catalog(events=events)
 
 
 def generate_focal_mechanism(mtlist, event=None):
     """
-    Event objects fetched by obspy do not natively come with any moment tensor
-    or nodal plane information, that is stored separately in a .csv file
+
     located on github. For the tomography problem we need this information, so
     this functino will append information from the .csv file onto the obspy
     event object so that all the information can be located in a single object
