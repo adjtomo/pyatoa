@@ -15,7 +15,7 @@ class Config:
     def __init__(self, model_number=None, event_id=None, min_period=10,
                  max_period=30, filter_corners=4, rotate_to_rtz=False,
                  unit_output='DISP', pyflex_config='default',
-                 adj_src_type='multitaper_misfit', start_pad=20, end_pad=500,
+                 adj_src_type='cc_traveltime_misfit', start_pad=20, end_pad=500,
                  zero_pad=0, synthetic_unit="DISP", observed_tag='observed',
                  synthetic_tag='synthetic_{model_num}', synthetics_only=False,
                  window_amplitude_ratio=0.,
@@ -263,7 +263,53 @@ class Config:
                         paths_to_wavs=self.cfgpaths['waveforms'],
                         paths_to_syns=self.cfgpaths['synthetics'],
                         paths_to_resp=self.cfgpaths['responses'])
-            )
+                    )
+
+    def read_from_asdf(self, ds, model):
+        """
+        Read and set config parameters from an ASDF Dataset, assumes that all
+        necessary parameters are located in the auxiliary data subgroup of the
+        dataset.
+
+        :type ds: pyasdf.ASDFDataSet
+        :param ds: dataset with config parameter to read
+        :type model: str
+        :param model: model number e.g. 'm00'
+        """
+        cfgin = ds.auxiliary_data.Configs[model].parameters
+
+        self.model_number = cfgin['model_number']
+        self.event_id = cfgin['event_id']
+        self.min_period = float(cfgin['min_period'])
+        self.max_period = float(cfgin['max_period'])
+        self.filter_corners = float(cfgin['filter_corners'])
+        self.rotate_to_rtz = cfgin['rotate_to_rtz']
+        self.unit_output = cfgin['unit_output'].upper()
+        self.synthetic_unit = cfgin['synthetic_unit'].upper()
+        self.observed_tag = cfgin['observed_tag']
+        self.synthetic_tag = cfgin['synthetic_tag'].format(model_num=model)
+        self.pyflex_config = (cfgin['pyflex_config'], None)
+        self.pyadjoint_config = (cfgin['pyadjoint_config'], None)
+        self.map_corners = {'lat_min': cfgin['map_corners'][0],
+                            'lat_max': cfgin['map_corners'][1],
+                            'lon_min': cfgin['map_corners'][2],
+                            'lon_max': cfgin['map_corners'][3]
+                            }
+        self.synthetics_only = cfgin['synthetics_only']
+        self.window_amplitude_ratio = cfgin['window_amplitude_ratio']
+
+        self.cfgpaths = {'synthetics': cfgin['paths_to_synthetics'],
+                         'waveforms': cfgin['paths_to_waveforms'],
+                         'responses': cfgin['paths_to_responses'],
+                         'auxiliary_data': cfgin['paths_to_auxiliary_data']
+                         }
+        self.zero_pad = int(cfgin['zero_pad'])
+        self.start_pad = int(cfgin['start_pad'])
+        self.end_pad = int(cfgin['end_pad'])
+
+        # Run internal functions to check the Config object
+        self.component_list = ['Z', 'N', 'E']
+        self._check_config()
 
     def write_to_asdf(self, ds):
         """
@@ -271,7 +317,7 @@ class Config:
         for easy lookback
         """
         # Lazy imports because this function isn't always called
-        import numpy as np
+        from numpy import array
         from obspy import UTCDateTime
 
         par_dict = {"creation_time": str(UTCDateTime()),
@@ -283,10 +329,25 @@ class Config:
                     "rotate_to_rtz": self.rotate_to_rtz,
                     "unit_output": self.unit_output,
                     "pyflex_config": self.pyflex_config[0],
-                    "pyadjoint_config": self.pyadjoint_config[0]
+                    "pyadjoint_config": self.pyadjoint_config[0],
+                    "start_pad": self.start_pad,
+                    "end_pad": self.end_pad,
+                    "observed_tag": self.observed_tag,
+                    "synthetic_tag": self.synthetic_tag,
+                    "synthetics_only": self.synthetics_only,
+                    "zero_pad": self.zero_pad,
+                    "window_amplitude_ratio": self.window_amplitude_ratio,
+                    "map_corners": [self.map_corners['lat_min'],
+                                    self.map_corners['lat_max'],
+                                    self.map_corners['lon_min'],
+                                    self.map_corners['lon_max']],
+                    "path_to_synthetics": self.cfgpaths['synthetics'],
+                    "path_to_waveforms": self.cfgpaths['waveforms'],
+                    "paths_to_responses": self.cfgpaths['responses'],
+                    "paths_to_auxiliary_data": self.cfgpaths['auxiliary_data']
                     }
 
-        ds.add_auxiliary_data(data_type="Configs", data=np.array([True]),
+        ds.add_auxiliary_data(data_type="Configs", data=array([True]),
                               path="{}".format(self.model_number),
                               parameters=par_dict)
 

@@ -6,32 +6,90 @@ import os
 import glob
 import pyasdf
 import numpy as np
+import matplotlib as mpl
 import matplotlib.pyplot as plt
-
-from matplotlib import cm
 
 from pyatoa import Config, Manager
 from pyatoa.utils.operations.source_receiver import gcd_and_baz,\
     seismogram_length
-from pyatoa.utils.visuals.waveforms import setup_plot
+
+mpl.rcParams['lines.linewidth'] = 1.
+
+def setup_plot(nrows, ncols):
+    """
+    Dynamically set up plots according to number_of given
+    Returns a list of lists of axes objects
+    e.g. axes[i][j] gives the ith column and the jth row
+
+    :type nrows: int
+    :param nrows: number of rows in the gridspec
+    :type ncols: int
+    :param ncols: number of columns in the gridspec
+    :rtype axes: matplotlib axes
+    :return axes: axis objects
+    """
+    gs = mpl.gridspec.GridSpec(nrows, ncols, hspace=0, wspace=0.2)
+
+    axes = []
+    for row in range(0, gs.get_geometry()[0]):
+        components = []
+        for col in range(0, gs.get_geometry()[1]):
+            if row == 0:
+                ax = plt.subplot(gs[row, col])
+            else:
+                # Share the x axis with the same component in the column
+                ax = plt.subplot(gs[row, col], sharex=axes[0][col],
+                                 sharey=axes[0][col]
+                                 )
+            ax.set_axisbelow(True)
+            ax.tick_params(which='both', direction='in', top=True,
+                                 right=True)
+            # Set the grids on
+            ax.minorticks_on()
+            for axis_ in ['major', 'minor']:
+                ax.grid(which=axis_, linestyle=':', linewidth='0.5',
+                              color='k', alpha=0.25)
+            components.append(ax)
+        axes.append(components)
+
+    # remove x-tick labels except for last axis
+    for row in axes[:-1]:
+        for column in row:
+            plt.setp(column.get_xticklabels(), visible=False)
+
+    # # remove y-tick labels expcet for first axis
+    # middle_row = nrows // 2
+    # for i, row in enumerate(axes):
+    #     if i != middle_row:
+    #         for column in row:
+    #             plt.setp(column.get_yticklabels(), visible=False)
+
+    # remove all y-tick labels
+    for i, row in enumerate(axes):
+        for column in row:
+            plt.setp(column.get_yticklabels(), visible=False)
+
+    return axes
+
 
 # Path to hdf5 files
-datasets_path = "path/to/dataset"
+datasets_path = "/Users/chowbr/Documents/subduction/tomo/seisflows/checkerboard/eight_events/data"
 
 # Path to save figures to, if none given, figures wil not be saved
-output_dir = "path/to/output"
+output_dir = None
 
 # User-defined figure parameters
 show_plots = True
-colormap_choice = 'viridis'
 dpi = 100
 figsize = (11.69, 8.27)
 
 # For use when plotting labels
 z = 5
+color_list = ["r", "orange", "m"]
 unit_dict = {"DISP": "displacement [m]",
              "VEL": "velocity [m/s]",
              "ACC": "acceleration [m/s^2]"}
+
 
 # Read in each of the datasets
 for dataset in glob.glob(os.path.join(datasets_path, '*')):
@@ -77,12 +135,11 @@ for dataset in glob.glob(os.path.join(datasets_path, '*')):
                 slow_wavespeed_km_s=1, binsize=50, minimum_length=100
             )
 
-            # Set some parameters necessary for flexible plotting
-            middle_trace = len(st_obs) // 2
-
             # Instantiate plotting instances
             f = plt.figure(figsize=figsize, dpi=dpi)
-            axes, _ = setup_plot(number_of=len(st_obs), twax=False)
+            axes = setup_plot(nrows=len(synthetics.keys()), ncols=len(st_obs))
+            middle_column = len(st_obs) // 2
+            middle_row = len(synthetics.keys()) // 2
 
             # Create time axis based on data statistics
             t = np.linspace(
@@ -92,55 +149,58 @@ for dataset in glob.glob(os.path.join(datasets_path, '*')):
                 len(st_obs[0].data)
             )
 
-            # Plot per component
-            for i, comp in enumerate(config.component_list):
-                # Plot observation waveform
-                obs = st_obs.select(component=comp)
-                a1, = axes[i].plot(t, obs[0].data, 'k', zorder=z,
-                                   label="{} (OBS)".format(obs[0].get_id()))
-                lines_for_legend = [a1]
+            # Make sure the models are in order
+            synthetic_keys = list(synthetics.keys())
+            synthetic_keys.sort()
 
-                # Plot each synthetic waveforms
-                synthetic_keys = list(synthetics.keys())
-                synthetic_keys.sort()
-                colormap = cm.get_cmap(colormap_choice, len(synthetic_keys))
-                for j, syn_key in enumerate(synthetic_keys):
+            # Plot each model on a different row
+            for row, syn_key in enumerate(synthetic_keys):
+                axes[row][0].set_ylabel("{}".format(syn_key.split('_')[-1]))
+
+                # This will put units on the ylabel
+                # if row == middle_row:
+                #     # Label the leftmost column by the model number and units
+                #     axes[row][0].set_ylabel(
+                #         "{}\n{}".format(unit_dict[config.unit_output],
+                #                         syn_key.split('_')[-1]
+                #                         )
+                #     )
+                # else:
+                #     axes[row][0].set_ylabel("{}".format(syn_key.split('_')[-1]))
+
+                # Plot each component in a different column
+                for col, comp in enumerate(config.component_list):
+                    obs = st_obs.select(component=comp)
                     syn = synthetics[syn_key].select(component=comp)
-                    a2, = axes[i].plot(
-                        t, syn[0].data, 'r', zorder=z, label=syn_key,
-                        c=colormap(j)
-                    )
-                    lines_for_legend.append(a2)
 
-                # Set the seismogram length
-                if not length_sec:
-                    length_sec = t[-1]
-                axes[i].set_xlim([np.maximum(mgmt.time_offset_sec, -10),
-                                  np.minimum(length_sec, t[-1])
-                                  ])
+                    # Plot observation waveform
+                    a1, = axes[row][col].plot(t, obs[0].data, 'k', zorder=z)
+                    a2, = axes[row][col].plot(t, syn[0].data, color_list[col],
+                                              zorder=z)
 
-                # The y-label of the middle trace contains common info
-                if i == middle_trace:
-                    comp = "{}\n{}".format(unit_dict[config.unit_output], comp)
-                axes[i].set_ylabel(comp)
+                    if row == 0:
+                        # Set the seismogram length but only for the first row
+                        if not length_sec:
+                            length_sec = t[-1]
+                        axes[row][col].set_xlim(
+                            [np.maximum(mgmt.time_offset_sec, -10),
+                             np.minimum(length_sec, t[-1])
+                             ])
 
-                # Accumulate legend labels and create a legend
-                labels = [l.get_label() for l in lines_for_legend]
-                axes[i].legend(lines_for_legend, labels, prop={"size": 9},
-                               loc="upper right")
+                        # Set titles for the first row
+                        if col == middle_column:
+                            title = "{net}.{sta} {eid}\n".format(
+                                net=st_obs[0].stats.network,
+                                sta=st_obs[0].stats.station,
+                                eid=event_id
+                            )
+                            title += comp
+                        else:
+                            title = comp
+                        axes[row][col].set_title(title)
 
-            # Set plot title with relevant information
-            title = "{net}.{sta}".format(net=st_obs[0].stats.network,
-                                         sta=st_obs[0].stats.station
-                                         )
-
-            # Account for the fact that event id may not be given
-            if config.event_id is not None:
-                title = " ".join([title, config.event_id])
-
-            # Final plotting parameters
-            axes[0].set_title(title)
-            axes[-1].set_xlabel("time [s]")
+            # Label the time axis on the bottom row
+            axes[-1][middle_column].set_xlabel("time [sec]")
 
             # Save the generated figure
             if output_dir:
@@ -155,6 +215,5 @@ for dataset in glob.glob(os.path.join(datasets_path, '*')):
             # Show the plot
             if show_plots:
                 plt.show()
-
 
             plt.close()

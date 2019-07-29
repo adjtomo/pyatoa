@@ -267,7 +267,6 @@ def process(parser):
                                  )
                 mgmt.preprocess()
 
-                import ipdb;ipdb.set_trace()
                 # Either no fixed misfit windows or no windows exist yet
                 if not usrcfg["fix_windows"] or \
                         not hasattr(ds.auxiliary_data.MisfitWindows,
@@ -285,14 +284,15 @@ def process(parser):
                 if usrcfg["plot_waveforms"]:
                     # Format some strings to append to the waveform plot title
                     append_title = (
-                        "\n{md}, pyflex={pf}, pyadjoint={pa}".format(
-                            md=config.model_number, pf=config.pyflex_config[0],
+                        "\n{md}{sn} pyflex={pf}, pyadjoint={pa},".format(
+                            md=config.model_number, sn=step_number, 
+                            pf=config.pyflex_config[0],
                             pa=config.pyadjoint_config[0])
                     )
                     if mgmt.total_misfit is not None:
                         append_title = " ".join([
                             append_title,
-                            ", misfit={:.2f}".format(mgmt.total_misfit)]
+                            "misfit={:.2E}".format(mgmt.total_misfit)]
                         )
                     f = mgmt.plot_wav(
                         append_title=append_title,

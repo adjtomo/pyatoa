@@ -359,6 +359,28 @@ class Manager:
             logger.debug(
                 "manager does not contain all data, cannot fill dataset")
 
+    def populate_manager(self, station_code, model):
+        """
+        Populate the manager using a given PyASDF Dataset, based on user-defined
+        station code. Useful for quick plotting ASDF data.
+
+        :type station_code: str
+        :param station_code: SEED conv. code, e.g. NZ.BFZ.10.HHZ
+        :type model: str
+        :param model: model number to search for data, e.g. 'm00'
+        """
+        if self.ds:
+            self.event = self.ds.events[0]
+
+            net, sta, _, _ = station_code.split('.')
+            sta_tag = "{net}.{sta}".format(net=net, sta=sta)
+            if sta_tag in self.ds.waveforms.list():
+                self.st_obs = self.ds.waveforms[sta_tag][
+                    self.config.observed_tag]
+                self.st_syn = self.ds.waveforms[sta_tag][
+                    self.config.synthetic_tag.format(model)]
+                self.inv = self.ds.waveforms[sta_tag].StationXML
+
     def preprocess(self):
         """
         Preprocess observed and synthetic data in place on waveforms.

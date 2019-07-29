@@ -66,8 +66,7 @@ class Getter:
                 return_channels = []
                 for component in components:
                     return_channels.append(code + component)
-                return return_channels 
-        
+                return return_channels
     
     def event_get(self):
         """
