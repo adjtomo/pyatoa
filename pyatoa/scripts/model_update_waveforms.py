@@ -13,7 +13,7 @@ from pyatoa import Config, Manager
 from pyatoa.utils.operations.source_receiver import gcd_and_baz,\
     seismogram_length
 
-mpl.rcParams['lines.linewidth'] = 1.
+mpl.rcParams['lines.linewidth'] = 1.1
 
 def setup_plot(nrows, ncols):
     """
@@ -28,7 +28,7 @@ def setup_plot(nrows, ncols):
     :rtype axes: matplotlib axes
     :return axes: axis objects
     """
-    gs = mpl.gridspec.GridSpec(nrows, ncols, hspace=0, wspace=0.2)
+    gs = mpl.gridspec.GridSpec(nrows, ncols, hspace=0, wspace=0.1)
 
     axes = []
     for row in range(0, gs.get_geometry()[0]):
@@ -48,7 +48,7 @@ def setup_plot(nrows, ncols):
             ax.minorticks_on()
             for axis_ in ['major', 'minor']:
                 ax.grid(which=axis_, linestyle=':', linewidth='0.5',
-                              color='k', alpha=0.25)
+                              color='k', alpha=0.75)
             components.append(ax)
         axes.append(components)
 
@@ -73,19 +73,19 @@ def setup_plot(nrows, ncols):
 
 
 # Path to hdf5 files
-datasets_path = "/Users/chowbr/Documents/subduction/tomo/seisflows/checkerboard/eight_events/data"
+datasets_path = "./"
 
 # Path to save figures to, if none given, figures wil not be saved
-output_dir = None
+output_dir = "./waveforms"
 
 # User-defined figure parameters
-show_plots = True
-dpi = 100
+show_plots = False
+dpi = 125
 figsize = (11.69, 8.27)
 
 # For use when plotting labels
 z = 5
-color_list = ["r", "orange", "m"]
+color_list = ["r", "b", "g"]
 unit_dict = {"DISP": "displacement [m]",
              "VEL": "velocity [m/s]",
              "ACC": "acceleration [m/s^2]"}
@@ -152,6 +152,7 @@ for dataset in glob.glob(os.path.join(datasets_path, '*')):
             # Make sure the models are in order
             synthetic_keys = list(synthetics.keys())
             synthetic_keys.sort()
+            synthetic_init = synthetics[synthetic_keys[0]]
 
             # Plot each model on a different row
             for row, syn_key in enumerate(synthetic_keys):
@@ -172,20 +173,24 @@ for dataset in glob.glob(os.path.join(datasets_path, '*')):
                 for col, comp in enumerate(config.component_list):
                     obs = st_obs.select(component=comp)
                     syn = synthetics[syn_key].select(component=comp)
+                    syn_init = synthetic_init.select(component=comp)
 
-                    # Plot observation waveform
+                    # Plot waveform
                     a1, = axes[row][col].plot(t, obs[0].data, 'k', zorder=z)
                     a2, = axes[row][col].plot(t, syn[0].data, color_list[col],
                                               zorder=z)
+                    a3, = axes[row][col].plot(t, syn_init[0].data, color_list[col],
+                            zorder=z-1, alpha=0.35, linestyle=':', linewidth=2.)
 
                     if row == 0:
                         # Set the seismogram length but only for the first row
-                        if not length_sec:
-                            length_sec = t[-1]
-                        axes[row][col].set_xlim(
-                            [np.maximum(mgmt.time_offset_sec, -10),
-                             np.minimum(length_sec, t[-1])
-                             ])
+                        axes[row][col].set_xlim([25,100])
+                        # if not length_sec:
+                        #     length_sec = t[-1]
+                        # axes[row][col].set_xlim(
+                        #     [np.maximum(mgmt.time_offset_sec, -10),
+                        #      np.minimum(length_sec, t[-1])
+                        #      ])
 
                         # Set titles for the first row
                         if col == middle_column:
