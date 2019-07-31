@@ -37,6 +37,8 @@ def ascii_to_mseed(path, origintime, location=''):
     This convenience function converts the .sem files into Stream objects
     with the correct header information.    
 
+    Works with Specfem3D git version 6895e2f7
+
     :type path: str
     :param path: path of the given ascii file
     :type origintime: obspy.UTCDateTime
@@ -46,8 +48,33 @@ def ascii_to_mseed(path, origintime, location=''):
     :rtype st: obspy.Stream.stream
     :return st: stream containing header and data info taken from ascii file
     """
-    time = np.loadtxt(fname=path, usecols=0)
-    data = np.loadtxt(fname=path, usecols=1)
+    # This was tested up to version 6895e2f7
+    try:
+        time = np.loadtxt(fname=path, usecols=0)
+        data = np.loadtxt(fname=path, usecols=1)
+    
+    # At some point in 2018, the Specfem developers changed how the ascii files
+    # were formatted from two columns to comma separated values, and repeat 
+    # values represented as 2*value_float where value_float represents the data
+    # value as a float
+    except ValueError:
+        time, data = [], []
+        with open(path, 'r') as f:
+            lines = f.readlines()
+        for line in lines:
+            try:
+                time_, data_ = line.strip().split(',')
+            except ValueError:
+                if "*" in line:
+                    time_ = data_ = line.split('*')[-1]
+                else:
+                    raise ValueError
+            time.append(float(time_))
+            data.append(float(data_))
+        
+        time = np.array(time)
+        data = np.array(data)
+
     delta = round(time[1]-time[0], 3)  # assume dt constant after 3 dec. points
 
     origintime += time[0]  # specfem doesn't start exactly on 0, honor that
