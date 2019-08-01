@@ -208,8 +208,20 @@ def pyflex_configs():
             "c_0": 5.,  # internal minima, reject low amplitude arrivals
             "c_1": 2.5,  # min win length - 2 * min_period ~= 20s min
         },
+        # values tested for the Hikurangi tomography problem, strict criteria
+        # choice considerations
+        "hikurangi_relaxed": {
+            "stalta_waterlevel": 0.07,
+            "tshift_acceptance_level": 5.0,  # based on sign flip waveforms
+            "dlna_acceptance_level": 1.,
+            "cc_acceptance_level": 0.8,
+            "s2n_limit": 10.,
+            "max_time_before_first_arrival": 10.,  # min start of window (s)
+            "c_0": 1.,  # internal minima, reject low amplitude arrivals
+            "c_1": 2.5,  # min win length - 2 * min_period ~= 20s min
+        },
         # random values used to test out Pyflex rejection criteria
-        "testing": {"stalta_waterlevel": 0.08,
+        "testing": {"stalta_waterlevel": 0.07,
                     "tshift_acceptance_level": 5.0,
                     "dlna_acceptance_level": 1.3,
                     "cc_acceptance_level": 0.9,

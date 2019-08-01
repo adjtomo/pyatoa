@@ -105,6 +105,12 @@ def window_maker(st_obs, st_syn, config, time_offset_sec=0., windows=None,
                 "VEL": "[m^-1 s]",
                 "ACC": "[m^-s s^-2]"}
 
+    # Legend tagging to remove confusion during synthetic-synthetic case
+    if config.synthetics_only:
+        obs_tag = 'TRUE'
+    else:
+        obs_tag = 'OBS'
+
     if staltas is not None:
         stalta_wl = config.pyflex_config[1].stalta_waterlevel
 
@@ -130,8 +136,9 @@ def window_maker(st_obs, st_syn, config, time_offset_sec=0., windows=None,
         # Plot waveforms following the convention of black for obs, red for syn
         obs = st_obs.select(component=comp)
         syn = st_syn.select(component=comp)
+
         a1, = axes[i].plot(t, obs[0].data, 'k', zorder=z,
-                           label="{} (OBS)".format(obs[0].get_id()))
+                           label="{} ({})".format(obs[0].get_id(), obs_tag))
         a2, = axes[i].plot(t, syn[0].data, 'r', zorder=z,
                            label="{} (SYN)".format(syn[0].get_id()))
         lines_for_legend = [a1, a2]

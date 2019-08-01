@@ -15,6 +15,7 @@ from pyatoa.utils.operations.source_receiver import gcd_and_baz,\
 
 mpl.rcParams['lines.linewidth'] = 1.1
 
+
 def setup_plot(nrows, ncols):
     """
     Dynamically set up plots according to number_of given
