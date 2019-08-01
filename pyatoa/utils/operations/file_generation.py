@@ -259,14 +259,17 @@ def create_srcrcv_vtk_multiple(pathin, pathout, model, utm_zone=60):
                   "Source and Receiver VTK file from Pyatoa\n"
                   "ASCII\n"
                   "DATASET POLYDATA\n"
+                  "POINTS\t{} float\n""
                   )
+    vtk_line = "{X:18.6E}{Y:18.6E}{E:18.6E}\n"
 
     # Loop through available datasets
     datasets = glob.glob(os.path.join(pathin, '*.h5'))
     if not datasets:
         return
 
-    ev_x, ev_y, sta_x, sta_y, sta_elv, sta_ids = [], [], [], [], [], []
+    event_ids, sta_ids = [], []
+    ev_x, ev_y, sta_x, sta_y, sta_elv = [], [], [], [], []
     for fid in datasets:
         with pyasdf.ASDFDataSet(fid) as ds:
             # Check if dataset contains adjoint sources
@@ -295,11 +298,13 @@ def create_srcrcv_vtk_multiple(pathin, pathout, model, utm_zone=60):
                 continue
 
             # Get event location information in UTM
+            event_id = os.path.basename(ds.filename).split(".")[0]
             ex, ey = lonlat_utm(
                 lon_or_x=ds.events[0].preferred_origin().longitude,
                 lat_or_y=ds.events[0].preferred_origin().latitude,
                 utm_zone=utm_zone, inverse=False
             )
+            event_ids.append(event_id)
             ev_x.append(ex)
             ev_y.append(ey)
 
@@ -307,31 +312,34 @@ def create_srcrcv_vtk_multiple(pathin, pathout, model, utm_zone=60):
     ev_elv = 100.
 
     # Write header for VTK file and then print values for source receivers
-    fid_out = os.path.join(
-        pathout, "srcrcv_{}_{}.vtk".format(model, len(ev_x)))
+    fid_out = os.path.join(pathout, "rcvs_{}.vtk".format(model))
     with open(fid_out, "w") as f:
-        f.write(vtk_header)
-        # num points equal to number of stations plus number of events
-        f.write("POINTS\t{} float\n".format(len(sta_x) + len(ev_x)))
+        f.write(vtk_header.format(len(sta_x) + len(ev_x)))
         # Loop through events
         for ex, ey in zip(ev_x, ev_y):
-            f.write("{X:18.6E}{Y:18.6E}{E:18.6E}\n".format(
-                X=ex, Y=ey, E=ev_elv)
-            )
+            f.write(vtk_line.format(X=ex, Y=ey, E=ev_elv))
         # Loop through stations
         for sx, sy, se in zip(sta_x, sta_y, sta_elv):
-            f.write("{X:18.6E}{Y:18.6E}{E:18.6E}\n".format(X=sx, Y=sy, E=se))
+            f.write(vtk_line.format(X=sx, Y=sy, E=se))
 
-    # Make a separate VTK file for the events
-    event_fid_out = os.path.join(
-        pathout, "events_{}_{}.vtk".format(model, len(ev_x)))
-    with open(event_fid_out, "w") as f:
-        f.write(vtk_header)
-        f.write("POINTS\t{} float\n".format(len(ev_x)))
-        for ex, ey in zip(ev_x, ev_y):
-            f.write("{X:18.6E}{Y:18.6E}{E:18.6E}\n".format(
-                X=ex, Y=ey, E=ev_elv)
-            )
+    # Make a separate VTK file for all events so they can be formatted different
+    event_fid_out = os.path.join(pathout, "srcs.vtk")
+    if not os.path.exists(event_fid_out):
+        with open(event_fid_out, "w") as f:
+            f.write(vtk_header.format(len(ev_x)))
+            for ex, ey in zip(ev_x, ev_y):
+                f.write(vtk_line.format(X=ex, Y=ey, E=ev_elv))
+
+    # Make a separate VTK file for each event.
+    # This only needs to be run once so just skip over if the files exist
+    for event_id, ex, ey in zip(event_ids, ev_x, ev_y):
+        event_fid_out = os.path.join(pathout, "{}.vtk".format(event_id))
+        if os.path.exists(event_fid_out):
+            continue
+        with open(event_fid_out, "w") as f:
+            f.write(vtk_header.format(len(ev_x)))
+            f.write(vtk_line.format(X=ex, Y=ey, E=ev_elv))
+
 
 
 def create_stations_adjoint(ds, model, specfem_station_file, pathout=None):
