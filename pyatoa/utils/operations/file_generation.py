@@ -259,7 +259,7 @@ def create_srcrcv_vtk_multiple(pathin, pathout, model, utm_zone=60):
                   "Source and Receiver VTK file from Pyatoa\n"
                   "ASCII\n"
                   "DATASET POLYDATA\n"
-                  "POINTS\t{} float\n""
+                  "POINTS\t{} float\n"
                   )
     vtk_line = "{X:18.6E}{Y:18.6E}{E:18.6E}\n"
 
