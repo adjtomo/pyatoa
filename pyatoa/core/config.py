@@ -21,8 +21,7 @@ class Config:
                  window_amplitude_ratio=0.,
                  map_corners={'lat_min': -42.5007, 'lat_max': -36.9488,
                               'lon_min': 172.9998, 'lon_max': 179.5077},
-                 cfgpaths={'synthetics': [], 'waveforms': [], 'responses': [],
-                           'auxiliary_data': []}):
+                 cfgpaths={'synthetics': [], 'waveforms': [], 'responses': []}):
         """
         Allows the user to control the parameters of the packages called within
         pyatoa, as well as control where the outputs (i.e. pyasdf and plots) are
@@ -344,7 +343,6 @@ class Config:
                     "path_to_synthetics": self.cfgpaths['synthetics'],
                     "path_to_waveforms": self.cfgpaths['waveforms'],
                     "paths_to_responses": self.cfgpaths['responses'],
-                    "paths_to_auxiliary_data": self.cfgpaths['auxiliary_data']
                     }
 
         ds.add_auxiliary_data(data_type="Configs", data=array([True]),
