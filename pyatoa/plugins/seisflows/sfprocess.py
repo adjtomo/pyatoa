@@ -141,6 +141,13 @@ def finalize(parser):
     """
     paths, usrcfg = assemble_paths(parser)
 
+    # Plot the output.optim file outputted by Seisflows
+    from pyatoa.utils.visuals.statistics import parse_plot_output_optim
+    parse_plot_output_optim(
+        path_to_optim=os.path.join(parser.working_dir, "output.optim"),
+        save=os.path.join(paths["PYATOA_FIGURES"], "output_optim.png")
+    )
+
     # Generate .vtk files for given source and receivers
     if usrcfg["create_srcrcv_vtk"]:
         from pyatoa.utils.operations.file_generation import \
