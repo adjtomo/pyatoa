@@ -1,18 +1,94 @@
 """
 Plots of statistical information for use in misfit analysis
 """
+import sys
 import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
-
+from matplotlib import cm
 from pyatoa.utils.operations.calculations import myround
-from pyatoa.utils.visuals.plot_utils import align_yaxis, pretty_grids, \
-    format_axis
 
 mpl.rcParams['font.size'] = 12
 mpl.rcParams['lines.linewidth'] = 1.25
 mpl.rcParams['lines.markersize'] = 10
 mpl.rcParams['axes.linewidth'] = 2
+
+
+def read_and_plot_output_optim(path_to_optim, show=False, save=False):
+    """
+    Sesiflows specific - Reading the text file output.optim, which contains
+    misfit values
+    :param path_to_optim:
+    :return:
+    """
+    with open(path_to_optim, 'r') as f:
+        lines = f.readlines()
+
+    # Parse the file, skip the header, ignore tail
+    iterations, steplengths, misfits = [], [], []
+    for line in lines[2:]:
+        line = line.strip().split()
+        # Each iteration will have an integer to represent the iter number
+        if len(line) == 3:
+            iteration = line[0]
+            iterations.append(int(iteration))
+            steplengths.append(float(line[1]))
+            misfits.append(float(line[2]))
+        # Each trial step length will follow and will carry the same iteration
+        elif len(line) == 2:
+            iterations.append(int(iteration))
+            steplengths.append(float(line[0]))
+            misfits.append(float(line[1]))
+        elif len(line) == 0:
+            continue
+        else:
+            print(line)
+            print("invalid line length encountered in output.optim")
+            sys.exit()
+
+    # Set the lists as numpy arrays to do some manipulations
+    iterations = np.asarray(iterations)
+    steplengths = np.asarray(steplengths)
+    misfits = np.asarray(misfits)
+
+    # Plot
+    offset = 0
+    norm = mpl.colors.Normalize(vmin=min(iterations), vmax=max(iterations))
+    for itr in np.unique(iterations):
+        # Determine unique arrays for each iteration
+        indices = np.where(iterations == itr)
+        misfits_ = misfits[indices]
+        colormap = cm.nipy_spectral
+
+        # Set a specific color for each iteration and plot as a scatterplot
+        color = [colormap(norm(itr))] * len(misfits_)
+        plt.scatter(range(offset, offset + len(misfits_)), misfits_, c=color,
+                    label="Iter {}".format(str(itr)), zorder=5)
+        plt.annotate(s="Iter {}".format(itr), xytext=(offset+0.5, misfits_[0]),
+                     xy=(offset, misfits_[0]), c=colormap(norm(itr)),
+                     fontsize=9, zorder=6
+                     )
+        plt.plot(range(offset, offset + len(misfits_)), misfits_,
+                 c=colormap(norm(itr)))
+        offset += len(misfits_) - 1
+
+    # Set plot attributes
+    if max(misfits)/min(misfits) > 10:
+        plt.yscale('log')
+    plt.title("Seisflows Output Optimization")
+    plt.xlabel("Step Count")
+    plt.ylabel("Pyatoa Misfits")
+    # plt.legend(ncol=len(np.unique(iterations))//5)
+    plt.tick_params(which='both', direction='in', top=True, right=True)
+    plt.xticks(range(0, offset + 1, 2))
+    for axis_ in ['major', 'minor']:
+        plt.grid(which=axis_, linestyle=':', linewidth='0.5',
+                 color='k', alpha=0.25)
+
+    if show:
+        plt.show()
+    if save:
+        plt.savefig(save)
 
 
 def plot_misfit_histogram(misfit_values, config, binsize=0.1):
