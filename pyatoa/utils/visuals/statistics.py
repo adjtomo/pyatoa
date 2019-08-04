@@ -14,30 +14,39 @@ mpl.rcParams['lines.markersize'] = 10
 mpl.rcParams['axes.linewidth'] = 2
 
 
-def read_and_plot_output_optim(path_to_optim, show=False, save=False):
+def parse_plot_output_optim(path_to_optim, show=False, save=''):
     """
-    Sesiflows specific - Reading the text file output.optim, which contains
-    misfit values
-    :param path_to_optim:
-    :return:
+    Sesiflows specific
+    Read the text file output.optim, which contains
+    misfit values, step length values and iteration numbers.
+    Parse the values and plot them on a scatter plot to show how the misfit
+    evolves with subsequent iterations. Put some auxiliary plot information on
+    for a more informative overall plot
+
+    :type path_to_optim: str
+    :param path_to_optim: path to the 'output.optim' text file
+    :type show: bool
+    :param show: show the plot
+    :type save: str
+    :param save: output filename to save the figure
     """
     with open(path_to_optim, 'r') as f:
         lines = f.readlines()
 
     # Parse the file, skip the header, ignore tail
-    iterations, steplengths, misfits = [], [], []
+    iterations, steplens, misfits = [], [], []
     for line in lines[2:]:
         line = line.strip().split()
         # Each iteration will have an integer to represent the iter number
         if len(line) == 3:
             iteration = line[0]
             iterations.append(int(iteration))
-            steplengths.append(float(line[1]))
+            steplens.append(float(line[1]))
             misfits.append(float(line[2]))
         # Each trial step length will follow and will carry the same iteration
         elif len(line) == 2:
             iterations.append(int(iteration))
-            steplengths.append(float(line[0]))
+            steplens.append(float(line[0]))
             misfits.append(float(line[1]))
         elif len(line) == 0:
             continue
@@ -48,42 +57,84 @@ def read_and_plot_output_optim(path_to_optim, show=False, save=False):
 
     # Set the lists as numpy arrays to do some manipulations
     iterations = np.asarray(iterations)
-    steplengths = np.asarray(steplengths)
+    steplens = np.asarray(steplens)
     misfits = np.asarray(misfits)
 
-    # Plot
-    offset = 0
+    # Plot the misfit values, and steplengths on a twin axis
+    f, ax = plt.subplots(1)
+    twax = ax.twinx()
+
+    # Set the normalized colormap to differentiate iterations
+    colormap = cm.nipy_spectral
     norm = mpl.colors.Normalize(vmin=min(iterations), vmax=max(iterations))
+
+    # Offset allows for cumulative plotting despite restarting scatter plot
+    offset = 0
     for itr in np.unique(iterations):
         # Determine unique arrays for each iteration
         indices = np.where(iterations == itr)
         misfits_ = misfits[indices]
-        colormap = cm.nipy_spectral
+        steplens_ = steplens[indices]
 
         # Set a specific color for each iteration and plot as a scatterplot
         color = [colormap(norm(itr))] * len(misfits_)
-        plt.scatter(range(offset, offset + len(misfits_)), misfits_, c=color,
-                    label="Iter {}".format(str(itr)), zorder=5)
-        plt.annotate(s="Iter {}".format(itr), xytext=(offset+0.5, misfits_[0]),
-                     xy=(offset, misfits_[0]), c=colormap(norm(itr)),
-                     fontsize=9, zorder=6
-                     )
-        plt.plot(range(offset, offset + len(misfits_)), misfits_,
-                 c=colormap(norm(itr)))
+
+        # Plot the misfit values
+        ax.scatter(range(offset, offset + len(misfits_)), misfits_, c=color,
+                   zorder=5, s=60)
+        ax.annotate(s="iter {}".format(itr), xytext=(offset+0.2, misfits_[0]),
+                    xy=(offset, misfits_[0]), color=colormap(norm(itr)),
+                    fontsize=9, zorder=6
+                    )
+
+        # Plot the steplengths, remove values of 0 steplength
+        steplens_[steplens_ == 0] = 'nan'
+        twax.scatter(range(offset, offset + len(steplens_)), steplens_, c=color,
+                     zorder=3, marker='d', alpha=0.75, s=50, edgecolor='w')
+
+        # Connect scatter plots with a line in the back
+        ax.plot(range(offset, offset + len(misfits_)), misfits_,
+                c=colormap(norm(itr)))
+
+        # Make sure scatter points overlap because the starting misfit of the
+        # next iteration is the same misfit as the last iteration
         offset += len(misfits_) - 1
+
+    # Scatter points outside the plot for legend
+    ax.scatter(-1, min(misfits), c='w', edgecolor='k', marker='o',
+               label='misfits')
+    ax.scatter(-1, min(misfits), c='w', edgecolor='k', marker='d',
+               label='step lengths')
+
+    # Put a line at y=1 for step lengths to show where L-BFGS is working
+    twax.axhline(y=1, xmin=0, xmax=1, linestyle='--', linewidth=1.5, c='k',
+                 alpha=0.5, zorder=2)
 
     # Set plot attributes
     if max(misfits)/min(misfits) > 10:
-        plt.yscale('log')
-    plt.title("Seisflows Output Optimization")
-    plt.xlabel("Step Count")
-    plt.ylabel("Pyatoa Misfits")
-    # plt.legend(ncol=len(np.unique(iterations))//5)
-    plt.tick_params(which='both', direction='in', top=True, right=True)
-    plt.xticks(range(0, offset + 1, 2))
+        ax.set_yscale('log')
+    twax.set_yscale('log')
+    twax.set_ylim(bottom=1E-1)
+
+    plt.title("seisflows output.optim")
+    ax.set_xlim([-0.5, max(iterations) + 2.5])
+    ax.set_xlabel("step count")
+    ax.set_ylabel("pyatoa misfits")
+    ax.legend()
+    twax.set_ylabel("step lengths", rotation=270, labelpad=15)
+
+    # Set the tick labelling based on the number of iterations
+    if max(iterations) < 10:
+        plt.xticks(range(0, max(iterations) + 3, 1))
+    else:
+        plt.xticks(range(0, max(iterations) + 3, 2))
+
+    # Set the format of the plot to match pretty_grids formatting
+    for axis in [ax, twax]:
+        axis.tick_params(which='both', direction='in', top=True, right=True)
     for axis_ in ['major', 'minor']:
-        plt.grid(which=axis_, linestyle=':', linewidth='0.5',
-                 color='k', alpha=0.25)
+        ax.grid(which=axis_, linestyle=':', linewidth='0.5',
+                color='k', alpha=0.25)
 
     if show:
         plt.show()
