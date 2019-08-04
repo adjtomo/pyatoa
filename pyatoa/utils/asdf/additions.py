@@ -17,8 +17,8 @@ def write_stats_to_asdf(ds, model, step):
     :param ds: asdf dataset containing Statistics auxiliary data
     :type model: str
     :param model: model tag, e.g. "m00"
-    :type step: int
-    :param step: trial step number (from Seisflows)
+    :type step: str
+    :param step: trial step count, e.g. "s00" (from Seisflows)
     """
     from pyatoa.utils.asdf import extractions   
  
@@ -27,7 +27,7 @@ def write_stats_to_asdf(ds, model, step):
    
     ds.add_auxiliary_data(data=np.array([misfit]), 
                           data_type="Statistics",
-                          path="{mod}/s{step:0>2}".format(mod=model, step=step),
+                          path="{mod}/{step}".format(mod=model, step=step),
                           parameters=stats
                           )
     

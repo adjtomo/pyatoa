@@ -3,7 +3,6 @@ Hacky functions to combine all the outputs figures of pyatoa into a single pdf
 """
 import os
 import glob
-import shutil
 import subprocess
 
 
