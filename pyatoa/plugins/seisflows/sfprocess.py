@@ -46,12 +46,14 @@ def initialize_parser(args):
                            help="Event Identifier")
     argparser.add_argument("--model_number", type=str, default=None,
                            help="Model Number, e.g. 'm00'")
-    argparser.add_argument("--step_count", type=int, default=None,
-                           help="Step Count, e.g. 0")
     argparser.add_argument("--current_dir", type=str,
                            help="Event Specfem directory, w/ 'DATA', 'traces'")
     argparser.add_argument("--suffix", type=str, default=None,
                            help="Seisflows suffix")
+    
+    # Processing and Finalize arguments
+    argparser.add_argument("--step_count", type=str, default=None,
+                           help="Step Count, e.g. s00")
 
     return argparser.parse_args(args)
 
@@ -166,7 +168,6 @@ def finalize(parser):
         if not os.path.exists(map_dir):
             os.makedirs(map_dir)
 
-        step_number = "s{:0>2}".format(parser.step_count)
         name_template = "{eid}_{m}_{s}_misfit_map.png"
 
         # Loop through each available dataset to create misfit map
@@ -176,13 +177,13 @@ def finalize(parser):
                 fidout = os.path.join(
                     map_dir, name_template.format(
                         eid=ds.events[0].resource_id.id.split('/')[-1],
-                        m=parser.model_number, s=step_number
+                        m=parser.model_number, s=parser.step_count
                     )
                 )
                 # TO DO: set map corners using usrcfg, and not default Config?
                 event_misfit_map(map_corners=pyatoa.Config().map_corners,
                                  ds=ds, model=parser.model_number,
-                                 step=step_number,
+                                 step=parser.step_count,
                                  annotate_station_info='simple',
                                  contour_overlay=True, filled_contours=True,
                                  show=False, save=fidout
@@ -229,9 +230,6 @@ def process(parser):
                   }
         )
 
-    # The trial step number is only used sparsely, e.g. the Statistics subgroup
-    step_number = "s{:0>2}".format(parser.step_count)
-
     # Save HDF5 output by event id
     ds_name = os.path.join(paths["PYATOA_DATA"],
                            "{}.h5".format(config.event_id)
@@ -239,7 +237,7 @@ def process(parser):
     with pyasdf.ASDFDataSet(ds_name) as ds:
         # Make sure the ASDFDataSet doesn't already contain auxiliary_data
         # because it will be collected in this workflow
-        clean_ds(ds=ds, model=config.model_number, step=step_number,
+        clean_ds(ds=ds, model=config.model_number, step=parser.step_count,
                  fix_windows=usrcfg["fix_windows"])
 
         # Write the Config to auxiliary_data for provenance
@@ -285,7 +283,7 @@ def process(parser):
                     # Format some strings to append to the waveform plot title
                     append_title = (
                         "\n{md}{sn} pyflex={pf}, pyadjoint={pa},".format(
-                            md=config.model_number, sn=step_number, 
+                            md=config.model_number, sn=parser.step_count, 
                             pf=config.pyflex_config[0],
                             pa=config.pyadjoint_config[0])
                     )
@@ -336,7 +334,8 @@ def process(parser):
         # Combine .png images into a composite .pdf for easy fetching
         if usrcfg["tile_and_combine"]:
             from pyatoa.utils.visuals.convert_images import tile_and_combine
-            tile_and_combine(ds=ds, model=parser.model_number, step=step_number,
+            tile_and_combine(ds=ds, model=parser.model_number, 
+                             step=parser.step_count,
                              figure_path=paths["PYATOA_FIGURES"],
                              purge_originals=usrcfg["purge_originals"],
                              purge_tiles=usrcfg["purge_tiles"]
