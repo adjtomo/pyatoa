@@ -9,7 +9,7 @@ import time
 import numpy as np
 
 
-def write_misfit_json(ds, model, step_count=0, fidout="./misfits.json"):
+def write_misfit_json(ds, model, step, fidout="./misfits.json"):
     """
     Write a .json file containing misfit information for a given dataset,
     model and step count. Sums misfit, number of windows, and number of
@@ -33,13 +33,12 @@ def write_misfit_json(ds, model, step_count=0, fidout="./misfits.json"):
     :param ds: processed dataset, assumed to contain auxiliary_data.Statistics
     :type model: str
     :param model: model number, e.g. "m00"
-    :type step_count: int
-    :param step_count: line search step count
+    :type step: str
+    :param step: step count, e.g. "s00"
     :type fidout: str
     :param fidout: output file to write the misfit
     """
     # organize information to be written
-    step = "s{:0>2}".format(step_count)
     stats = ds.auxiliary_data.Statistics[model][step].parameters
     misfit = ds.auxiliary_data.Statistics[model][step].data.value[0]
     windows = stats["number_misfit_windows"]
