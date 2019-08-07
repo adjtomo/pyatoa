@@ -336,7 +336,7 @@ def create_srcrcv_vtk_multiple(pathin, pathout, model, utm_zone=60):
         if os.path.exists(event_fid_out):
             continue
         with open(event_fid_out, "w") as f:
-            f.write(vtk_header.format(len(ev_x)))
+            f.write(vtk_header.format(1))
             f.write(vtk_line.format(X=ex, Y=ey, E=ev_elv))
 
 

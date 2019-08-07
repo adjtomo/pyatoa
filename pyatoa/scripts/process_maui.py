@@ -84,6 +84,7 @@ for event_id in event_id_list:
 
         sem_path = os.path.join(working_dir, "SEM")
         write_adj_src_to_ascii(ds, model_number, sem_path)
-        create_stations_adjoint(ds, model_number, sem_path)
+        create_stations_adjoint(ds, model_number, 
+                                os.path.join(working_dir, "STATIONS"), sem_path)
 
 
