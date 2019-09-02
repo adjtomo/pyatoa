@@ -407,7 +407,10 @@ def write_adj_src_to_ascii(ds, model, pathout=None, comp_list=["N", "E", "Z"]):
 
     def write_to_ascii(f, array):
         """
-        Function used to write the ascii in the correct format
+        Function used to write the ascii in the correct format.
+        Columns are formatted like the ASCII outputs of Specfem, two columns
+        times written as float, amplitudes written in E notation, 6 spaces
+        between.
 
         :type f: _io.TextIO
         :param f: the open file to write to
@@ -417,12 +420,12 @@ def write_adj_src_to_ascii(ds, model, pathout=None, comp_list=["N", "E", "Z"]):
         for dt, amp in array:
             if dt == 0. and amp != 0.:
                 dt = 0
-                adj_formatter = "{dt:>14}{amp:18.6f}\n"
+                adj_formatter = "{dt:>13d}      {amp:13.6E}\n"
             elif dt != 0. and amp == 0.:
                 amp = 0
-                adj_formatter = "{dt:14.6f}{amp:>18}\n"
+                adj_formatter = "{dt:13.6f}      {amp:>13d}\n"
             else:
-                adj_formatter = "{dt:14.6f}{amp:18.6f}\n"
+                adj_formatter = "{dt:13.6f}      {amp:13.6E}\n"
 
             f.write(adj_formatter.format(dt=dt, amp=amp))
 
