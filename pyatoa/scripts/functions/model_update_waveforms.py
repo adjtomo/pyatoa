@@ -13,7 +13,7 @@ from pyatoa import Config, Manager
 from pyatoa.utils.operations.source_receiver import gcd_and_baz,\
     seismogram_length
 
-mpl.rcParams['lines.linewidth'] = 1.
+mpl.rcParams['lines.linewidth'] = 1.25
 
 
 def set_parameters():
@@ -27,12 +27,17 @@ def set_parameters():
     output_dir = "./waveforms"
     
     # If you don't want to plot all models, but rather just the first and last
-    select_models = ['synthetic_m00', 'synthetic_m09']
+    select_models = []
+    # select_models = ['synthetic_m00', 'synthetic_m03', 'synthetic_m06']
+
+    # Pick stations, if left empty, will plot all stations in dataset
+    select_stations = []
+    # select_stations = ['NZ.TOZ']
 
     # User-defined figure parameters
     show = False
 
-    return datasets_path, output_dir, select_models, show
+    return datasets_path, output_dir, select_models, select_stations, show
 
 
 def setup_plot(nrows, ncols):
@@ -48,7 +53,10 @@ def setup_plot(nrows, ncols):
     :rtype axes: matplotlib axes
     :return axes: axis objects
     """
-    gs = mpl.gridspec.GridSpec(nrows, ncols, hspace=0, wspace=0.1)
+    gs = mpl.gridspec.GridSpec(nrows, ncols, hspace=0, wspace=0.05, 
+                               width_ratios=[2] * ncols,
+                               height_ratios=[1] * nrows
+                               )
 
     axes = []
     for row in range(0, gs.get_geometry()[0]):
@@ -116,7 +124,8 @@ def plot_iterative_waveforms():
     """
     Main function to plot waveforms iterative based on model updates
     """
-    datasets_path, output_dir, select_models, show_plots = set_parameters()
+    datasets_path, output_dir, select_models, select_stations,  show_plots = \
+                                                                set_parameters()
 
     # Plotting parameters
     dpi = 125
@@ -125,9 +134,7 @@ def plot_iterative_waveforms():
     color_list = ["r", "b", "g"]
     unit_dict = {"DISP": "displacement [m]",
                  "VEL": "velocity [m/s]",
-                            
                  "ACC": "acceleration [m/s^2]"}
-
 
     # Read in each of the datasets
     for dataset in glob.glob(os.path.join(datasets_path, '*.h5')):
@@ -148,6 +155,8 @@ def plot_iterative_waveforms():
 
             # Loop through the available stations
             for sta in ds.waveforms.list():
+                if select_stations and (sta not in select_stations):
+                    continue 
                 print(sta)
                 mgmt = Manager(config=config, empty=True)
                 mgmt.inv = ds.waveforms[sta].StationXML
@@ -221,23 +230,24 @@ def plot_iterative_waveforms():
                         syn_init = synthetic_init.select(component=comp)
 
                         # Plot waveform
-                        a1, = axes[row][col].plot(t, obs[0].data, 'k', zorder=z)
+                        a1, = axes[row][col].plot(t, obs[0].data, 'k', zorder=z,
+                                                  label="True")
                         a2, = axes[row][col].plot(t, syn[0].data, 
-                                                  color_list[col], zorder=z)
+                                                  color_list[col], zorder=z,
+                                                  label="Syn")
                         a3, = axes[row][col].plot(t, syn_init[0].data, 
                                                   color_list[col], zorder=z-1, 
-                                                  alpha=0.85, linestyle='--', 
-                                                  linewidth=1.)
+                                                  alpha=0.55, linestyle='--', 
+                                                  linewidth=1.75, label="M00")
 
                         if row == 0:
                             # Determine the start and end bounds based on amp 
                             st_idx, end_idx = center_on_peak_energy(obs + syn)
-                            
                             t_start = max(t[st_idx] - 10, 0)
                             t_end = min(t[end_idx] + 10, t[-1])
                              
                             # Set the seismogram length for the first row
-                            axes[row][col].set_xlim([t_start, t_end])
+                            axes[row][col].set_xlim([10, 110])
                             # if not length_sec:
                             #     length_sec = t[-1]
                             # axes[row][col].set_xlim(
@@ -259,6 +269,7 @@ def plot_iterative_waveforms():
 
                 # Label the time axis on the bottom row
                 axes[-1][middle_column].set_xlabel("time [sec]")
+                axes[middle_row][middle_column].legend()
 
                 # Save the generated figure
                 if output_dir:

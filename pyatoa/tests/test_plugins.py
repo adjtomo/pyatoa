@@ -76,6 +76,11 @@ class TestSeisflowsPlugin(unittest.TestCase):
             shutil.copy(src=syn,
                         dst=os.path.join(syn_dir, os.path.basename(syn))
                         )
+        
+        # Copy output.optim into 'working dir' for plotting
+        shutil.copy(src=os.path.join(cls.test_data_path, 'output.optim'),
+                    dst=os.path.join(cls.working_dir, 'output.optim')
+                    )
 
         # Initialize a parser object using the sfprocess function
         cls.parser = sfprocess.initialize_parser([
@@ -83,7 +88,7 @@ class TestSeisflowsPlugin(unittest.TestCase):
             '--working_dir', cls.working_dir,
             '--event_id', cls.config.event_id,
             '--model_number', cls.config.model_number,
-            '--step_count', 0,
+            '--step_count', "s00",
             '--current_dir', cls.current_dir,
             '--suffix', 'try'
         ])
@@ -131,23 +136,30 @@ class TestSeisflowsPlugin(unittest.TestCase):
         Check that the initialize mode works
         :return:
         """
+        # Make the figure path to save misfit map into
+        figure_path = os.path.join(self.pyatoa_dir, 'figures', 'm00', 
+                                   '2018p130600')
+        if not os.path.exists(figure_path):
+            os.makedirs(figure_path)
+
+        # Run finalize, intialize first to create other paths
         sfprocess.initialize(self.parser)
         sfprocess.finalize(self.parser)
+        
         # Check that the vtk generation worked
         check_file = os.path.join(
-            self.pyatoa_dir, 'figures', 'vtks', 'srcrcv_m00_1.vtk')
+            self.pyatoa_dir, 'figures', 'vtks', 'rcvs_m00.vtk')
         self.assertTrue(os.path.exists(check_file))
 
         # Check that snapshot works
         check_file = os.path.join(
             self.pyatoa_dir, 'data', 'snapshot', '2018p130600.h5')
         self.assertTrue(os.path.exists(check_file))
-
+    
         # Check that misfit map works
-        check_file = os.path.join(
-            self.pyatoa_dir, 'figures', 'maps',
-            '2018p130600_m00_s00_misfit_map.png'
-        )
+        check_file = os.path.join(figure_path,
+                                  '2018p130600_m00_s00_misfit_map.png'
+                                  )
         self.assertTrue(os.path.exists(check_file))
 
     def test_process(self):
@@ -168,7 +180,7 @@ class TestSeisflowsPlugin(unittest.TestCase):
             os.path.join(
                 self.pyatoa_dir, 'data', 'm00', '2018p130600', 'wav_BFZ.png'),
             os.path.join(
-                self.pyatoa_dir, 'data', 'm00', '2018p130600', 'map_BFZ.png'),
+                self.pyatoa_dir, 'maps', 'map_BFZ.png'),
             os.path.join(self.pyatoa_dir, 'data', 'vtks', 'srcrcv_m00_1.vtk'),
             os.path.join(self.pyatoa_dir, 'data', 'vtks', 'events_m00_1.vtk'),
             os.path.join(self.pyatoa_dir, 'misfits.json')
@@ -262,13 +274,19 @@ class TestSeisflowsPluginSynOnly(unittest.TestCase):
         sfconfig.sfconfig(fidout=sfconfig_fid, set_logging="debug",
                           synthetics_only=True
                           )
+
+        # Copy output.optim into 'working dir' for plotting
+        shutil.copy(src=os.path.join(cls.test_data_path, 'output.optim'),
+                    dst=os.path.join(cls.working_dir, 'output.optim')
+                    )
+
         # Initialize a parser object using the sfprocess function
         cls.parser = sfprocess.initialize_parser([
             '--mode', 'initialize',
             '--working_dir', cls.working_dir,
             '--event_id', cls.config.event_id,
             '--model_number', cls.config.model_number,
-            '--step_count', 0,
+            '--step_count', "s00",
             '--current_dir', cls.current_dir,
             '--suffix', 'try'
         ])

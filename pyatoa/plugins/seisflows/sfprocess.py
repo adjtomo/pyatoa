@@ -84,12 +84,13 @@ def assemble_paths(parser, mode=''):
 
     # Set Pyatoa paths, these is a hardcoded directory structure
     figs = os.path.join(pyatoa_io, "figures")
+    maps = os.path.join(figs, "maps")
     vtks = os.path.join(figs, "vtks")
     data = os.path.join(pyatoa_io, "data")
     misfits = os.path.join(data, "misfits")
     misfit_file = os.path.join(pyatoa_io, "misfits.json")
 
-    paths = {"PYATOA_FIGURES": figs, "PYATOA_DATA": data,
+    paths = {"PYATOA_FIGURES": figs, "PYATOA_DATA": data, "PYATOA_MAPS": maps,
              "PYATOA_VTKS": vtks, "PYATOA_MISFITS": misfits,
              "MISFIT_FILE": misfit_file
              }
@@ -167,26 +168,27 @@ def finalize(parser):
             shutil.copy(src, os.path.join(snapshot_path, os.path.basename(src)))
 
     # Create misfit maps for each event with contour overlay showing misfit
-    if usrcfg["plot_misfit_maps"]:
+    # Only create misfit maps for the first step count
+    if usrcfg["plot_misfit_maps"] and parser.step_count == "s00":
         from pyatoa.utils.visuals.mapping import event_misfit_map
-
-        # Set the proper pathing so the misfit map can be found easily
-        map_dir = os.path.join(paths["PYATOA_FIGURES"], "maps")
-        if not os.path.exists(map_dir):
-            os.makedirs(map_dir)
-
+        
         name_template = "{eid}_{m}_{s}_misfit_map.png"
 
         # Loop through each available dataset to create misfit map
         datasets = glob.glob(os.path.join(paths["PYATOA_DATA"], "*.h5"))
         for dataset in datasets:
             with pyasdf.ASDFDataSet(dataset) as ds:
+                # Save figures into event directories
+                event_figures = os.path.join(paths["PYATOA_FIGURES"], 
+                                             parser.model_number, 
+                                             parser.event_id
+                                             )
+                # Save the fid based on event id, model number, step count
                 fidout = os.path.join(
-                    map_dir, name_template.format(
-                        eid=ds.events[0].resource_id.id.split('/')[-1],
-                        m=parser.model_number, s=parser.step_count
-                    )
-                )
+                            event_figures, name_template.format(
+                                 eid=ds.events[0].resource_id.id.split('/')[-1],
+                                 m=parser.model_number, s=parser.step_count) 
+                                      )
                 # TO DO: set map corners using usrcfg, and not default Config?
                 event_misfit_map(map_corners=pyatoa.Config().map_corners,
                                  ds=ds, model=parser.model_number,
@@ -307,12 +309,13 @@ def process(parser):
                         )
 
                 # Plot source-receiver maps, don't make a map if no wav data
+                # Don't make the map if the map has already been made
                 if usrcfg["plot_maps"] and f:
-                    mgmt.plot_map(
-                        stations=coords, save=os.path.join(
-                            paths["EVENT_FIGURES"], "map_{}".format(sta)),
-                        show=False
-                        )
+                    map_fid = os.path.join(paths["PYATOA_MAPS"], 
+                                           "map_{}".format(sta)
+                                           )
+                    if not os.path.exists(map_fid):
+                        mgmt.plot_map( stations=coords, save=map_fid, show=False)
                 print("\n")
             # Traceback ensures more detailed error tracking
             except Exception:
@@ -344,6 +347,7 @@ def process(parser):
             tile_and_combine(ds=ds, model=parser.model_number, 
                              step=parser.step_count,
                              figure_path=paths["PYATOA_FIGURES"],
+                             maps_path=paths["PYATOA_MAPS"],
                              purge_originals=usrcfg["purge_originals"],
                              purge_tiles=usrcfg["purge_tiles"]
                              )
