@@ -111,7 +111,7 @@ def sort_by_backazimuth(ds, clockwise=True):
     return station_names
 
 
-def lonlat_utm(lon_or_x, lat_or_y, utm_zone=60, inverse=False):
+def lonlat_utm(lon_or_x, lat_or_y, utm_zone=-60, inverse=False):
     """convert latitude and longitude coordinates to UTM projection
     from mesh_gen_helper.py (personal code)
 
@@ -129,8 +129,16 @@ def lonlat_utm(lon_or_x, lat_or_y, utm_zone=60, inverse=False):
     :return y_or_lat: y coordinate in UTM or latitude in WGS84
     """
     from pyproj import Proj
-    projstr = ("+proj=utm +zone={}, +south +ellps=WGS84 +datum=WGS84"
-               " +units=m +no_defs".format(utm_zone))
+    # Determine if the projection is north or south
+    if utm_zone < 0:
+        direction = "south"
+    else:
+        direction = "north"
+    # Proj doesn't accept negative zones
+    utm_zone = abs(utm_zone)
+
+    projstr = (f"+proj=utm +zone={utm_zone}, +{direction} +ellps=WGS84"
+               " +datum=WGS84 +units=m +no_defs")
     myProj = Proj(projstr)
     x_or_lon, y_or_lat = myProj(lon_or_x, lat_or_y, inverse=inverse)
 

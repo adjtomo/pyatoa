@@ -1,7 +1,6 @@
 """
 Plots of statistical information for use in misfit analysis
 """
-import sys
 import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
@@ -53,7 +52,7 @@ def parse_plot_output_optim(path_to_optim, show=False, save=''):
         else:
             print(line)
             print("invalid line length encountered in output.optim")
-            sys.exit()
+            return
 
     # Set the lists as numpy arrays to do some manipulations
     iterations = np.asarray(iterations)
@@ -110,24 +109,23 @@ def parse_plot_output_optim(path_to_optim, show=False, save=''):
     twax.axhline(y=1, xmin=0, xmax=1, linestyle='--', linewidth=1.5, c='k',
                  alpha=0.5, zorder=2)
 
+    # Because the scatter plots overlap, number of points must be defined 
+    num_points = len(iterations) - len(np.unique(iterations))
+    steplens_min_notzero = steplens[np.where(steplens > 0)].min()
     # Set plot attributes
     if max(misfits)/min(misfits) > 10:
         ax.set_yscale('log')
     twax.set_yscale('log')
-    twax.set_ylim(bottom=1E-1)
-
+    twax.set_ylim(bottom=steplens_min_notzero)
     plt.title("seisflows output.optim")
-    ax.set_xlim([-0.5, max(iterations) + 2.5])
+    ax.set_xlim([-0.5, num_points + 0.5])
     ax.set_xlabel("step count")
     ax.set_ylabel("pyatoa misfits")
     ax.legend()
     twax.set_ylabel("step lengths", rotation=270, labelpad=15)
 
     # Set the tick labelling based on the number of iterations
-    if max(iterations) < 10:
-        plt.xticks(range(0, max(iterations) + 3, 1))
-    else:
-        plt.xticks(range(0, max(iterations) + 3, 2))
+    plt.xticks(range(0, num_points, num_points//10))
 
     # Set the format of the plot to match pretty_grids formatting
     for axis in [ax, twax]:
