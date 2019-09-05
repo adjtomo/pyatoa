@@ -313,10 +313,7 @@ def create_srcrcv_vtk_multiple(pathin, pathout, model, utm_zone=60):
     # Write header for VTK file and then print values for source receivers
     fid_out = os.path.join(pathout, "rcvs_{}.vtk".format(model))
     with open(fid_out, "w") as f:
-        f.write(vtk_header.format(len(sta_x) + len(ev_x)))
-        # Loop through events
-        for ex, ey in zip(ev_x, ev_y):
-            f.write(vtk_line.format(X=ex, Y=ey, E=ev_elv))
+        f.write(vtk_header.format(len(sta_x)))
         # Loop through stations
         for sx, sy, se in zip(sta_x, sta_y, sta_elv):
             f.write(vtk_line.format(X=sx, Y=sy, E=se))

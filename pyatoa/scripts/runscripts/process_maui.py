@@ -24,9 +24,11 @@ logger.setLevel(logging.DEBUG)
 
 # initiate config
 model_number = "m00"
-basepath = "/scale_wlg_nobackup/filesets/nobackup/nesi00263/bchow/"
 event_id_list = ["2018p130600"]
+synthetics_only = True
 working_dir = os.getcwd()
+obs_traces = os.path.join(working_dir, "obs")
+syn_traces = os.path.join(working_dir, "syn")
 
 for event_id in event_id_list:
     # make a directory to store generated figures
@@ -45,8 +47,9 @@ for event_id in event_id_list:
                            window_amplitude_ratio=0.2,
                            pyflex_config="hikurangi_strict", 
                            adj_src_type="cc_hikurangi_strict", 
-                           cfgpaths={'synthetics':[working_dir],
-                                     'waveforms':[],
+                           synthetics_only=synthetics_only,
+                           cfgpaths={'synthetics':[syn_traces],
+                                     'waveforms':[obs_traces],
                                      'responses':[]}
                            )
 

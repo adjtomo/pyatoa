@@ -339,7 +339,7 @@ def process(parser):
                           paths["MISFIT_FILE"])
 
         # Combine .png images into a composite .pdf for easy fetching
-        if usrcfg["tile_and_combine"]:
+        if usrcfg["tile_and_combine"] and (parser.step_count == "s00"):
             from pyatoa.utils.visuals.convert_images import tile_and_combine
             tile_and_combine(ds=ds, model=parser.model_number, 
                              step=parser.step_count,
