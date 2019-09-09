@@ -2,6 +2,7 @@
 Create waveform plots that show the changes in synthetic waveforms with
 progressive model updates. All waveforms superimposed on one another
 """
+import sys
 import os
 import glob
 import pyasdf
@@ -13,7 +14,7 @@ from pyatoa import Config, Manager
 from pyatoa.utils.operations.source_receiver import gcd_and_baz,\
     seismogram_length
 
-mpl.rcParams['lines.linewidth'] = 1.25
+mpl.rcParams['lines.linewidth'] = 1.5
 
 
 def set_parameters():
@@ -28,14 +29,13 @@ def set_parameters():
     
     # If you don't want to plot all models, but rather just the first and last
     select_models = []
-    # select_models = ['synthetic_m00', 'synthetic_m03', 'synthetic_m06']
+    # select_models = ['synthetic_m00', 'synthetic_m05', 'synthetic_m09']
 
     # Pick stations, if left empty, will plot all stations in dataset
-    select_stations = []
-    # select_stations = ['NZ.TOZ']
+    select_stations = ['NZ.NNZ']
 
     # User-defined figure parameters
-    show = False
+    show = True
 
     return datasets_path, output_dir, select_models, select_stations, show
 
@@ -186,7 +186,7 @@ def plot_iterative_waveforms():
                 )
 
                 # Instantiate plotting instances
-                f = plt.figure(figsize=figsize, dpi=dpi)
+                f = plt.figure() # figsize=figsize, dpi=dpi)
                 axes = setup_plot(nrows=len(synthetics.keys()), 
                                   ncols=len(st_obs)
                                   )
@@ -235,10 +235,11 @@ def plot_iterative_waveforms():
                         a2, = axes[row][col].plot(t, syn[0].data, 
                                                   color_list[col], zorder=z,
                                                   label="Syn")
-                        a3, = axes[row][col].plot(t, syn_init[0].data, 
-                                                  color_list[col], zorder=z-1, 
-                                                  alpha=0.55, linestyle='--', 
-                                                  linewidth=1.75, label="M00")
+                        # a3, = axes[row][col].plot(
+                        #         t, syn_init[0].data, color_list[col], 
+                        #         zorder=z-1,  alpha=0.55, linestyle='--', 
+                        #         linewidth=mpl.rcParams['lines.linewidth']-0.25, 
+                        #         label="M00")
 
                         if row == 0:
                             # Determine the start and end bounds based on amp 
@@ -247,7 +248,8 @@ def plot_iterative_waveforms():
                             t_end = min(t[end_idx] + 10, t[-1])
                              
                             # Set the seismogram length for the first row
-                            axes[row][col].set_xlim([10, 110])
+                            axes[row][col].set_xlim([155, 280])
+                        
                             # if not length_sec:
                             #     length_sec = t[-1]
                             # axes[row][col].set_xlim(
@@ -269,7 +271,7 @@ def plot_iterative_waveforms():
 
                 # Label the time axis on the bottom row
                 axes[-1][middle_column].set_xlabel("time [sec]")
-                axes[middle_row][middle_column].legend()
+                # axes[middle_row][middle_column].legend()
 
                 # Save the generated figure
                 if output_dir:
@@ -291,4 +293,7 @@ def plot_iterative_waveforms():
 
 
 if __name__ == "__main__":
-    plot_iterative_waveforms()
+    try:
+        plot_iterative_waveforms()
+    except KeyboardInterrupt:
+        sys.exit()

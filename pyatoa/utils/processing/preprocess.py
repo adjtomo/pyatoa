@@ -48,7 +48,6 @@ def trimstreams(st_a, st_b, force=None):
     diff = 1E-2
     if st_a[0].stats.starttime - st_b[0].stats.starttime < diff and \
             st_a[0].stats.endtime - st_b[0].stats.endtime < diff:
-        warnings.warn("Streams are already the same length", UserWarning)
         return st_a, st_b
 
     if force:

@@ -1,5 +1,6 @@
 """
 Hacky functions to combine all the outputs figures of pyatoa into a single pdf
+Makes use of subprocess and the external program Imagemagick
 """
 import os
 import glob
@@ -11,8 +12,13 @@ def tile_images(wavs_path, maps_path, purge=False):
     Tile the outputted waveform and map images into single pngs placed
     horizontally. Expects the output of the images to be in the form of
     wav_*.png and map_*.png where * represents the station name, i.e. HAZ
-    :type image_path: str
-    :param image_path: where the .png files are located, outputted by pyatoa
+
+    Requires imagemagick
+
+    :type wavs_path: str
+    :param wavs_path: where the wav_*.png files are located, outputted by pyatoa
+    :type maps_path: str
+    :param maps_path: where the map_*.png files are located, outputted by pyatoa
     :type purge: bool
     :param purge: delete images after tiling to save on space, defeaults to no
     """
@@ -40,21 +46,18 @@ def tile_images(wavs_path, maps_path, purge=False):
                 os.remove(map_name)
                 os.remove(wav_name)
 
-        # purge the maps which have no wav counterparts
-        # this was necessary when we were making maps each step, but it's been
-        # since changed to only make maps on the first go
-        # elif os.path.exists(map_name) and purge:
-        #     os.remove(map_name)
 
-
-def combine_images(ds, tiles_path, save_to="./composite.pdf", purge=False):
+def combine_tiles(ds, tiles_path, save_to="./composite.pdf", purge=False):
     """
     Combine the tiled images into a single composite pdf.
-    Needs to be run after tile_images
+    Needs to be run after tile_images. Requires imagemagick
+
     :type ds: pyasdf.ASDFDataSet()
     :param ds: dataset for the event to get station, event information
-    :type image_path: str
-    :param image_path: where the .png files are located, outputted by pyatoa
+    :type tiles_path: str
+    :param tiles_path: where the .png files are located, outputted by pyatoa
+    :type save_to: str
+    :param save_to: where the pdf should be saved and the fid
     :type purge: bool
     :param purge: delete images after tiling to save on space, defeaults to no
     """
@@ -70,13 +73,13 @@ def combine_images(ds, tiles_path, save_to="./composite.pdf", purge=False):
     # add to the list that will be sent to subprocess
     sorted_tile_list = []
     for name in sorted_station_names:
-        for i, avail in eumerate(tiles_available):
+        for i, avail in enumerate(tiles_available):
             if name in avail:
                 sorted_tile_list.append(tiles_available[i])            
                 break
     
     # run imagemagick convert using the subprocess module
-    subprocess.run(["convert"] + sub_list  + [save_to])
+    subprocess.run(["convert"] + sorted_tile_list + [save_to])
     
     # remove tile_*.png files 
     if purge:
@@ -84,30 +87,50 @@ def combine_images(ds, tiles_path, save_to="./composite.pdf", purge=False):
             os.remove(tile)
 
 
-def tile_and_combine(ds, model, step, figure_path, maps_path,
-                                      purge_originals=False, purge_tiles=False):
+def combine_images(path, globfid="*.png", save_to="./composite.pdf",
+                   purge=False):
+    """
+    Combine a collection of images into a single composite pdf.
+    Needs to be run after tile_images. Requires imagemagick
+
+    :type path: str
+    :type path: path to search for the images
+    :param globfid: wildcard search term to look for images, will be sorted
+    :type save_to: str
+    :param save_to: path and fid to save the pdf
+    :type purge: bool
+    :param purge: delete images after tiling to save on space, defeaults to no
+    """
+    images = glob.glob(os.path.join(path, globfid))
+    images.sort()
+
+    # run imagemagick convert using the subprocess module
+    subprocess.run(["convert", images, save_to])
+
+    # remove tile_*.png files
+    if purge:
+        for img in images:
+            os.remove(img)
+
+
+def tile_and_combine(ds, model, figure_path, maps_path, save_to,
+                     purge_originals=False, purge_tiles=False):
     """
     Tile waveform and map images, combine all images into a single .pdf file
     To be called from within a process script
+
+    TO DO: take the path naming out of here and move it to the
     """
     event_id = os.path.basename(ds.filename).split(".")[0]
     
     # set up directories and pathnames
-    composite_path = os.path.join(figure_path, "composites")
     wavs_path = os.path.join(figure_path, model, event_id)
     if not maps_path:
         maps_path = wavs_path
-    if not os.path.exists(composite_path):
-        os.makedirs(composite_path)
-
-    # Create the name of the pdf to save to
-    save_to = os.path.join(composite_path,
-                           "{e}_{m}_{s}.pdf".format(e=event_id, m=model, s=step) 
-                           )
      
     # tile and combine images 
     tile_images(wavs_path=wavs_path, maps_path=maps_path, purge=purge_originals)
-    combine_images(ds=ds, tiles_path=wavs_path, save_to=save_to, 
-                   purge=purge_tiles
-                   )
+    combine_tiles(ds=ds, tiles_path=wavs_path, save_to=save_to,
+                  purge=purge_tiles
+                  )
 
