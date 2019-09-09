@@ -125,7 +125,7 @@ def parse_plot_output_optim(path_to_optim, show=False, save=''):
     twax.set_ylabel("step lengths", rotation=270, labelpad=15)
 
     # Set the tick labelling based on the number of iterations
-    plt.xticks(range(0, num_points, num_points//10))
+    plt.xticks(range(0, num_points, num_points//10 or 1))
 
     # Set the format of the plot to match pretty_grids formatting
     for axis in [ax, twax]:
