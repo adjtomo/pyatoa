@@ -6,6 +6,7 @@ import os
 import glob
 import json
 import time
+import random
 import numpy as np
 
 
@@ -46,9 +47,9 @@ def write_misfit_json(ds, model, step, fidout="./misfits.json"):
     event_id = os.path.basename(ds.filename).split(".")[0]
    
     # build nested dictioanaries 
-    event_dict = {"misfit": float(misfit), 
+    event_dict = {"misfit": float(f"{misfit:.3f}"),
                   "windows": int(windows), 
-                  "adjsrcs": int(adjsrcs)
+                  "adjsrcs": int(adjsrcs),
                   }
     step_dict = {"{}".format(event_id): event_dict}
     model_dict = {"{}".format(step): step_dict}
@@ -58,16 +59,17 @@ def write_misfit_json(ds, model, step, fidout="./misfits.json"):
     # lock file that can only be accessed by one cpu at a time
     fidout_lock = fidout + "_lock"
     while True:
-        # another process has control of the misfit file
+        # another process has control of the misfit file, wait random time
         if os.path.exists(fidout_lock):
             # print("file is locked, waiting")
-            time.sleep(5)
+            time.sleep(random.randint(5, 10))
         # misfit file is available for writing
         elif os.path.exists(fidout) and not os.path.exists(fidout_lock):
-            # print("file is available at {}".format(time.asctime()))
+            # Lock the file so that other processes don't try to access it
             os.rename(fidout, fidout_lock)
             with open(fidout_lock, "r") as f:
                 misfit_dict = json.load(f)
+                # Figure out if this model/step combination is already present
                 if model in misfit_dict.keys():
                     if step in misfit_dict[model].keys():
                         misfit_dict[model][step][event_id] = event_dict
@@ -76,7 +78,7 @@ def write_misfit_json(ds, model, step, fidout="./misfits.json"):
                 else:
                     misfit_dict[model] = model_dict
        
-                # Parse misfit dict to give the total misfit
+                # Parse dictionary to give the total misfit by summing all parts
                 misfits, windows_all, adjsrcs_all = [], [], []
                 for key in misfit_dict[model][step].keys():
                     if key in ["misfit", "windows", "adjsrcs"]:
@@ -85,6 +87,7 @@ def write_misfit_json(ds, model, step, fidout="./misfits.json"):
                     windows_all.append(misfit_dict[model][step][key]["windows"])
                     adjsrcs_all.append(misfit_dict[model][step][key]["adjsrcs"])
 
+                # Save summed values into the 'step' dictionary
                 misfit_dict[model][step]["misfit"] = sum(misfits)/len(misfits)
                 misfit_dict[model][step]["windows"] = sum(windows_all)
                 misfit_dict[model][step]["adjsrcs"] = sum(adjsrcs_all)

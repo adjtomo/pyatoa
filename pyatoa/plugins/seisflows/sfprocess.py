@@ -86,13 +86,14 @@ def assemble_paths(parser, mode=''):
     figs = os.path.join(pyatoa_io, "figures")
     maps = os.path.join(figs, "maps")
     vtks = os.path.join(figs, "vtks")
+    composites = os.path.join(figs, "composites")
     data = os.path.join(pyatoa_io, "data")
     misfits = os.path.join(data, "misfits")
     misfit_file = os.path.join(pyatoa_io, "misfits.json")
 
     paths = {"PYATOA_FIGURES": figs, "PYATOA_DATA": data, "PYATOA_MAPS": maps,
              "PYATOA_VTKS": vtks, "PYATOA_MISFITS": misfits,
-             "MISFIT_FILE": misfit_file
+             "PYATOA_COMPOSITES": composites, "MISFIT_FILE": misfit_file
              }
 
     # Processing requires extra process dependent paths
@@ -157,6 +158,7 @@ def finalize(parser):
             pathin=paths["PYATOA_DATA"], pathout=paths["PYATOA_VTKS"],
             model=parser.model_number
         )
+
     # Create copies of .h5 files at the end of each iteration, because .h5
     # files are easy to corrupt so it's good to have a backup
     if usrcfg["snapshot"]:
@@ -171,7 +173,8 @@ def finalize(parser):
     # Only create misfit maps for the first step count
     if usrcfg["plot_misfit_maps"] and parser.step_count == "s00":
         from pyatoa.utils.visuals.mapping import event_misfit_map
-        
+        from pyatoa.utils.visuals.convert_images import combine_images
+
         name_template = "{eid}_{m}_{s}_misfit_map.png"
 
         # Loop through each available dataset to create misfit map
@@ -187,16 +190,30 @@ def finalize(parser):
                 fidout = os.path.join(
                             event_figures, name_template.format(
                                  eid=ds.events[0].resource_id.id.split('/')[-1],
-                                 m=parser.model_number, s=parser.step_count) 
+                                 m=parser.model_number, s=parser.step_count)
                                       )
+                # Use the average misfit to normalize the misfit map
+                stats = ds.auxiliary_data.Statistics[
+                    parser.model_number][parser.step_count].parameters
+                average_misfit = stats['average_misfit']
+
                 # TO DO: set map corners using usrcfg, and not default Config?
                 event_misfit_map(map_corners=pyatoa.Config().map_corners,
                                  ds=ds, model=parser.model_number,
                                  step=parser.step_count,
+                                 normalize=average_misfit,
                                  annotate_station_info='simple',
                                  contour_overlay=True, filled_contours=True,
                                  show=False, save=fidout
                                  )
+
+        # Combine all the misfit maps into a single pdf
+        save_to = os.path.join(
+            paths["PYATOA_COMPOSITES"], "{m}_{s}_misfitmaps.pdf".format(
+                m=parser.model_number, s=parser.step_count)
+        )
+        combine_images(path=event_figures, globfid="*misfit_map.png",
+                       save_to=save_to)
 
 
 def process(parser):
@@ -252,9 +269,10 @@ def process(parser):
         # Write the Config to auxiliary_data for provenance
         config.write_to_asdf(ds)
 
-        # Calculate misfit by station, get stations from Specfem STATIONS file
+        # Instantiate the Manager
         mgmt = pyatoa.Manager(config=config, ds=ds)
 
+        # Calculate misfit by station, get stations from Specfem STATIONS file
         # Station file has the form NET STA LAT LON ...
         stations = np.loadtxt(paths["STATIONS"], usecols=[0, 1, 2, 3],
                               dtype=str)
@@ -315,7 +333,8 @@ def process(parser):
                                            "map_{}".format(sta)
                                            )
                     if not os.path.exists(map_fid):
-                        mgmt.plot_map( stations=coords, save=map_fid, show=False)
+                        mgmt.plot_map(stations=coords, save=map_fid, show=False)
+
                 print("\n")
             # Traceback ensures more detailed error tracking
             except Exception:
@@ -342,10 +361,17 @@ def process(parser):
                           paths["MISFIT_FILE"])
 
         # Combine .png images into a composite .pdf for easy fetching
+        # Only do it for the first step, otherwise we get too many pdfs
         if usrcfg["tile_and_combine"] and (parser.step_count == "s00"):
             from pyatoa.utils.visuals.convert_images import tile_and_combine
-            tile_and_combine(ds=ds, model=parser.model_number, 
-                             step=parser.step_count,
+
+            # Create the name of the pdf to save to
+            save_to = os.path.join(
+                paths["PYATOA_COMPOSITES"], "{e}_{m}_{s}_wavmap.pdf".format(
+                    e=config.event_id, m=config.model_number,
+                    s=parser.step_count)
+            )
+            tile_and_combine(ds=ds, model=parser.model_number, save_to=save_to,
                              figure_path=paths["PYATOA_FIGURES"],
                              maps_path=paths["PYATOA_MAPS"],
                              purge_originals=usrcfg["purge_originals"],

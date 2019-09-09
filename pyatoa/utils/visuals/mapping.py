@@ -290,7 +290,8 @@ def connect_source_receiver(m, event, sta, **kwargs):
 
 
 def interpolate_and_contour(m, x, y, z, len_xi, len_yi, fill=True,
-                            colormap='viridis', interpolation_method='cubic'):
+                            cbar_label='', colormap='viridis',
+                            interpolation_method='cubic'):
     """
     Interpolate over scatter points on a regular grid, and create a contour plot
 
@@ -337,7 +338,7 @@ def interpolate_and_contour(m, x, y, z, len_xi, len_yi, fill=True,
                         cmap=colormap)
         # Add a colorbar
         cbar = m.colorbar(cs, location='right', pad="5%")
-        cbar.set_label("misfit")
+        cbar.set_label(cbar_label)
     # Use contour for only lines, places values inline with contour
     else:
         cs = m.contour(xi, yi, zi, vmin=0, zorder=100, alpha=0.6, cmap=colormap)
@@ -463,15 +464,13 @@ def standalone_map(map_corners, inv, catalog, annotate_names=False,
     return f, m
 
 
-def event_misfit_map(map_corners, ds, model, step=None,
+def event_misfit_map(map_corners, ds, model, step=None, normalize=None,
                      annotate_station_info=False, contour_overlay=True,
                      filled_contours=True, show_nz_faults=False,
                      figsize=(10, 9.4), dpi=100, show=True, save=None):
     """
     To be used to plot misfit information from a pyasdf Dataset
 
-    :type map_corners: dict of floats
-    :param map_corners: [lat_bot,lat_top,lon_left,lon_right]
     :type ds: pyasdf.ASDFDataSet
     :param ds: dataset containing things to plot
     :type model: str
@@ -536,7 +535,7 @@ def event_misfit_map(map_corners, ds, model, step=None,
             )
 
     # If waveforms in dataset, plot the stations
-    x_values, y_values, z_values = [],[],[]
+    x_values, y_values, z_values = [], [], []
     if hasattr(ds, 'waveforms'):
         for sta in ds.waveforms.list():
             sta_anno = ""
@@ -566,7 +565,12 @@ def event_misfit_map(map_corners, ds, model, step=None,
                             ds, model, station=sta
                         )
                         if total_misfit:
-                            sta_anno += "/{:.2E}".format(total_misfit)
+                            # If misfit should be normalized to e.g. average
+                            # misfit for this event/model/step combination
+                            if normalize:
+                                total_misfit /= normalize
+                            else:
+                                sta_anno += f"/{total_misfit:.2E}"
                         else:
                             total_misfit = 0
 
@@ -617,10 +621,14 @@ def event_misfit_map(map_corners, ds, model, step=None,
     # Plot a contour of a given Z value based on receiver locations
     # Fill can be changed to make the contour just lines without a colorbar
     if contour_overlay:
+        if normalize:
+            cbar_label = "misfit (normalized)"
+        else:
+            cbar_label = "misfit"
         interpolate_and_contour(m=m, x=x_values, y=y_values, z=z_values,
                                 len_xi=100, len_yi=150, colormap='viridis',
                                 interpolation_method='cubic',
-                                fill=filled_contours
+                                fill=filled_contours, cbar_label=cbar_label
                                 )
 
     # Plot fault lines, hardcoded into structure
