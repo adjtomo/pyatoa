@@ -47,7 +47,8 @@ def tile_images(wavs_path, maps_path, purge=False):
                 os.remove(wav_name)
 
 
-def combine_tiles(ds, tiles_path, save_to="./composite.pdf", purge=False):
+def combine_tiles(ds, tiles_path, sort_by="baz", save_to="./composite.pdf", 
+                  purge=False):
     """
     Combine the tiled images into a single composite pdf.
     Needs to be run after tile_images. Requires imagemagick
@@ -56,40 +57,53 @@ def combine_tiles(ds, tiles_path, save_to="./composite.pdf", purge=False):
     :param ds: dataset for the event to get station, event information
     :type tiles_path: str
     :param tiles_path: where the .png files are located, outputted by pyatoa
+    :type sort_by: str
+    :param sort_by: method to sort by, avail: ["baz"]
     :type save_to: str
     :param save_to: where the pdf should be saved and the fid
     :type purge: bool
     :param purge: delete images after tiling to save on space, defeaults to no
     """
     from pyatoa.utils.operations.source_receiver import sort_by_backazimuth
-   
-    # sort stations by backazimuth for easier visualization 
-    sorted_station_names = sort_by_backazimuth(ds)
+  
+    # Default, sort stations by backazimuth for easier visualization 
+    if sort_by == "baz": 
+        sorted_station_names = sort_by_backazimuth(ds)
+    # Sort by largest to smallest misfit, to do
+    elif sort_by == "misfit":
+        raise NotImplementedError
+    # If not method specified, simple return alphabetical station list
+    else:
+        sorted_station_names = ds.waveforms.lis()
 
     tiles_available = glob.glob(os.path.join(tiles_path, "tile_*.png"))
-    tiles_available = [os.path.basename(_) for _ in tiles_available]    
+    # tiles_available = [os.path.basename(_) for _ in tiles_available]    
  
     # Loop through sorted station names, if that name is available as a tile
     # add to the list that will be sent to subprocess
     sorted_tile_list = []
     for name in sorted_station_names:
+        net, sta = name.split('.')
         for i, avail in enumerate(tiles_available):
-            if name in avail:
-                sorted_tile_list.append(tiles_available[i])            
+            if sta in avail:
+                sorted_tile_list.append(avail)            
                 break
-    
+   
     # run imagemagick convert using the subprocess module
     subprocess.run(["convert"] + sorted_tile_list + [save_to])
     
     # remove tile_*.png files 
     if purge:
         for tile in tiles_available:
-            os.remove(tile)
+            if os.path.exists(tile):
+                os.remove(tile)
 
 
 def combine_images(path, globfid="*.png", save_to="./composite.pdf",
                    purge=False):
     """
+    General use function
+
     Combine a collection of images into a single composite pdf.
     Needs to be run after tile_images. Requires imagemagick
 
@@ -103,6 +117,7 @@ def combine_images(path, globfid="*.png", save_to="./composite.pdf",
     """
     images = glob.glob(os.path.join(path, globfid))
     images.sort()
+    
 
     # run imagemagick convert using the subprocess module
     subprocess.run(["convert", images, save_to])
