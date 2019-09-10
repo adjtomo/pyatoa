@@ -99,8 +99,7 @@ def combine_tiles(ds, tiles_path, sort_by="baz", save_to="./composite.pdf",
                 os.remove(tile)
 
 
-def combine_images(path, globfid="*.png", save_to="./composite.pdf",
-                   purge=False):
+def combine_images(file_ids, save_to="./composite.pdf", purge=False):
     """
     General use function
 
@@ -109,23 +108,21 @@ def combine_images(path, globfid="*.png", save_to="./composite.pdf",
 
     :type path: str
     :type path: path to search for the images
-    :param globfid: wildcard search term to look for images, will be sorted
+    :type file_ids: list
+    :param file_ids: list of file ids to combine
     :type save_to: str
     :param save_to: path and fid to save the pdf
     :type purge: bool
     :param purge: delete images after tiling to save on space, defeaults to no
     """
-    images = glob.glob(os.path.join(path, globfid))
-    images.sort()
-    
-
     # run imagemagick convert using the subprocess module
-    subprocess.run(["convert", images, save_to])
+    subprocess.run(["convert"] + file_ids + [save_to])
 
     # remove tile_*.png files
     if purge:
-        for img in images:
-            os.remove(img)
+        for fid in file_ids:
+            if os.path.exists(fid):
+                os.remove(fid)
 
 
 def tile_and_combine(ds, model, figure_path, maps_path, save_to,

@@ -8,6 +8,7 @@ import os
 
 import sys
 import json
+import time
 import glob
 import pyasdf
 import pyatoa
@@ -171,27 +172,29 @@ def finalize(parser):
 
     # Create misfit maps for each event with contour overlay showing misfit
     # Only create misfit maps for the first step count
-    if usrcfg["plot_misfit_maps"] and parser.step_count == "s00":
+    if usrcfg["plot_misfit_maps"] and (parser.step_count == "s00"):
         from pyatoa.utils.visuals.mapping import event_misfit_map
         from pyatoa.utils.visuals.convert_images import combine_images
 
         name_template = "{eid}_{m}_{s}_misfit_map.png"
-
+        file_ids = []
         # Loop through each available dataset to create misfit map
         datasets = glob.glob(os.path.join(paths["PYATOA_DATA"], "*.h5"))
         for dataset in datasets:
             with pyasdf.ASDFDataSet(dataset) as ds:
+                event_id = os.path.basename(ds.filename).split('.')[0]
+                 
                 # Save figures into event directories
                 event_figures = os.path.join(paths["PYATOA_FIGURES"], 
-                                             parser.model_number, 
-                                             parser.event_id
+                                             parser.model_number, event_id
                                              )
                 # Save the fid based on event id, model number, step count
                 fidout = os.path.join(
-                            event_figures, name_template.format(
-                                 eid=ds.events[0].resource_id.id.split('/')[-1],
-                                 m=parser.model_number, s=parser.step_count)
+                            event_figures, name_template.format(eid=event_id,
+                                     m=parser.model_number, s=parser.step_count)
                                       )
+                file_ids.append(fidout)
+
                 # Use the average misfit to normalize the misfit map
                 stats = ds.auxiliary_data.Statistics[
                     parser.model_number][parser.step_count].parameters
@@ -212,8 +215,7 @@ def finalize(parser):
             paths["PYATOA_COMPOSITES"], "{m}_{s}_misfitmaps.pdf".format(
                 m=parser.model_number, s=parser.step_count)
         )
-        combine_images(path=event_figures, globfid="*misfit_map.png",
-                       save_to=save_to)
+        combine_images(file_ids=file_ids, save_to=save_to, purge=False)
 
 
 def process(parser):
@@ -406,9 +408,11 @@ if __name__ == "__main__":
 
     # Process misfit values
     elif parser.mode == "process":
-        # Run Pyatoa, return successful exit code
+        # Run Pyatoa, return successful exit code. Time for posterity
         try:
+            tstart = time.time()
             process(parser)
+            print("{:.2f}m elapsed".format((time.time() - tstart) / 60.))
             sys.exit(0)
         except Exception as e:
             traceback.print_exc()
