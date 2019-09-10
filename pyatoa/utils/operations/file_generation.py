@@ -145,7 +145,7 @@ def write_misfit_stats(ds, model, pathout="./", fidout=None):
 
            
 def create_srcrcv_vtk_single(ds, model, pathout, event_separate=False,
-                             utm_zone=60):
+                             utm_zone=-60):
     """
     It's useful to visualize source receiver locations in Paraview, alongside
     sensitivity kernels. VTK files are produced by Specfem, however they are for
@@ -235,7 +235,7 @@ def create_srcrcv_vtk_single(ds, model, pathout, event_separate=False,
             )
 
 
-def create_srcrcv_vtk_multiple(pathin, pathout, model, utm_zone=60):
+def create_srcrcv_vtk_multiple(pathin, pathout, model, utm_zone=-60):
     """
     Same as create_srcrcv_vtk_single, except instead of taking an asdf
     dataset input, takes a path, reads in datasets and creates one
