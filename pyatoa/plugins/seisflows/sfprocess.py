@@ -331,8 +331,9 @@ def process(parser):
                 # Plot source-receiver maps, don't make a map if no wav data
                 # Don't make the map if the map has already been made
                 if usrcfg["plot_maps"] and f:
-                    map_fid = os.path.join(paths["PYATOA_MAPS"], 
-                                           "map_{}".format(sta)
+                    map_fid = os.path.join(
+                                paths["PYATOA_MAPS"], "map_{eid}_{sta}".format(
+                                    eid=config.event_id, sta=sta)
                                            )
                     if not os.path.exists(map_fid):
                         mgmt.plot_map(stations=coords, save=map_fid, show=False)
@@ -345,26 +346,32 @@ def process(parser):
                 continue
 
         # Add statistics to auxiliary_data
+        print("writing stats to ASDF file")
         write_stats_to_asdf(ds, config.model_number, parser.step_count)
 
         # Create the .sem ascii files required by specfem
+        print("writing adjoint sources to .sem? files")
         write_adj_src_to_ascii(ds, config.model_number, paths["ADJ_TRACES"])
 
         # Create the STATIONS_ADJOINT file required by specfem
+        print("creating STATIONS_ADJOINT file")
         create_stations_adjoint(ds, config.model_number,
                                 specfem_station_file=paths["STATIONS"],
                                 pathout=paths["EVENT_DATA"])
 
         # Write misfits for seisflows into individual text files
+        print("writing individual misfit to file")
         write_misfit_stats(ds, config.model_number, paths["PYATOA_MISFITS"])
 
         # Sum and write misfits information to a JSON file
+        print("writing misfits.json file")
         write_misfit_json(ds, parser.model_number, parser.step_count,
                           paths["MISFIT_FILE"])
 
         # Combine .png images into a composite .pdf for easy fetching
         # Only do it for the first step, otherwise we get too many pdfs
         if usrcfg["tile_and_combine"] and (parser.step_count == "s00"):
+            print("creating composite pdf")
             from pyatoa.utils.visuals.convert_images import tile_and_combine
 
             # Create the name of the pdf to save to

@@ -7,7 +7,7 @@ import glob
 import subprocess
 
 
-def tile_images(wavs_path, maps_path, purge=False):
+def tile_images(event_id, wavs_path, maps_path, purge=False):
     """
     Tile the outputted waveform and map images into single pngs placed
     horizontally. Expects the output of the images to be in the form of
@@ -33,7 +33,7 @@ def tile_images(wavs_path, maps_path, purge=False):
 
     # combine map and waveform figures
     for name in stanames:
-        map_name = os.path.join(maps_path, f"map_{name}.png")
+        map_name = os.path.join(maps_path, f"map_{event_id}_{name}.png")
         wav_name = os.path.join(wavs_path, f"wav_{name}.png")
         tile_name = os.path.join(wavs_path, f"tile_{name}.png")
         if os.path.exists(map_name) and os.path.exists(wav_name):
@@ -141,7 +141,9 @@ def tile_and_combine(ds, model, figure_path, maps_path, save_to,
         maps_path = wavs_path
      
     # tile and combine images 
-    tile_images(wavs_path=wavs_path, maps_path=maps_path, purge=purge_originals)
+    tile_images(event_id=event_id, wavs_path=wavs_path, maps_path=maps_path,
+                purge=purge_originals
+                )
     combine_tiles(ds=ds, tiles_path=wavs_path, save_to=save_to,
                   purge=purge_tiles
                   )
