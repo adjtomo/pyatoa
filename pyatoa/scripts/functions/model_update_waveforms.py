@@ -32,10 +32,10 @@ def set_parameters():
     # select_models = ['synthetic_m00', 'synthetic_m05', 'synthetic_m09']
 
     # Pick stations, if left empty, will plot all stations in dataset
-    select_stations = ['NZ.NNZ']
+    select_stations = []
 
     # User-defined figure parameters
-    show = True
+    show = False
 
     return datasets_path, output_dir, select_models, select_stations, show
 
@@ -246,9 +246,10 @@ def plot_iterative_waveforms():
                             st_idx, end_idx = center_on_peak_energy(obs + syn)
                             t_start = max(t[st_idx] - 10, 0)
                             t_end = min(t[end_idx] + 10, t[-1])
-                             
+                            axes[row][col].set_xlim([t_start, t_end])                            
+ 
                             # Set the seismogram length for the first row
-                            axes[row][col].set_xlim([155, 280])
+                            # axes[row][col].set_xlim([155, 280])
                         
                             # if not length_sec:
                             #     length_sec = t[-1]

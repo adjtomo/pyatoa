@@ -43,7 +43,6 @@ def tile_images(event_id, wavs_path, maps_path, purge=False):
             )
             # remove old images to save space
             if purge:
-                os.remove(map_name)
                 os.remove(wav_name)
 
 
