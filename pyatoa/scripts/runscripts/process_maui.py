@@ -24,7 +24,7 @@ logger.setLevel(logging.DEBUG)
 
 # initiate config
 model_number = "m00"
-event_id_list = ["2018p130600"]
+event_id_list = ["2013p142607"]
 synthetics_only = True
 working_dir = os.getcwd()
 obs_traces = os.path.join(working_dir, "obs")
@@ -50,19 +50,27 @@ for event_id in event_id_list:
                            synthetics_only=synthetics_only,
                            cfgpaths={'synthetics':[syn_traces],
                                      'waveforms':[obs_traces],
-                                     'responses':[]}
+                                     'responses':["/scale_wlg_persistent/filesets/home/chowbr/primer/auxiliary/seed/RESPONSE"]
+                                     }
                            )
+
+    # append some information to the title
+    append_title = "pyflex={}, pyadjoint={}".format(config.pyflex_config[0],
+                                                    config.pyadjoint_config[0])
 
     # initiate pyasdf dataset where all data will be saved
     ds_path = os.path.join(working_dir, "{}.h5".format(config.event_id))
     with pyasdf.ASDFDataSet(ds_path) as ds:
         clean_ds(ds)
         config.write_to_asdf(ds)
-        stations = np.loadtxt(os.path.join(working_dir, "STATIONS"), 
-                              usecols=[0, 1], dtype=str)
-
+        
         # begin the Pyatoa Workflow, loop through all stations
         mgmt = pyatoa.Manager(config=config, ds=ds)
+
+        # load in station information
+        stations = np.loadtxt(os.path.join(working_dir, "STATIONS"), 
+                              usecols=[0, 1], dtype=str)
+        empties = 0
         for station in stations: 
             sta, net = station
             try:
@@ -72,9 +80,14 @@ for event_id in event_id_list:
                 )
                 mgmt.preprocess()
                 mgmt.run_pyflex()
+
+                # count all stations w/ no windows
+                if not mgmt.windows:
+                    empties += 1
+
                 mgmt.run_pyadjoint()
                 mgmt.plot_wav(save=os.path.join(fig_dir, "wav_{sta}".format(
-                    sta=sta)), show=False
+                    sta=sta)), append_title=append_title, show=False
                 )
                 mgmt.plot_map(save=os.path.join(fig_dir, "map_{sta}".format(
                     sta=sta)), show=False
@@ -85,9 +98,13 @@ for event_id in event_id_list:
                 mgmt.reset()
                 continue
 
+        # path for the adjoint sources
         sem_path = os.path.join(working_dir, "SEM")
+        if not os.path.exists(sem_path):
+            os.makedirs(sem_path)
+
         write_adj_src_to_ascii(ds, model_number, sem_path)
         create_stations_adjoint(ds, model_number, 
                                 os.path.join(working_dir, "STATIONS"), sem_path)
 
-
+        print("{}/{} STATIONS W >1 WINDOWS".format(len(stations), empties))
