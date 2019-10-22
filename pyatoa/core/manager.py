@@ -454,6 +454,8 @@ class Manager:
                                 self.event.preferred_origin().time
                                 )
 
+        # Re-trim streams to remove signal before time 0
+
         # Convolve synthetic data with a gaussian source-time-function
         try:
             moment_tensor = self.event.focal_mechanisms[0].moment_tensor

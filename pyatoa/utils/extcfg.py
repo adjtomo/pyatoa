@@ -160,12 +160,14 @@ so that these packages can run properly
 """
 
 
-def pyflex_configs():
+def set_pyflex_config(pyatoa_config):
     """
     Manual set of pyflex overwrites
     :return:
     """
-    configs = {
+    from pyflex import Config
+    
+    available_cfgs = {
         # default, don't overwrite the pyflex parameters
         "default": {},
         # values taken from the Pyflex example script
@@ -183,7 +185,7 @@ def pyflex_configs():
             "c_4b": 10.0
         },
         # values from Carl Tape at University of Alaska, Fairbanks
-        "fairbanks": {
+        "alaska": {
             "stalta_waterlevel": 0.18,
             "tshift_acceptance_level": 4.0,
             "dlna_acceptance_level": 1.5,
@@ -198,133 +200,128 @@ def pyflex_configs():
         },
         # values tested for the Hikurangi tomography problem, strict criteria
         # choice considerations
-        "hikurangi_strict": {
+        "hikurangi": {
             "stalta_waterlevel": 0.08,
-            "tshift_acceptance_level": 5.0,  # based on sign flip waveforms
-            "dlna_acceptance_level": 1.3,
-            "cc_acceptance_level": 0.9,
+            "tshift_acceptance_level": 8.0,  # based on sign flip waveforms
+            "dlna_acceptance_level": 1.,
+            "cc_acceptance_level": 0.8,
             "s2n_limit": 10.,
             "max_time_before_first_arrival": 10.,  # min start of window (s)
             "c_0": 5.,  # internal minima, reject low amplitude arrivals
             "c_1": 2.5,  # min win length - 2 * min_period ~= 20s min
         },
-        # values tested for the Hikurangi tomography problem, strict criteria
-        # choice considerations
-        "hikurangi_relaxed": {
-            "stalta_waterlevel": 0.07,
-            "tshift_acceptance_level": 5.0,  # based on sign flip waveforms
-            "dlna_acceptance_level": 1.,
-            "cc_acceptance_level": 0.8,
-            "s2n_limit": 10.,
-            "max_time_before_first_arrival": 10.,  # min start of window (s)
-            "c_0": 1.,  # internal minima, reject low amplitude arrivals
-            "c_1": 2.5,  # min win length - 2 * min_period ~= 20s min
-        },
-        # random values used to test out Pyflex rejection criteria
-        "testing": {"stalta_waterlevel": 0.07,
-                    "tshift_acceptance_level": 5.0,
-                    "dlna_acceptance_level": 1.3,
-                    "cc_acceptance_level": 0.9,
-                    "s2n_limit": 10.,
-                    "max_time_before_first_arrival": -10.,
-                    # min start of window (s)
-
-                    }
     }
-
-    return configs
-
-
-def set_pyflex_config(config):
-    """
-    Set the Pyflex configuration based on Pyatoa Config parameter
     
-    TO DO:
-        1) check if pyflex config has been set and don't do it again?
-        2) set Pyatoa config either as a keyword, or as a dictionary object?
+    # Check if given key is available
+    choice = pyatoa_config.pyflex_config[0]
+    if choice not in available_cfgs.keys():
+        raise KeyError(
+                "Pyflex config choice not in {}".format(available_cfgs.keys())
+                )
 
-    :type config: pyatoa.core.config.Config
-    :param config: config object which sets the values of pyflex config
-    :rtype pf_config: pyflex.Config
-    :return pf_config: a pyflex configuration object which helps run pyflex
-
-    """
-    from pyflex import Config
-
-    # Pyflex defaults, so that Pyatoa can overwrite them manually
-    # when setting the config object
-    # !!! DO NOT CHANGE THESE VALUES, THEY REFLECT THE DEFAULT PYFLEX VALUES !!!
-    # !!! instead overwrite them using _pyflex_overwrites() !!!
-    cfg = {
-        "min_period": config.min_period,    # min period of filtered data (s)
-        "max_period": config.max_period,    # max period of filtered data (s)
-        "stalta_waterlevel": 0.07,          # water level of STA/LTA
-        "tshift_acceptance_level": 10.0,    # maximum cc time shift wrt ref.
-        "tshift_reference": 0.0,            # systematic shift of cc time lag
-        "dlna_acceptance_level": 1.3,       # max amplitude ratio wrt ref.
-        "dlna_reference": 0.0,              # systematic shift of DLNA
-        "cc_acceptance_level": 0.7,         # limit on normalized cc per window
-        "s2n_limit": 1.5,                   # limit on SNR per window
-        "earth_model": "ak135",             # earth model for traveltime calcs
-        "min_surface_wave_velocity": 3.0,   # min vel (km/s), for srcrcv calcs
-        "max_time_before_first_arrival": 50.0,  # min starttime of window (s)
-        "c_0": 1.0,                         # height of internal minima
-        "c_1": 1.5,                         # min window length (* min_period)
-        "c_2": 0.0,                         # max prominence rejection
-        "c_3a": 4.0,                        # phase separatin height
-        "c_3b": 2.5,                        # separation time in decay function
-        "c_4a": 2.0,                        # emergent start/stops (left)
-        "c_4b": 5.0,                        # emergent start/stops (right)
-        "check_global_data_quality": False,  # check SNR of observed
-        "snr_integrate_base": 3.5,          # minimal SNR ratio
-        "snr_max_base": 3.0,                # min amplitude SNR ratio
-        "noise_start_index": 0,             # index where noise starts for SNR
-        "noise_end_index": None,            # index where noise ends
-        "signal_start_index": None,         # index where signal starts
-        "signal_end_index": -1,             # index where signal ends
-        "window_weight_fct": None,          # Weighting for specific window
-        "window_signal_to_noise_type": "amplitude",     # Type of SNR
-        "resolution_strategy": "interval_scheduling"    # overlap resolution
-    }
-
-    # overwrite default cfg values
-    overwrite = pyflex_configs()[config.pyflex_config[0]]
+    # Overwrite the default config values 
+    overwrite = available_cfgs[choice]
+    pf_config = Config(min_period=pyatoa_config.min_period, 
+                       max_period=pyatoa_config.max_period
+                       )
     for key in overwrite.keys():
-        cfg[key] = overwrite[key]
-
-    # set pyflex config
-    pf_config = Config(
-        min_period=config.min_period,
-        max_period=config.max_period,
-        stalta_waterlevel=cfg["stalta_waterlevel"],
-        tshift_acceptance_level=cfg["tshift_acceptance_level"],
-        tshift_reference=cfg["tshift_reference"],
-        dlna_acceptance_level=cfg["dlna_acceptance_level"],
-        dlna_reference=cfg["dlna_reference"],
-        cc_acceptance_level=cfg["cc_acceptance_level"],
-        s2n_limit=cfg["s2n_limit"],
-        earth_model=cfg["earth_model"],
-        min_surface_wave_velocity=cfg["min_surface_wave_velocity"],
-        max_time_before_first_arrival=cfg["max_time_before_first_arrival"],
-        c_0=cfg["c_0"],
-        c_1=cfg["c_1"],
-        c_2=cfg["c_2"],
-        c_3a=cfg["c_3a"],
-        c_3b=cfg["c_3b"],
-        c_4a=cfg["c_4a"],
-        c_4b=cfg["c_4b"],
-        check_global_data_quality=cfg["check_global_data_quality"],
-        snr_integrate_base=cfg["snr_integrate_base"],
-        snr_max_base=cfg["snr_max_base"],
-        noise_start_index=cfg["noise_start_index"],
-        signal_start_index=cfg["signal_start_index"],
-        signal_end_index=cfg["signal_end_index"],
-        window_weight_fct=cfg["window_weight_fct"],
-        window_signal_to_noise_type=cfg["window_signal_to_noise_type"],
-        resolution_strategy=cfg["resolution_strategy"]
-        )
-
+       setattr(pf_config, key, overwrite[key]) 
+    
     return pf_config
+
+
+# def set_pyflex_config(config):
+#     """
+#     DEPRECATED, use function above
+#
+#     Set the Pyflex configuration based on Pyatoa Config parameter
+#     
+#     TO DO:
+#         1) check if pyflex config has been set and don't do it again?
+#         2) set Pyatoa config either as a keyword, or as a dictionary object?
+# 
+#     :type config: pyatoa.core.config.Config
+#     :param config: config object which sets the values of pyflex config
+#     :rtype pf_config: pyflex.Config
+#     :return pf_config: a pyflex configuration object which helps run pyflex
+# 
+#     """
+#     from pyflex import Config
+# 
+#     # Pyflex defaults, so that Pyatoa can overwrite them manually
+#     # when setting the config object
+#     # !!! DO NOT CHANGE THESE VALUES, THEY REFLECT THE DEFAULT PYFLEX VALUES !!!
+#     # !!! instead overwrite them using _pyflex_overwrites() !!!
+#     cfg = {
+#         "min_period": config.min_period,    # min period of filtered data (s)
+#         "max_period": config.max_period,    # max period of filtered data (s)
+#         "stalta_waterlevel": 0.07,          # water level of STA/LTA
+#         "tshift_acceptance_level": 10.0,    # maximum cc time shift wrt ref.
+#         "tshift_reference": 0.0,            # systematic shift of cc time lag
+#         "dlna_acceptance_level": 1.3,       # max amplitude ratio wrt ref.
+#         "dlna_reference": 0.0,              # systematic shift of DLNA
+#         "cc_acceptance_level": 0.7,         # limit on normalized cc per window
+#         "s2n_limit": 1.5,                   # limit on SNR per window
+#         "earth_model": "ak135",             # earth model for traveltime calcs
+#         "min_surface_wave_velocity": 3.0,   # min vel (km/s), for srcrcv calcs
+#         "max_time_before_first_arrival": 50.0,  # min starttime of window (s)
+#         "c_0": 1.0,                         # height of internal minima
+#         "c_1": 1.5,                         # min window length (* min_period)
+#         "c_2": 0.0,                         # max prominence rejection
+#         "c_3a": 4.0,                        # phase separatin height
+#         "c_3b": 2.5,                        # separation time in decay function
+#         "c_4a": 2.0,                        # emergent start/stops (left)
+#         "c_4b": 5.0,                        # emergent start/stops (right)
+#         "check_global_data_quality": False,  # check SNR of observed
+#         "snr_integrate_base": 3.5,          # minimal SNR ratio
+#         "snr_max_base": 3.0,                # min amplitude SNR ratio
+#         "noise_start_index": 0,             # index where noise starts for SNR
+#         "noise_end_index": None,            # index where noise ends
+#         "signal_start_index": None,         # index where signal starts
+#         "signal_end_index": -1,             # index where signal ends
+#         "window_weight_fct": None,          # Weighting for specific window
+#         "window_signal_to_noise_type": "amplitude",     # Type of SNR
+#         "resolution_strategy": "interval_scheduling"    # overlap resolution
+#     }
+# 
+#     # overwrite default cfg values
+#     overwrite = pyflex_configs()[config.pyflex_config[0]]
+#     for key in overwrite.keys():
+#         cfg[key] = overwrite[key]
+# 
+#     # set pyflex config
+#     pf_config = Config(
+#         min_period=config.min_period,
+#         max_period=config.max_period,
+#         stalta_waterlevel=cfg["stalta_waterlevel"],
+#         tshift_acceptance_level=cfg["tshift_acceptance_level"],
+#         tshift_reference=cfg["tshift_reference"],
+#         dlna_acceptance_level=cfg["dlna_acceptance_level"],
+#         dlna_reference=cfg["dlna_reference"],
+#         cc_acceptance_level=cfg["cc_acceptance_level"],
+#         s2n_limit=cfg["s2n_limit"],
+#         earth_model=cfg["earth_model"],
+#         min_surface_wave_velocity=cfg["min_surface_wave_velocity"],
+#         max_time_before_first_arrival=cfg["max_time_before_first_arrival"],
+#         c_0=cfg["c_0"],
+#         c_1=cfg["c_1"],
+#         c_2=cfg["c_2"],
+#         c_3a=cfg["c_3a"],
+#         c_3b=cfg["c_3b"],
+#         c_4a=cfg["c_4a"],
+#         c_4b=cfg["c_4b"],
+#         check_global_data_quality=cfg["check_global_data_quality"],
+#         snr_integrate_base=cfg["snr_integrate_base"],
+#         snr_max_base=cfg["snr_max_base"],
+#         noise_start_index=cfg["noise_start_index"],
+#         signal_start_index=cfg["signal_start_index"],
+#         signal_end_index=cfg["signal_end_index"],
+#         window_weight_fct=cfg["window_weight_fct"],
+#         window_signal_to_noise_type=cfg["window_signal_to_noise_type"],
+#         resolution_strategy=cfg["resolution_strategy"]
+#         )
+# 
+#     return pf_config
 
 
 def set_pyflex_station_event(inv, event):
@@ -396,7 +393,7 @@ def get_pyadjoint_config(choice, min_period, max_period):
                       transfunc_waterlevel=1e-10,
                       water_threshold=0.02,
                       ipower_costaper=2,  # default=10, 2=broader smoothing
-                      min_cycle_in_window=3,  # default 0.5 but that's incorrect
+                      min_cycle_in_window=0,  # default 0.5 but that's incorrect
                       taper_type='hann',
                       taper_percentage=0.5,  # % of window to taper at each end
                       mt_nw=4.0,  # bin width of multitapers

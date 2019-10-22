@@ -187,10 +187,6 @@ class Config:
         assert(self.synthetic_unit in acceptable_units), \
             "synthetic_unit should be in {}".format(acceptable_units)
 
-        assert(self.pyflex_config[0] in extcfg.pyflex_configs().keys()), \
-            "pyflex_config should be in {}".format(
-                extcfg.pyflex_configs().keys())
-
         # Check that paths are in the proper format
         acceptable_keys = [
             'synthetics', 'waveforms', 'responses', 'auxiliary_data']
