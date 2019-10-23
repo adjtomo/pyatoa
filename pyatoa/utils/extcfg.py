@@ -199,14 +199,14 @@ def set_pyflex_config(pyatoa_config):
             "c_4b": 12.0
         },
         # values tested for the Hikurangi tomography problem
-        "newzealand": {
+        "hikurangi": {
             "stalta_waterlevel": 0.18,
             "tshift_acceptance_level": 8.0,  # based on sign flip waveforms
             "dlna_acceptance_level": 1.5,
             "cc_acceptance_level": 0.7,
             "s2n_limit": 3.,
             "max_time_before_first_arrival": 0.,  # min start of window (s)
-            "c_0": 5.,
+            "c_0": 0.7, 
             "c_1": 2.5,  # min win length = c_1 * min_period
             "c_3a": 3,
             "c_3b": 2.,
@@ -293,7 +293,7 @@ def get_pyadjoint_config(choice, min_period, max_period):
                                                      min_cycle_in_window=3)
                   )
     # Custom configurations
-    elif choice == "mtm_hikurangi_strict":
+    elif choice == "mtm_hikurangi":
         cfgout = ("multitaper_misfit",
                   pyadjoint.ConfigMultiTaper(
                       min_period=min_period,
@@ -317,16 +317,16 @@ def get_pyadjoint_config(choice, min_period, max_period):
                       use_cc_error=False,
                       use_mt_error=False)
                   )
-    elif choice == "cc_hikurangi_strict":
+    elif choice == "cc_hikurangi":
         cfgout = ("cc_traveltime_misfit",
                   pyadjoint.ConfigCrossCorrelation(
                       min_period=min_period,
                       max_period=max_period,
-                      taper_type='hann',
-                      measure_type='dt',
-                      use_cc_error=False,
-                      dt_sigma_min=1.0,
-                      dlna_sigma_min=0.5)
+                      taper_type='hann',  # hann
+                      measure_type='dt',  # dt
+                      use_cc_error=False,  # True
+                      dt_sigma_min=1.0,  # 1.
+                      dlna_sigma_min=0.5)  # .5
                   )
 
         

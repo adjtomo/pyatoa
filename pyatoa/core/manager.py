@@ -546,18 +546,18 @@ class Manager:
                                         )
                             continue
                     window = windows_by_amplitude
-
-                # If still misfit windows, calculate the STA/LTA for plotting,
-                # add misfit window and stalta to dictionary object
+                # Add window to dictionary object
                 if window:
-                    stalta = pyflex.stalta.sta_lta(
-                        dt=self.st_syn.select(component=comp)[0].stats.delta,
-                        min_period=self.config.min_period,
-                        data=envelope(
-                            self.st_syn.select(component=comp)[0].data)
-                    )
-                    staltas[comp] = stalta
                     windows[comp] = window
+
+                # Calculate the STA/LTA for plotting,
+                stalta = pyflex.stalta.sta_lta(
+                    dt=self.st_syn.select(component=comp)[0].stats.delta,
+                    min_period=self.config.min_period,
+                    data=envelope(
+                        self.st_syn.select(component=comp)[0].data)
+                )
+                staltas[comp] = stalta
 
             except IndexError:
                 window = []
