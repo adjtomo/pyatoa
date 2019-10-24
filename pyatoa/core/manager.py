@@ -23,8 +23,7 @@ from pyatoa.utils.asdf.additions import write_adj_src_to_asdf
 from pyatoa.utils.tools.srcrcv import gcd_and_baz, seismogram_length
 from pyatoa.utils.tools.format import create_window_dictionary, channel_codes
 from pyatoa.utils.tools.calcuate import abs_max
-from pyatoa.utils.process.preprocess import preproc, trimstreams
-from pyatoa.utils.process.synpreprocess import stf_convolve_gaussian
+from pyatoa.utils.tools.process import preproc, trimstreams, stf_convolve
 
 from pyatoa.utils.visuals.mapping import manager_map
 from pyatoa.utils.visuals.waveforms import window_maker
@@ -453,21 +452,21 @@ class Manager:
                                 self.event.preferred_origin().time
                                 )
 
-        # Re-trim streams to remove signal before time 0
-
         # Convolve synthetic data with a gaussian source-time-function
         try:
             moment_tensor = self.event.focal_mechanisms[0].moment_tensor
             self.half_dur = moment_tensor.source_time_function.duration / 2
-            self.st_syn = stf_convolve_gaussian(
-                st=self.st_syn, half_duration=self.half_dur, time_shift=False
-            )
+            self.st_syn = stf_convolve(st=self.st_syn,
+                                       half_duration=self.half_dur,
+                                       time_shift=False,
+                                       time_offset=self.time_offset_sec
+                                       )
             # If a synthetic-synthetic case, convolve observations
             if self.config.synthetics_only:
-                self.st_obs = stf_convolve_gaussian(
-                    st=self.st_obs, half_duration=self.half_dur,
-                    time_shift=False
-                )
+                self.st_obs = stf_convolve(st=self.st_obs,
+                                           half_duration=self.half_dur,
+                                           time_shift=False
+                                           )
         except (AttributeError, IndexError):
             logger.info("moment tensor not found for event")
 

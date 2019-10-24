@@ -1,5 +1,5 @@
 """
-Pre processing functionality to put raw seismic waveoforms into the proper
+Pre processing functionality to put raw seismic waveforms into the proper
 format for use in analysis
 """
 import warnings
@@ -224,3 +224,42 @@ def preproc(st_original, inv=None, resample=None, pad_length_in_seconds=None,
 
     return st
 
+
+def stf_convolve_gaussian(st, half_duration, time_shift=None):
+    """
+    Convolve function with a Gaussian window.
+    Following taken from specfem "comp_source_time_function.f90"
+
+    hdur given is hdur_Gaussian = hdur/SOURCE_DECAY_MIMIC_TRIANGLE
+    with SOURCE_DECAY_MIMIC_TRIANGLE ~ 1.68
+
+    This gaussian uses a strong decay rate to avoid non-zero onset times, while
+    still miicking a triangle source time function
+
+    :param st:
+    :param half_duration:
+    :param time_shift:
+    :return:
+    """
+    logger.debug("convolving synthetic data with gaussian "
+                 "window of half duration {:.2f}s".format(half_duration)
+                 )
+    sampling_rate = st[0].stats.sampling_rate
+    half_duration_in_samples = round(half_duration * sampling_rate)
+
+    # generate gaussian function
+    source_decay = 4
+    # source_decay_mimic_triangle = 1.68
+    decay_rate = half_duration_in_samples / source_decay
+    a = 1 / (decay_rate ** 2)
+    t = np.arange(-half_duration_in_samples, half_duration_in_samples, 1)
+    gaussian_stf = np.exp(-a * t**2) / (np.sqrt(np.pi) * decay_rate)
+
+    st_out = st.copy()
+    for tr in st_out:
+        if time_shift:
+            tr.stats.starttime += time_shift
+        data_out = np.convolve(tr.data, gaussian_stf, mode="same")
+        tr.data = data_out
+
+    return st_out
