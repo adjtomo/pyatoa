@@ -13,9 +13,9 @@ import glob
 from obspy import Stream, read, read_inventory
 
 from pyatoa import logger
-from pyatoa.utils.operations.calculations import overlapping_days
-from pyatoa.utils.operations.conversions import ascii_to_mseed
-from pyatoa.utils.operations.source_receiver import merge_inventories
+from pyatoa.utils.tools.calculate import overlapping_days
+from pyatoa.utils.tools.io import ascii_to_mseed
+from pyatoa.utils.tools.srcrcv import merge_inventories
 
 
 class Fetcher:

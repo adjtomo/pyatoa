@@ -17,16 +17,15 @@ from obspy.signal.filter import envelope
 
 from pyatoa import logger
 from pyatoa.core.gatherer import Gatherer
+from pyatoa.plugins.pyflex_config import set_pyflex_station_event
 
 from pyatoa.utils.asdf.additions import write_adj_src_to_asdf
-from pyatoa.utils.operations.source_receiver import gcd_and_baz,\
-    seismogram_length
-from pyatoa.utils.operations.formatting import create_window_dictionary, \
-     channel_codes
-from pyatoa.utils.operations.calculations import abs_max
-from pyatoa.utils.processing.preprocess import preproc, trimstreams
-from pyatoa.utils.processing.synpreprocess import stf_convolve_gaussian
-from pyatoa.utils.extcfg import set_pyflex_station_event
+from pyatoa.utils.tools.srcrcv import gcd_and_baz, seismogram_length
+from pyatoa.utils.tools.format import create_window_dictionary, channel_codes
+from pyatoa.utils.tools.calcuate import abs_max
+from pyatoa.utils.process.preprocess import preproc, trimstreams
+from pyatoa.utils.process.synpreprocess import stf_convolve_gaussian
+
 from pyatoa.utils.visuals.mapping import manager_map
 from pyatoa.utils.visuals.waveforms import window_maker
 

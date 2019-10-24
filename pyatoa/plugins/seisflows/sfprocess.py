@@ -22,8 +22,8 @@ import numpy as np
 from pyatoa.utils.asdf.deletions import clean_ds
 from pyatoa.utils.asdf.additions import write_stats_to_asdf
 from pyatoa.utils.asdf.extractions import windows_from_ds
-from pyatoa.utils.operations.file_generation import create_stations_adjoint, \
-                write_misfit_json, write_adj_src_to_ascii, write_misfit_stats
+from pyatoa.utils.tools.io import create_stations_adjoint, write_misfit_json, \
+    write_adj_src_to_ascii, write_misfit_stats
 
 
 def initialize_parser(args):
@@ -153,8 +153,7 @@ def finalize(parser):
 
     # Generate .vtk files for given source and receivers
     if usrcfg["create_srcrcv_vtk"]:
-        from pyatoa.utils.operations.file_generation import \
-            create_srcrcv_vtk_multiple
+        from pyatoa.utils.tools.io import create_srcrcv_vtk_multiple
         create_srcrcv_vtk_multiple(
             pathin=paths["PYATOA_DATA"], pathout=paths["PYATOA_VTKS"],
             model=parser.model_number

@@ -11,8 +11,7 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 
 from pyatoa import Config, Manager
-from pyatoa.utils.operations.source_receiver import gcd_and_baz,\
-    seismogram_length
+from pyatoa.utils.tools.srcrcv import gcd_and_baz, seismogram_length
 
 mpl.rcParams['lines.linewidth'] = 1.5
 

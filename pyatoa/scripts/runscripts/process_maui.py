@@ -5,18 +5,16 @@ Created to be called from within the Seisflows workflow, so command line
 arguments to specify the event id
 """
 import os
-import sys
-import glob
+
 import pyasdf
 import pyatoa
 import logging
 import traceback
 import numpy as np
-from obspy import read_inventory
 
 from pyatoa.utils.asdf.deletions import clean_ds
-from pyatoa.utils.operations.file_generation import create_stations_adjoint, \
-                                                    write_adj_src_to_ascii
+from pyatoa.utils.tools.io import create_stations_adjoint, \
+    write_adj_src_to_ascii
 
 # initiate logging
 logger = logging.getLogger("pyatoa")

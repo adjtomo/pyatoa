@@ -10,9 +10,9 @@ import pyasdf
 
 from pyatoa import Config, Manager, Gatherer
 
-from pyatoa.utils.gathering.external_getter import Getter
-from pyatoa.utils.gathering.internal_fetcher import Fetcher
-from pyatoa.utils.gathering import grab_auxiliaries
+from pyatoa.utils.gather.external_getter import Getter
+from pyatoa.utils.gather.internal_fetcher import Fetcher
+from pyatoa.utils.gather import grab_auxiliaries
 
 
 class TestDataGatherMethods(unittest.TestCase):

@@ -1,5 +1,5 @@
 """
-Functions for calculating values for use in other functions
+Custom math functions for faster calculations in other parts of Pyatoa
 """
 import numpy as np
 

@@ -9,9 +9,9 @@ import logging
 import traceback
 from obspy import read_inventory
 
-from pyatoa.utils.operations.pyasdf_editing import clean_ds
-from pyatoa.utils.operations.formatting import write_adj_src_to_ascii
-from pyatoa.utils.operations.file_generation import create_stations_adjoint
+from pyatoa.utils.asdf.deletions import clean_ds
+from pyatoa.utils.tools.format import write_adj_src_to_ascii
+from pyatoa.utils.tools.io import create_stations_adjoint
 
 # initiate logging
 logger = logging.getLogger("pyatoa")
@@ -25,22 +25,23 @@ for event_id in event_ids:
     if not os.path.exists("./figures/{}".format(event_id)):
         os.makedirs("./figures/{}".format(event_id))
 
-    config = pyatoa.Config(event_id=event_id, model_number=model_number,
-                           min_period=10, max_period=30, filter_corners=4,
-                           rotate_to_rtz=False, unit_output="DISP",
-                           pyflex_config="UAF",
-                           adj_src_type="multitaper_misfit",
-                           paths_to_waveforms=[
-                               '/seis/prj/fwi/bchow/seismic', '/geonet/seismic',
-                               '/Users/chowbr/Documents/subduction/seismic'],
-                           paths_to_synthetics=[
-                               '/seis/prj/fwi/bchow/oficial/AGU18',
-                               '/seis/prj/fwi/bchow/tomo/adjoint_test/adjoint_master',
-                               '/Users/chowbr/Documents/subduction/tomo/adjoint_test/adjoint_master'],
-                           paths_to_responses=[
-                               '/seis/prj/fwi/bchow/seed/RESPONSE',
-                               '/Users/chowbr/Documents/subduction/seed/RESPONSE'],
-                           )
+    config = pyatoa.Config(
+        event_id=event_id, model_number=model_number,
+        min_period=10, max_period=30, filter_corners=4,
+        rotate_to_rtz=False, unit_output="DISP",
+        pyflex_config="UAF",
+        adj_src_type="multitaper_misfit",
+        paths_to_waveforms=[
+           '/seis/prj/fwi/bchow/seismic', '/geonet/seismic',
+           '/Users/chowbr/Documents/subduction/seismic'],
+        paths_to_synthetics=[
+           '/seis/prj/fwi/bchow/oficial/AGU18',
+           '/seis/prj/fwi/bchow/tomo/adjoint_test/adjoint_master',
+           '/Users/chowbr/Documents/subduction/tomo/adjoint_test/adjoint_master'],
+        paths_to_responses=[
+           '/seis/prj/fwi/bchow/seed/RESPONSE',
+           '/Users/chowbr/Documents/subduction/seed/RESPONSE'],
+    )
 
     # initiate pyasdf dataset where all data will be saved
     ds = pyasdf.ASDFDataSet(

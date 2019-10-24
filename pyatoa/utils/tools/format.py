@@ -12,6 +12,7 @@ def channel_codes(dt):
     codes are always X for synthetics, but band code will vary with the sampling
     rate of the data, return the correct code given a sampling rate.
     Taken from Appenix B of the Specfem3D cartesian manual (June 15, 2018)
+
     :type dt: float
     :param dt: sampling rate of the data in seconds
     :rtype: str

@@ -5,7 +5,7 @@ import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 from matplotlib import cm
-from pyatoa.utils.operations.calculations import myround
+from pyatoa.utils.tools.calculate import myround
 
 mpl.rcParams['font.size'] = 12
 mpl.rcParams['lines.linewidth'] = 1.25

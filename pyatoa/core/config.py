@@ -5,7 +5,8 @@ Configuration object for Pyatoa.
 Fed into the processor class for workflow management, and also used for
 information sharing between objects and functions.
 """
-import pyatoa.utils.extcfg as extcfg
+from pyatoa.plugins.pyflex_config import set_pyflex_config
+from pyatoa.plugins.pyadjoint_config import set_pyadjoint_config
 
 
 class Config:
@@ -79,8 +80,6 @@ class Config:
             paths for the same set of data, without needing to change config.
             Waveforms must be saved in a specific directory structure with a
             specific naming scheme
-
-
 
         Example call:
         config = Config(model_number=0,event_id='2014p240655',
@@ -201,11 +200,10 @@ class Config:
 
         # If all the assertions pass, set a few behind-the-scenes settings
         # Set Pyflex config as a tuple, (name, pyflex.Config)
-        self.pyflex_config = (self.pyflex_config[0], 
-                              extcfg.set_pyflex_config(self)
-                              )
+        self.pyflex_config = (self.pyflex_config[0], set_pyflex_config(self))
+
         # Set Pyadjoint Config as a tuple, (adj source type, pyadjoint.Config)
-        self.pyadjoint_config = extcfg.get_pyadjoint_config(
+        self.pyadjoint_config = set_pyadjoint_config(
             choice=self.pyadjoint_config[0], min_period=self.min_period,
             max_period=self.max_period
         )

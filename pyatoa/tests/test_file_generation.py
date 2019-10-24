@@ -8,7 +8,7 @@ import pyasdf
 import shutil
 
 from pyatoa.core.config import Config
-from pyatoa.utils.operations import file_generation
+import pyatoa.utils.tools.io as pyatoa_io
 
 
 class TestFileGeneration(unittest.TestCase):
@@ -55,7 +55,7 @@ class TestFileGeneration(unittest.TestCase):
         misfit. Only check one line
         :return:
         """
-        file_generation.write_misfit_json(
+        io.write_misfit_json(
             ds=self.ds, model=self.config.model_number, step_count=0,
             fidout=self.scratch_file
         )
@@ -70,7 +70,7 @@ class TestFileGeneration(unittest.TestCase):
         Check that the simple misfit statistics writer works
         :return:
         """
-        file_generation.write_misfit_stats(
+        pyatoa_io.write_misfit_stats(
             ds=self.ds, model=self.config.model_number,
             fidout=self.scratch_file
         )
@@ -85,7 +85,7 @@ class TestFileGeneration(unittest.TestCase):
         Source receiver vtk file generator
         :return:
         """
-        file_generation.create_srcrcv_vtk_single(
+        pyatoa_io.create_srcrcv_vtk_single(
             ds=self.ds, model=self.config.model_number,
             pathout=self.scratch_dir, event_separate=True,
             utm_zone=60
@@ -122,7 +122,7 @@ class TestFileGeneration(unittest.TestCase):
         Same as single test except with different input
         :return:
         """
-        file_generation.create_srcrcv_vtk_multiple(
+        pyatoa_io.create_srcrcv_vtk_multiple(
             pathin=self.test_data_path, pathout=self.scratch_dir,
             model=self.config.model_number, utm_zone=60
         )
@@ -158,7 +158,7 @@ class TestFileGeneration(unittest.TestCase):
         """
         station_file = os.path.join(self.test_data_path, 'test_STATIONS')
 
-        file_generation.create_stations_adjoint(
+        pyatoa_io.create_stations_adjoint(
             ds=self.ds, model=self.config.model_number,
             specfem_station_file=station_file, pathout=self.scratch_dir
         )
@@ -177,7 +177,7 @@ class TestFileGeneration(unittest.TestCase):
         """
         import numpy as np
 
-        file_generation.write_adj_src_to_ascii(
+        pyatoa_io.write_adj_src_to_ascii(
             ds=self.ds, model=self.config.model_number, pathout=self.scratch_dir
         )
         # Check that adjoint source writing works

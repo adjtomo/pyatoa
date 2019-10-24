@@ -1,5 +1,6 @@
 """
-For generation of input files for Specfem, or for any external files required
+For reading and writing files. Some functions to read the outputs of Specfem,
+others to write output files for Specfem, or for any external files required
 for codes that interact with Pyatoa
 """
 import os
@@ -8,6 +9,92 @@ import json
 import time
 import random
 import numpy as np
+
+
+def read_fortran_binary(path):
+    """
+    convert a fortran .bin file into a NumPy array,
+    stolen from fortran_binary.py _read() in SeisFlows
+
+    :type path: str
+    :param path: path to fortran .bin file
+    :rtype: np.array
+    :return: fortran binary data as a numpy array
+    """
+    nbytes = os.path.getsize(path)
+    with open(path, "rb") as f:
+        f.seek(0)
+        n = np.fromfile(f, dtype="int32", count=1)[0]
+        if n == nbytes - 8:
+            f.seek(4)
+            data = np.fromfile(f, dtype="float32")
+            return data[:-1]
+        else:
+            f.seek(0)
+            data = np.fromfile(f, dtype="float32")
+            return data
+
+
+def ascii_to_mseed(path, origintime, location=''):
+    """
+    Specfem3D outputs seismograms to ASCII (.sem) files
+    Pyatoa expects seismograms as obspy Stream objects.
+    This convenience function converts the .sem files into Stream objects
+    with the correct header information.
+
+    Works with Specfem3D git version 6895e2f7
+
+    :type path: str
+    :param path: path of the given ascii file
+    :type origintime: obspy.UTCDateTime
+    :param origintime: UTCDatetime object for the origintime of the event
+    :type location: str
+    :param location: location value for a given station/component
+    :rtype st: obspy.Stream.stream
+    :return st: stream containing header and data info taken from ascii file
+    """
+    from obspy import Stream, Trace
+
+    # This was tested up to version 6895e2f7
+    try:
+        time = np.loadtxt(fname=path, usecols=0)
+        data = np.loadtxt(fname=path, usecols=1)
+
+    # At some point in 2018, the Specfem developers changed how the ascii files
+    # were formatted from two columns to comma separated values, and repeat
+    # values represented as 2*value_float where value_float represents the data
+    # value as a float
+    except ValueError:
+        time, data = [], []
+        with open(path, 'r') as f:
+            lines = f.readlines()
+        for line in lines:
+            try:
+                time_, data_ = line.strip().split(',')
+            except ValueError:
+                if "*" in line:
+                    time_ = data_ = line.split('*')[-1]
+                else:
+                    raise ValueError
+            time.append(float(time_))
+            data.append(float(data_))
+
+        time = np.array(time)
+        data = np.array(data)
+
+    delta = round(time[1] - time[0],
+                  3)  # assume dt constant after 3 dec. points
+
+    origintime += time[0]  # specfem doesn't start exactly on 0, honor that
+    net, sta, cha, fmt = os.path.basename(path).split('.')
+    stats = {"network": net, "station": sta, "location": location,
+             "channel": cha, "starttime": origintime, "npts": len(data),
+             "delta": delta, "mseed": {"dataquality": 'D'},
+             "time_offset": time[0], "format": fmt
+             }
+    st = Stream([Trace(data=data, header=stats)])
+
+    return st
 
 
 def write_misfit_json(ds, model, step, fidout="./misfits.json"):
@@ -338,7 +425,6 @@ def create_srcrcv_vtk_multiple(pathin, pathout, model, utm_zone=-60):
         with open(event_fid_out, "w") as f:
             f.write(vtk_header.format(1))
             f.write(vtk_line.format(X=ex, Y=ey, E=ev_elv))
-
 
 
 def create_stations_adjoint(ds, model, specfem_station_file, pathout=None):
