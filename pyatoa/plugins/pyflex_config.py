@@ -108,15 +108,18 @@ import warnings
 from pyflex import Config, Station, Event
 
 
-def set_pyflex_config(pyatoa_config):
+def set_pyflex_config(choice, min_period, max_period):
     """
     Overwriting the default Pyflex parameters with User-defined criteria
 
     To Do: add the config options from Maggi et al. 2009 for Japan, SoCal, Globe
 
-    :type pyatoa_config: pyatoa.core.Config
-    :param pyatoa_config: the pyatoa config option containing the necessary
-        parameters to choose the Pyflex config options
+    :type choice: str
+    :param choice: name of map to choose the Pyflex config options
+    :type min_period: float
+    :param min_period: min period of the data
+    :type max_period: float
+    :param max_period: max period of the data
     :rtype: pyflex.Config
     :return: the pyflex Config option to use when running Pyflex
     """
@@ -169,12 +172,9 @@ def set_pyflex_config(pyatoa_config):
     }
 
     # instantiate the pyflex Config object
-    pf_config = Config(min_period=pyatoa_config.min_period,
-                       max_period=pyatoa_config.max_period
-                       )
+    pf_config = Config(min_period=min_period, max_period=max_period)
 
     # Check if given key is available, if not set to default
-    choice = pyatoa_config.pyflex_config[0]
     if choice not in available_cfgs.keys():
         warnings.warn(
             "Pyflex Config choice not in available keys: {}"

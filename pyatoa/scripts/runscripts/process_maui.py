@@ -35,26 +35,28 @@ for event_id in event_id_list:
         os.makedirs(fig_dir)
 
     # set the pyatoa config object for misfit quantification 
-    config = pyatoa.Config(event_id=event_id, 
-                           model_number=model_number, 
-                           min_period=10, 
-                           max_period=30, 
-                           filter_corners=4, 
-                           rotate_to_rtz=False, 
-                           unit_output="DISP", 
-                           window_amplitude_ratio=0.2,
-                           pyflex_config="hikurangi_strict", 
-                           adj_src_type="cc_hikurangi_strict", 
-                           synthetics_only=synthetics_only,
-                           cfgpaths={'synthetics':[syn_traces],
-                                     'waveforms':[obs_traces],
-                                     'responses':["/scale_wlg_persistent/filesets/home/chowbr/primer/auxiliary/seed/RESPONSE"]
-                                     }
-                           )
+    config = pyatoa.Config(
+        event_id=event_id,
+        model_number=model_number,
+        min_period=10,
+        max_period=30,
+        filter_corners=4,
+        rotate_to_rtz=False,
+        unit_output="DISP",
+        window_amplitude_ratio=0.2,
+        pyflex_map="hikurangi_strict",
+        adj_src_type="cc_hikurangi_strict",
+        synthetics_only=synthetics_only,
+        cfgpaths={'synthetics':[syn_traces],
+                  'waveforms':[obs_traces],
+                  'responses':["/scale_wlg_persistent/filesets/home/chowbr/"
+                              "primer/auxiliary/seed/RESPONSE"]
+                }
+    )
 
     # append some information to the title
-    append_title = "pyflex={}, pyadjoint={}".format(config.pyflex_config[0],
-                                                    config.pyadjoint_config[0])
+    append_title = "pyflex={}, pyadjoint={}".format(config.pyflex_map,
+                                                    config.adj_src_type)
 
     # initiate pyasdf dataset where all data will be saved
     ds_path = os.path.join(working_dir, "{}.h5".format(config.event_id))

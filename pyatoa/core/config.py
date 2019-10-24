@@ -15,14 +15,11 @@ class Config:
     """
     def __init__(self, model_number=None, event_id=None, min_period=10,
                  max_period=30, filter_corners=4, rotate_to_rtz=False,
-                 unit_output='DISP', pyflex_config='default',
+                 unit_output='DISP', pyflex_map='default',
                  adj_src_type='cc_traveltime_misfit', start_pad=20, end_pad=500,
                  zero_pad=0, synthetic_unit="DISP", observed_tag='observed',
                  synthetic_tag='synthetic_{model_num}', synthetics_only=False,
-                 window_amplitude_ratio=0.,
-                 map_corners={'lat_min': -42.5007, 'lat_max': -36.9488,
-                              'lon_min': 172.9998, 'lon_max': 179.5077},
-                 cfgpaths={'synthetics': [], 'waveforms': [], 'responses': []}):
+                 window_amplitude_ratio=0., map_corners=None, cfgpaths=None):
         """
         Allows the user to control the parameters of the packages called within
         pyatoa, as well as control where the outputs (i.e. pyasdf and plots) are
@@ -45,8 +42,8 @@ class Config:
         :type unit_output: str
         :param unit_output: units of stream, to be fed into preprocessor for
             instrument response removal. Available: 'DISP', 'VEL', 'ACC'
-        :type pyflex_config: str
-        :param pyflex_config: name of pyflex preset config to use
+        :type pyflex_map: str
+        :param pyflex_config: name to map to pyflex preset config
         :type adj_src_type: str
         :param adj_src_type: method of misfit quantification for Pyadjoint
         :type start_pad: int
@@ -114,25 +111,28 @@ class Config:
         self.synthetic_unit = synthetic_unit.upper()
         self.observed_tag = observed_tag
         self.synthetic_tag = synthetic_tag.format(model_num=self.model_number)
-        self.pyflex_config = (pyflex_config, None)
-        self.pyadjoint_config = (adj_src_type, None)
+        self.pyflex_map = pyflex_map
+        self.adj_src_type = adj_src_type
         self.map_corners = map_corners
         self.synthetics_only = synthetics_only
         self.window_amplitude_ratio = window_amplitude_ratio
-
-        # Path searching looks for lists, but this allows the User to provide
-        # a path of type(str), the Config object will just wrap it in a list
-        for key in cfgpaths.keys():
-            if isinstance(cfgpaths[key], str):
-                cfgpaths[key] = [cfgpaths[key]]
-
-        self.cfgpaths = cfgpaths
         self.zero_pad = int(zero_pad)
         self.start_pad = int(start_pad)
         self.end_pad = int(end_pad)
+        self.component_list = ['Z', 'N', 'E']
+
+        # Make sure User provided paths are list objects as they will be looped
+        # on during the workflow
+        if cfgpaths:
+            for key in cfgpaths.keys():
+                cfgpaths[key] = list(cfgpaths[key])
+            self.cfgpaths = cfgpaths
+        else:
+            self.cfgpaths = {"waveforms": [], "synthetics": [], "responses": []}
 
         # Run internal functions to check the Config object
-        self.component_list = ['Z', 'N', 'E']
+        self.pyflex_config = None
+        self.pyadjoint_config = None
         self._check_config()
 
     def __str__(self):
@@ -172,11 +172,18 @@ class Config:
         assert(self.min_period < self.max_period)
 
         # Check that the map corners is a dict and contains proper keys
-        acceptable_keys = ['lat_min', 'lat_max', 'lon_min', 'lon_max']
-        assert(isinstance(self.map_corners, dict)), "map_corners should be dict"
-        for key in self.map_corners.keys():
-            assert(key in acceptable_keys), "key should be in {}".format(
-                acceptable_keys)
+        # Else, set to default map corners for New Zealand North Island
+        if self.map_corners:
+            acceptable_keys = ['lat_min', 'lat_max', 'lon_min', 'lon_max']
+            assert(isinstance(self.map_corners, dict),
+                   "map_corners should be dict")
+            for key in self.map_corners.keys():
+                assert(key in acceptable_keys), "key should be in {}".format(
+                    acceptable_keys)
+        else:
+            self.map_corners = {'lat_min': -42.5007, 'lat_max': -36.9488,
+                                'lon_min': 172.9998, 'lon_max': 179.5077
+                                }
 
         # Check if unit output properly set
         acceptable_units = ['DISP', 'VEL', 'ACC']
@@ -200,13 +207,16 @@ class Config:
 
         # If all the assertions pass, set a few behind-the-scenes settings
         # Set Pyflex config as a tuple, (name, pyflex.Config)
-        self.pyflex_config = (self.pyflex_config[0], set_pyflex_config(self))
+        self.pyflex_config = set_pyflex_config(choice=self.pyflex_map,
+                                               min_period=self.min_period,
+                                               max_period=self.max_period
+                                               )
 
         # Set Pyadjoint Config as a tuple, (adj source type, pyadjoint.Config)
-        self.pyadjoint_config = set_pyadjoint_config(
-            choice=self.pyadjoint_config[0], min_period=self.min_period,
-            max_period=self.max_period
-        )
+        self.pyadjoint_config = set_pyadjoint_config(choice=self.adj_src_type,
+                                                     min_period=self.min_period,
+                                                     max_period=self.max_period
+                                                     )
 
         # Check that the amplitude ratio is a reasonable number
         if self.window_amplitude_ratio > 0:

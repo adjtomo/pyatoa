@@ -112,7 +112,7 @@ def window_maker(st_obs, st_syn, config, time_offset_sec=0., windows=None,
         obs_tag = 'OBS'
 
     if staltas is not None:
-        stalta_wl = config.pyflex_config[1].stalta_waterlevel
+        stalta_wl = config.pyflex_config.stalta_waterlevel
 
     # Instantiate plotting instances
     f = plt.figure(figsize=figsize, dpi=dpi)

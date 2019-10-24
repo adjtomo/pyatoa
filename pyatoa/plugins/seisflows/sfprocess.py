@@ -246,7 +246,7 @@ def process(parser):
         filter_corners=usrcfg["filter_corners"],
         rotate_to_rtz=usrcfg["rotate_to_rtz"],
         unit_output=usrcfg["unit_output"],
-        pyflex_config=usrcfg["pyflex_config"],
+        pyflex_map=usrcfg["pyflex_map"],
         adj_src_type=usrcfg["adj_src_type"],
         synthetics_only=usrcfg["synthetics_only"],
         window_amplitude_ratio=usrcfg["window_amplitude_ratio"],
@@ -312,8 +312,7 @@ def process(parser):
                     append_title = (
                         "\n{md}{sn} pyflex={pf}, pyadjoint={pa},".format(
                             md=config.model_number, sn=parser.step_count, 
-                            pf=config.pyflex_config[0],
-                            pa=config.pyadjoint_config[0])
+                            pf=config.pyflex_map, pa=config.adj_src_type)
                     )
                     if mgmt.total_misfit is not None:
                         append_title = " ".join([
