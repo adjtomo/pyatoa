@@ -38,7 +38,7 @@ def ray_density(cat, inv, map_corners=[-42.5007, -36.9488, 172.9998, 179.5077],
 
 
 
-def event_catalog(cat)
+def event_catalog(cat):
     """
     """
 
