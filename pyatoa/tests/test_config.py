@@ -64,18 +64,8 @@ class TestConfig(unittest.TestCase):
             Config(pyflex_config='incorrect_config')
 
 
-
-
-
-
-
-
-
 if __name__ == "__main__":
     unittest.main()
-
-
-
 
 
 
