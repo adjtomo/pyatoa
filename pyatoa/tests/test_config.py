@@ -38,13 +38,14 @@ class TestConfig(unittest.TestCase):
 
     def test_init(self):
         """
-        Make sure config class can be created
-        :return:
+        Make sure config class can be initiated
         """
         model_number_check = "m00"
         for model_number in [0, '0', 'm00']:
             config = Config(model_number=model_number)
             self.assertTrue(config.model_number, model_number_check)
+
+    def test_init_empty(self):
 
     def test_incorrect_parameters(self):
         """

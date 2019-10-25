@@ -18,11 +18,12 @@ from obspy.signal.filter import envelope
 from pyatoa import logger
 from pyatoa.core.gatherer import Gatherer
 from pyatoa.plugins.pyflex_config import set_pyflex_station_event
+from pyatoa.plugins.pyadjoint_config import src_type
 
 from pyatoa.utils.asdf.additions import write_adj_src_to_asdf
 from pyatoa.utils.tools.srcrcv import gcd_and_baz, seismogram_length
 from pyatoa.utils.tools.format import create_window_dictionary, channel_codes
-from pyatoa.utils.tools.calcuate import abs_max
+from pyatoa.utils.tools.calculate import abs_max
 from pyatoa.utils.tools.process import preproc, trimstreams, stf_convolve
 
 from pyatoa.utils.visuals.mapping import manager_map
@@ -329,7 +330,7 @@ class Manager:
             print(e)
             return
 
-    def populate_dataset(self):
+    def save_to_ds(self):
         """
         If gather_data is skipped altogether (e.g. User provides streams,
         inventory and event information in the Manager init), but data should
@@ -357,7 +358,7 @@ class Manager:
             logger.debug(
                 "manager does not contain all data, cannot fill dataset")
 
-    def populate_manager(self, station_code, model):
+    def populate(self, station_code, model):
         """
         Populate the manager using a given PyASDF Dataset, based on user-defined
         station code. Useful for quick plotting ASDF data.
@@ -368,6 +369,9 @@ class Manager:
         :param model: model number to search for data, e.g. 'm00'
         """
         if self.ds:
+            assert len(station_code.split('.')) == 4,\
+                "station_code must be in form 'NN.SSS.LL.CCC'"
+
             self.event = self.ds.events[0]
 
             net, sta, _, _ = station_code.split('.')
@@ -395,9 +399,6 @@ class Manager:
             logger.info("cannot preprocess, no inventory")
             return
 
-        # Process observation waveforms
-        logger.info("preprocessing observation data")
-
         # If set in Config, rotate based on source receiver lat/lon values
         if self.config.rotate_to_rtz:
             _, baz = gcd_and_baz(event=self.event, sta=self.inv[0][0])
@@ -415,6 +416,7 @@ class Manager:
         else:
             inv_ = self.inv
             synthetic_unit_ = None
+        logger.info("preprocessing observation data")
         self.st_obs = preproc(st_original=self.st_obs, inv=inv_,
                               resample=sampling_rate,
                               synthetic_unit=synthetic_unit_, back_azimuth=baz,
@@ -461,7 +463,7 @@ class Manager:
                                        time_shift=False,
                                        time_offset=self.time_offset_sec
                                        )
-            # If a synthetic-synthetic case, convolve observations
+            # If a synthetic-synthetic case, convolve observations too
             if self.config.synthetics_only:
                 self.st_obs = stf_convolve(st=self.st_obs,
                                            half_duration=self.half_dur,
@@ -478,22 +480,6 @@ class Manager:
         save misfit windows in as auxiliary data.
         If no misfit windows are found for a given station, throw a warning
         because pyadjoint won't run.
-        Pyflex configuration is given by the config as a list of values with
-        the following descriptions:
-
-        i  Standard Tuning Parameters:
-        0: water level for STA/LTA (short term average/long term average)
-        1: time lag acceptance level
-        2: amplitude ratio acceptance level (dlna)
-        3: normalized cross correlation acceptance level
-        i  Fine Tuning Parameters
-        4: c_0 = for rejection of internal minima
-        5: c_1 = for rejection of short windows
-        6: c_2 = for rejection of un-prominent windows
-        7: c_3a = for rejection of multiple distinct arrivals
-        8: c_3b = for rejection of multiple distinct arrivals
-        9: c_4a = for curtailing windows w/ emergent starts and/or codas
-        10:c_4b = for curtailing windows w/ emergent starts and/or codas
         """
         # Pre-check to see if data has already been gathered
         self._check()
@@ -501,8 +487,7 @@ class Manager:
             logger.info("cannot run Pyflex, no waveforms, or not processed")
             return
 
-        logger.info("running Pyflex type {}".format(
-            self.config.pyflex_config[0]))
+        logger.info("running Pyflex type {}".format(self.config.pyflex_map))
 
         # Create Pyflex Station and Event objects
         pf_sta, pf_ev = set_pyflex_station_event(inv=self.inv, event=self.event)
@@ -513,11 +498,20 @@ class Manager:
         windows, staltas = {}, {}
         for comp in self.config.component_list:
             try:
+                # Calculate the STA/LTA first, save to dictionary
+                stalta = pyflex.stalta.sta_lta(
+                    dt=self.st_syn.select(component=comp)[0].stats.delta,
+                    min_period=self.config.min_period,
+                    data=envelope(
+                        self.st_syn.select(component=comp)[0].data)
+                )
+                staltas[comp] = stalta
+
                 # Run Pyflex to select misfit windows as list of Window objects
                 window = pyflex.select_windows(
                     observed=self.st_obs.select(component=comp),
                     synthetic=self.st_syn.select(component=comp),
-                    config=self.config.pyflex_config[1], event=pf_ev,
+                    config=self.config.pyflex_config, event=pf_ev,
                     station=pf_sta,
                     )
 
@@ -547,15 +541,6 @@ class Manager:
                 # Add window to dictionary object
                 if window:
                     windows[comp] = window
-
-                # Calculate the STA/LTA for plotting,
-                stalta = pyflex.stalta.sta_lta(
-                    dt=self.st_syn.select(component=comp)[0].stats.delta,
-                    min_period=self.config.min_period,
-                    data=envelope(
-                        self.st_syn.select(component=comp)[0].data)
-                )
-                staltas[comp] = stalta
 
             except IndexError:
                 window = []
@@ -629,7 +614,7 @@ class Manager:
             return
 
         logger.info("running Pyadjoint type {} ".format(
-            self.config.pyadjoint_config[0]))
+            self.config.adj_src_type))
 
         # Iterate over given windows produced by Pyflex
         total_misfit = 0
@@ -637,7 +622,7 @@ class Manager:
         for key in self.windows:
             adjoint_windows = []
 
-            # Prepare window indices to give to Pyadjoint
+            # Prepare Pyflex window indices to give to Pyadjoint
             for win in self.windows[key]:
                 adj_win = [win.left * self.st_obs[0].stats.delta,
                            win.right * self.st_obs[0].stats.delta]
@@ -645,8 +630,8 @@ class Manager:
 
             # Run Pyadjoint to retrieve adjoint source objects
             adj_src = pyadjoint.calculate_adjoint_source(
-                adj_src_type=self.config.pyadjoint_config[0],
-                config=self.config.pyadjoint_config[1],
+                adj_src_type=src_type(self.config.adj_src_type),
+                config=self.config.pyadjoint_config,
                 observed=self.st_obs.select(component=key)[0],
                 synthetic=self.st_syn.select(component=key)[0],
                 window=adjoint_windows, plot=False
@@ -727,7 +712,8 @@ class Manager:
         # Calculate the seismogram length
         if dynamic_length:
             length_sec = seismogram_length(
-                distance_km=gcd_and_baz(event=self.event, sta=self.inv[0][0])[0],
+                distance_km=gcd_and_baz(event=self.event,
+                                        sta=self.inv[0][0])[0],
                 slow_wavespeed_km_s=1, binsize=50, minimum_length=100
             )
         else:

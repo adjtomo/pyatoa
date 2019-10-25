@@ -70,7 +70,7 @@ def seismogram_length(distance_km, slow_wavespeed_km_s=2, binsize=50,
     :rtype: int
     :return: expected seismogram length
     """
-    from pyatoa.utils.operations.calculations import myround
+    from pyatoa.utils.tools.calculate import myround
 
     # determine based on slowest wavespeed travelling from source to receiver
     rough_length_s = distance_km / slow_wavespeed_km_s
@@ -291,7 +291,6 @@ def generate_focal_mechanism(mtlist, event=None):
     """
     from obspy.core.event import source
     from obspy.core.event.base import Comment
-    from pyatoa.utils.operations.conversions import mt_transform
 
     # Match the identifier with Goenet
     id_template = "smi:local/geonetcsv/{0}/{1}".format(mtlist['PublicID'], '{}')

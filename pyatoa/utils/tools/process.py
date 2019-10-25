@@ -1,6 +1,8 @@
 """
-Pre processing functionality to put raw seismic waveforms into the proper
-format for use in analysis
+Tools for processing obspy.Stream or obspy.Trace objects
+Used for preprocessing data through filtering and tapering, zero padding etc.
+Also contains tools for synthetic traces such as source time function
+convolutions
 """
 import warnings
 import numpy as np
@@ -218,14 +220,14 @@ def preproc(st_original, inv=None, resample=None, pad_length_in_seconds=None,
         st.filter('bandpass', freqmin=1/filter_bounds[1],
                   freqmax=1/filter_bounds[0], corners=corners, zerophase=True
                   )
-        msg = "filter streams {t0}s to {t1}s w/ {c} corner {f}"
-        logger.debug(msg.format(t0=filter_bounds[0], t1=filter_bounds[1],
-                               c=corners, f="Butterworth"))
+        msg = "filter {t0}s to {t1}s"
+        logger.debug(msg.format(t0=filter_bounds[0], t1=filter_bounds[1]))
 
     return st
 
 
-def stf_convolve_gaussian(st, half_duration, time_shift=None):
+def stf_convolve(st, half_duration, source_decay=4., time_shift=None,
+                 time_offset=None):
     """
     Convolve function with a Gaussian window.
     Following taken from specfem "comp_source_time_function.f90"
@@ -236,30 +238,52 @@ def stf_convolve_gaussian(st, half_duration, time_shift=None):
     This gaussian uses a strong decay rate to avoid non-zero onset times, while
     still miicking a triangle source time function
 
-    :param st:
-    :param half_duration:
-    :param time_shift:
-    :return:
+    :type st: obspy.stream.Stream
+    :param st: stream object to convolve with source time function
+    :type half_duration: float
+    :param half_duration: the half duration of the source time function,
+        usually provided in moment tensor catalogs
+    :type source_decay: float
+    :param source_decay: the decay strength of the source time function, the
+        default value of 4 gives a Gaussian. A value of 1.68 mimics a triangle.
+    :type time_shift: float
+    :param time_shift: Time shift of the source time function in seconds
+    :type time_offset: If simulations have a value t0 that is negative, i.e. a
+        starttime before the event origin time. This value will make sure the
+        source time function doesn't start convolving before origin time to
+        avoid non-zero onset times
+    :rtype: obspy.stream.Stream
+    :return: stream object which has been convolved with a source time function
     """
-    logger.debug("convolving synthetic data with gaussian "
-                 "window of half duration {:.2f}s".format(half_duration)
-                 )
+    logger.debug("convolve w/ gaussian half-dur={:.2f}s".format(half_duration))
     sampling_rate = st[0].stats.sampling_rate
     half_duration_in_samples = round(half_duration * sampling_rate)
 
     # generate gaussian function
-    source_decay = 4
-    # source_decay_mimic_triangle = 1.68
     decay_rate = half_duration_in_samples / source_decay
     a = 1 / (decay_rate ** 2)
     t = np.arange(-half_duration_in_samples, half_duration_in_samples, 1)
     gaussian_stf = np.exp(-a * t**2) / (np.sqrt(np.pi) * decay_rate)
 
+    # prepare time offset machinery
+    if time_offset:
+        time_offset_in_samp = int(time_offset * sampling_rate)
+
+    # convolve each trace with the soure time function and time shift if needed
     st_out = st.copy()
     for tr in st_out:
         if time_shift:
             tr.stats.starttime += time_shift
-        data_out = np.convolve(tr.data, gaussian_stf, mode="same")
-        tr.data = data_out
+        # if time offset is given, split the trace into before and after origin
+        if time_offset:
+            after_origin = np.convolve(tr.data[time_offset_in_samp:],
+                                       gaussian_stf, mode="same"
+                                       )
+            data_out = np.concatenate([tr.data[:time_offset_in_samp],
+                                       after_origin])
+            tr.data = data_out
+        else:
+            data_out = np.convolve(tr.data, gaussian_stf, mode="same")
+            tr.data = data_out
 
     return st_out

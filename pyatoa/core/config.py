@@ -27,7 +27,7 @@ class Config:
 
         Reasonable default values set on initation
 
-        :type model_number: int
+        :type model_number: int or str
         :param model_number: model iteration number for annotations and tags
         :type event_id: str
         :param event_id: unique event identifier for data gathering, annotations
@@ -43,7 +43,7 @@ class Config:
         :param unit_output: units of stream, to be fed into preprocessor for
             instrument response removal. Available: 'DISP', 'VEL', 'ACC'
         :type pyflex_map: str
-        :param pyflex_config: name to map to pyflex preset config
+        :param pyflex_map: name to map to pyflex preset config
         :type adj_src_type: str
         :param adj_src_type: method of misfit quantification for Pyadjoint
         :type start_pad: int
@@ -77,15 +77,6 @@ class Config:
             paths for the same set of data, without needing to change config.
             Waveforms must be saved in a specific directory structure with a
             specific naming scheme
-
-        Example call:
-        config = Config(model_number=0,event_id='2014p240655',
-            min_period=10,max_period=30,rotate_to_rtz=True,unit_output="DISP",
-            pyflex_config='UAF',adj_src_type='multitaper_misfit',verbose=True,
-            log=True,
-            paths_to_waveforms=['/Users/chowbr/Documents/subduction/seismic',
-                '/seis/prj/fwi/bchow/seismic','/geonet/seismic'],
-            )
         """
         if model_number is not None:
             # Format the model number to the way Pyatoa expects it
@@ -148,17 +139,16 @@ class Config:
                 "\tfilter_corners:        {corner}\n"
                 "\trotate_to_rtz:         {rotate}\n"
                 "\tunit_output:           {output}\n"
-                "\tpyflex_config:         {pyflex}\n"
-                "\tpyadjoint_config:      {adjoint}\n"
-                "\tpaths['waveforms']:    {paths_to_wavs}\n"
-                "\tpaths['synthetics']:   {paths_to_syns}\n"
-                "\tpaths['responses']:    {paths_to_resp}"
+                "\tpyflex_map:            {pyflex}\n"
+                "\tadj_src_type:          {adjoint}\n"
+                "\tcfgpaths['waveforms']: {paths_to_wavs}\n"
+                "\tcfgpaths['synthetics']:{paths_to_syns}\n"
+                "\tcfgpaths['responses']: {paths_to_resp}"
                 ).format(model_number=self.model_number,
                          event_id=self.event_id, min_period=self.min_period,
                          max_period=self.max_period, corner=self.filter_corners,
                          rotate=self.rotate_to_rtz, output=self.unit_output,
-                         pyflex=self.pyflex_config[0],
-                         adjoint=self.pyadjoint_config[0],
+                         pyflex=self.pyflex_map, adjoint=self.adj_src_type,
                          paths_to_wavs=self.cfgpaths['waveforms'],
                          paths_to_syns=self.cfgpaths['synthetics'],
                          paths_to_resp=self.cfgpaths['responses']
@@ -174,9 +164,9 @@ class Config:
         # Check that the map corners is a dict and contains proper keys
         # Else, set to default map corners for New Zealand North Island
         if self.map_corners:
+            assert(isinstance(self.map_corners, dict)), \
+                "map_corners must be a dictionary object"
             acceptable_keys = ['lat_min', 'lat_max', 'lon_min', 'lon_max']
-            assert(isinstance(self.map_corners, dict),
-                   "map_corners should be dict")
             for key in self.map_corners.keys():
                 assert(key in acceptable_keys), "key should be in {}".format(
                     acceptable_keys)
@@ -194,12 +184,15 @@ class Config:
             "synthetic_unit should be in {}".format(acceptable_units)
 
         # Check that paths are in the proper format
-        acceptable_keys = [
-            'synthetics', 'waveforms', 'responses', 'auxiliary_data']
+        acceptable_keys = ['synthetics', 'waveforms', 'responses']
         assert(isinstance(self.cfgpaths, dict)), "paths should be a dict"
         for key in self.cfgpaths.keys():
             assert(key in acceptable_keys), \
                 "path keys can only be in {}".format(acceptable_keys)
+        # Make sure that all the keys are given in the dictionary
+        for key in acceptable_keys:
+            if key not in self.cfgpaths.keys():
+                self.cfgpaths[key] = []
 
         # Rotate component list if necessary
         if self.rotate_to_rtz:
@@ -260,7 +253,7 @@ class Config:
                         end_pad=self.end_pad, corner=self.filter_corners,
                         rotate=self.rotate_to_rtz, output=self.unit_output,
                         synunit=self.synthetic_unit, obstag=self.observed_tag,
-                        syntag=self.synthetic_tag, pyflex=self.pyflex_config[0],
+                        syntag=self.synthetic_tag, pyflex=self.pyflex_config,
                         adjoint=self.pyadjoint_config[0],
                         mapcorners=self.map_corners,
                         paths_to_wavs=self.cfgpaths['waveforms'],
@@ -291,8 +284,8 @@ class Config:
         self.synthetic_unit = cfgin['synthetic_unit'].upper()
         self.observed_tag = cfgin['observed_tag']
         self.synthetic_tag = cfgin['synthetic_tag'].format(model_num=model)
-        self.pyflex_config = (cfgin['pyflex_config'], None)
-        self.pyadjoint_config = (cfgin['pyadjoint_config'], None)
+        self.pyflex_map = cfgin['pyflex_map']
+        self.adj_src_type = cfgin['adj_src_type']
         self.map_corners = {'lat_min': cfgin['map_corners'][0],
                             'lat_max': cfgin['map_corners'][1],
                             'lon_min': cfgin['map_corners'][2],
@@ -331,8 +324,8 @@ class Config:
                     "filter_corners": self.filter_corners,
                     "rotate_to_rtz": self.rotate_to_rtz,
                     "unit_output": self.unit_output,
-                    "pyflex_config": self.pyflex_config[0],
-                    "pyadjoint_config": self.pyadjoint_config[0],
+                    "pyflex_map": self.pyflex_map,
+                    "adj_src_type": self.adj_src_type,
                     "start_pad": self.start_pad,
                     "end_pad": self.end_pad,
                     "observed_tag": self.observed_tag,

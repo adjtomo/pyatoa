@@ -56,6 +56,26 @@ Pyadjoint Multitaper Config
 import pyadjoint
 
 
+def src_type(choice):
+    """
+    Pyadjoint requires that a standard adjoint source type is given in the
+    calculate_adjoint_source() function. This function acts as simple dictionary
+    input to provide the correct input for that function
+
+    :type choice: str
+    :param choice: pyatoa.Config.adj_src_type
+    :rtype: str
+    :return: pyadjoint adj_src_type
+    """
+    if "cc" in choice:
+        adj_src_type = "cc_traveltime_misfit"
+    elif "multitaper" in choice:
+        adj_src_type = "multitaper_misfit"
+    else:
+        adj_src_type = "waveform"
+    return adj_src_type
+
+
 def set_pyadjoint_config(choice, min_period, max_period):
     """
     Set the Pyadjoint config based on Pyatoa config parameter
@@ -77,50 +97,28 @@ def set_pyadjoint_config(choice, min_period, max_period):
     :rtype cfgout: pyadjoint.Config*
     :return cfgout: properly set pyadjoint configuration object
     """
-    # Default parameters
-    if choice == "waveform":
+    if "waveform" in choice:
         cfgout = pyadjoint.ConfigWaveForm(min_period=min_period,
                                           max_period=max_period)
-    elif choice == "cc_traveltime_misfit":
+    elif "cc" in choice:
         cfgout = pyadjoint.ConfigCrossCorrelation(min_period=min_period,
                                                   max_period=max_period)
+        # custom cc_traveltime_misfit configuration
+        if choice == "cc_hikurangi":
+            setattr(cfgout, "use_cc_error", False)  # default = True
     # The default multitaper parameter min_cycle_in_windows=0.5 is wrong,
     # this sets it back to the proper default of 3
-    elif choice == "multitaper_misfit":
+    elif "multitaper" in choice:
         cfgout = pyadjoint.ConfigMultiTaper(min_period=min_period,
                                             max_period=max_period,
                                             min_cycle_in_window=3)
-    # Custom configurations
-    elif choice == "mtm_hikurangi":
-        cfgout = pyadjoint.ConfigMultiTaper(
-            min_period=min_period, max_period=max_period, lnpt=15,
-            transfunc_waterlevel=1e-10, water_threshold=0.02,
-            ipower_costaper=2,  # default=10, 2=broader smoothing
-            min_cycle_in_window=0,  # default 0.5 but that's incorrect
-            taper_type='hann',
-            taper_percentage=0.5,  # % of window to taper at each end
-            mt_nw=4.0,  # bin width of multitapers
-            num_taper=5,  # number of tapers
-            dt_fac=2.0,
-            phase_step=1.5,
-            err_fac=2.5,
-            dt_max_scale=3.5,
-            measure_type='dt',
-            dt_sigma_min=1.0,
-            dlna_sigma_min=0.5,
-            use_cc_error=False,  # default=True
-            use_mt_error=False  # default=True
-        )
-    elif choice == "cc_hikurangi":
-        cfgout = pyadjoint.ConfigCrossCorrelation(
-            min_period=min_period, max_period=max_period,
-            taper_type='hann',  # hann
-            measure_type='dt',  # dt
-            use_cc_error=False,  # True
-            dt_sigma_min=1.0,  # 1.
-            dlna_sigma_min=0.5  # .5
-        )
-
+        # custom mtm configuration
+        if choice == "multitaper_hikurangi":
+            setattr(cfgout, "ipower_costaper", 8)  # default = 10
+            setattr(cfgout, "min_cycle_in_window", 0)  # default = 3
+            setattr(cfgout, "taper_percentage", 0.5)  # default = 0.3
+            setattr(cfgout, "use_cc_error", False)  # default = True
+            setattr(cfgout, "use_mt_error", False)  # default = True
     else:
         raise KeyError("adjoint source type incorrectly specified, "
                        "must be: 'waveform', 'cc_traveltime_misfit', "
