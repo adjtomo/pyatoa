@@ -59,8 +59,7 @@ def setup_plot(number_of, twax=True):
 
 def window_maker(st_obs, st_syn, config, time_offset_sec=0., windows=None,
                  staltas=None, adj_srcs=None, length_sec=None,
-                 append_title=None, dpi=100, figsize=(11.69, 8.27), show=False,
-                 save=None):
+                 append_title=None, show=False, save=None, **kwargs):
     """
     Plot streams and windows. assumes you have N observation traces and
     N synthetic traces for a 2N length stream object
@@ -73,10 +72,6 @@ def window_maker(st_obs, st_syn, config, time_offset_sec=0., windows=None,
     :param config: Configuration that must contain:
         required: component_list, unit_output, event_id, min_period, max_period
         optional: pyflex_config
-    :type dpi: int
-    :param dpi: dots per inch of figure
-    :type figsize: tuple of floats
-    :param figsize: size of the waveform plot, defaults to A4 paper in landscape
     :type time_offset_sec: float
     :param time_offset_sec: Offset from origintime. Origintime is set as time=0
     :type windows: dict of pyflex.Window objects
@@ -96,6 +91,9 @@ def window_maker(st_obs, st_syn, config, time_offset_sec=0., windows=None,
     :type save: str
     :param save: pathname to save the figure, if not given, will not save
     """
+    figsize = kwargs.get("figsize", (11.689, 8.27))  # A4
+    dpi = kwargs.get("dpi", 100)
+
     # Set some parameters necessary for flexible plotting
     middle_trace = len(st_obs)//2
     unit_dict = {"DISP": "displacement [m]", 
@@ -296,7 +294,9 @@ def window_maker(st_obs, st_syn, config, time_offset_sec=0., windows=None,
 
     axes[0].set_title(title)
     axes[-1].set_xlabel("time [s]")
-    
+
+    # Make sure to remove the extra whitespace before saving/showing
+    f.tight_layout()
     if save:
         plt.savefig(save, figsize=figsize, dpi=dpi)
     if show:

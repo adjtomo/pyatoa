@@ -13,7 +13,7 @@ mpl.rcParams['lines.markersize'] = 10
 mpl.rcParams['axes.linewidth'] = 2
 
 
-def parse_plot_output_optim(path_to_optim, show=False, save=''):
+def plot_output_optim(path_to_optim, show=False, save=''):
     """
     Sesiflows specific
     Read the text file output.optim, which contains
@@ -29,35 +29,10 @@ def parse_plot_output_optim(path_to_optim, show=False, save=''):
     :type save: str
     :param save: output filename to save the figure
     """
-    with open(path_to_optim, 'r') as f:
-        lines = f.readlines()
+    from pyatoa.utils.tools.io import parse_output_optim
 
-    # Parse the file, skip the header, ignore tail
-    iterations, steplens, misfits = [], [], []
-    for line in lines[2:]:
-        line = line.strip().split()
-        # Each iteration will have an integer to represent the iter number
-        if len(line) == 3:
-            iteration = line[0]
-            iterations.append(int(iteration))
-            steplens.append(float(line[1]))
-            misfits.append(float(line[2]))
-        # Each trial step length will follow and will carry the same iteration
-        elif len(line) == 2:
-            iterations.append(int(iteration))
-            steplens.append(float(line[0]))
-            misfits.append(float(line[1]))
-        elif len(line) == 0:
-            continue
-        else:
-            print(line)
-            print("invalid line length encountered in output.optim")
-            return
-
-    # Set the lists as numpy arrays to do some manipulations
-    iterations = np.asarray(iterations)
-    steplens = np.asarray(steplens)
-    misfits = np.asarray(misfits)
+    # read in the values of the file
+    iterations, steplens, misfits = parse_output_optim(path_to_optim)
 
     # Plot the misfit values, and steplengths on a twin axis
     f, ax = plt.subplots(1)
@@ -170,6 +145,8 @@ def plot_cc_time_shift_histogram(cc_time_shifts, config, binsize=0.1):
     """
     create a histogram of cross correlation time shifts
     """
+    raise NotImplementedError
+
     for model in misfit_values.keys():
         ccts = np.fromiter(cc_time_shifts[model].values(), dtype="float")
         max_ccts = myround(max([abs(ccts.max()), abs(ccts.min())]), base=0.1,

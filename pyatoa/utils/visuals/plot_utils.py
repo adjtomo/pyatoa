@@ -7,8 +7,10 @@ def align_yaxis(ax1, ax2):
     """
     adjust ax2 ylimit so that v2 in ax2 is aligned to v1 in ax1
 
-    :type ax?: matplotlib axis
-    :param ax?: axes to adjust
+    :type ax1: matplotlib axis
+    :param ax1: axes to adjust
+    :type ax2: matplotlib axis
+    :param ax2: axes to adjust
     """
     ymin_a1, ymax_a1 = ax1.get_ylim()
     ymin_a2, ymax_a2 = ax2.get_ylim()
@@ -32,7 +34,7 @@ def pretty_grids(input_ax, twax=False):
     input_ax.set_axisbelow(True)
     input_ax.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
     input_ax.tick_params(which='both', direction='in', top=True, right=True)
-    # If main axis, set the grids on
+    # Set the grids 'on' only if main axis
     if not twax:
         input_ax.minorticks_on()
         for axis_ in ['major', 'minor']:
@@ -55,7 +57,7 @@ def format_axis(input_ax):
     if abs(round(ymin/ymax)) != 0:
         bounds = (-1 * (maxvalue+percentover), (maxvalue+percentover))
     else:  # elif abs(round(ymin/ymax)) == 0:
-        bounds = (-0.05,1.05)
+        bounds = (-0.05, 1.05)
     input_ax.set_ylim(bounds)
 
 

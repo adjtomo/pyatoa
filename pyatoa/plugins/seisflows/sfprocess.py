@@ -145,8 +145,8 @@ def finalize(parser):
     paths, usrcfg = assemble_paths(parser)
 
     # Plot the output.optim file outputted by Seisflows
-    from pyatoa.utils.visuals.statistics import parse_plot_output_optim
-    parse_plot_output_optim(
+    from pyatoa.utils.visuals.statistics import plot_output_optim
+    plot_output_optim(
         path_to_optim=os.path.join(parser.working_dir, "output.optim"),
         save=os.path.join(paths["PYATOA_FIGURES"], "output_optim.png")
     )
@@ -173,7 +173,7 @@ def finalize(parser):
     # Only create misfit maps for the first step count
     if usrcfg["plot_misfit_maps"] and (parser.step_count == "s00"):
         from pyatoa.utils.visuals.mapping import event_misfit_map
-        from pyatoa.utils.visuals.convert_images import combine_images
+        from pyatoa.utils.visuals.combine_imgs import combine_images
 
         name_template = "{eid}_{m}_{s}_misfit_map.png"
         file_ids = []

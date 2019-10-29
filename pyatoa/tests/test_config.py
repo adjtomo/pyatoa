@@ -45,8 +45,6 @@ class TestConfig(unittest.TestCase):
             config = Config(model_number=model_number)
             self.assertTrue(config.model_number, model_number_check)
 
-    def test_init_empty(self):
-
     def test_incorrect_parameters(self):
         """
 

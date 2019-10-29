@@ -3,7 +3,8 @@
 Undoubtedly, mapping is very dependent on region and scale, so
 things like fault lines, and landmarks can not be hardcoded into
 the package. This function serves as an auxiliary entry point for the
-User to implement their own mapping goodies.
+User to implement their own mapping goodies without affecting the core functions
+of the mapping tools
 """
 import pkg_resources
 
@@ -48,8 +49,6 @@ def plot_geonet_active_faults(m):
 
     :type m: Basemap
     :param m: basemap object
-    :type path_: str
-    :param path_: pathway to hikurangi trench coordinates
     """
     int_fid = "fault_coordinates/north_island_550_641_{}.npz"
     for tag in ["onshore", "offshore"]:

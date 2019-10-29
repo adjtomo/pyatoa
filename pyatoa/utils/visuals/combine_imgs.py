@@ -15,6 +15,8 @@ def tile_images(event_id, wavs_path, maps_path, purge=False):
 
     Requires imagemagick
 
+    :type event_id: str
+    :param event_id: event id to look for waveforms and maps
     :type wavs_path: str
     :param wavs_path: where the wav_*.png files are located, outputted by pyatoa
     :type maps_path: str
@@ -36,7 +38,7 @@ def tile_images(event_id, wavs_path, maps_path, purge=False):
         map_name = os.path.join(maps_path, f"map_{event_id}_{name}.png")
         wav_name = os.path.join(wavs_path, f"wav_{name}.png")
         tile_name = os.path.join(wavs_path, f"tile_{name}.png")
-        if (os.path.exists(map_name) and os.path.exists(wav_name)):
+        if os.path.exists(map_name) and os.path.exists(wav_name):
             subprocess.run(
                 ["montage", map_name, wav_name, "-tile", "2x1", 
                  "-geometry", "+0+0", tile_name]

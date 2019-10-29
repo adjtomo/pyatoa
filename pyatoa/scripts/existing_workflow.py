@@ -4,6 +4,7 @@ an HDF5 file already exists with the data. In this case data is read in from
 the HDF5 file to be run in the workflow
 """
 import os
+import glob
 import pyasdf
 import pyatoa
 import logging
@@ -12,19 +13,21 @@ from pyatoa.utils.tools.io import create_stations_adjoint, \
     write_adj_src_to_ascii
 
 # User defines HDF5 filename
-ds_fid = "2013p614135.h5"
+ds_fid = glob.glob(os.path.join(os.getcwd(), '*.h5'))[0]
 model_number = "m00"
-synthetics_only = True
+synthetics_only = False
+set_logging = False
 
 # initiate logging
-# logger_pyatoa = logging.getLogger("pyatoa")
-# logger_pyatoa.setLevel(logging.DEBUG)
-logger_pyflex = logging.getLogger("pyflex")
-logger_pyflex.setLevel(logging.DEBUG)
+if set_logging:
+    logger_pyatoa = logging.getLogger("pyatoa")
+    logger_pyatoa.setLevel(logging.DEBUG)
+    logger_pyflex = logging.getLogger("pyflex")
+    logger_pyflex.setLevel(logging.DEBUG)
 
 
 # assuming the HDF5 file is named after the event id
-event_id = os.path.basename(ds_fid)
+event_id = os.path.basename(ds_fid).split('.')[0]
 if not os.path.exists("./figures/{}".format(event_id)):
     os.makedirs("./figures/{}".format(event_id))
 
@@ -45,7 +48,7 @@ config = pyatoa.Config(
 
 # additional text to add to title of waveform plots
 append_title = "\npyflex={}; pyadjoint={} ".format(config.pyflex_map,
-                                                 config.adj_src_type)
+                                                   config.adj_src_type)
 
 # initiate pyasdf dataset where all data will be saved
 with pyasdf.ASDFDataSet(ds_fid) as ds:
@@ -55,8 +58,6 @@ with pyasdf.ASDFDataSet(ds_fid) as ds:
     # begin the workflow by looping through all stations
     for station in stations:
         net, sta = station.split('.')
-        if sta != "DUWZ":
-            continue
         try:
             mgmt.populate(station_code=f"{net}.{sta}.??.HH?",
                           model=config.model_number
@@ -69,7 +70,7 @@ with pyasdf.ASDFDataSet(ds_fid) as ds:
                 show=True,
             )
             mgmt.plot_map(save="./figures/{eid}/map_{sta}".format(
-                eid=config.event_id, sta=sta), show=False
+                eid=config.event_id, sta=sta), show=True
             )
             mgmt.reset()
         except Exception as e:
