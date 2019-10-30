@@ -1,5 +1,6 @@
 import os
 import glob
+import json
 import pyasdf
 import numpy as np
 import matplotlib.pyplot as plt
@@ -9,7 +10,7 @@ from pyatoa.utils.visuals.map_tools import initiate_basemap, \
 from pyatoa.utils.asdf.extractions import sum_misfits
 
 
-def read_datasets(path_to_ds="./", model="m00", save="./misfitinfo.npz"):
+def read_datasets(path_to_ds="./", model="m00", save="./misfitinfo.json"):
     """
     Read the datasets that were created by the Pyatoa workflow and skim the
     necessary information from them
@@ -43,10 +44,12 @@ def read_datasets(path_to_ds="./", model="m00", save="./misfitinfo.npz"):
                                                       "lat": lat, "lon": lon}
 
         if save:
-            np.savez(save, **misdict)
+            with open(save, 'w') as f:
+                json.dumps(misdict, f, indent=4)
 
     else:
-        misdict = np.load(save)
+        with open(save, 'r') as f:
+            misdict = json.load(f)
 
     return misdict
 
@@ -61,7 +64,6 @@ if __name__ == "__main__":
                    'lon_min': 172.9998, 'lon_max': 178.6500}
 
     misdict = read_datasets(path_to_ds=os.getcwd(), model=model)
-    import ipdb;ipdb.set_trace()
 
     # Initiate matplotlib instances
     f = plt.figure(figsize=(8, 10), dpi=100)
@@ -109,7 +111,3 @@ if __name__ == "__main__":
     plt.title()
 
     plt.show()
-
-
-
-
