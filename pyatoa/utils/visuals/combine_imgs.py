@@ -1,4 +1,6 @@
 """
+DEPRECATED
+
 Hacky functions to combine all the outputs figures of pyatoa into a single pdf
 Makes use of subprocess and the external program Imagemagick
 """

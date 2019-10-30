@@ -1,6 +1,7 @@
 """
 General utility functions used in plotting scripts
 """
+from PIL import Image
 
 
 def align_yaxis(ax1, ax2):
@@ -61,23 +62,55 @@ def format_axis(input_ax):
     input_ax.set_ylim(bounds)
 
 
-def combine_figures(path_to_figure_a, path_to_figure_b, path_to_output):
+def tile_imgs(fids, fid_out):
     """
-    UNFINISHED
-    We want station maps and waveform maps on the same plot but matplotlib makes
-    it difficult to combine two figure objects, so the hacky way of doing it is
-    to save two separate images and combine them afterwards
-    :param path_to_figure_a:
-    :param path_to_figure_b:
-    :return:
-    """
-    import PIL
-    import numpy as np
+    A function to combine two figures horizontally using the Pillow library.
+    Tiles them in the order they are specified in the input list.
+    So far this is only tested with .png files
 
-    raise NotImplementedError
-    imgs = [PIL.Image.open(i) for i in [path_to_figure_a, path_to_figure_b]]
-    min_shape = sorted(sorted([(np.sum(i.size), i.size) for i in imgs])[0][1])
-    imgs_comb = np.hstack(imgs)
-    import ipdb;ipdb.set_trace()
-    imgs_comb = PIL.Image.fromarray(imgs_comb)
-    imgs_comb.save(path_to_output)
+    :type fids: list
+    :param fids: list of file ids with full pathnames to be tiled
+    :type fid_out: str
+    :param fid_out: the name of the file to be saved with full pathname
+    """
+    # .png files require conversion to properly get the alpha layer
+    images = []
+    for fid in fids:
+        images.append(Image.open(fid).convert("RGBA"))
+
+    widths, heights = zip(*(i.size for i in images))
+    total_width = sum(widths)
+    max_height = max(heights)
+
+    # Create the new image that will be returned
+    im_out = Image.new(mode="RGBA", size=(total_width, max_height))
+    x_offset = 0
+    for im in images:
+        im_out.paste(im=im, box=(x_offset, 0))
+        x_offset += im.size[0]
+
+    im_out.save(fid_out)
+
+
+def imgs_to_pdf(fids, fid_out):
+    """
+    A function to combine a list of image files into a single PDF document
+
+    :type fids: list
+    :param fids: list of file ids with full pathnames to be combined
+    :type fid_out: str
+    :param fid_out: the name of the file to be saved with full pathname
+    """
+    images = []
+    for fid in fids:
+        images.append(Image.open(fid).convert("RGB"))
+
+    image_main = images[0]
+    images = images[1:]
+
+    image_main.save(fp=fid_out, format="PDF", resolution=100., save_all=True,
+                    append_images=images)
+
+
+
+

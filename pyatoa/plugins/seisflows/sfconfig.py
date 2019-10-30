@@ -15,7 +15,7 @@ def sfconfig(min_period=10, max_period=30, filter_corners=4,
              paths_to_responses=[], set_logging="info", fix_windows=False,
              plot_waveforms=True, plot_maps=True, synthetics_only=False,
              window_amplitude_ratio=.0, write_misfit_json=True,
-             tile_and_combine=False,  purge_originals=False, purge_tiles=True,
+             tile_combine_imgs=False,  purge_originals=False, purge_tiles=True,
              create_srcrcv_vtk=True, snapshot=True, plot_misfit_maps=True,
              fidout='./sfconfig.json'):
     """
@@ -62,8 +62,8 @@ def sfconfig(min_period=10, max_period=30, filter_corners=4,
     :type write_misfit_json: bool
     :param write_misfit_json: write misfit information, number of windows,
         number of adjoint sources to a json file
-    :type tile_and_combine: bool
-    :param tile_and_combine: combine the waveforms and maps into a single pdf
+    :type tile_combine_imgs: bool
+    :param tile_combine_imgs: combine the waveforms and maps into a single pdf
         file, saved into 'figures'/composites
     :type purge_originals: bool
     :type purge_tiles: bool
@@ -104,7 +104,7 @@ def sfconfig(min_period=10, max_period=30, filter_corners=4,
 
         # Pyatoa Outputs
         "write_misfit_json": write_misfit_json,
-        "tile_and_combine": tile_and_combine,
+        "tile_combine_imgs": tile_combine_imgs,
         "purge_originals": purge_originals,
         "purge_tiles": purge_tiles,
         "create_srcrcv_vtk": create_srcrcv_vtk,

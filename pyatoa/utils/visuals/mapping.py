@@ -10,7 +10,7 @@ from numpy import ndarray
 from pyatoa.utils.tools.srcrcv import gcd_and_baz
 from pyatoa.utils.asdf.extractions import count_misfit_windows, sum_misfits
 from pyatoa.utils.visuals import map_plugins
-from pyatoa.utils.visuals.map_utils import initiate_basemap, plot_stations,\
+from pyatoa.utils.visuals.map_tools import initiate_basemap, plot_stations,\
     plot_stations_simple, event_beachball, interpolate_and_contour, \
     connect_source_receiver, annotate_srcrcv_information
 
@@ -23,7 +23,7 @@ def default_kwargs(**kwargs):
     :param kwargs: kwargs given by the workflow or user
     :return:
     """
-    figsize = kwargs.get("figsize", (10, 9.4))
+    figsize = kwargs.get("figsize", (8, 10))
     dpi = kwargs.get("dpi", 100)
 
     return figsize, dpi
