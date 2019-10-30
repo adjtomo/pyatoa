@@ -301,4 +301,6 @@ def _count_by_station(ds, model):
     number_windows, number_adjsrcs = [],[]
     stations = ds.waveforms.list()
     
-    raise NotImplementedError  
+    raise NotImplementedError
+
+

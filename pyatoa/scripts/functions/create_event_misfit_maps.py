@@ -6,8 +6,9 @@ from pyatoa.utils.visuals.mapping import event_misfit_map
 
 cfg = Config()
 
-path_to_ds='./'
-for dataset in glob.glob(os.path.join(path_to_ds, '*')):
+path_to_ds = os.getcwd()
+
+for dataset in glob.glob(os.path.join(path_to_ds, '*.h5')):
     with pyasdf.ASDFDataSet(dataset) as ds:
         event_id = ds.events[0].resource_id.id.split('/')[-1]
         for model in ds.auxiliary_data.Statistics.list():
@@ -16,7 +17,8 @@ for dataset in glob.glob(os.path.join(path_to_ds, '*')):
                 fidout = "{eid}_{mdl}_misfitmap.png".format(eid=event_id,
                                                             mdl=model)
                 event_misfit_map(map_corners=cfg.map_corners,
-                                 ds=ds, model=model, annotate_station_info='simple',
+                                 ds=ds, model=model,
+                                 annotate_station_info='simple',
                                  contour_overlay=True, filled_contours=True,
                                  show=False, save=fidout)
 

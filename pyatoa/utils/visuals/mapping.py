@@ -175,6 +175,7 @@ def event_misfit_map(map_corners, ds, model, step=None, normalize=None,
     x_values, y_values, z_values = [], [], []
     if hasattr(ds, 'waveforms'):
         for sta in ds.waveforms.list():
+            # Get information to annotate next to station
             sta_anno = ""
             if 'StationXML' in ds.waveforms[sta].list():
                 sta_anno += "{}\n".format(sta)

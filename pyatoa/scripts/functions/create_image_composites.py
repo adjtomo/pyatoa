@@ -5,9 +5,8 @@ import os
 import glob
 import shutil
 import pyasdf
-import subprocess
 
-from pyatoa.visuals.convert_images import tile_and_combine
+from pyatoa.utils.tools.io import tile_combine_imgs
 
 # set parameters
 model_number = "m00"

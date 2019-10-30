@@ -332,8 +332,17 @@ def interpolate_and_contour(m, x, y, z, len_xi, len_yi, fill=True,
         cs = m.contourf(xi, yi, zi, vmin=0, zorder=100, alpha=0.6,
                         cmap=colormap)
         # Add a colorbar
-        cbar = m.colorbar(cs, location='right', pad="5%")
-        cbar.set_label(cbar_label)
+        max_value = myround(np.nan_to_num(zi).max(), base=10, choice='up')
+        cmap = plt.cm.ScalarMappable(cmap=colormap)
+        cmap.set_array(zi)
+        cmap.set_clim(0., max_value)
+        plt.colorbar(cmap, boundaries=np.arange(0, max_value+10, 10),
+                     shrink=0.8, extend='min')
+
+        # Old method of creating colorbar that wouldn't let me set the limits
+        # cbar = m.colorbar(cs, location='right', pad="5%")
+        # cbar.set_label(cbar_label)
+
     # Use contour for only lines, places values inline with contour
     else:
         cs = m.contour(xi, yi, zi, vmin=0, zorder=100, alpha=0.6, cmap=colormap)

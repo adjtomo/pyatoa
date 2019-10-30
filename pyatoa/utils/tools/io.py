@@ -57,7 +57,7 @@ def ascii_to_mseed(path, origintime, location=''):
 
     # This was tested up to version 6895e2f7
     try:
-        time = np.loadtxt(fname=path, usecols=0)
+        times = np.loadtxt(fname=path, usecols=0)
         data = np.loadtxt(fname=path, usecols=1)
 
     # At some point in 2018, the Specfem developers changed how the ascii files
@@ -65,7 +65,7 @@ def ascii_to_mseed(path, origintime, location=''):
     # values represented as 2*value_float where value_float represents the data
     # value as a float
     except ValueError:
-        time, data = [], []
+        times, data = [], []
         with open(path, 'r') as f:
             lines = f.readlines()
         for line in lines:
@@ -76,21 +76,21 @@ def ascii_to_mseed(path, origintime, location=''):
                     time_ = data_ = line.split('*')[-1]
                 else:
                     raise ValueError
-            time.append(float(time_))
+            times.append(float(time_))
             data.append(float(data_))
 
-        time = np.array(time)
+        times = np.array(times)
         data = np.array(data)
 
-    delta = round(time[1] - time[0],
+    delta = round(times[1] - times[0],
                   3)  # assume dt constant after 3 dec. points
 
-    origintime += time[0]  # specfem doesn't start exactly on 0, honor that
+    origintime += times[0]  # specfem doesn't start exactly on 0, honor that
     net, sta, cha, fmt = os.path.basename(path).split('.')
     stats = {"network": net, "station": sta, "location": location,
              "channel": cha, "starttime": origintime, "npts": len(data),
              "delta": delta, "mseed": {"dataquality": 'D'},
-             "time_offset": time[0], "format": fmt
+             "time_offset": times[0], "format": fmt
              }
     st = Stream([Trace(data=data, header=stats)])
 
@@ -303,7 +303,7 @@ def create_srcrcv_vtk_single(ds, model, pathout, event_separate=False,
     :type utm_zone: int
     :param utm_zone: the utm zone of the mesh, 60 for NZ
     """
-    from pyatoa.utils.operations.source_receiver import lonlat_utm
+    from pyatoa.utils.tools.srcrcv import lonlat_utm
 
     # Check that this can be run, if dataset contains adjoint sources
     if not bool(ds.auxiliary_data.AdjointSources):
@@ -388,7 +388,7 @@ def create_srcrcv_vtk_multiple(pathin, pathout, model, utm_zone=-60):
     :param utm_zone: the utm zone of the mesh, 60 for NZ
     """
     import pyasdf
-    from pyatoa.utils.operations.source_receiver import lonlat_utm
+    from pyatoa.utils.tools.srcrcv import lonlat_utm
 
     vtk_header = ("# vtk DataFile Version 2.0\n"
                   "Source and Receiver VTK file from Pyatoa\n"
@@ -535,8 +535,6 @@ def write_adj_src_to_ascii(ds, model, pathout=None, comp_list=["N", "E", "Z"]):
     :param comp_list: component list to check when writing blank adjoint sources
         defaults to N, E, Z, but can also be e.g. R, T, Z
     """
-    import numpy as np
-
     def write_to_ascii(f, array):
         """
         Function used to write the ascii in the correct format.
@@ -610,14 +608,21 @@ def tile_combine_imgs(ds, wavs_path, maps_path, save_pdf_to,
 
     Maps should not be purged because they can be used by future workflows
 
-    :type ds: str
-    :param ds: event id to identify the map files
-    :param wavs_path:
-    :param maps_path:
-    :param save_pdf_to:
-    :param sort_by:
-    :param purge_wavs:
-    :param purge_tiles:
+    :type ds: pyasdf.ASDFDataSet
+    :param ds: dataset used for sorting
+    :type wavs_path: str
+    :param wavs_path: path to the waveform figures
+    :type maps_path: str
+    :param maps_path: path to the map figures
+    :type save_pdf_to: str
+    :param save_pdf_to: path and filename to save final PDF file
+    :type sort_by: str
+    :param sort_by: method to sort stations by when combining into a pdf,
+        available: 'baz', 'misfit' (misfit not implemented)
+    :type purge_wavs: bool
+    :param purge_wavs: delete the waveform files after tiling them
+    :type purge_tiles: bool
+    :param purge_tiles: delete the tile files after combining into pdf
     :return:
     """
     # Intra-function imports because this is usually only called once in a while
