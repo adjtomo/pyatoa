@@ -6,7 +6,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from pyatoa.utils.visuals.map_tools import initiate_basemap, \
-    interpolate_and_contour, event_beachball
+    interpolate_and_contour
 from pyatoa.utils.asdf.extractions import sum_misfits
 
 
@@ -42,13 +42,12 @@ def read_datasets(path_to_ds="./", model="m00", save="./misfitinfo.json"):
                             lon = ds.waveforms[sta].StationXML[0][0].longitude
                             misdict[event_id][sta] = {"misfit": misfit,
                                                       "lat": lat, "lon": lon}
-
         if save:
             with open(save, 'w') as f:
-                json.dumps(misdict, f, indent=4)
+                json.dump(misdict, f, indent=4)
 
     else:
-        with open(save, 'r') as f:
+        with open(save) as f:
             misdict = json.load(f)
 
     return misdict
@@ -69,14 +68,29 @@ if __name__ == "__main__":
     f = plt.figure(figsize=(8, 10), dpi=100)
     m = initiate_basemap(map_corners=map_corners, scalebar=True)
 
+    # get the map extent for annotation location
+    anno_y = (m.urcrnry - m.llcrnry)/2 + m.llcrnry
+    anno_y_step = ((m.urcrnry - m.llcrnry)/2) / len(misdict.keys())
+    anno_x = (m.urcrnrx - m.llcrnrx) * 0.79 + m.llcrnrx
+
+
     # Plot all the event locations
     sta_misfit = {}
-    for event_id in misdict.keys():
+    sta_coords = {}
+    for i, event_id in enumerate(misdict.keys()):
         ev_x, ev_y = m(misdict[event_id]['lon'], misdict[event_id]['lat'])
-        m.scatter(ev_x, ev_y, marker='o', color='r', alpha=alpha,
-                  edgecolor='k', linestyle='-', s=markersize,
-                  linewidth=linewidth, zorder=100
+        m.scatter(ev_x, ev_y, marker='o', color='w', alpha=alpha,
+                  edgecolor='k', linestyle='-', s=100,
+                  linewidth=linewidth, zorder=500
                   )
+       
+        # determine how many measurements each event has
+        plt.annotate(s=f"{i}", xy=(ev_x, ev_y), zorder=501, fontsize=10, 
+                     color='k', weight='bold')
+        plt.annotate(s=f"{i:0>2}: {event_id}", xy=(ev_x, ev_y), 
+                     xytext=(anno_x, anno_y), fontsize=8)
+                     # arrowprops=dict(facecolor='black', arrowstyle="->"))
+        anno_y -= anno_y_step
 
         for sta in misdict[event_id].keys():
             if sta in ['lat', 'lon']:
@@ -87,27 +101,38 @@ if __name__ == "__main__":
             else:
                 sta_misfit[sta] = [misdict[event_id][sta]['misfit']]
 
+            # grab coordinate info
+            sta_x, sta_y = m(misdict[event_id][sta]['lon'], 
+                             misdict[event_id][sta]['lat'])
+            if not sta in sta_coords:
+                sta_coords[sta] = {"x": sta_x, "y": sta_y}
+            
+            # connect source and receiver
+            m.plot([ev_x, sta_x], [ev_y, sta_y], linestyle='-', linewidth=1,
+                   c='k', alpha=0.1)
+
     x_plot, y_plot, misfit_plot = [], [], []
     for sta in sta_misfit.keys():
-        sta_x, sta_y = m(misdict[event_id][sta]['lon'],
-                         misdict[event_id][sta]['lat'])
-        x_plot.append(sta_x)
-        y_plot.append(sta_y)
+        plt.annotate(s=f"{sta}", xy=(sta_coords[sta]['x'], 
+                                     sta_coords[sta]['y']), 
+                     fontsize=7, zorder=499)
+        x_plot.append(sta_coords[sta]['x'])
+        y_plot.append(sta_coords[sta]['y'])
 
         # get some variables from the misfit
-        mean_misfit = sta_misfit[sta].mean()
-        total_misfit = sta_misfit[sta].sum()
-        max_misfit = sta_misfit[sta].max()
+        mean_misfit = np.mean(sta_misfit[sta])
+        total_misfit = sum(sta_misfit[sta])
+        max_misfit = max(sta_misfit[sta])
 
         misfit_plot.append(total_misfit)
 
     # plot the misfit map
     interpolate_and_contour(m=m, x=x_plot, y=y_plot, z=misfit_plot,
-                            len_xi=100, len_yi=150, colormap='viridis',
-                            interpolation_method='cubic',
-                            fill=True, cbar_label=''
+                            len_xi=100, len_yi=150, colormap='inferno',
+                            interpolation_method='cubic', marker='v',
+                            fill=True, cbar_label='misfit'
                             )
 
-    plt.title()
+    plt.title("Misfit Map for 30event Real Data")
 
     plt.show()

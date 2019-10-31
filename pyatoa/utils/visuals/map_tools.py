@@ -284,7 +284,7 @@ def connect_source_receiver(m, event, sta, **kwargs):
 
 def interpolate_and_contour(m, x, y, z, len_xi, len_yi, fill=True,
                             cbar_label='', colormap='viridis',
-                            interpolation_method='cubic'):
+                            interpolation_method='cubic', marker='o'):
     """
     Interpolate over scatter points on a regular grid, and create a contour plot
 
@@ -314,6 +314,8 @@ def interpolate_and_contour(m, x, y, z, len_xi, len_yi, fill=True,
     :type interpolation_method: str
     :param interpolation_method: 'linear', 'nearest', 'cubic', passed to
         scipy.interpolate.griddata
+    :type marker: str
+    :param marker: marker type for the station scatterplot
     """
     # Create a grid of data to interpolate data onto
     xi, yi = np.mgrid[min(x):max(y):len_xi,
@@ -336,12 +338,9 @@ def interpolate_and_contour(m, x, y, z, len_xi, len_yi, fill=True,
         cmap = plt.cm.ScalarMappable(cmap=colormap)
         cmap.set_array(zi)
         cmap.set_clim(0., max_value)
-        plt.colorbar(cmap, boundaries=np.arange(0, max_value+10, 10),
-                     shrink=0.8, extend='min')
-
-        # Old method of creating colorbar that wouldn't let me set the limits
-        # cbar = m.colorbar(cs, location='right', pad="5%")
-        # cbar.set_label(cbar_label)
+        cbar = plt.colorbar(cmap, boundaries=np.arange(0, max_value+10, 10),
+                            shrink=0.8, extend='min')
+        cbar.set_label(cbar_label, rotation=270)
 
     # Use contour for only lines, places values inline with contour
     else:
@@ -351,7 +350,7 @@ def interpolate_and_contour(m, x, y, z, len_xi, len_yi, fill=True,
 
     # Plot the points that were used in the interpolation
     m.scatter(x, y, c=z, alpha=1., edgecolor='k', linestyle='-', s=100,
-              cmap=colormap, linewidth=2, zorder=101
+              cmap=colormap, linewidth=2, zorder=101, marker=marker
               )
 
 
