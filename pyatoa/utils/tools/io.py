@@ -9,6 +9,7 @@ import json
 import time
 import random
 import numpy as np
+from obspy import Stream, Trace, UTCDateTime
 
 
 def read_fortran_binary(path):
@@ -35,7 +36,7 @@ def read_fortran_binary(path):
             return data
 
 
-def ascii_to_mseed(path, origintime, location=''):
+def ascii_to_mseed(path, origintime=None, location=''):
     """
     Specfem3D outputs seismograms to ASCII (.sem) files
     Pyatoa expects seismograms as obspy Stream objects.
@@ -53,8 +54,6 @@ def ascii_to_mseed(path, origintime, location=''):
     :rtype st: obspy.Stream.stream
     :return st: stream containing header and data info taken from ascii file
     """
-    from obspy import Stream, Trace
-
     # This was tested up to version 6895e2f7
     try:
         times = np.loadtxt(fname=path, usecols=0)
@@ -81,6 +80,10 @@ def ascii_to_mseed(path, origintime, location=''):
 
         times = np.array(times)
         data = np.array(data)
+
+    if origintime is None:
+        print("No origintime given, setting to default 1970-01-01T00:00:00")
+        origintime = UTCDateTime("1970-01-01T00:00:00")
 
     delta = round(times[1] - times[0],
                   3)  # assume dt constant after 3 dec. points
