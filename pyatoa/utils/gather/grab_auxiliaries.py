@@ -29,9 +29,8 @@ def grab_geonet_moment_tensor(event_id, fid=None):
     """
     # If a csv file is given, read that, else check external
     if fid:
-        with open(fid) as f:
-            reader = csv.reader(f)
-            tag = "internal"
+        reader = csv.reader(open(fid))
+        tag = "internal"
     else:
         # Request and open the CSV file. Assumed that GeoNet will keep their
         # moment-tensor information in their GitHub repository
@@ -45,10 +44,10 @@ def grab_geonet_moment_tensor(event_id, fid=None):
             warnings.warn("Github repo request failed", UserWarning)
             return None
 
-        # Use CSV to parse through the returned repsonse
+        # Use CSV to parse through the returned response
         reader = csv.reader(response.text.splitlines(), delimiter=',')
         tag = "external"
-
+    
     # Parse the CSV file
     for i, row in enumerate(reader):
         # First row contains header information

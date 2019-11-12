@@ -44,7 +44,7 @@ def standalone_colorbar(bounds, steps):
     plt.show()
 
 
-def place_scalebar(m, map_corners, loc="upper-right"):
+def place_scalebar(m, map_corners, **kwargs):
     """
     Put the scale bar in the corner at a reasonable distance from each edge
     Handy reminder:
@@ -59,12 +59,14 @@ def place_scalebar(m, map_corners, loc="upper-right"):
     :type loc: str
     :param loc: location of scalebar, 'upper-right' or 'lower-right'
     """
+    loc = kwargs.get("loc", "upper-right")
+
     mc = map_corners
     if loc == "upper-right":
         latscale = mc['lat_min'] + (mc['lat_max'] - mc['lat_min']) * 0.94
         lonscale = mc['lon_min'] + (mc['lon_max'] - mc['lon_min']) * 0.875
     if loc == "lower-right":
-        latscale = mc['lat_min'] + (mc['lat_max'] - mc['lat_min']) * 0.24
+        latscale = mc['lat_min'] + (mc['lat_max'] - mc['lat_min']) * 0.04
         lonscale = mc['lon_min'] + (mc['lon_max'] - mc['lon_min']) * 0.9
     m.drawmapscale(lonscale, latscale, lonscale, latscale, 100,
                    yoffset=0.01 * (m.ymax-m.ymin), zorder=5000, linewidth=2,
@@ -114,6 +116,7 @@ def event_beachball(m, event, fm_type="focal_mechanism", **kwargs):
     """
     width = kwargs.get("width", 2.6E4)
     facecolor = kwargs.get("facecolor", 'r')
+    linewidth = kwargs.get("linewidth", 1)
     zorder = kwargs.get("zorder", 1000)
 
     eventx, eventy = m(event.preferred_origin().longitude,
@@ -140,8 +143,8 @@ def event_beachball(m, event, fm_type="focal_mechanism", **kwargs):
             event.focal_mechanisms[0].nodal_planes.nodal_plane_1.dip,
             event.focal_mechanisms[0].nodal_planes.nodal_plane_1.rake
         ]
-    b = beach(beach_input, xy=(eventx, eventy), width=width, linewidth=1,
-              facecolor=facecolor)
+    b = beach(beach_input, xy=(eventx, eventy), width=width, 
+              linewidth=linewidth, facecolor=facecolor)
     b.set_zorder(zorder)
     ax = plt.gca()
     ax.add_collection(b)
@@ -368,7 +371,10 @@ def initiate_basemap(map_corners, scalebar=True, **kwargs):
     continent_color = kwargs.get("contininent_color", "w")
     lake_color = kwargs.get("lake_color", "w")
     coastline_zorder = kwargs.get("coastline_zorder", 5)
-    coastline_linewidth = kwargs.get("coastline_linewidth", 1.0)
+    coastline_linewidth = kwargs.get("coastline_linewidth", 2.0)
+    fill_color = kwargs.get("fill_color", "w")
+    scalebar_location = kwargs.get("scalebar_location", "lower-right")
+    latlon_linewidth = kwargs.get("latlon_linewidth", 0.)   
 
     # Initiate map and draw in style
     m = Basemap(projection='stere', resolution='h', rsphere=6371200,
@@ -381,15 +387,18 @@ def initiate_basemap(map_corners, scalebar=True, **kwargs):
                 )
     m.drawcoastlines(linewidth=coastline_linewidth, zorder=coastline_zorder)
     m.fillcontinents(color=continent_color, lake_color=lake_color)
+    m.drawmapboundary(fill_color=fill_color)
     m.drawparallels(np.arange(int(map_corners['lat_min']),
                               int(map_corners['lat_max']), 1),
-                    labels=[1, 0, 0, 0], linewidth=0.0)
+                    labels=[1, 0, 0, 0], linewidth=latlon_linewidth,
+                    )
     m.drawmeridians(np.arange(int(map_corners['lon_min']),
                               int(map_corners['lon_max'])+1, 1),
-                    labels=[0, 0, 0, 1], linewidth=0.0)
+                    labels=[0, 0, 0, 1], linewidth=latlon_linewidth,
+                    )
 
     if scalebar:
-        place_scalebar(m, map_corners)
+        place_scalebar(m, map_corners, loc=scalebar_location)
 
     return m
 

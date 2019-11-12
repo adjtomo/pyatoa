@@ -277,9 +277,9 @@ def event_by_distance(cat, filter_type=False, filter_bounds=None, random=False):
 
 def generate_focal_mechanism(mtlist, event=None):
     """
-
+    For the New Zealand problem, focal mechanisms are located in a .csv file
     located on github. For the tomography problem we need this information, so
-    this functino will append information from the .csv file onto the obspy
+    this function will append information from the .csv file onto the obspy
     event object so that all the information can be located in a single object
 
     :type mtlist: dict

@@ -63,11 +63,12 @@ def standalone_map(map_corners, inv=None, catalog=None, annotate_names=False,
     :rtype m: Basemap
     :return m: basemap object
     """
-    figsize, dpi = default_kwargs(**kwargs)
+    figsize = kwargs.get("figsize", (8,10))
+    dpi = kwargs.get("dpi", 100)
 
     # Initiate matplotlib instances
     f = plt.figure(figsize=figsize, dpi=dpi)
-    m = initiate_basemap(map_corners=map_corners, scalebar=True)
+    m = initiate_basemap(map_corners=map_corners, scalebar=True, **kwargs)
 
     # TO DO: remove hard coding
     # Plot fault lines, hardcoded into structure

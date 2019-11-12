@@ -17,7 +17,7 @@ mpl.rcParams['lines.markersize'] = 10
 mpl.rcParams['axes.linewidth'] = 2
 
 
-def plot_hikurangi_trench(m):
+def plot_hikurangi_trench(m, **kwargs):
     """
     Trace the hikurangi trench from a coordinate file
 
@@ -26,6 +26,12 @@ def plot_hikurangi_trench(m):
     :type path_: str
     :param path_: pathway to hikurangi trench coordinates
     """
+    linestyle = kwargs.get("linestyle", ":")
+    linewidth = kwargs.get("linewidth", 2.25)
+    color = kwargs.get("color", "k")
+    zorder = kwargs.get("zorder", 2)
+    alpha = kwargs.get("alpha", 0.5)
+
     trenchcoords = np.load(
         pkg_resources.resource_filename(
             __name__, "fault_coordinates/hikurangi_trench.npz"))
@@ -39,17 +45,23 @@ def plot_hikurangi_trench(m):
     xprimenew = np.linspace(x.min(), x.max(), 100)
     yprimenew = np.interp(xprimenew, xprime, yprime)
 
-    m.plot(xprimenew, yprimenew, ':', linewidth=2.25, color='k', alpha=0.5,
-           zorder=2)
+    m.plot(xprimenew, yprimenew, linestyle, linewidth=linewidth, color=color, 
+           alpha=alpha, zorder=zorder)
 
 
-def plot_geonet_active_faults(m):
+def plot_geonet_active_faults(m, **kwargs):
     """
     Plot onshore and offshore fault coordinate files taken from GeoNet
 
     :type m: Basemap
     :param m: basemap object
     """
+    linestyle = kwargs.get("linestyle", "-.")
+    linewidth = kwargs.get("linewidth", 1)
+    color = kwargs.get("color", "k")
+    zorder = kwargs.get("zorder", 2)
+    alpha = kwargs.get("alpha", 0.25)
+
     int_fid = "fault_coordinates/north_island_550_641_{}.npz"
     for tag in ["onshore", "offshore"]:
         fid = pkg_resources.resource_filename(__name__, int_fid.format(tag))
@@ -61,4 +73,5 @@ def plot_geonet_active_faults(m):
         for i in range(faults.min(), faults.max()+1, 1):
             indices = np.where(faults == i)
             x, y = m(lons[indices], lats[indices])
-            m.plot(x, y, '-.', linewidth=1, color='k', zorder=2, alpha=0.25)
+            m.plot(x, y, linestyle, linewidth=linewidth, color=color, 
+                   zorder=zorder, alpha=alpha)
