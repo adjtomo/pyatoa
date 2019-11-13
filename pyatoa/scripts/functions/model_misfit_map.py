@@ -130,7 +130,7 @@ if __name__ == "__main__":
     interpolate_and_contour(m=m, x=x_plot, y=y_plot, z=misfit_plot,
                             len_xi=100, len_yi=150, colormap='inferno',
                             interpolation_method='cubic', marker='v',
-                            fill=True, cbar_label='misfit'
+                            fill=False, cbar_label='misfit'
                             )
 
     plt.title("Misfit Map for 30event Real Data")

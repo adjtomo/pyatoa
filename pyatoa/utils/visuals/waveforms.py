@@ -1,4 +1,7 @@
-"""
+"""wn] $ python waveform_breakdown.pywn] $ pwn] $ python waveform_breakdown.py
+/Users/chowbr/miniconda3/envs/tomo/lib/pythoython waveform_breakdown.py
+/Users/chowbr/miniconda3/envs/tomo/lib/pytho
+/Users/chowbr/miniconda3/envs/tomo/lib/pytho
 Waveform plotting functionality
 
 Produces waveform plots from stream objects and plots misfit windows
@@ -13,11 +16,6 @@ from matplotlib.patches import Rectangle
 from pyatoa.utils.tools.calculate import normalize_a_to_b, abs_max
 from pyatoa.utils.visuals.plot_tools import align_yaxis, pretty_grids, \
     format_axis
-
-mpl.rcParams['font.size'] = 12
-mpl.rcParams['lines.linewidth'] = 1.6
-mpl.rcParams['lines.markersize'] = 10
-mpl.rcParams['axes.linewidth'] = 2
 
 
 def setup_plot(number_of, twax=True):
@@ -91,8 +89,34 @@ def window_maker(st_obs, st_syn, config, time_offset_sec=0., windows=None,
     :type save: str
     :param save: pathname to save the figure, if not given, will not save
     """
+    # general kwargs
     figsize = kwargs.get("figsize", (11.689, 8.27))  # A4
     dpi = kwargs.get("dpi", 100)
+    z = kwargs.get("zorder", 5)
+    legend = kwargs.get("legend", True)
+
+    # kwargs to control the look of the misfit windows and linecolors
+    window_color = kwargs.get("window_color", "orange")
+    window_anno_fontsize = kwargs.get("window_anno_fontsize", 8)
+    # window_anno_height is roughly percentage of visible y-axis
+    window_anno_height = kwargs.get("window_anno_height", 0.5)  
+    window_anno_rotation = kwargs.get("window_anno_rotation", 0)
+    window_anno_fontcolor = kwargs.get("window_anno_fontcolor", "k")
+    window_anno_fontweight = kwargs.get("window_anno_fontweight", "normal")
+   
+    # Trace colors
+    obs_color = kwargs.get("obs_color", "k")
+    syn_color = kwargs.get("syn_color", "r")
+    adj_src_color = kwargs.get("adj_src_color", "g")
+    stalta_color = kwargs.get("stalta_color", "gray")
+
+    # allow kwargs to set global rcParams (is this hacky?)
+    axes_linewidth = kwargs.get("axes_linewidth", 2)
+    fontsize = kwargs.get("fontsize", 12)
+    linewidth = kwargs.get("linewidth", 1.6)
+    mpl.rcParams['font.size'] = fontsize
+    mpl.rcParams['lines.linewidth'] = linewidth
+    mpl.rcParams['axes.linewidth'] = axes_linewidth
 
     # Set some parameters necessary for flexible plotting
     middle_trace = len(st_obs)//2
@@ -102,12 +126,17 @@ def window_maker(st_obs, st_syn, config, time_offset_sec=0., windows=None,
     adj_dict = {"DISP": "[m^-1]",
                 "VEL": "[m^-1 s]",
                 "ACC": "[m^-s s^-2]"}
+    window_anno_template = ("max_cc={mcc:.2f}\n"
+                            "cc_shift={ccs:.2f}s\n"
+                            "dlnA={dln:.3f}\n"
+                            "left={lft:.1f}s\n"
+                            "length={lgt:.1f}s\n"
+                            )
 
-    # Legend tagging to remove confusion during synthetic-synthetic case
+    # Legend tag for data-synthetic or synthetic-synthetic
+    obs_tag = 'OBS'
     if config.synthetics_only:
         obs_tag = 'TRUE'
-    else:
-        obs_tag = 'OBS'
 
     if staltas is not None:
         stalta_wl = config.pyflex_config.stalta_waterlevel
@@ -120,48 +149,41 @@ def window_maker(st_obs, st_syn, config, time_offset_sec=0., windows=None,
         st_obs[0].stats.endtime-st_obs[0].stats.starttime+time_offset_sec,
         len(st_obs[0].data)
         )
-    
-    z = 5
-    # Set the annotation for misfit windows
-    window_anno_template = ("max_cc={mcc:.2f}\n"
-                            "cc_shift={ccs:.2f}s\n"
-                            "dlnA={dln:.3f}\n"
-                            "left={lft:.1f}s\n"
-                            "length={lgt:.1f}s\n"
-                            )
-    # Plot per component
+
+    # Plot each component in the same fashion
     for i, comp in enumerate(config.component_list):
-        # Plot waveforms following the convention of black for obs, red for syn
         obs = st_obs.select(component=comp)
         syn = st_syn.select(component=comp)
 
-        a1, = axes[i].plot(t, obs[0].data, 'k', zorder=z,
+        # Waveforms (convention of black for obs, red for syn)
+        a1, = axes[i].plot(t, obs[0].data, obs_color, zorder=z,
                            label="{} ({})".format(obs[0].get_id(), obs_tag))
-        a2, = axes[i].plot(t, syn[0].data, 'r', zorder=z,
+        a2, = axes[i].plot(t, syn[0].data, syn_color, zorder=z,
                            label="{} (SYN)".format(syn[0].get_id()))
         lines_for_legend = [a1, a2]
 
-        # Set the seismogram length, min starttime of -10 seconds before origin
+        # Seismogram length; min starttime of -10s 
         if not length_sec:
             length_sec = t[-1]
         axes[i].set_xlim([np.maximum(time_offset_sec, -10),
                           np.minimum(length_sec, t[-1])
                           ])
-        # Get plot bounds for use in setting objects at correct positions
+
+        # Bounds for use in setting positions
         xmin, xmax = axes[i].get_xlim()
         ymin, ymax = axes[i].get_ylim()
 
-        # Plot the amplitude ratio criteria if given by User
+        # Amplitude ratio criteria
         if config.window_amplitude_ratio > 0:
             threshold_amp = abs(
                 config.window_amplitude_ratio * abs_max(obs[0].data)
             )
-            # Plot both negative and positive bounds
+            # Both negative and positive bounds
             for sign in [-1, 1]:
                 axes[i].axhline(y=sign * threshold_amp, xmin=t[0], xmax=t[-1],
                                 alpha=0.35, zorder=z - 4, linewidth=1.25, c='k',
                                 linestyle=':')
-            # Annotate the window amplitude ratio specified by User
+            # Annotate window amplitude ratio
             if i == middle_trace:
                 axes[i].annotate(
                     s="{:.0f}% peak amp. obs.".format(
@@ -169,17 +191,17 @@ def window_maker(st_obs, st_syn, config, time_offset_sec=0., windows=None,
                     xy=(0.85 * (xmax-xmin) + xmin, threshold_amp), fontsize=8,
                 )
 
-        # If misfit windows given, plot each window and annotate information
-        if (windows is not None) and (comp in windows.keys()):
+        # Misfit windows
+        if (windows is not None) and (comp in windows):
             for j, window in enumerate(windows[comp]):
-                # Rectangle to represent misfit windows; taken from Pyflex
+                # Misfit windows as rectangle; taken from Pyflex
                 tleft = window.left * window.dt + time_offset_sec
                 tright = window.right * window.dt + time_offset_sec
                 axes[i].add_patch(Rectangle(
                     xy=(tleft, ymin), width=tright-tleft, height=ymax-ymin,
-                    color='orange', alpha=(window.max_cc_value ** 2) * 0.25)
+                    color=window_color, alpha=(window.max_cc_value ** 2) * 0.25)
                 )
-                # Annotate window information into the windows
+                # Window annotation information: location and text
                 t_anno = (tright - tleft) * 0.025 + tleft
                 y_anno = ymax * 0.2
                 window_anno = window_anno_template.format(
@@ -187,20 +209,22 @@ def window_maker(st_obs, st_syn, config, time_offset_sec=0., windows=None,
                     ccs=window.cc_shift * st_obs[0].stats.delta,
                     dln=window.dlnA, lft=tleft, lgt=tright - tleft
                 )
-                # If an adjoint source is given, add info from measurement
-                # Adjoint source measurements should line up with the misfit win
+                # Adjoint source info in window annotation, set height
                 if adj_srcs is not None:
-                    y_anno = ymax * 0.005
+                    y_anno = window_anno_height * (ymax - ymin) + ymin
                     window_anno = "type={typ}\nmsft={mft:.1E}\n".format(
                         typ=adj_srcs[comp].measurement[j]["type"],
                         mft=adj_srcs[comp].measurement[j]["misfit_dt"]
                     ) + window_anno
+                # Annotate window information
                 axes[i].annotate(s=window_anno, xy=(t_anno, y_anno),
-                                 zorder=z + 1, fontsize=8,
+                                 zorder=z + 1, fontsize=window_anno_fontsize,
+                                 rotation=window_anno_rotation, 
+                                 color=window_anno_fontcolor,
+                                 fontweight=window_anno_fontweight
                                  )
 
-            # Plot the direct arrivals from the first window in each subplot
-            # as vertical ticks in blue
+            # Direct arrivals based on first window phase arrivals
             for phase_arrivals in windows[comp][0].phase_arrivals:
                 if phase_arrivals["name"] in ["s", "p"]:
                     axes[i].axvline(x=phase_arrivals["time"], ymin=0, ymax=0.15,
@@ -212,48 +236,46 @@ def window_maker(st_obs, st_syn, config, time_offset_sec=0., windows=None,
                                      fontsize=8
                                      )
 
-            # If Adjoint Sources given, plot and provide legend information
+            # Adjoint Sources, only if misfit window
             adj_src = None
-            if (adj_srcs is not None) and (comp in adj_srcs.keys()):
+            if (adj_srcs is not None) and (comp in adj_srcs):
                 adj_src = adj_srcs[comp]
-
-                # Plot adjoint source time reversed, line up with waveforms
+                # Time reverse adjoint source; line up with waveforms
                 b1, = twaxes[i].plot(
-                    t, adj_src.adjoint_source[::-1], 'g', alpha=0.55,
+                    t, adj_src.adjoint_source[::-1], adj_src_color, alpha=0.55,
                     linestyle='-.', zorder=z-1,
                     label="Adjoint Source, Misfit={:.2E}".format(adj_src.misfit)
                 )
                 lines_for_legend += [b1]
 
-            # If STA/LTA information from Pyflex given, plot behind waveforms
-            if (staltas is not None) and (comp in staltas.keys()):
-                # Normalize to the min and max of the adjoint source
-                if adj_src is not None:
-                    tymin, tymax = twaxes[i].get_ylim()
-                    stalta = normalize_a_to_b(staltas[comp], tymin, tymax)
-                    waterlevel = (tymax - tymin) * stalta_wl + tymin
-                # If no adjoint source, simply plot STA/LTA with its own bounds
-                else:
-                    stalta = staltas[comp]
-                    waterlevel = stalta_wl
-                # Plot the STA/LTA, waterlevel and annotate the waterlevel %
-                twaxes[i].plot(t, stalta, 'gray', alpha=0.4, zorder=z - 1)
-                twaxes[i].axhline(y=waterlevel, xmin=t[0], xmax=t[-1],
-                                  alpha=0.2, zorder=z - 2, linewidth=1.5, c='k',
-                                  linestyle='--')
-                if i == middle_trace:
-                    twaxes[i].annotate(
-                        s="waterlevel = {}".format(stalta_wl), alpha=0.7,
-                        xy=(0.85 * (xmax-xmin) + xmin, waterlevel), fontsize=8
-                    )
+        # STA/LTAs
+        if (staltas is not None) and (comp in staltas):
+            # Normalize to the min and max of adjoint source if available 
+            if (adj_srcs is not None) and (comp in adj_srcs):
+                tymin, tymax = twaxes[i].get_ylim()
+                stalta = normalize_a_to_b(staltas[comp], tymin, tymax)
+                waterlevel = (tymax - tymin) * stalta_wl + tymin
+            # No adjoint source, then plot STA/LTA with its own bounds
+            else:
+                stalta = staltas[comp]
+                waterlevel = stalta_wl
+            # STA/LTA, waterlevel and annotate the waterlevel 
+            twaxes[i].plot(t, stalta, stalta_color, alpha=0.4, zorder=z - 1)
+            twaxes[i].axhline(y=waterlevel, xmin=t[0], xmax=t[-1],
+                              alpha=0.4, zorder=z - 2, linewidth=1.5, 
+                              c=stalta_color, linestyle='--')
+            if i == middle_trace:
+                twaxes[i].annotate(
+                    s="waterlevel = {}".format(stalta_wl), alpha=0.7,
+                    xy=(0.85 * (xmax-xmin) + xmin, waterlevel), fontsize=8
+                )
 
-        # If no adjoint source for given component, turn off twin ax label
+        # Turn off twin ax label if no adjoint source
         else:
             twaxes[i].set_yticklabels([])
 
-        # The y-label of the middle trace contains common info
+        # Middle trace requires additional y-label information
         if i == middle_trace:
-            # If STA/LTA information given, create a custom label
             if staltas is not None:
                 _label = "sta/lta"
                 if adj_srcs is not None:
@@ -261,41 +283,38 @@ def window_maker(st_obs, st_syn, config, time_offset_sec=0., windows=None,
                         (adj_dict[config.unit_output]
                          )
                 twaxes[i].set_ylabel(_label, rotation=270, labelpad=27.5)
-
-            # Middle trace contains units for all traces, overwrite comp var.
+            # middle trace contains units for all traces, overwrite comp var.
             comp = "{}\n{}".format(unit_dict[config.unit_output], comp)
-
         axes[i].set_ylabel(comp)
-        # Accumulate legend labels
-        labels = [l.get_label() for l in lines_for_legend]
-        axes[i].legend(lines_for_legend, labels, prop={"size": 9},
-                       loc="upper right")
+
+        # Legend labels
+        if legend:
+            labels = [l.get_label() for l in lines_for_legend]
+            axes[i].legend(lines_for_legend, labels, prop={"size": 9},
+                           loc="upper right")
 
         # Format axes and align
         for AX in [axes[i], twaxes[i]]:
             format_axis(AX)
         align_yaxis(axes[i], twaxes[i])
 
-    # Set plot title with relevant information
+    # Title with relevant information
     title = "{net}.{sta}".format(net=st_obs[0].stats.network,
                                  sta=st_obs[0].stats.station
                                  )
-
-    # Account for the fact that event id may not be given
+    # Event id may not be given
     if config.event_id is not None:
         title = " ".join([title, config.event_id])
-
-    # Add filter bounds to plot title
+    # Filter bounds to plot title
     title += " [{0}s, {1}s]".format(config.min_period, config.max_period)
-
-    # Append extra information to title
+    # User appended title information
     if append_title is not None:
         title = " ".join([title, append_title])
-
     axes[0].set_title(title)
+
+    # X label
     axes[-1].set_xlabel("time [s]")
 
-    # Make sure to remove the extra whitespace before saving/showing
     f.tight_layout()
     if save:
         plt.savefig(save, figsize=figsize, dpi=dpi)

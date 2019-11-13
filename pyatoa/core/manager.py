@@ -670,9 +670,9 @@ class Manager:
         # Let the User know the outcome of Pyadjoint
         logger.info("total misfit {:.3f}".format(self.total_misfit))
 
-    def plot_wav(self, append_title='', dynamic_length=True,
+    def plot_wav(self, append_title='', length_sec="dynamic",
                  figsize=(11.69, 8.27), dpi=100, show=True, save=None,
-                 return_figure=False):
+                 return_figure=False, **kwargs):
         """
         Waveform plots for all given components.
         If specific components are not given (e.g. adjoint source waveform),
@@ -681,9 +681,10 @@ class Manager:
         should be generated in the figure.
         :type append_title: str
         :param append_title: any string to append the title of the plot
-        :type dynamic_length: bool
-        :param dynamic_length: If true, sets the seismogram length based on
-            theoretical travel times
+        :type length_sec: str or int or float or None
+        :param length_sec: if "dynamic", dynamically determine length of wav 
+            based on src rcv distance. If type float or type int, User defined
+            waveform length in seconds. If None, default to full trace length
         :type show: bool
         :param show: show the plot once generated, defaults to False
         :type save: str
@@ -709,14 +710,15 @@ class Manager:
                 logger.info("obs and syn data not same length")
                 return
 
-        # Calculate the seismogram length
-        if dynamic_length:
+        # Calculate the seismogram length based on given options
+        # Dynamically find length based on src rcv distanc
+        if isinstance(length_sec, str) and (length_sec == "dynamic"):
             length_sec = seismogram_length(
-                distance_km=gcd_and_baz(event=self.event,
-                                        sta=self.inv[0][0])[0],
-                slow_wavespeed_km_s=1, binsize=50, minimum_length=100
-            )
-        else:
+                    slow_wavespeed_km_s=1, binsize=50, minimum_length=100,
+                    distance_km = gcd_and_baz(event=self.event,
+                                              sta=self.inv[0][0])[0])
+        # If not int or not float, then default to showing full trace
+        elif not (isinstance(length_sec, int) or isinstance(length_sec, float)):
             length_sec = None
 
         # Call on window making function to produce waveform plots
@@ -725,7 +727,7 @@ class Manager:
             time_offset_sec=self.time_offset_sec, windows=self.windows,
             staltas=self.staltas, adj_srcs=self.adj_srcs, length_sec=length_sec,
             append_title=append_title, figsize=figsize, dpi=dpi, show=show,
-            save=save
+            save=save, **kwargs
         )
 
         if return_figure:
@@ -734,7 +736,7 @@ class Manager:
     def plot_map(self, map_corners=None, stations=None,
                  show_nz_faults=False, annotate_names=False,
                  color_by_network=False, figsize=(8, 8.27), dpi=100, show=True,
-                 save=None):
+                 save=None, **kwargs):
         """
         Map plot showing a map of the given target region. All stations that
         show data availability (according to the station master list) are
@@ -781,5 +783,5 @@ class Manager:
                     stations=stations, show_nz_faults=show_nz_faults,
                     color_by_network=color_by_network,
                     annotate_names=annotate_names, show=show, figsize=figsize,
-                    dpi=dpi, save=save
+                    dpi=dpi, save=save, **kwargs
                     )
