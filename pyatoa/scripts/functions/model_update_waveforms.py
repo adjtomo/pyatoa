@@ -14,7 +14,7 @@ from pyatoa import Config, Manager
 from pyatoa.utils.operations.source_receiver import gcd_and_baz,\
     seismogram_length
 
-mpl.rcParams['lines.linewidth'] = 1.5
+mpl.rcParams['lines.linewidth'] = 1.25
 
 
 def set_parameters():
@@ -32,7 +32,7 @@ def set_parameters():
     # select_models = ['synthetic_m00', 'synthetic_m05', 'synthetic_m09']
 
     # Pick stations, if left empty, will plot all stations in dataset
-    select_stations = []
+    select_stations = ["NZ.KNZ"]
 
     # User-defined figure parameters
     show = False
@@ -208,7 +208,10 @@ def plot_iterative_waveforms():
 
                 # Plot each model on a different row
                 for row, syn_key in enumerate(synthetic_keys):
-                    axes[row][0].set_ylabel("{}".format(syn_key.split('_')[-1]))
+                    if syn_key in ["synthetic_m01", "synthetic_m03", 
+                                   "synthetic_m05", "synthetic_m07", 
+                                   "synthetic_m09"]:
+                        axes[row][0].set_ylabel("{}".format(syn_key.split('_')[-1]))
 
                     # This will put units on the ylabel
                     # if row == middle_row:
