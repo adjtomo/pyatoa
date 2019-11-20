@@ -103,7 +103,15 @@ def window_maker(st_obs, st_syn, config, time_offset_sec=0., windows=None,
     window_anno_rotation = kwargs.get("window_anno_rotation", 0)
     window_anno_fontcolor = kwargs.get("window_anno_fontcolor", "k")
     window_anno_fontweight = kwargs.get("window_anno_fontweight", "normal")
-   
+
+    # turn off parts of the plot at will
+    plot_windows = kwargs.get("plot_windows", True)
+    plot_window_anno = kwargs.get("plot_window_anno", True)
+    plot_stalta = kwargs.get("plot_stalta", True)
+    plot_adjsrc = kwargs.get("plot_adjsrc", True)
+    plot_waterlevel = kwargs.get("plot_waterlevel", True)
+    plot_arrivals = kwargs.get("plot_arrivals", True)
+
     # Trace colors
     obs_color = kwargs.get("obs_color", "k")
     syn_color = kwargs.get("syn_color", "r")
@@ -192,7 +200,7 @@ def window_maker(st_obs, st_syn, config, time_offset_sec=0., windows=None,
                 )
 
         # Misfit windows
-        if (windows is not None) and (comp in windows):
+        if (windows is not None) and (comp in windows) and plot_windows:
             for j, window in enumerate(windows[comp]):
                 # Misfit windows as rectangle; taken from Pyflex
                 tleft = window.left * window.dt + time_offset_sec
@@ -210,23 +218,25 @@ def window_maker(st_obs, st_syn, config, time_offset_sec=0., windows=None,
                     dln=window.dlnA, lft=tleft, lgt=tright - tleft
                 )
                 # Adjoint source info in window annotation, set height
-                if adj_srcs is not None:
+                if adj_srcs is not None and plot_adjsrc:
                     y_anno = window_anno_height * (ymax - ymin) + ymin
                     window_anno = "type={typ}\nmsft={mft:.1E}\n".format(
                         typ=adj_srcs[comp].measurement[j]["type"],
                         mft=adj_srcs[comp].measurement[j]["misfit_dt"]
                     ) + window_anno
                 # Annotate window information
-                axes[i].annotate(s=window_anno, xy=(t_anno, y_anno),
-                                 zorder=z + 1, fontsize=window_anno_fontsize,
-                                 rotation=window_anno_rotation, 
-                                 color=window_anno_fontcolor,
-                                 fontweight=window_anno_fontweight
-                                 )
+                if plot_window_anno:
+                    axes[i].annotate(s=window_anno, xy=(t_anno, y_anno),
+                                     zorder=z + 1, 
+                                     fontsize=window_anno_fontsize,
+                                     rotation=window_anno_rotation, 
+                                     color=window_anno_fontcolor,
+                                     fontweight=window_anno_fontweight
+                                     )
 
             # Direct arrivals based on first window phase arrivals
             for phase_arrivals in windows[comp][0].phase_arrivals:
-                if phase_arrivals["name"] in ["s", "p"]:
+                if phase_arrivals["name"] in ["s", "p"] and plot_arrivals:
                     axes[i].axvline(x=phase_arrivals["time"], ymin=0, ymax=0.15,
                                     color='b', alpha=0.2
                                     )
@@ -238,7 +248,7 @@ def window_maker(st_obs, st_syn, config, time_offset_sec=0., windows=None,
 
             # Adjoint Sources, only if misfit window
             adj_src = None
-            if (adj_srcs is not None) and (comp in adj_srcs):
+            if (adj_srcs is not None) and (comp in adj_srcs) and plot_adjsrc:
                 adj_src = adj_srcs[comp]
                 # Time reverse adjoint source; line up with waveforms
                 b1, = twaxes[i].plot(
@@ -249,7 +259,7 @@ def window_maker(st_obs, st_syn, config, time_offset_sec=0., windows=None,
                 lines_for_legend += [b1]
 
         # STA/LTAs
-        if (staltas is not None) and (comp in staltas):
+        if (staltas is not None) and (comp in staltas) and plot_stalta:
             # Normalize to the min and max of adjoint source if available 
             if (adj_srcs is not None) and (comp in adj_srcs):
                 tymin, tymax = twaxes[i].get_ylim()
@@ -261,10 +271,11 @@ def window_maker(st_obs, st_syn, config, time_offset_sec=0., windows=None,
                 waterlevel = stalta_wl
             # STA/LTA, waterlevel and annotate the waterlevel 
             twaxes[i].plot(t, stalta, stalta_color, alpha=0.4, zorder=z - 1)
-            twaxes[i].axhline(y=waterlevel, xmin=t[0], xmax=t[-1],
-                              alpha=0.4, zorder=z - 2, linewidth=1.5, 
-                              c=stalta_color, linestyle='--')
-            if i == middle_trace:
+            if plot_waterlevel:
+                twaxes[i].axhline(y=waterlevel, xmin=t[0], xmax=t[-1],
+                                  alpha=0.4, zorder=z - 2, linewidth=1.5, 
+                                  c=stalta_color, linestyle='--')
+            if i == middle_trace and plot_waterlevel:
                 twaxes[i].annotate(
                     s="waterlevel = {}".format(stalta_wl), alpha=0.7,
                     xy=(0.85 * (xmax-xmin) + xmin, waterlevel), fontsize=8
@@ -275,10 +286,10 @@ def window_maker(st_obs, st_syn, config, time_offset_sec=0., windows=None,
             twaxes[i].set_yticklabels([])
 
         # Middle trace requires additional y-label information
-        if i == middle_trace:
+        if i == middle_trace and plot_stalta:
             if staltas is not None:
                 _label = "sta/lta"
-                if adj_srcs is not None:
+                if adj_srcs is not None and plot_adjsrcs:
                     _label += "\nadjoint source {}".format\
                         (adj_dict[config.unit_output]
                          )

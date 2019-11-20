@@ -15,7 +15,7 @@ class Config:
     """
     def __init__(self, model_number=None, event_id=None, min_period=10,
                  max_period=30, filter_corners=4, rotate_to_rtz=False,
-                 unit_output='DISP', pyflex_map='default',
+                 unit_output='DISP', pyflex_map='default', component_list=None,
                  adj_src_type='cc_traveltime_misfit', start_pad=20, end_pad=500,
                  zero_pad=0, synthetic_unit="DISP", observed_tag='observed',
                  synthetic_tag='synthetic_{model_num}', synthetics_only=False,
@@ -110,7 +110,7 @@ class Config:
         self.zero_pad = int(zero_pad)
         self.start_pad = int(start_pad)
         self.end_pad = int(end_pad)
-        self.component_list = ['Z', 'N', 'E']
+        self.component_list = component_list or ['Z', 'N', 'E'] 
 
         # Make sure User provided paths are list objects as they will be looped
         # on during the workflow
