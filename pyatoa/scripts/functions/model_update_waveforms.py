@@ -27,11 +27,11 @@ def set_parameters():
     output_dir = "./waveforms"
     
     # If you don't want to plot all models, but rather just the first and last
-    select_models = []
+    select_models = ['synthetic_m00', 'synthetic_m01']
     # select_models = ['synthetic_m00', 'synthetic_m05', 'synthetic_m09']
 
     # Pick stations, if left empty, will plot all stations in dataset
-    select_stations = []
+    select_stations = ["NZ.TLZ"]
 
     # User-defined figure parameters
     show = False
@@ -149,7 +149,7 @@ def plot_iterative_waveforms():
                 filter_corners=4,
                 rotate_to_rtz=False,
                 unit_output="DISP",
-                synthetics_only=True
+                synthetics_only=False
             )
 
             # Loop through the available stations
@@ -207,8 +207,13 @@ def plot_iterative_waveforms():
 
                 # Plot each model on a different row
                 for row, syn_key in enumerate(synthetic_keys):
-                    axes[row][0].set_ylabel("{}".format(syn_key.split('_')[-1]))
+                    # axes[row][0].set_ylabel("{}".format(syn_key.split('_')[-1]))
+                    if syn_key == "synthetic_m00":
+                        axes[row][0].set_ylabel("initial model")
+                    else:
+                        axes[row][0].set_ylabel("updated model")
 
+                
                     # This will put units on the ylabel
                     # if row == middle_row:
                     #     # Label the leftmost column by the model number, unit
@@ -245,6 +250,7 @@ def plot_iterative_waveforms():
                             st_idx, end_idx = center_on_peak_energy(obs + syn)
                             t_start = max(t[st_idx] - 10, 0)
                             t_end = min(t[end_idx] + 10, t[-1])
+                            t_end = 125
                             axes[row][col].set_xlim([t_start, t_end])                            
  
                             # Set the seismogram length for the first row
