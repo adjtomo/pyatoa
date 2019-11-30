@@ -1,11 +1,21 @@
-# pyatoa
-========
-### Adjoint Tomography Operational Assistance for Python
+# pyatoa  
+### Python's Adjoint Tomography Operational Assistance
+### A misfit quantification package for the modern tomographer
 
-####  Pyatoa is a workflow management package for the adjoint tomography problem.
+Pyatoa provides a level of abstraction over a few Python based tools that are useful in the adjoint tomography problem:
 
-The idea behind the pacakge is that Pyatoa can take care of all steps in the adjoint problem from data retrieval to adjoint source creation.
+**Obspy:** for seismic data fetching, handling, processing and organization  
+**Pyflex:** a Python port of Flexwin, an automatic time window selection algorithm  
+**Pyadjoint:** a package for calculating misfit and creating adjoint sources  
+**PyASDF:** heirarchical data storage that removes the need for complex directory structures and naming schema  
+**Matplotlib:** plotting library for quick plots of waveforms, statistics, misfit etc.  
+**Basemap:** A mapping library for source receiver distributions, raypaths, etc. (deprecated, Cartopy in the future)  
 
-Pyatoa builds an easy to use skeleton around a few key python packages: PyFlex for misfit window identification, PyAdjoint for misfit quantification and adjoint source creation and PyASDF for input/output.
+Pyatoa provides pre-fabricated classes and functions which take advantage of these underlying tools, it allows for streamlined
+misfit quantification workflows that can be used bog-standard, or overwritten to a researchers needs with simple Python scripting.
 
-This package is built around SPECFEM3D Cartesian, and expects, for example, synthetics and file naming schemes standard in the SPECFEM3D workflow.
+The design philosophy of Pyatoa follows closely with Obspy; that is, flexible classes and functions that can be used for rapid development, quick data handling and simple but powerful visualization, while still leaving room for easy transition to more detailed scientific research. 
+
+Pyatoa has been developed in conjunction with Seisflows, an automated workflow for seismic imaging. Included are plugin scripts that allow Pyatoa to be slotted in neatly to a Seisflows workflow template.
+
+Detailed documentation coming soon!
