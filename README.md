@@ -1,11 +1,11 @@
 # pyatoa
-## Python's Adjoint Tomography Operational Assistance
-### A misfit quantification package for the modern tomographer.
+### Python's Adjoint Tomography Operational Assistance
+### A misfit quantification package for the modern tomographer
 
 Pyatoa provides a level of abstraction over a few Python based tools that are useful in the adjoint tomography problem:
 
 **Obspy:** for seismic data fetching, handling, processing and organization  
-**PyASDF:** an HDF5 wrapper for heirarchical data storage which removes the need for complex directory structures and naming schema  
+**PyASDF:** heirarchical data storage that removes the need for complex directory structures and naming schema  
 **Pyflex:** a Python port of Flexwin, an automatic time window selection algorithm  
 **Pyadjoint:** a package for calculating misfit and creating adjoint sources  
 **Matplotlib:** a 2D plotting library used to generate quick plots of waveforms, statistics, misfit etc. for quick data digestion  
