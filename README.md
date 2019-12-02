@@ -15,6 +15,6 @@ Pyatoa provides pre-fabricated classes and functions which allow for streamlined
 
 The design philosophy of Pyatoa follows closely with Obspy; that is, flexible classes and functions that can be used for rapid development, quick data handling and simple but powerful visualization, while still leaving room for easy transition to more detailed scientific research. 
 
-Pyatoa has been developed in conjunction with [Seisflows](https://github.com/rmodrak/seisflows), an automated workflow for seismic imaging. Included are plugin scripts that allow Pyatoa to be slotted in neatly to a Seisflows workflow template.
+Pyatoa has been developed in conjunction with [Seisflows](https://github.com/rmodrak/seisflows), an automated workflow for seismic inversions. Included are plugin scripts that allow Pyatoa to be slotted in neatly to a Seisflows workflow template.
 
 Detailed documentation coming soon!
