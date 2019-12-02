@@ -1,5 +1,4 @@
-# pyatoa  
-### Python's Adjoint Tomography Operational Assistance
+## Python's Adjoint Tomography Operational Assistance
 ### A misfit quantification package for the modern tomographer
 
 Pyatoa provides abstraction over a few Python based tools, which are useful in the adjoint tomography problem:
