@@ -287,3 +287,4 @@ def stf_convolve(st, half_duration, source_decay=4., time_shift=None,
             tr.data = data_out
 
     return st_out
+

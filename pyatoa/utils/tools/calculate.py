@@ -77,3 +77,27 @@ def normalize_a_to_b(array, a=0, b=1):
     z = ((b-a) * (array-array.min()) / (array.max()-array.min())) + a
 
     return z
+
+
+def amplitude_anomaly(a, b, dt):
+    """
+    Calculate the amplitude differences between two waveforms, a la.
+    Equation A2 from Tape et al. 2010, which states that
+
+    Note:
+        it is expected that a and b have the same value of dt
+
+    DlnA = ln(a/b) = 0.5 * ln[integral(a(t)**2 dt)/integral(b(t)**2 dt)]
+        where a and b represent data and synthetics, respectively
+
+    :type a: np.array
+    :param a: waveform data to act as numerator of misfit definition
+    :type b: np.array
+    :param b: waveform data to act as denominator of misfit definition
+    :rtype: float
+    :return: the value of DlnA, the amplitude anomaly
+    """
+    integral_a = np.trapz(a**2, dx=dt)
+    integral_b = np.trapz(b**2, dx=dt)
+    
+    return 0.5 * np.log(integral_a/integral_b)

@@ -119,6 +119,7 @@ def misfit_stats(ds, model, include_lists=False):
     """
     Extract misfit statistics from a dataset for a given model.
     Return information as a dictionary object for easy access.    
+    Used primarily to write misfit stats into ASDF Dataset auxiliary data.
  
     :type ds: pyasdf.ASDFDataSet
     :param ds: asdf dataset which must contain AdjointSource auxiliary data
@@ -175,6 +176,8 @@ def count_misfit_windows(ds, model, count_by_stations=False):
     """
     Figure out which stations contain which windows, return a dictionary
     which lists available components.
+    Used by plotting scripts when annotating the number of misfit windows 
+
     :type ds: pyasdf.ADSFDataSet
     :param ds: dataset to count misfit windows from
     :type model: str
@@ -215,6 +218,63 @@ def count_misfit_windows(ds, model, count_by_stations=False):
         counted_windows[id_] = quantity_out.count(id_)
 
     return counted_windows
+
+
+def histogram_data(ds, model, data_type):
+    """
+    Returns values to be used in a statistics histogram. For example, a list
+    containing all traveltime differences for every window, or amplitude
+    differenes for a given dataset.
+    
+    :type ds: pyasdf.ADSFDataSet
+    :param ds: dataset to count misfit windows from
+    :type model: str
+    :param model: model number e.g. 'm00'
+    :type data_type: str
+    :param data_type: chosen data type to return histogram data for, available:
+        'cc_shift_in_samples', 'cc_shift_in_seconds', 
+    """
+    from pyatoa.utils.tools.calculate import amplitude_anomaly
+
+    data_types = ['cc_shift_in_samples', 'cc_shift_in_seconds', 'amplitude']
+    if data_type not in data_types:
+        print(f"data_type must be in {data_types}")
+        return
+                         
+    return_list = []
+    # time shift statistics are kept in the misfit windows
+    if "cc" in data_type:
+        if hasattr(ds.auxiliary_data.MisfitWindows, model):
+            for window in ds.auxiliary_data.MisfitWindows[model]:
+                return_list.append(window.parameters[data_type])
+    # amplitude information is recovered from waveforms
+    elif data_type == "amplitude":
+        for sta in ds.waveforms:
+            # collect data for observed and synthetic traces
+            st_obs = sta.observed 
+            st_syn = None
+            for tag in sta.get_waveform_tags():
+                if model in tag:
+                    st_syn = sta[tag]
+            # get amplitude anomaly for each component
+            if st_syn:
+                for i in range(st_obs.count()):
+                    # ensure you're comparing the correct components
+                    obs = st_obs[i].data
+                    syn = st_syn.select(
+                            component=st_obs[i].get_id()[-1])[0].data
+                    return_list.append(amplitude_anomaly(
+                                       a=obs, b=syn, dt=st_obs[i].stats.delta)
+                                       )
+            else:
+                continue 
+
+    return return_list
+                    
+                
+
+            
+        
 
 
 def _count_waveforms(ds_waveforms, model):
