@@ -14,7 +14,7 @@ from obspy import Stream, read, read_inventory
 
 from pyatoa import logger
 from pyatoa.utils.tools.calculate import overlapping_days
-from pyatoa.utils.tools.io import ascii_to_mseed
+from pyatoa.utils.tools.io import read_ascii
 from pyatoa.utils.tools.srcrcv import merge_inventories
 
 
@@ -261,13 +261,12 @@ class Fetcher:
             # Here the path is determined for search. If event_id is given,
             # the function will search for an event_id directory.
             full_path = os.path.join(path_, event_id, specfem_fid_template)
-
             st = Stream()
             for filepath in glob.glob(full_path.format(
                     net=net, sta=sta, cmp=cha[2:], dva=specfem_id)):
                 try:
                     # Convert the ASCII file to a miniseed
-                    st += ascii_to_mseed(filepath, self.origintime)
+                    st += read_ascii(filepath, self.origintime)
                 except UnicodeDecodeError:
                     # If the data file is for some reason already in miniseed
                     st += read(filepath)
