@@ -112,7 +112,11 @@ class Config:
         self.unit_output = unit_output.upper()
         self.synthetic_unit = synthetic_unit.upper()
         self.observed_tag = observed_tag
-        self.synthetic_tag = synthetic_tag.format(model_num=self.model_number)
+        if model_number:
+            self.synthetic_tag = synthetic_tag.format(
+                model_num=self.model_number)
+        else:
+            self.synthetic_tag = "synthetic"
         self.pyflex_map = pyflex_map
         self.adj_src_type = adj_src_type
         self.map_corners = map_corners
@@ -156,7 +160,7 @@ class Config:
 
         # Check that the map corners is a dict and contains proper keys
         # else, set to default map corners for New Zealand North Island
-        if self.map_corners:
+        if self.map_corners is not None:
             assert(isinstance(self.map_corners, dict)), \
                 "map_corners must be a dictionary object"
             acceptable_keys = ['lat_min', 'lat_max', 'lon_min', 'lon_max']
@@ -210,46 +214,78 @@ class Config:
                 max_period=self.max_period
             )
 
-    def write(self, fmt, filename=None, ds=None):
+    def write(self, write_to, fmt=None):
         """
         Wrapper for write functions
 
         :type fmt: str
         :param fmt: format to save parameters to,
             available: 'yaml', 'ascii', 'asdf'
-        :type filename: str
-        :param filename: filename to save config to
-        :type ds: pyasdf.ASDFDataSet
-        :param ds: dataset to save to if 'asdf' format chosen
+        :type write_to: str or pyasdf.ASDFDataSet
+        :param write_to: filename to save config to, or dataset to save to
         """
-        if fmt.lower() == "ascii":
-            assert(filename is not None), "filename must be defined"
-            self._write_ascii(filename)
-        elif fmt.lower() == "yaml":
-            assert (filename is not None), "filename must be defined"
-            self._write_yaml(filename)
-        elif fmt.lower() == "asdf":
-            assert(ds is not None), "ds must be defined"
-            self._write_asdf(ds)
+        # If no format given, try to guess the format
+        acceptable_formats = ["yaml", "asdf", "ascii"]
+        if fmt not in acceptable_formats:
+            from pyasdf.asdf_data_set import ASDFDataSet
 
-    def read(self, fmt, filename=None, ds=None):
+            if isinstance(write_to, str):
+                if ("yaml" or "yml") in write_to:
+                    fmt = "yaml"
+                elif ("txt" or "ascii") in write_to:
+                    fmt = "ascii"
+                else:
+                    print(f"format must be given in {acceptable_formats}")
+                    return
+            elif isinstance(write_to, ASDFDataSet):
+                fmt = "asdf"
+            else:
+                print(f"format must be given in {acceptable_formats}")
+                return
+
+        if fmt.lower() == "ascii":
+            self._write_ascii(write_to)
+        elif fmt.lower() == "yaml":
+            self._write_yaml(write_to)
+        elif fmt.lower() == "asdf":
+            self._write_asdf(write_to)
+
+    def read(self, read_from, path=None, fmt=None):
         """
         Wrapper for read functions
 
+        :type read_from: str or pyasdf.ASDFDataSet
+        :param read_from: filename to read config from, or ds to read from
+        :type path: str
+        :param path: if fmt='asdf', path to the config in the aux data
         :type fmt: str
-        :param fmt: file format to read parameters from,
-            available: 'yaml', 'ascii', 'asdf'
-        :type filename: str
-        :param filename: filename to read config from
-        :type ds: pyasdf.ASDFDataSet
-        :param ds: dataset to read from if 'asdf' format chosen
+        :param fmt: file format to read parameters from, will be guessed but
+            can also be explicitely set (available: 'yaml', 'ascii', 'asdf')
         """
+        # If no format given, try to guess the format
+        acceptable_formats = ["yaml", "asdf"]
+        if fmt not in acceptable_formats:
+            from pyasdf.asdf_data_set import ASDFDataSet
+
+            if isinstance(read_from, str):
+                if ("yaml" or "yml") in read_from:
+                    fmt = "yaml"
+                elif ("txt" or "ascii") in read_from:
+                    fmt = "ascii"
+                else:
+                    print(f"format must be given in {acceptable_formats}")
+                    return
+            elif isinstance(read_from, ASDFDataSet):
+                fmt = "asdf"
+            else:
+                print(f"format must be given in {acceptable_formats}")
+                return
+
         if fmt.lower() == "yaml":
-            assert (filename is not None), "filename must be defined"
-            self._read_yaml(filename)
+            self._read_yaml(read_from)
         elif fmt.lower() == "asdf":
-            assert(ds is not None), "ds must be defined"
-            self._read_asdf(ds)
+            assert(path is not None), "path must be defined"
+            self._read_asdf(read_from, path=path)
 
     def _write_yaml(self, filename):
         """
@@ -278,18 +314,33 @@ class Config:
 
         # Add/standardize some variables before passing to dataset
         attrs = vars(self)
+
+        # Auxiliary data doesn't like Nonetype objects
+        for key, item in attrs.items():
+            if item is None:
+                attrs[key] = ''
+
         attrs["creation_time"] = str(UTCDateTime())
+
+        # Auxiliary data can't take dictionaries so convert to lists, variables
         attrs["map_corners"] = [self.map_corners['lat_min'],
                                 self.map_corners['lat_max'],
                                 self.map_corners['lon_min'],
                                 self.map_corners['lon_max']
                                 ]
+
+        attrs["cfgpaths_waveforms"] = self.cfgpaths["waveforms"]
+        attrs["cfgpaths_synthetics"] = self.cfgpaths["synthetics"]
+        attrs["cfgpaths_responses"] = self.cfgpaths["responses"]
+
         # remove the Config objects because pyASDF doesn't recognize them
         del attrs["pyflex_config"]
         del attrs["pyadjoint_config"]
+        del attrs["cfgpaths"]
 
         ds.add_auxiliary_data(data_type="Configs", data=array([True]),
-                              path=self.model_number, parameters=attrs
+                              path=self.model_number or "default",
+                              parameters=attrs
                               )
 
     def _write_ascii(self, filename):
@@ -324,19 +375,40 @@ class Config:
         for key, item in attrs.items():
             setattr(self, key, item)
 
-    def _read_asdf(self, ds, model):
+    def _read_asdf(self, ds, path):
         """
         Read and set config parameters from an ASDF Dataset, assumes that all
         necessary parameters are located in the auxiliary data subgroup of the
         dataset, which will be the case if the write_to_asdf() function was used
+        Assumes some things about the structure of the auxiliary data.
 
         :type ds: pyasdf.ASDFDataSet
         :param ds: dataset with config parameter to read
-        :type model: str
-        :param model: model number e.g. 'm00'
+        :type path: str
+        :param path: model number e.g. 'm00' or 'default'
         """
-        cfgin = ds.auxiliary_data.Configs[model].parameters
+        cfgin = ds.auxiliary_data.Configs[path].parameters
+        cfgpaths = {}
         for key, item in cfgin.items():
-            setattr(self, key, item)
+            if "cfgpaths" in key:
+                cfgpaths[key.split('_')[1]] = item or []
+            elif key == "map_corners":
+                map_corners = {'lat_min': item[0].item(),
+                               'lat_max': item[1].item(),
+                               'lon_min': item[2].item(),
+                               'lon_max': item[3].item()
+                               }
+                setattr(self, key, map_corners)
+            else:
+                # Convert numpy objects into native python objects to avoid
+                # any confusion when reading from ASDF format
+                try:
+                    setattr(self, key, item.item())
+                except ValueError:
+                    setattr(self, key, item.tolist())
+                except AttributeError:
+                    setattr(self, key, item)
+        setattr(self, "cfgpaths", cfgpaths)
+
         self._check()
 
