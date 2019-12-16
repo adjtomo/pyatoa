@@ -36,7 +36,7 @@ def read_fortran_binary(path):
             return data
 
 
-def ascii_to_mseed(path, origintime=None, location=''):
+def read_ascii(path, origintime=None, location=''):
     """
     Specfem3D outputs seismograms to ASCII (.sem) files
     Pyatoa expects seismograms as obspy Stream objects.

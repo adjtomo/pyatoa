@@ -130,8 +130,9 @@ class Config:
         # Make sure User provided paths are list objects as they will be looped
         # on during the workflow
         if cfgpaths:
-            for key in cfgpaths.keys():
-                cfgpaths[key] = list(cfgpaths[key])
+            for key in cfgpaths:
+                if not isinstance(cfgpaths[key], list):
+                    cfgpaths[key] = [cfgpaths[key]]
             self.cfgpaths = cfgpaths
         else:
             self.cfgpaths = {"waveforms": [], "synthetics": [], "responses": []}

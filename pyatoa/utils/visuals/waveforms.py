@@ -130,7 +130,8 @@ def window_maker(st_obs, st_syn, config, time_offset_sec=0., windows=None,
     middle_trace = len(st_obs)//2
     unit_dict = {"DISP": "displacement [m]", 
                  "VEL": "velocity [m/s]",
-                 "ACC": "acceleration [m/s^2]"}
+                 "ACC": "acceleration [m/s^2]",
+                 "none": ""}
     adj_dict = {"DISP": "[m^-1]",
                 "VEL": "[m^-1 s]",
                 "ACC": "[m^-s s^-2]"}

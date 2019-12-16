@@ -25,6 +25,11 @@ logger = logging.getLogger("pyatoa")
 logger.setLevel(logging.DEBUG)
 
 stations = np.loadtxt(station_file, usecols=[0, 1], dtype=str)
+
+# If only one station present in file, ensure that the station loop still works
+if len(stations) == 2:
+    stations = [stations]
+
 for event_id in event_ids:
     if not os.path.exists("./figures/{}".format(event_id)):
         os.makedirs("./figures/{}".format(event_id))
@@ -89,6 +94,7 @@ for event_id in event_ids:
             if not os.path.exists(sem_path):
                 os.makedirs(sem_path)
             write_adj_src_to_ascii(ds, config.model_number, sem_path)
-            create_stations_adjoint(ds, config.model_number, sem_path)
+            create_stations_adjoint(ds, config.model_number, station_file,
+                                    sem_path)
 
 
