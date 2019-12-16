@@ -289,7 +289,7 @@ def window_maker(st_obs, st_syn, config, time_offset_sec=0., windows=None,
         if i == middle_trace and plot_stalta:
             if staltas is not None:
                 _label = "sta/lta"
-                if adj_srcs is not None and plot_adjsrcs:
+                if adj_srcs is not None and plot_adjsrc:
                     _label += "\nadjoint source {}".format\
                         (adj_dict[config.unit_output]
                          )
