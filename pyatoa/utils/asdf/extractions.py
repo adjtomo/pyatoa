@@ -142,7 +142,7 @@ def misfit_stats(ds, model, include_lists=False):
     # save stats in a dictionary
     # commented out sections are lists that I don't think are necessary 
     stats = {
-        "number_stations": len(ds.waveforms.list()) ,
+        "number_stations": len(ds.waveforms.list()),
         "number_syn_waveforms": sum(syn_n),
         "number_obs_waveforms": sum(obs_n),
         "number_adjoint_sources": len(ds_adjsrc),
@@ -270,11 +270,6 @@ def histogram_data(ds, model, data_type):
                 continue 
 
     return return_list
-                    
-                
-
-            
-        
 
 
 def _count_waveforms(ds_waveforms, model):
@@ -291,10 +286,10 @@ def _count_waveforms(ds_waveforms, model):
     :rtype obs_n: list of int
     :return obs_n: number of observed  waveforms for a given station
     """
-    syn_n, obs_n = [],[]
+    syn_n, obs_n = [], []
     for sta in ds_waveforms.list():
         try:
-            syn_n.append(len(ds_waveforms[sta]["synthetic_{}".format(model)]))
+            syn_n.append(len(ds_waveforms[sta][f"synthetic_{model}"]))
         except KeyError:
             syn_n.append(0)
         try:

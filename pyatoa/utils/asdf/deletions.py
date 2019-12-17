@@ -96,7 +96,7 @@ def del_auxiliary_data(ds, model=None, step=None):
             # If the aux data doesn't contain this model, nothing to clean
             if hasattr(ds.auxiliary_data[aux], model):
                 if step:
-                # Check that this auxiliary data contains this model
+                    # Check that this auxiliary data contains this model
                     if aux in subgroups_with_step:
                         # If this is one of the subgroups with a step attr.
                         if hasattr(ds.auxiliary_data[aux][model], step):

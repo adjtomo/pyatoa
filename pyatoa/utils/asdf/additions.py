@@ -25,10 +25,8 @@ def write_stats_to_asdf(ds, model, step):
     stats = extractions.misfit_stats(ds, model)
     misfit = extractions.sum_misfits(ds, model)
    
-    ds.add_auxiliary_data(data=np.array([misfit]), 
-                          data_type="Statistics",
-                          path="{mod}/{step}".format(mod=model, step=step),
-                          parameters=stats
+    ds.add_auxiliary_data(data=np.array([misfit]), data_type="Statistics",
+                          path=f"{model}/{step}", parameters=stats
                           )
     
 
@@ -65,9 +63,9 @@ def write_adj_src_to_asdf(adj_src, ds, tag, time_offset):
     specfem_adj_source[:, 0] += time_offset
     specfem_adj_source[:, 1] = adj_src.adjoint_source[::-1]
 
-    station_id = "{net}.{sta}".format(net=adj_src.network, sta=adj_src.station)
-    coordinates = ds.waveforms["{net}.{sta}".format(
-        net=adj_src.network, sta=adj_src.station)].coordinates
+    station_id = f"{adj_src.network}.{adj_src.station}"
+    coordinates = ds.waveforms[
+        f"{adj_src.network}.{adj_src.station}"].coordinates
 
     # Safeguard against funny types in the coordinates dictionary
     latitude = float(coordinates["latitude"])
