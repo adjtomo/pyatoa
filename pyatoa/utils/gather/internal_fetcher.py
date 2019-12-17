@@ -60,9 +60,8 @@ class Fetcher:
         :rtype: obspy.core.inventory.network.Network
         :return: network containing relevant station information
         """
-        net, sta, loc, cha = station_code.split('.')
-        return self.ds.waveforms[
-            '{n}_{s}'.format(n=net, s=sta)].StationXML.select(channel=cha)
+        net, sta, loc, cha = station_code.split(".")
+        return self.ds.waveforms[f"{net}_{sta}"].StationXML.select(channel=cha)
 
     def asdf_waveform_fetch(self, station_code, tag):
         """
@@ -82,8 +81,7 @@ class Fetcher:
         :return: waveform contained in a stream
         """
         net, sta, loc, cha = station_code.split('.')
-        return self.ds.waveforms[
-            '{n}_{s}'.format(n=net, s=sta)][tag].select(component=cha[2:])
+        return self.ds.waveforms[f"{net}_{sta}"][tag].select(component=cha[2:])
 
     def fetch_resp_by_dir(self, station_code, paths_to_responses=None,
                           dir_structure='{sta}.{net}',
@@ -138,7 +136,7 @@ class Fetcher:
                     inv_append = read_inventory(filepath)
                     inv = merge_inventories(inv, inv_append)
 
-                logger.debug("response found at {}".format(filepath))
+                logger.debug(f"response found at {filepath}")
 
         # Merge inventory objects
         if inv is None:
@@ -200,8 +198,7 @@ class Fetcher:
             for fid in pathlist:
                 for filepath in glob.glob(fid):
                     st += read(filepath)
-                    logger.debug("stream fetched from directory {}".format(
-                        filepath))
+                    logger.debug(f"stream fetched from directory {filepath}")
             if len(st) > 0:  # is this necessary?
                 st.merge()
                 st.trim(starttime=self.origintime-self.config.start_pad,
@@ -210,8 +207,7 @@ class Fetcher:
                 return st
         else:
             logger.debug(
-                "no waveforms found for {} for given directories".format(
-                    station_code)
+                f"no waveforms found for {station_code} for given directories"
             )
             raise FileNotFoundError()
 
@@ -270,8 +266,8 @@ class Fetcher:
                 except UnicodeDecodeError:
                     # If the data file is for some reason already in miniseed
                     st += read(filepath)
-                logger.debug("stream fetched by event {}".format(
-                    os.path.basename(filepath))
+                logger.debug(
+                    f"stream fetched by event {os.path.basename(filepath)}"
                 )
 
             if len(st) > 0:
@@ -282,8 +278,7 @@ class Fetcher:
                 return st
         else:
             logger.info(
-                "no synthetic waveforms for {} found for given event".format(
-                    station_code)
+                f"no synthetic waveforms for {station_code} found for event"
             )
             raise FileNotFoundError()
 

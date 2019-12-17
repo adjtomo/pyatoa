@@ -34,7 +34,7 @@ def grab_geonet_moment_tensor(event_id, fid=None):
     else:
         # Request and open the CSV file. Assumed that GeoNet will keep their
         # moment-tensor information in their GitHub repository
-        # OK, last accessed 23.6.19
+        # Last accessed 23.6.19
         geonet_mt_csv = (
             "https://raw.githubusercontent.com/GeoNet/data/master/"
             "moment-tensor/GeoNet_CMT_solutions.csv"
@@ -66,16 +66,12 @@ def grab_geonet_moment_tensor(event_id, fid=None):
                     values.append(float(v))
 
             moment_tensor = dict(zip(tags, values))
-            logger.info("geonet moment tensor {} for event: {}".format(
-                tag, event_id)
-            )
+            logger.info(f"geonet moment tensor {tag} for event: {event_id}")
             return moment_tensor
     else:
-        logger.info(
-            "no geonet moment tensor found for event: {}".format(
-                event_id))
-        raise AttributeError("geonet moment tensor for event {}"
-                             "doesn't exist".format(event_id))
+        logger.info(f"no geonet moment tensor found for event: {event_id}")
+        raise AttributeError(f"geonet moment tensor for event {event_id}"
+                             "doesn't exist")
 
 
 def grab_gcmt_moment_tensor(datetime, magnitude, path=None,
@@ -111,7 +107,7 @@ def grab_gcmt_moment_tensor(datetime, magnitude, path=None,
     year_short = datetime.strftime('%y')  # e.g. '19'
     year_long = datetime.strftime('%Y')  # e.g. '2019'
 
-    fid = "{m}{y}.ndk".format(m=month, y=year_short)
+    fid = f"{month}{year_short}.ndk"
 
     # If a path is given to the GCMT catalogs (hardcoded), search
     if path:
@@ -130,7 +126,7 @@ def grab_gcmt_moment_tensor(datetime, magnitude, path=None,
         try:
             cat = read_events(
                 "https://www.ldeo.columbia.edu/~gcmt/projects/CMT/"
-                "catalog/NEW_MONTHLY/{y}/{fid}".format(y=year_long, fid=fid)
+                f"catalog/NEW_MONTHLY/{year_long}/{fid}"
             )
         except HTTPError:
             cat = read_events(
@@ -142,23 +138,19 @@ def grab_gcmt_moment_tensor(datetime, magnitude, path=None,
     # filter catalogs using Obspy to find events with our specifications.
     # Magnitudes and origintimes are not always in agreement between agents
     # So allow fro some wiggle room
-    cat_filt = cat.filter("time > {}".format(str(datetime - time_wiggle_sec)),
-                          "time < {}".format(str(datetime + time_wiggle_sec)),
-                          "magnitude >= {}".format(magnitude - mag_wiggle),
-                          "magnitude <= {}".format(magnitude + mag_wiggle)
+    cat_filt = cat.filter(f"time > {str(datetime - time_wiggle_sec)}",
+                          f"time < {str(datetime + time_wiggle_sec)}",
+                          f"magnitude >= {magnitude - mag_wiggle}",
+                          f"magnitude <= {magnitude + mag_wiggle}",
                           )
     # Filtering may remove all events from catalog, return multiple events, or
     # may return the event of choice
     if not len(cat_filt):
-        logger.info(
-            "no gcmt event found for {0} and M{1}".format(datetime, magnitude)
-        )
+        logger.info(f"no gcmt event found for {datetime} and M{magnitude}")
         raise FileNotFoundError("No events found")
     elif len(cat_filt) > 1:
-        logger.info(
-            "multiple events found for {0} and M{1}".format(datetime, magnitude)
-        )
-        print("{} events found, choosing first".format(len(cat_filt)))
+        logger.info(f"multiple events found for {datetime} and M{magnitude}")
+        print(f"{len(cat_filt)} events found, choosing first")
         return cat_filt[0]
     else:
         logger.info("gcmt event found matching criteria")
