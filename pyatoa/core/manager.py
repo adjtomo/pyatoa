@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """
-Main workflow components of Pyatoa.
+Main workflow components of Pyatoa
+
 Manager is the central workflow control object. It calls on mid and low level
-classes to gather data, and then runs these through Pyflex for misfit window
-identification, and then into Pyadjoint for misfit quantification. Config class
-required to set the necessary parameters
+classes to gather data; it measures two Obspy stream objects using Pyflex to
+generate misfit windows based on parameters set by the Config, and it calculates
+adjoint sources using Pyadjoint for misfit quantification.
 """
 import warnings
 
@@ -24,7 +25,8 @@ from pyatoa.utils.asdf.additions import write_adj_src_to_asdf
 from pyatoa.utils.tools.srcrcv import gcd_and_baz, seismogram_length
 from pyatoa.utils.tools.format import create_window_dictionary, channel_codes
 from pyatoa.utils.tools.calculate import abs_max
-from pyatoa.utils.tools.process import preproc, trimstreams, stf_convolve
+from pyatoa.utils.tools.process import preproc, trimstreams, stf_convolve, \
+    zero_pad_stream
 
 from pyatoa.utils.visuals.mapping import manager_map
 from pyatoa.utils.visuals.waveforms import window_maker
@@ -87,23 +89,20 @@ class Manager:
             self.st_syn = st_syn.copy()
         else:
             self.st_syn = None
-
         # Data produced by the workflow
         self.windows = windows
         self.staltas = staltas
         self.adj_srcs = adj_srcs
-
         # Internally used statistics
         self.num_windows = 0
+        self.len_obs = 0
+        self.len_syn = 0
         self.total_misfit = 0
         self.time_offset_sec = 0
         self.half_dur = 0
-
         # Flags to show status of workflow
         self.dataset_id = None
         self.event_name = None
-        self.st_obs_num = 0
-        self.st_syn_num = 0
         self.inv_name = None
         self.half_dur_flag = None
         self.obs_process_flag = False
@@ -125,28 +124,18 @@ class Manager:
         """
         self._check()
         return ("DATA\n"
-                "\tdataset (ds):                 {dataset}\n"
-                "\tevent:                        {event}\n"
-                "\tinventory (inv):              {inventory}\n"
-                "\tobserved data (st_obs):       {obsstream}\n"
-                "\tsynthetic data (st_syn):      {synstream}\n"
+                f"\tdataset (ds):                 {self.dataset_id}\n"
+                f"\tevent:                        {self.event_name}\n"
+                f"\tinventory (inv):              {self.inv_name}\n"
+                f"\tobserved data (st_obs):       {self.len_obs}\n"
+                f"\tsynthetic data (st_syn):      {self.len_syn}\n"
                 "WORKFLOW\n"
-                "\tobs data preprocessed:        {obsproc}\n"
-                "\tsyn data preprocessed:        {synproc}\n"
-                "\thalf duration (half_dur):     {synshift}\n"
-                "\tpyflex (num_windows):         {pyflex}\n"
-                "\tpyadjoint (total_misfit):     {pyadjoint}\n"
-                ).format(dataset=self.dataset_id,
-                         event=self.event_name,
-                         obsstream=self.st_obs_num,
-                         synstream=self.st_syn_num,
-                         inventory=self.inv_name,
-                         obsproc=self.obs_process_flag,
-                         synproc=self.syn_process_flag,
-                         synshift=self.half_dur_flag,
-                         pyflex=self.num_windows,
-                         pyadjoint=self.pyadjoint_misfit
-                         )
+                f"\tobs data preprocessed:        {self.obs_process_flag}\n"
+                f"\tsyn data preprocessed:        {self.syn_process_flag}\n"
+                f"\thalf duration (half_dur):     {self.half_dur_flag}\n"
+                f"\tpyflex (num_windows):         {self.num_windows}\n"
+                f"\tpyadjoint (total_misfit):     {self.pyadjoint_misfit}\n"
+                )
 
     def _check(self):
         """
@@ -165,33 +154,34 @@ class Manager:
         # Make sure observed waveforms are Stream objects,
         # Check if the observed waveforms have been preprocessed
         if isinstance(self.st_obs, obspy.Stream) and len(self.st_obs):
-            self.st_obs_num = len(self.st_obs)
+            self.len_obs = len(self.st_obs)
             self.obs_process_flag = (
                     hasattr(self.st_obs[0].stats, "processing") and
                     len(self.st_obs[0].stats.processing) >= 3
             )
         else:
-            self.st_obs_num, self.obs_process_flag = 0, False
+            self.len_obs = 0
+            self.obs_process_flag = False
 
         # Make sure synthetic waveforms are Stream objects
         # Check if the synthetic waveforms have been preprocessed
-        if isinstance(self.st_syn, obspy.Stream):
-            self.st_syn_num = len(self.st_syn)
+        if isinstance(self.st_syn, obspy.Stream) and len(self.st_syn):
+            self.len_syn = len(self.st_syn)
             self.syn_process_flag = (
                     hasattr(self.st_syn[0].stats, "processing") and
                     len(self.st_syn[0].stats.processing) >= 3
             )
         else:
-            self.st_syn_num, self.syn_process_flag = 0, False
+            self.len_syn = 0
+            self.syn_process_flag = False
 
         # Check if preprocessing found a source time function
         if self.half_dur is not None:
-            self.half_dur_flag = "{:.3f}".format(self.half_dur)
+            self.half_dur_flag = f"{self.half_dur:.3f}"
 
         # Check to see if inv is an Inventory object
         if isinstance(self.inv, obspy.Inventory):
-            self.inv_name = "{net}.{sta}".format(net=self.inv[0].code,
-                                                 sta=self.inv[0][0].code)
+            self.inv_name = f"{self.inv[0].code}.{self.inv[0][0].code}"
         else:
             self.inv_name = None
 
@@ -203,7 +193,7 @@ class Manager:
 
         # Check if Pyadjoint has been run, if so return the total misfit
         if isinstance(self.adj_srcs, dict):
-            self.pyadjoint_misfit = "{:.3f}".format(self.total_misfit)
+            self.pyadjoint_misfit = f"{self.total_misfit:.3f}"
 
     def reset(self, hard_reset=False):
         """
@@ -214,8 +204,9 @@ class Manager:
         gathered for the same event
 
         :type hard_reset: bool
-        :param hard_reset: hard or soft, soft reset does not re-instantiate
-            gatherer class, and leaves the same event. Useful for short workflow
+        :param hard_reset: hard or soft reset, soft reset doesnt re-instantiate
+            gatherer class, and leaves the same event, useful for repeating
+            workflow. Hard reset re-initites. default soft
         """
         self.station_code = None
         self.st_obs = None
@@ -231,9 +222,13 @@ class Manager:
 
         if hard_reset:
             self.launch(reset=True)
+        self._check()
 
     @property
     def st(self):
+        """
+        Return all the streams available in the manager class
+        """
         if isinstance(self.st_syn, obspy.Stream) and \
                 isinstance(self.st_obs, obspy.Stream):
             return self.st_syn + self.st_obs
@@ -252,6 +247,7 @@ class Manager:
         an obspy event object which is gathered from FDSN by default.
         Allow user to provide their own ObsPy event object so that the
         Gatherer does not need to query FDSN
+
         :type reset: bool
         :param reset: Reset the Gatherer class for a new run
         :type set_event: obspy.core.event.Event
@@ -304,9 +300,7 @@ class Manager:
             self.launch()
         try:
             self.station_code = station_code
-            logger.info("gathering {station} for {event}".format(
-                station=station_code, event=self.config.event_id)
-            )
+            logger.info(f"gathering {station_code} for {self.config_event_id}")
             # Gather all data
             if choice is None:
                 logger.debug("gathering station information")
@@ -337,7 +331,6 @@ class Manager:
         still be saved into an ASDFDataSet for data storage, this function will
         fill that dataset in the same fashion as the data_gatherer class, and
         its internal subclasses.
-        :return:
         """
         # Only populate if all requisite parts are given
         if self.event and self.inv and self.st_obs and self.st_syn:
@@ -361,7 +354,8 @@ class Manager:
     def populate(self, station_code, model):
         """
         Populate the manager using a given PyASDF Dataset, based on user-defined
-        station code. Useful for quick plotting ASDF data.
+        station code. Useful for re-instantiating an existing workflow that
+        has already gathered data and saved it to a dataset.
 
         :type station_code: str
         :param station_code: SEED conv. code, e.g. NZ.BFZ.10.HHZ
@@ -375,7 +369,7 @@ class Manager:
             self.event = self.ds.events[0]
 
             net, sta, _, _ = station_code.split('.')
-            sta_tag = "{net}.{sta}".format(net=net, sta=sta)
+            sta_tag = f"{net}.{sta}"
             if sta_tag in self.ds.waveforms.list():
                 self.st_obs = self.ds.waveforms[sta_tag][
                     self.config.observed_tag]
@@ -383,56 +377,76 @@ class Manager:
                     self.config.synthetic_tag.format(model)]
                 self.inv = self.ds.waveforms[sta_tag].StationXML
 
-    def preprocess(self):
+    def standardize(self):
         """
-        Preprocess observed and synthetic data in place on waveforms.
-        External preprocess function called identical mannger for
-        observation and synthetic waveforms.
-        Waveforms are trimmed and sampled to the same values.
-        Synthetic waveform is convolved with a source time function.
+        Standardize the observed and synthetic traces in place. Ensure that the
+        data streams have the same start and endtimes, and sampling rate, so
+        that data comparisons can be made.
+        This function is envisioned as all preprocessing that relates to timing
+        and sampling rate.
         """
         self._check()
-        if not self.st_obs_num or not self.st_syn_num:
-            logger.info("cannot preprocess, no waveform data")
+        if (self.len_obs or self.len_syn) == 0:
+            logger.info("cannot standardize, no waveform data")
             return
+
+        # Zero pad the data if set by Config
+        if self.config.zero_pad:
+            self.st_obs = zero_pad_stream(self.st_obs, self.config.zero_pad)
+            self.st_syn = zero_pad_stream(self.st_syn, self.config.zero_pad)
+            logger.debug("zero padding front, back by {self.config.zero_pad}s")
+
+        # Ensure the synthetics control the sampling rate
+        self.st_obs.resample(self.st_syn[0].stats.sampling_rate)
+
+        # Trim observations and synthetics to the length of synthetics
+        self.st_obs, self.st_syn = trimstreams(
+            st_a=self.st_obs, st_b=self.st_syn, force="b")
+
+        # Retrieve the first timestamp in the .sem? file from Specfem
+        self.time_offset_sec = (self.st_syn[0].stats.starttime -
+                                self.event.preferred_origin().time
+                                )
+
+    def preprocess(self):
+        """
+        Standard preprocessing of observed and synthetic data in place.
+        Called in identical manner for observation and synthetic waveforms.
+        Synthetic waveform is convolved with a source time function.
+
+        This function can of course be overwritten by a User defined function
+        """
+        self._check()
         if not isinstance(self.inv, obspy.core.inventory.Inventory):
             logger.info("cannot preprocess, no inventory")
             return
 
-        # If set in Config, rotate based on source receiver lat/lon values
+        # If required, rotate based on source receiver lat/lon values
+        baz = None
         if self.config.rotate_to_rtz:
             _, baz = gcd_and_baz(event=self.event, sta=self.inv[0][0])
-        else:
-            baz = None
 
-        # Adjoint sources require the same sampling_rate as the synthetics
-        sampling_rate = self.st_syn[0].stats.sampling_rate
-
-        # Run external preprocessing script, change some things if running a
-        # synthetic-synthetic case
+        # Determine if different preprocessing requried for syn-syn case
         if self.config.synthetics_only:
             inv_ = None
             synthetic_unit_ = self.config.synthetic_unit
         else:
             inv_ = self.inv
             synthetic_unit_ = None
+
         logger.info("preprocessing observation data")
         self.st_obs = preproc(st_original=self.st_obs, inv=inv_,
-                              resample=sampling_rate,
                               synthetic_unit=synthetic_unit_, back_azimuth=baz,
-                              pad_length_in_seconds=self.config.zero_pad,
                               unit_output=self.config.unit_output,
                               corners=self.config.filter_corners,
                               filter_bounds=[self.config.min_period,
                                              self.config.max_period],
                               )
         
-        # Run external synthetic waveform preprocesser
         logger.info("preprocessing synthetic data")
-        self.st_syn = preproc(st_original=self.st_syn, inv=None, resample=None,
+        self.st_syn = preproc(st_original=self.st_syn, inv=None,
                               synthetic_unit=self.config.synthetic_unit,
                               back_azimuth=baz,
-                              pad_length_in_seconds=self.config.zero_pad,
                               unit_output=self.config.unit_output,
                               corners=self.config.filter_corners,
                               filter_bounds=[self.config.min_period,
@@ -444,15 +458,6 @@ class Manager:
         if not self.obs_process_flag or not self.syn_process_flag:
             logger.info("preprocessing failed")
             return
-
-        # Trim observations and synthetics to the length of synthetics
-        self.st_obs, self.st_syn = trimstreams(
-            st_a=self.st_obs, st_b=self.st_syn, force="b")
-
-        # Retrieve the first timestamp in the .sem? file from Specfem
-        self.time_offset_sec = (self.st_syn[0].stats.starttime -
-                                self.event.preferred_origin().time
-                                )
 
         # Convolve synthetic data with a gaussian source-time-function
         try:
@@ -481,19 +486,18 @@ class Manager:
         If no misfit windows are found for a given station, throw a warning
         because pyadjoint won't run.
         """
-        # Pre-check to see if data has already been gathered
+        # Pre-check to see if data has already been gathered, standardized
         self._check()
         if not self.obs_process_flag or not self.syn_process_flag:
             logger.info("cannot run Pyflex, no waveforms, or not processed")
             return
 
-        logger.info("running Pyflex type {}".format(self.config.pyflex_map))
+        logger.info(f"running Pyflex type {self.config.pyflex_map}")
 
         # Create Pyflex Station and Event objects
         pf_sta, pf_ev = set_pyflex_station_event(inv=self.inv, event=self.event)
 
-        # Empties to see if no windows were collected, windows and staltas
-        # saved as dictionary objects by component name
+        # Windows and staltas saved as dictionary objects by component name
         num_windows = 0
         windows, staltas = {}, {}
         for comp in self.config.component_list:
@@ -502,8 +506,7 @@ class Manager:
                 stalta = pyflex.stalta.sta_lta(
                     dt=self.st_syn.select(component=comp)[0].stats.delta,
                     min_period=self.config.min_period,
-                    data=envelope(
-                        self.st_syn.select(component=comp)[0].data)
+                    data=envelope(self.st_syn.select(component=comp)[0].data)
                 )
                 staltas[comp] = stalta
 
@@ -541,7 +544,6 @@ class Manager:
                 # Add window to dictionary object
                 if window:
                     windows[comp] = window
-
             except IndexError:
                 window = []
 
@@ -563,16 +565,15 @@ class Manager:
             logger.debug("saving misfit windows to PyASDF")
             for comp in windows.keys():
                 for i, window in enumerate(windows[comp]):
-                    tag = "{mod}/{net}_{sta}_{cmp}_{num}".format(
-                        net=self.st_obs[0].stats.network,
-                        sta=self.st_obs[0].stats.station,
-                        cmp=comp, mod=self.config.model_number, num=i)
+                    tag = (f"{self.config.model_number}/" 
+                           f"{self.st_obs[0].stats.network}_"
+                           f"{self.st_obs[0].stats.station}_{comp}_{i}"
+                           )
 
                     # ASDF auxiliary_data subgroups don't play nice with nested
                     # dictionaries, which the window parameters are. Format them
                     # a bit simpler for saving into the dataset
                     window_dict = create_window_dictionary(window)
-
                     with warnings.catch_warnings():
                         warnings.simplefilter("ignore")
                         self.ds.add_auxiliary_data(data=np.array([True]),
@@ -581,7 +582,7 @@ class Manager:
                                                    path=tag
                                                    )
         # Let the User know the outcomes of Pyflex
-        logger.info("{} window(s) total found".format(num_windows))
+        logger.info(f"{num_windows} window(s) total found")
 
     def run_pyadjoint(self):
         """
@@ -613,8 +614,7 @@ class Manager:
             logger.info("cannot run Pyadjoint, no Pyflex windows")
             return
 
-        logger.info("running Pyadjoint type {} ".format(
-            self.config.adj_src_type))
+        logger.info(f"running Pyadjoint type {self.config.adj_src_type}")
 
         # Iterate over given windows produced by Pyflex
         total_misfit = 0
@@ -639,14 +639,12 @@ class Manager:
             
             # Save adjoint sources in dictionary object
             adjoint_sources[key] = adj_src
-            logger.info("{misfit:.3f} misfit for comp {comp}".format(
-                misfit=adj_src.misfit, comp=key)
-                        )
+            logger.info(f"{adj_src.misfit:.3f} misfit for comp {key}")
             total_misfit += adj_src.misfit
 
             # If ASDFDataSet given, save Adjoint source into auxiliary data
             if self.ds:
-                logger.debug("saving adjoint sources {} to PyASDF".format(key))
+                logger.debug(f"saving adjoint sources {key} to PyASDF")
                 with warnings.catch_warnings():
                     warnings.simplefilter("ignore")
                     # The tag hardcodes an X as the second channel index
@@ -668,17 +666,18 @@ class Manager:
         self.total_misfit = 0.5 * total_misfit/self.num_windows
 
         # Let the User know the outcome of Pyadjoint
-        logger.info("total misfit {:.3f}".format(self.total_misfit))
+        logger.info("total misfit {self.total_misfit:.3f}")
 
-    def plot_wav(self, append_title='', length_sec="dynamic",
-                 figsize=(11.69, 8.27), dpi=100, show=True, save=None,
-                 return_figure=False, **kwargs):
+    def plot(self, append_title='', length_sec="dynamic",
+             figsize=(11.69, 8.27), dpi=100, show=True, save=None,
+             return_figure=False, **kwargs):
         """
         Waveform plots for all given components.
         If specific components are not given (e.g. adjoint source waveform),
         they are omitted from the final plot. Plotting should be dynamic, i.e.
         if only 2 components are present in the streams, only two subplots
         should be generated in the figure.
+
         :type append_title: str
         :param append_title: any string to append the title of the plot
         :type length_sec: str or int or float or None
@@ -715,8 +714,8 @@ class Manager:
         if isinstance(length_sec, str) and (length_sec == "dynamic"):
             length_sec = seismogram_length(
                     slow_wavespeed_km_s=1, binsize=50, minimum_length=100,
-                    distance_km = gcd_and_baz(event=self.event,
-                                              sta=self.inv[0][0])[0])
+                    distance_km=gcd_and_baz(event=self.event,
+                                            sta=self.inv[0][0])[0])
         # If not int or not float, then default to showing full trace
         elif not (isinstance(length_sec, int) or isinstance(length_sec, float)):
             length_sec = None
@@ -733,10 +732,9 @@ class Manager:
         if return_figure:
             return fig_window
 
-    def plot_map(self, map_corners=None, stations=None,
-                 show_nz_faults=False, annotate_names=False,
-                 color_by_network=False, figsize=(8, 8.27), dpi=100, show=True,
-                 save=None, **kwargs):
+    def map(self, map_corners=None, stations=None, show_nz_faults=False,
+            annotate_names=False, color_by_network=False,
+            figsize=(8, 8.27), dpi=100, show=True, save=None, **kwargs):
         """
         Map plot showing a map of the given target region. All stations that
         show data availability (according to the station master list) are
@@ -744,6 +742,7 @@ class Manager:
         tensor is given, station of interest highlighted, both are connected
         with a dashed line.
         Source receier information plotted in lower right hand corner of map.
+
         :type map_corners: dict
         :param map_corners: {lat_min, lat_max, lon_min, lon_max}
         :type stations: obspy.core.inventory.Inventory
