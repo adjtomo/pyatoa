@@ -198,22 +198,20 @@ class Config:
 
         # Check that the amplitude ratio is a reasonable number
         if self.window_amplitude_ratio > 0:
-            assert (self.window_amplitude_ratio < 1), \
+            assert(self.window_amplitude_ratio < 1), \
                 "window amplitude ratio should be < 1"
 
         # Set Pyflex confict through wrapper function
-        if self.pyflex_config is None:
-            self.pyflex_config = set_pyflex_config(choice=self.pyflex_map,
-                                                   min_period=self.min_period,
-                                                   max_period=self.max_period
-                                                   )
+        self.pyflex_config = set_pyflex_config(choice=self.pyflex_map,
+                                               min_period=self.min_period,
+                                               max_period=self.max_period
+                                               )
 
         # Set Pyadjoint Config
-        if self.pyadjoint_config is None:
-            self.pyadjoint_config = set_pyadjoint_config(
-                choice=self.adj_src_type, min_period=self.min_period,
-                max_period=self.max_period
-            )
+        self.pyadjoint_config = set_pyadjoint_config(
+            choice=self.adj_src_type, min_period=self.min_period,
+            max_period=self.max_period
+        )
 
     def write(self, write_to, fmt=None):
         """
@@ -221,7 +219,7 @@ class Config:
 
         :type fmt: str
         :param fmt: format to save parameters to,
-            available: 'yaml', 'ascii', 'asdf'
+            (available: 'yaml', 'ascii', 'asdf')
         :type write_to: str or pyasdf.ASDFDataSet
         :param write_to: filename to save config to, or dataset to save to
         """
@@ -347,8 +345,9 @@ class Config:
     def _write_ascii(self, filename):
         """
         Write the config parameters to an ascii file
-        :param self:
-        :return:
+
+        :type filename: str
+        :param filename: filename to write the ascii file to
         """
         attrs = vars(self)
         with open(filename, "w") as f:
@@ -392,7 +391,7 @@ class Config:
         cfgpaths = {}
         for key, item in cfgin.items():
             if "cfgpaths" in key:
-                cfgpaths[key.split('_')[1]] = item or []
+                cfgpaths[key.split('_')[1]] = item.any() or []
             elif key == "map_corners":
                 map_corners = {'lat_min': item[0].item(),
                                'lat_max': item[1].item(),

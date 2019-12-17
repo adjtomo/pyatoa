@@ -1,54 +1,44 @@
 """
-Make sure the Manager class works as advertised
+Test the Config class, initialization, checks, reading and writing
 """
 import unittest
 
 import os
-import obspy
+import pyasdf
 from pyatoa import Config
 
 
 class TestConfig(unittest.TestCase):
     def setUp(self):
         """
-        set up the class
-        :return:
+        Set up the class
         """
         self.test_data_path = os.path.join(os.path.abspath(
             os.path.dirname(__file__)), 'data', '')
-        self.inv = obspy.read_inventory(
-            os.path.join(self.test_data_path, 'test_inv.xml')
-        )
-        self.st_obs = obspy.read(os.path.join(
-            self.test_data_path, 'test_obs_data.ascii'))
-        self.st_syn = obspy.read(
-            os.path.join(self.test_data_path, 'test_syn_m00_data.ascii')
-        )
-        self.catalog = obspy.read_events(
-            os.path.join(self.test_data_path, 'test_cat.xml')
-        )
-        self.event = self.catalog[0]
-        self.config = Config(
-            model_number="m00",
-            event_id=self.event.resource_id.resource_id.split('/')[1]
-        )
+
         self.empty_ds_fid = os.path.join(
             self.test_data_path, 'test_empty_ds.h5'
         )
 
+    def test_print(self):
+        """
+        Testing the string representation
+        """
+        cfg = Config()
+        print(cfg)
+
     def test_init(self):
         """
-        Make sure config class can be initiated
+        Make sure config class can be initiated with various model numbers
         """
         model_number_check = "m00"
         for model_number in [0, '0', 'm00']:
             config = Config(model_number=model_number)
             self.assertTrue(config.model_number, model_number_check)
 
-    def test_incorrect_parameters(self):
+    def test_check(self):
         """
-
-        :return:
+        Test the check function by providing incorrectly formated parameters
         """
         with self.assertRaises(AssertionError):
             # Check period range
@@ -58,9 +48,33 @@ class TestConfig(unittest.TestCase):
             # Check unit output
             Config(unit_output='test')
             # Check synthetic output
-            Config(synthetic_ouput='test')
-            # Check pyflex output
-            Config(pyflex_config='incorrect_config')
+            Config(cfgpaths={'test': 'test'})
+            # Check window amplitude ratio
+            Config(window_amplitude_ratio=-1)
+            Config(window_amplitude_ratio=2)
+            # External configs
+            Config(pyflex_map='test')
+            Config(adj_src_type='test')
+
+    def test_read_write(self):
+        """
+        Ensure that the config can be written in each format
+        """
+        cfg = Config()
+        for fid in ["test_config.yaml", "test_config.txt"]:
+            cfg.write(fid)
+            cfg.read(fid)
+            if "yaml" in fid:
+                # Make sure you can initiate using a yaml file
+                Config(yaml_fid="test_config.yaml")
+            os.remove(fid)
+
+        # reading and writing from ASDF
+        ds = pyasdf.ASDFDataSet(self.empty_ds_fid)
+        cfg = Config()
+        cfg.write(ds)
+        cfg.read(ds, path="default")
+        os.remove(self.empty_ds_fid)
 
 
 if __name__ == "__main__":
