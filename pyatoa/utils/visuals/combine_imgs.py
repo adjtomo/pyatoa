@@ -1,6 +1,11 @@
 """
 DEPRECATED
 
+NOTE:
+This set of functions used subprocess to call the Imagemagick software to
+combine .png files into .pdfs. I wanted to move away from calling external
+software so this was replaced with the Python PIL package.
+
 Hacky functions to combine all the outputs figures of pyatoa into a single pdf
 Makes use of subprocess and the external program Imagemagick
 """
