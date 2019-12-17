@@ -1,7 +1,7 @@
 """
 Pyatoa relies on data structure being ordered and consistent throughout all the
-various bits of data required. functions here will aid in reshaping data
-into the correct formats
+various bits of data required. Functions here will aid in reshaping data
+into the correct formats.
 """
 import os
 
@@ -37,22 +37,31 @@ def channel_codes(dt):
 
 def distribute_dataless(path_to_response, inv):
     """
-    Response files written through obspy come out as a single object, but pyatoa
+    Response files written through Obspy come out as a single object, but Pyatoa
     will look for response information from individual components and individual
     stations. Distrubute this dataless information into the necessary components
+
+    Note: The template here is hardcoded with SEED convention
+
+    :type path_to_response: str
+    :param path_to_response: path to save the new response files to
+    :type inv: obspy.core.inventory.Inventory
+    :param inv: inventory with response to be delinieated into separate objects
     """
     inner_folder = '{STA}.{NET}'
     fid_template = 'RESP.{NET}.{STA}.{LOC}.{CHA}'
-    full_template = os.path.join(path_to_response,inner_folder,fid_template)
+    full_template = os.path.join(path_to_response, inner_folder, fid_template)
     for net in inv:
         for sta in net:
             try:
-                os.mkdir(os.path.join(path_to_response,inner_folder.format(
+                # Create the container directory unless it exists
+                os.mkdir(os.path.join(path_to_response, inner_folder.format(
                     STA=sta.code, NET=net.code))
                     )
             except FileExistsError:
                 pass
             for cha in sta:
+                # Write the individual channel as a STATIONXML file
                 inv_temp = inv.select(network=net.code, station=sta.code,
                                       location=cha.location_code,
                                       channel=cha.code)
@@ -66,8 +75,8 @@ def distribute_dataless(path_to_response, inv):
 def create_window_dictionary(window):
     """
     HDF5 doesnt play nice with nonstandard objects in dictionaries, e.g.
-    nested dictionaries, UTCDateTime objects. So remake the pyflex window
-    json dictionary into something that will sit well in a pyasdf object
+    nested dictionaries, UTCDateTime objects. So remake the Pyflex window
+    JSON dictionary into something that will sit well in a Pyasdf object
 
     :type window: pyflex.Window
     :param window: misfit window calcualted by pyflex

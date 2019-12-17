@@ -31,10 +31,11 @@ def zero_pad_stream(st, pad_length_in_seconds):
 
 def trimstreams(st_a, st_b, force=None):
     """
-    Trim two streams to common start and end times, do some basic preprocessing
-    before trimming. Allows user to force one stream to conform to another
+    Trim two streams to common start and end times,
+    Do some basic preprocessing before trimming.
+    Allows user to force one stream to conform to another.
     Assumes all traces in a stream have the same time.
-    Precheck to make sure that the streams are actually different
+    Prechecks make sure that the streams are actually different
 
     :type st_a: obspy.stream.Stream
     :param st_a: streams to be trimmed
@@ -104,21 +105,20 @@ def _is_preprocessed(st):
     return False
 
 
-def preproc(st_original, inv=None, resample=None, pad_length_in_seconds=None,
-            unit_output="VEL", synthetic_unit=None, back_azimuth=None,
-            filter_bounds=(10,30), water_level=60, corners=4,
-            taper_percentage=0.05):
+def preproc(st_original, inv=None, unit_output="VEL", synthetic_unit=None,
+            back_azimuth=None, filter_bounds=(10, 30), water_level=60,
+            corners=4, taper_percentage=0.05):
     """
-    Preprocess waveform data. Assumes synthetics are in units of displacement.
+    Preprocess waveform data. Because synthetics can be in any unit,
+    requires user to specify what units they are.
+
+    TO DO:
+        get rid of that FutureWarning ignore
 
     :type st_original: obspy.stream.Stream
     :param st_original: stream object to process
-    :type inv: obspy.core.inventory.Inventory
+    :type inv: obspy.core.inventory.Inventory or None
     :param inv: inventory containing relevant network and stations
-    :type resample: int
-    :param resample: sampling rate to resample to in Hz
-    :type pad_length_in_seconds: int
-    :param pad_length_in_seconds: length of padding front and back
     :type unit_output: str
     :param unit_output: output of response removal, available:
         'DISP', 'VEL', 'ACC'
@@ -126,8 +126,8 @@ def preproc(st_original, inv=None, resample=None, pad_length_in_seconds=None,
     :param synthetic_unit: units of synthetic traces, same available as unit
     :type back_azimuth: float
     :param back_azimuth: back azimuth in degrees
-    :type filter_bounds: list of float
-    :param filter_bounds: (min period, max_period)
+    :type filter_bounds: list or tuple of float
+    :param filter_bounds: (min period, max_period), units of Seconds
     :type water_level: int
     :param water_level: water level for response removal
     :type corners: int
@@ -144,16 +144,12 @@ def preproc(st_original, inv=None, resample=None, pad_length_in_seconds=None,
     if _is_preprocessed(st):
         return st
 
-    # Resample the data if possible
-    if resample:
-        st.resample(resample)
-
     # Standard preprocessing
     st.detrend("linear")
     st.detrend("demean")
     st.taper(max_percentage=taper_percentage)
 
-    # If inventory is given, working with observation data
+    # If inventory is given, assume working with observation data
     if inv:
         # Occasionally, inventory issues arise, as ValueErrors due to 
         # station availability, e.g. NZ.COVZ. Try/except to catch these.
@@ -163,6 +159,7 @@ def preproc(st_original, inv=None, resample=None, pad_length_in_seconds=None,
                                water_level=water_level,
                                plot=False)
         except ValueError:
+            logger.debug(f"Error removing response from {st[0].get_id()}")
             return None
     
         logger.debug("remove response, units of {}".format(unit_output))
@@ -204,24 +201,17 @@ def preproc(st_original, inv=None, resample=None, pad_length_in_seconds=None,
 
         st.taper(max_percentage=taper_percentage)
     
-    # Rotate the given stream from standard North East to Radial Transverse
+    # Rotate the given stream from standard NEZ to RTZ
     if back_azimuth:
         st.rotate(method="NE->RT", back_azimuth=back_azimuth)
-        logger.debug("rotating NE->RT by {} degrees".format(back_azimuth))
-    
-    # Zero pad the stream if value is given
-    if pad_length_in_seconds:
-        st = zero_pad_stream(st, pad_length_in_seconds)
-        logger.debug(
-            "zero padding front and back by {}s".format(pad_length_in_seconds))
-    
-    # Filter data using ObsPy Butterworth filters
+        logger.debug(f"rotating NE->RT by {back_azimuth} degrees")
+
+    # Filter data using ObsPy Butterworth filters. Zerophase avoids phase shift
     if filter_bounds is not None:
         st.filter('bandpass', freqmin=1/filter_bounds[1],
                   freqmax=1/filter_bounds[0], corners=corners, zerophase=True
                   )
-        msg = "filter {t0}s to {t1}s"
-        logger.debug(msg.format(t0=filter_bounds[0], t1=filter_bounds[1]))
+        logger.debug(f"filter {filter_bounds[0]}s to {filter_bounds[1]}s")
 
     return st
 
@@ -255,7 +245,8 @@ def stf_convolve(st, half_duration, source_decay=4., time_shift=None,
     :rtype: obspy.stream.Stream
     :return: stream object which has been convolved with a source time function
     """
-    logger.debug("convolve w/ gaussian half-dur={:.2f}s".format(half_duration))
+    logger.debug(f"convolve w/ gaussian half-dur={half_duration:.2f}s")
+
     sampling_rate = st[0].stats.sampling_rate
     half_duration_in_samples = round(half_duration * sampling_rate)
 

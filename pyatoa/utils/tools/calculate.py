@@ -6,9 +6,12 @@ import numpy as np
 
 def abs_max(array):
     """
-    Find the maximum of an array, regardless of sign
-    :param array:
-    :return:
+    Find the absolute maximum of an array
+
+    :type array: np.array
+    :param array: array to find abs max of
+    :rtype: float
+    :return: absolute maximum of array
     """
     return max(array.min(), array.max(), key=abs)
 
@@ -62,7 +65,7 @@ def overlapping_days(origin_time, start_pad=20, end_pad=200):
 
 def normalize_a_to_b(array, a=0, b=1):
     """
-    normalize an array from a to b for easy plotting
+    normalize an array from a to b for e.g. plotting, maths
 
     :type array: list
     :param array: values to be normalized
@@ -84,16 +87,18 @@ def amplitude_anomaly(a, b, dt):
     Calculate the amplitude differences between two waveforms, a la.
     Equation A2 from Tape et al. 2010, which states that
 
-    Note:
-        it is expected that a and b have the same value of dt
-
     DlnA = ln(a/b) = 0.5 * ln[integral(a(t)**2 dt)/integral(b(t)**2 dt)]
         where a and b represent data and synthetics, respectively
+
+    Note: it is expected that a and b have the same value of dt, if they do not,
+        they should be resampled before being passed to this function.
 
     :type a: np.array
     :param a: waveform data to act as numerator of misfit definition
     :type b: np.array
     :param b: waveform data to act as denominator of misfit definition
+    :type dt: float
+    :param dt: sampling rate for the integration
     :rtype: float
     :return: the value of DlnA, the amplitude anomaly
     """

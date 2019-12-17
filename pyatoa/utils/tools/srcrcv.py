@@ -34,7 +34,7 @@ def merge_inventories(inv_a, inv_b):
                                     # inventories are probably the same.
                                     # This won't work if they contain the
                                     # same channel but different time
-                                    # ranges. But I assume that
+                                    # ranges. But we assume that
                                     # case won't arise.
                                     if cha_a.code == cha_b.code:
                                         continue
@@ -85,7 +85,8 @@ def sort_by_backazimuth(ds, clockwise=True):
     Its illustrative to show misfit information for an event, sorted by
     backazimuth. Stations with misfit information are generally sorted
     alphabetically, so this function just calcualtes backazimuth and returns a
-    sorted list of station names. Can go clockwise or counter clockwise.
+    sorted list of station names. Can go clockwise or counter clockwise,
+    starting from 0 degrees.
 
     :type ds: pyasdf.ASDFDataSet()
     :param ds: dataset containing event and station information
@@ -98,7 +99,7 @@ def sort_by_backazimuth(ds, clockwise=True):
 
     def baz(event, sta_stats):
         """
-        same as gcd_and_baz below, but avoid repeat import and only returns baz
+        To avoid repeat imports and unnecessary returns from gcd_and_baz()
         """
         _, _, baz = gps2dist_azimuth(
             lat1=event.preferred_origin().latitude,
@@ -114,6 +115,7 @@ def sort_by_backazimuth(ds, clockwise=True):
         sta = ds.waveforms[sta_name].StationXML[0][0]
         list_of_baz.append(baz(event, sta))
         station_names.append(sta_name)
+
     list_of_baz, station_names = zip(*sorted(zip(list_of_baz, station_names)))
 
     if not clockwise:
@@ -123,8 +125,8 @@ def sort_by_backazimuth(ds, clockwise=True):
 
 
 def lonlat_utm(lon_or_x, lat_or_y, utm_zone=-60, inverse=False):
-    """convert latitude and longitude coordinates to UTM projection
-    from mesh_gen_helper.py (personal code)
+    """
+    Convert latitude and longitude coordinates to UTM projection
 
     :type lon_or_x: float or int
     :param lon_or_x: longitude value in WGS84 or X in UTM-'zone' projection
@@ -150,8 +152,9 @@ def lonlat_utm(lon_or_x, lat_or_y, utm_zone=-60, inverse=False):
 
     projstr = (f"+proj=utm +zone={utm_zone}, +{direction} +ellps=WGS84"
                " +datum=WGS84 +units=m +no_defs")
-    myProj = Proj(projstr)
-    x_or_lon, y_or_lat = myProj(lon_or_x, lat_or_y, inverse=inverse)
+    projection = Proj(projstr)
+
+    x_or_lon, y_or_lat = projection(lon_or_x, lat_or_y, inverse=inverse)
 
     return x_or_lon, y_or_lat
 
@@ -182,7 +185,14 @@ def gcd_and_baz(event, sta):
 def theoretical_p_arrival(source_depth_in_km, distance_in_degrees,
                           model='iasp91'):
     """
-    calculate theoretical arrivals
+    Calculate theoretical arrivals
+
+    :type source_depth_in_km: float
+    :param source_depth_in_km: source depth in units of km
+    :type distance_in_degrees: float
+    :param distance_in_degrees: distance between source and receiver in degrees
+    :type model: str
+    :param model: model to be used to get travel times from
     """
     from obspy.taup import TauPyModel
     model = TauPyModel(model=model)
@@ -193,7 +203,7 @@ def theoretical_p_arrival(source_depth_in_km, distance_in_degrees,
 def half_duration_from_m0(moment):
     """
     Empirical formula for half duration used by Harvard CMT, stated in
-    Daheln and Tromp (1998, p.178).
+    Dahlen and Tromp (1998, p.178).
 
     :type moment: float
     :param moment: seismic moment in N*m
@@ -211,25 +221,31 @@ def event_by_distance(cat, filter_type=False, filter_bounds=None, random=False):
     Returns an index list for events that are most distant from one another,
     without repeating any used events.
 
+    Catalog filter parameters can be found here:
+    https://docs.obspy.org/packages/autogen/obspy.core.event.Catalog.filter.html
+
     example call:
     >> index_list, event_list = event_by_distance(cat, filter_type="magnitude",
                                                   filter_bounds=[5.0,6.0])
 
-    :param cat: obspy.event.Catalog
-    :param filter_type: str
-    :param filter_bounds: list of floats
-    :param random: bool
-    :return:
+    :type cat: obspy.event.Catalog
+    :param cat: catalog to sort through
+    :type filter_type: str
+    :param filter_type: filter to be passed to the Catalog filter
+    :type filter_bounds: list of floats
+    :param filter_bounds: (min filter bound, max filter bound)
+    :type random: bool
+    :param random: randomly determined starting point
+    :rtype: obspy.event.Catalog
+    :return: filtered catalog object
     """
     from obspy.geodetics import locations2degrees
     from obspy.core.event import Catalog
 
     # filter the catalog by e.g. magnitude before sorting
     if filter_type:
-        cat = cat.filter("{f} >= {lb}".format(
-            f=filter_type, lb=filter_bounds[0]))
-        cat = cat.filter("{f} <= {lb}".format(
-            f=filter_type, lb=filter_bounds[1]))
+        cat = cat.filter(f"{filter_type} >= {filter_bounds[0]}")
+        cat = cat.filter(f"{filter_type} <= {filter_bounds[1]}")
 
     # determine interevent distances
     latitudes, longitudes = [], []
@@ -277,10 +293,12 @@ def event_by_distance(cat, filter_type=False, filter_bounds=None, random=False):
 
 def generate_focal_mechanism(mtlist, event=None):
     """
-    For the New Zealand problem, focal mechanisms are located in a .csv file
-    located on github. For the tomography problem we need this information, so
-    this function will append information from the .csv file onto the obspy
-    event object so that all the information can be located in a single object
+    For the New Zealand Tomography Problem
+
+    Focal mechanisms created by John Ristau are written to a .csv file
+    located on Github. This function will append information from the .csv file
+    onto the Obspy event object so that all the information can be located in a
+    single object
 
     :type mtlist: dict
     :param mtlist; row values from the GeoNet moment tensor csv file
@@ -293,7 +311,7 @@ def generate_focal_mechanism(mtlist, event=None):
     from obspy.core.event.base import Comment
 
     # Match the identifier with Goenet
-    id_template = "smi:local/geonetcsv/{0}/{1}".format(mtlist['PublicID'], '{}')
+    id_template = f"smi:local/geonetcsv/{mtlist['PublicID']}/{{}}"
 
     # Check that the input list is properly formatted
     if len(mtlist) != 32:
@@ -410,8 +428,7 @@ def mt_transform(mt, method):
         m_tp = -1 * mt["m_xy"]
         return {"m_rr": m_rr, "m_tt": m_tt, "m_pp": m_pp, "m_rt": m_rt,
                 "m_rp": m_rp, "m_tp": m_tp}
-
-    if method == "rtp2xyz":
+    elif method == "rtp2xyz":
         if "m_tt" not in mt.keys():
             print("for rtp2xyz, dict must have keys in rtp")
         m_xx = mt["m_tt"]
