@@ -1,10 +1,9 @@
 """
 Test the Config class, initialization, checks, reading and writing
 """
-import unittest
-
 import os
 import pyasdf
+import unittest
 from pyatoa import Config
 
 
