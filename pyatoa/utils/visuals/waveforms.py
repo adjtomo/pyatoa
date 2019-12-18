@@ -1,11 +1,10 @@
-"""wn] $ python waveform_breakdown.pywn] $ pwn] $ python waveform_breakdown.py
-/Users/chowbr/miniconda3/envs/tomo/lib/pythoython waveform_breakdown.py
-/Users/chowbr/miniconda3/envs/tomo/lib/pytho
-/Users/chowbr/miniconda3/envs/tomo/lib/pytho
+"""
 Waveform plotting functionality
 
 Produces waveform plots from stream objects and plots misfit windows
-outputted by pyflex as well as adjoint sources from pyadjoint
+outputted by Pyflex as well as adjoint sources from Pyadjoint.
+Flexible to allow for only waveform plots, or for the addition of objects
+based on inputs.
 """
 import numpy as np
 import matplotlib as mpl
@@ -164,7 +163,7 @@ def window_maker(st_obs, st_syn, config, time_offset_sec=0., windows=None,
         obs = st_obs.select(component=comp)
         syn = st_syn.select(component=comp)
 
-        # Waveforms (convention of black for obs, red for syn)
+        # WAVEFORMS (convention of black for obs, red for syn)
         a1, = axes[i].plot(t, obs[0].data, obs_color, zorder=z,
                            label="{} ({})".format(obs[0].get_id(), obs_tag))
         a2, = axes[i].plot(t, syn[0].data, syn_color, zorder=z,
@@ -200,7 +199,7 @@ def window_maker(st_obs, st_syn, config, time_offset_sec=0., windows=None,
                     xy=(0.85 * (xmax-xmin) + xmin, threshold_amp), fontsize=8,
                 )
 
-        # Misfit windows
+        # MISFIT WINDOWS
         if (windows is not None) and (comp in windows) and plot_windows:
             for j, window in enumerate(windows[comp]):
                 # Misfit windows as rectangle; taken from Pyflex
@@ -235,7 +234,7 @@ def window_maker(st_obs, st_syn, config, time_offset_sec=0., windows=None,
                                      fontweight=window_anno_fontweight
                                      )
 
-            # Direct arrivals based on first window phase arrivals
+            # PHASE ARRIVALS arrivals based on first window phase arrivals
             for phase_arrivals in windows[comp][0].phase_arrivals:
                 if phase_arrivals["name"] in ["s", "p"] and plot_arrivals:
                     axes[i].axvline(x=phase_arrivals["time"], ymin=0, ymax=0.15,
@@ -247,7 +246,7 @@ def window_maker(st_obs, st_syn, config, time_offset_sec=0., windows=None,
                                      fontsize=8
                                      )
 
-            # Adjoint Sources, only if misfit window
+            # ADJOINT SOURCES, attempted only if misfit windows exist
             adj_src = None
             if (adj_srcs is not None) and (comp in adj_srcs) and plot_adjsrc:
                 adj_src = adj_srcs[comp]
@@ -277,10 +276,10 @@ def window_maker(st_obs, st_syn, config, time_offset_sec=0., windows=None,
                                   alpha=0.4, zorder=z - 2, linewidth=1.5, 
                                   c=stalta_color, linestyle='--')
             if i == middle_trace and plot_waterlevel:
-                twaxes[i].annotate(
-                    s="waterlevel = {}".format(stalta_wl), alpha=0.7,
-                    xy=(0.85 * (xmax-xmin) + xmin, waterlevel), fontsize=8
-                )
+                twaxes[i].annotate(s=f"waterlevel = {stalta_wl}", alpha=0.7,
+                                   xy=(0.85 * (xmax-xmin) + xmin, waterlevel),
+                                   fontsize=8
+                                   )
 
         # Turn off twin ax label if no adjoint source
         else:
@@ -291,15 +290,13 @@ def window_maker(st_obs, st_syn, config, time_offset_sec=0., windows=None,
             if staltas is not None:
                 _label = "sta/lta"
                 if adj_srcs is not None and plot_adjsrc:
-                    _label += "\nadjoint source {}".format\
-                        (adj_dict[config.unit_output]
-                         )
+                    _label += f"\nadjoint source {adj_dict[config.unit_output]}"
                 twaxes[i].set_ylabel(_label, rotation=270, labelpad=27.5)
             # middle trace contains units for all traces, overwrite comp var.
-            comp = "{}\n{}".format(unit_dict[config.unit_output], comp)
+            comp = f"{unit_dict[config.unit_output]}\n{comp}"
         axes[i].set_ylabel(comp)
 
-        # Legend labels
+        # LEGEND
         if legend:
             labels = [l.get_label() for l in lines_for_legend]
             axes[i].legend(lines_for_legend, labels, prop={"size": 9},
@@ -310,15 +307,14 @@ def window_maker(st_obs, st_syn, config, time_offset_sec=0., windows=None,
             format_axis(AX)
         align_yaxis(axes[i], twaxes[i])
 
-    # Title with relevant information
-    title = "{net}.{sta}".format(net=st_obs[0].stats.network,
-                                 sta=st_obs[0].stats.station
-                                 )
+    # TITLE with relevant information
+    title = f"{st_obs[0].stats.network}.{st_obs[0].stats.station}"
+
     # Event id may not be given
     if config.event_id is not None:
         title = " ".join([title, config.event_id])
     # Filter bounds to plot title
-    title += " [{0}s, {1}s]".format(config.min_period, config.max_period)
+    title += " [{config.min_period}s, {config.max_period}s]"
     # User appended title information
     if append_title is not None:
         title = " ".join([title, append_title])
