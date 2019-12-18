@@ -1,9 +1,6 @@
+#!/usr/bin/env python3
 """
-Map making functions
-
-Functions to create different types of maps. Calls on the tools written in
-'map_tools' to generate maps with sources and receivers called in as obspy
-objects
+Mapping functionality with Basemap
 """
 import matplotlib.pyplot as plt
 from numpy import ndarray
@@ -39,7 +36,7 @@ def standalone_map(map_corners, inv=None, catalog=None, annotate_names=False,
     kwargs can be passed to the matplotlib.pyplot.save() function
 
     :type map_corners: dict of floats
-    :param map_corners: [lat_bot,lat_top,lon_left,lon_right]
+    :param map_corners: {lat_bot,lat_top,lon_left,lon_right}
     :type inv: obspy.core.inventory.Inventory
     :param inv: inventory containing relevant network and stations
     :type catalog: obspy.core.event.catalog.Catalog
@@ -78,10 +75,8 @@ def standalone_map(map_corners, inv=None, catalog=None, annotate_names=False,
 
     # If given, plot all background stations for this given event.
     if inv:
-        plot_stations(m, inv=inv, event=None,
-                      annotate_names=annotate_names,
-                      color_by_network=color_by_network
-                      )
+        plot_stations(m, inv=inv, event=None, annotate_names=annotate_names,
+                      color_by_network=color_by_network)
 
     # If an event is given, try to plot the focal-mechanism beachball
     if catalog:
@@ -107,7 +102,7 @@ def event_misfit_map(map_corners, ds, model, step=None, normalize=None,
                      filled_contours=True, show_nz_faults=False, show=True,
                      save=None, **kwargs):
     """
-    To be used to plot misfit information from a pyasdf Dataset
+    To be used to plot misfit information from a Pyasdf Dataset
 
     :type ds: pyasdf.ASDFDataSet
     :param ds: dataset containing things to plot
@@ -152,15 +147,11 @@ def event_misfit_map(map_corners, ds, model, step=None, normalize=None,
         event_id = event.resource_id.id.split('/')[-1]
         event_beachball(m, event, zorder=102)
         plt.annotate(
-            s=("{id}\n"
-               "{date}\n"
-               "{type}={mag:.2f}\n"
-               "Depth(km)={depth:.2f}\n").format(
-                id=event_id, date=event.preferred_origin().time,
-                depth=event.preferred_origin().depth * 1E-3,
-                type=event.preferred_magnitude().magnitude_type,
-                mag=event.preferred_magnitude().mag,
-            ),
+            s=(f"{event_id}\n"
+               f"{event.preferred_origin().time}\n"
+               f"{event.preferred_magnitude().magnitude_type}="
+               f"{event.preferred_magnitude().mag:.2f}\n"
+               f"Depth(km)={event.preferred_origin().depth * 1E-3:.2f}\n"),
             xy=(m.xmax - (m.xmax - m.xmin) * 0.3,
                 m.ymin + (m.ymax - m.ymin) * 0.01),
             multialignment='right', fontsize=10
@@ -185,9 +176,7 @@ def event_misfit_map(map_corners, ds, model, step=None, normalize=None,
                     gcdist, baz = gcd_and_baz(event,
                                               ds.waveforms[sta].StationXML[0][0]
                                               )
-                    sta_anno += "{dist:.1f}km\n{baz:.1f}deg".format(
-                        dist=gcdist, baz=baz
-                    )
+                    sta_anno += f"{gcdist:.1f}km\n{baz:.1f}deg"
                 # If auxiliary data is given, add some extra information to anno
                 if hasattr(ds, 'auxiliary_data'):
                     # Determine the total number of windows for the given model
@@ -196,7 +185,7 @@ def event_misfit_map(map_corners, ds, model, step=None, normalize=None,
                             num_windows = window_dict[sta]
                         except KeyError:
                             num_windows = 0
-                        sta_anno += "\n{}".format(num_windows)
+                        sta_anno += f"\n{num_windows}"
 
                     # Determine the total misfit for a given model
                     if 'AdjointSources' in ds.auxiliary_data:
@@ -275,26 +264,21 @@ def event_misfit_map(map_corners, ds, model, step=None, normalize=None,
 
     # Set a title
     if step:
-        title = "{m}.{s} misfit map, {r} stations".format(
-            m=model, s=step, r=len(x_values)
-        )
+        title = f"{model}.{step} misfit map, {len(x_values)} stations"
         if "Statistics" in ds.auxiliary_data.list():
             if model in ds.auxiliary_data.Statistics.list():
                 if step in ds.auxiliary_data.Statistics[model].list():
                     pars = ds.auxiliary_data.Statistics[model][step].parameters
                     title += (
-                        "\navg misfit: {a:.2f}, num windows: {w}\n"
-                        "max misfit comp: {m1:.2f}/{m2}\n " 
-                        "min misfit comp: {m3:.2f}/{m4}".format(
-                            a=pars["average_misfit"], m1=pars["max_misfit"],
-                            m2=pars["max_misfit_component"],
-                            m3=pars["min_misfit"],
-                            m4=pars["min_misfit_component"],
-                            w=pars["number_misfit_windows"])
+                        f"\navg misfit: {pars['average_misfit']:.2f},"
+                        f"num windows: {pars['number_misfit_windows']}\n"
+                        f"max misfit comp: {pars['max_misfit']:.2f}/"
+                        f"{pars['max_misfit_component']}\n "
+                        f"min misfit comp: {pars['min_misfit']:.2f}/"
+                        f"{pars['min_misfit_component']}"
                     )
-
     else:
-        title = "{m} misfit map, {r} stations".format(m=model, r=len(x_values))
+        title = f"{model} misfit map, {len(x_values)} stations"
     plt.title(title)
 
     # Finality
@@ -315,11 +299,11 @@ def manager_map(map_corners, inv=None, event=None, stations=None,
                 annotate_names=False, show_nz_faults=False,
                 color_by_network=False, show=True, save=None, **kwargs):
     """
-    Initiate and populate a basemap object for New Zealands north island.
+    Initiate and populate a basemap object.
+
     Functionality to manually ignore stations based on user quality control
-    Takes station coordinates and coloring from npz files
-    Choice to annotate two stations which correspond to waveforms
-    Calls beachball and trench tracer to populate basemap
+    Choice to annotate station and receiver which correspond to waveforms
+    Calls beachball and fault tracer (optional) to populate basemap
 
     :type map_corners: dict of floats
     :param map_corners: {lat_min,lat_max,lon_min,lon_max}

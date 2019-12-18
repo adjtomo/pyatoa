@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
 """
-Map making tools
+Basemap map making tools
 
 Functions used to produce maps using Basemap that have a standard look across
 the Pyatoa workflow. Map creation functions are located outside this toolbox
+
+TO DO:
+-add colorbar functionality from personal scripts
 """
 import numpy as np
 import matplotlib as mpl
@@ -19,38 +22,21 @@ from pyatoa.utils.tools.calculate import myround
 
 
 def legend():
+    """
+    Create a legend on the current axes with astandard look
+    """
     leg = plt.legend(loc="lower right")
     leg.get_frame().set_edgecolor('k')
     leg.get_frame().set_linewidth(1)
 
 
-def standalone_colorbar(bounds, steps):
-    """
-    generate a colorbar as a new figure
-    TO DO: clean this up and potentially add it into basemap
-    """
-    fig = plt.figure(figsize=(0.5, 8))
-    mpl.rcParams['font.size'] = 25
-    mpl.rcParams['axes.linewidth'] = 4
-
-    ax = fig.add_axes([0.2, 0.05, 0.4, 0.75])
-    # bounds = range(0,90,10)
-    cmap = mpl.cm.get_cmap('jet_r')
-    norm = mpl.colors.BoundaryNorm(bounds, cmap.N)
-    cb = mpl.colorbar.ColorbarBase(ax, cmap=cmap, norm=norm, extend='max',
-                                   orientation='vertical')
-    cb.set_label("Event Depth (km)")
-    cb.ax.invert_yaxis()
-    plt.show()
-
-
 def place_scalebar(m, map_corners, **kwargs):
     """
-    Put the scale bar in the corner at a reasonable distance from each edge
-    Handy reminder:
+    Put the scale bar in a corner at a reasonable distance from each edge
+
+    Handy reminder for moving the scalebar around:
         latitude is up, down
         longitude is right, left
-        ;)
 
     :type m: Basemap
     :param m: basemap object
@@ -74,43 +60,37 @@ def place_scalebar(m, map_corners, **kwargs):
                    )
 
 
-def build_colormap(array):
+def build_colormap(array, cmap=cm.jet_r):
     """
-    Build a custom range colormap, hardcoded colormap. Round values before.
+    Build a custom range colormap. Round values before.
 
     :type array: numpy.array
     :param array: array to build colormap from
+    :type cmap: matplotlib colormap
+    :param cmap: colormap to create a custom range for
     :rtype colormap: matplotlib.cm.ScalarMappable
     :return colormap: custom colormap
     """
     vmax = myround(np.nanmax(array), base=1, choice='up')
     vmin = myround(np.nanmin(array), base=1, choice='down')
     norm = mpl.colors.Normalize(vmin=vmin, vmax=vmax)
-    cmap = cm.jet_r
     colormap = cm.ScalarMappable(norm=norm, cmap=cmap)
 
     return colormap
 
 
-def scale_magnitude(magitude):
-    """
-    Short function to standardize magnitude scaling on plots
-    :param magitude: float
-    :return:
-    """
-    raise NotImplementedError
-
-
 def event_beachball(m, event, fm_type="focal_mechanism", **kwargs):
     """
-    Plot event beachball for a given geonet moment tensor list,
-    read in the from the GeoNet moment tensor csv file.
+    Plot event beachball for a given moment tensor attribute from event object.
+
+    Note:
+    if strike_dip_rake chosen, nodal plane 1 is used for focal mechanism,
+    assuming that is the preferred plane
 
     :type m: Basemap
     :param m: basemap object
     :type fm_type: str
-    :param fm_type: focal mechanisms type,
-        'focal_mechanism' or 'strike_dip_rake'
+    :param fm_type: focal mech. type, 'focal_mechanism' or 'strike_dip_rake'
     :type event: obspy.core.event.Event
     :param event: event object which should contain focal mechanism
     """
@@ -127,31 +107,32 @@ def event_beachball(m, event, fm_type="focal_mechanism", **kwargs):
     if not hasattr(event, 'focal_mechanisms'):
         m.scatter(eventx, eventy, marker="o", color=facecolor,
                   edgecolor="k", s=105, zorder=zorder, linewidth=1.75)
+    else:
+        if fm_type == "focal_mechanism":
+            fm = event.focal_mechanisms[0].moment_tensor.tensor or \
+                 event.preferred_focal_mechanism().moment_tensor.tensor
+            beach_input = [fm['m_rr'], fm['m_tt'], fm['m_pp'],
+                           fm['m_rt'], fm['m_rp'], fm['m_tp']
+                           ]
+        elif fm_type == "strike_dip_rake":
+            nod_plane = event.focal_mechanisms[0].nodal_plane or \
+                        event.preferred_focal_mechanism().nodal_plane
+            # try determine the preferred nodal plane, default to 1
+            try:
+                sdr = nod_plane[f"nodal_plane_{nod_plane.preferred_plane}"]
+            except AttributeError:
+                sdr = nod_plane.nodal_plane_1
+            beach_input = [sdr.strike, sdr.dip, sdr.rake]
 
-    if fm_type == "focal_mechanism":
-        beach_input = [
-            event.focal_mechanisms[0].moment_tensor.tensor['m_rr'],
-            event.focal_mechanisms[0].moment_tensor.tensor['m_tt'],
-            event.focal_mechanisms[0].moment_tensor.tensor['m_pp'],
-            event.focal_mechanisms[0].moment_tensor.tensor['m_rt'],
-            event.focal_mechanisms[0].moment_tensor.tensor['m_rp'],
-            event.focal_mechanisms[0].moment_tensor.tensor['m_tp']
-        ]
-    elif fm_type == "strike_dip_rake":
-        beach_input = [
-            event.focal_mechanisms[0].nodal_planes.nodal_plane_1.strike,
-            event.focal_mechanisms[0].nodal_planes.nodal_plane_1.dip,
-            event.focal_mechanisms[0].nodal_planes.nodal_plane_1.rake
-        ]
-    b = beach(beach_input, xy=(eventx, eventy), width=width, 
-              linewidth=linewidth, facecolor=facecolor)
-    b.set_zorder(zorder)
-    ax = plt.gca()
-    ax.add_collection(b)
+        b = beach(beach_input, xy=(eventx, eventy), width=width,
+                  linewidth=linewidth, facecolor=facecolor)
+        b.set_zorder(zorder)
+        ax = plt.gca()
+        ax.add_collection(b)
 
 
 def plot_stations(m, inv, event=None, annotate_names=False,
-                  color_by_network=False):
+                  color_by_network=False, simple=False):
     """
     Fill map with stations based on station availability and network
 
@@ -186,8 +167,7 @@ def plot_stations(m, inv, event=None, annotate_names=False,
         # For legend
         m.scatter(0, 0, marker='v', color=available_colors[i],
                   linestyle='-', s=80, linewidth=1.25, zorder=1,
-                  label=code
-                  )
+                  label=code)
         for sta in net:
             # If an event is given, check that the station is active at time
             if event and not sta.is_active(time=event.preferred_origin().time):
@@ -199,16 +179,17 @@ def plot_stations(m, inv, event=None, annotate_names=False,
                       )
             # Annotate the station name next to the station
             if annotate_names:
-                plt.annotate("{n}.{s}".format(net.code, sta.code),
-                             xy=(x,y), xytext=(x,y), zorder=6, fontsize=7,
-                             bbox=dict(facecolor='w', edgecolor='k',
-                                       boxstyle='round')
+                plt.annotate(f"{net.code}.{sta.code}", xy=(x, y), xytext=(x, y),
+                             zorder=6, fontsize=7, bbox=dict(facecolor='w',
+                                                             edgecolor='k',
+                                                             boxstyle='round')
                              )
 
 
 def plot_stations_simple(m, lats, lons):
     """
     Fill map with stations based on latitude longitude values, nothing fancy
+
     :type m: Basemap
     :param m: basemap object
     :type lats: np.ndarray
@@ -224,7 +205,7 @@ def plot_stations_simple(m, lats, lons):
 
 def annotate_srcrcv_information(m, event, inv):
     """
-    Annotate event receiver information into hard coded map area
+    Annotate event receiver information into bottom right corner of the map
 
     :type m: Basemap
     :param m: basemap object
@@ -237,28 +218,23 @@ def annotate_srcrcv_information(m, event, inv):
     gcdist, baz = gcd_and_baz(event, inv[0][0])
     event_id = event.resource_id.id.split('/')[1]
 
-    plt.annotate(
-        s=("{id} / {net}.{sta}\n"
-           "{date}\n"
-           "{type}={mag:.2f}\n"
-           "Depth(km)={depth:.2f}\n"
-           "Dist(km)={dist:.2f}\n"
-           "BAz(deg)={baz:.2f}").format(
-            id=event_id, net=inv[0].code, sta=inv[0][0].code,
-            date=event.preferred_origin().time,
-            depth=event.preferred_origin().depth*1E-3,
-            type=event.preferred_magnitude().magnitude_type,
-            mag=event.preferred_magnitude().mag, dist=gcdist, baz=baz
-        ),
-        xy=(m.xmin + (m.xmax-m.xmin) * 0.675,
-            m.ymin + (m.ymax-m.ymin) * 0.035),
-        multialignment='right', fontsize=10
-    )
+    plt.annotate(s=(f"{event_id} / {inv[0].code}.{inv[0][0].code}\n"
+                    f"{event.preferred_origin().time}\n"
+                    f"{event.preferred_magnitude().magnitude_type}="
+                    f"{event.preferred_magnitude().mag:.2f}\n"
+                    f"Depth(km)={event.preferred_origin().depth*1E-3:.2f}\n"
+                    f"Dist(km)={gcdist:.2f}\n"
+                    f"BAz(deg)={baz:.2f}"),
+                 xy=(m.xmin + (m.xmax-m.xmin) * 0.675,
+                     m.ymin + (m.ymax-m.ymin) * 0.035), multialignment='right',
+                 fontsize=10
+                 )
 
 
 def connect_source_receiver(m, event, sta, **kwargs):
     """
-    draw a dashed line connecting the station and receiver, highlight station
+    Draw a dashed line connecting the station and receiver, highlight station
+    with a colored marker. Useful for visualizing a source-receiver pair.
 
     :type m: Basemap
     :param m: basemap object
@@ -274,9 +250,12 @@ def connect_source_receiver(m, event, sta, **kwargs):
     markercolor = kwargs.get("markercolor", "r")
     zorder = kwargs.get("zorder", 100)
 
+    # Get coordinates in map extent
     event_x, event_y = m(event.preferred_origin().longitude,
                          event.preferred_origin().latitude)
     station_x, station_y = m(sta.longitude, sta.latitude)
+
+    # Plot line, station, event
     m.plot([event_x, station_x], [event_y, station_y], linestyle, linewidth,
            c=linecolor, zorder=zorder-10)
     m.scatter(station_x, station_y, marker=marker, color=markercolor,
@@ -296,6 +275,7 @@ def interpolate_and_contour(m, x, y, z, len_xi, len_yi, fill=True,
     function will interpolate the station values (e.g. misfit) over the area
     covered by the stations, and create a contour plot that can be overlaid onto
     the map object
+
     :type m: Basemap
     :param m: basemap object
     :type x: list
@@ -334,8 +314,7 @@ def interpolate_and_contour(m, x, y, z, len_xi, len_yi, fill=True,
 
     # Use contourf, for filled contours
     if fill:
-        cs = m.contourf(xi, yi, zi, vmin=0, zorder=100, alpha=0.6,
-                        cmap=colormap)
+        m.contourf(xi, yi, zi, vmin=0, zorder=100, alpha=0.6, cmap=colormap)
         # Add a colorbar
         max_value = myround(np.nan_to_num(zi).max(), base=10, choice='up')
         cmap = plt.cm.ScalarMappable(cmap=colormap)
@@ -359,7 +338,7 @@ def interpolate_and_contour(m, x, y, z, len_xi, len_yi, fill=True,
 
 def initiate_basemap(map_corners, scalebar=True, **kwargs):
     """
-    set up the basemap object in the same way each time
+    Set up the basemap object in the same way each time
 
     :type map_corners: dict of floats
     :param map_corners: {lat_min,lat_max,lon_min,lon_max}

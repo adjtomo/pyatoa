@@ -15,7 +15,8 @@ mpl.rcParams['axes.linewidth'] = 2
 
 def plot_output_optim(path_to_optim, show=False, save=''):
     """
-    Sesiflows specific
+    Sesiflows specific function
+
     Read the text file output.optim, which contains
     misfit values, step length values and iteration numbers.
     Parse the values and plot them on a scatter plot to show how the misfit
@@ -56,7 +57,7 @@ def plot_output_optim(path_to_optim, show=False, save=''):
         # Plot the misfit values
         ax.scatter(range(offset, offset + len(misfits_)), misfits_, c=color,
                    zorder=5, s=60)
-        ax.annotate(s="iter {}".format(itr), xytext=(offset+0.2, misfits_[0]),
+        ax.annotate(s=f"iter {itr}", xytext=(offset+0.2, misfits_[0]),
                     xy=(offset, misfits_[0]), color=colormap(norm(itr)),
                     fontsize=9, zorder=6
                     )
@@ -132,8 +133,8 @@ def plot_misfit_histogram(misfit_values, config, binsize=0.1):
                                     linewidth=1.5, zorder=10, label=model
                                     )
     plt.xlabel("Misfit Value ")
-    plt.ylabel("Count (N={})".format(len(misfits)))
-    plt.title("{eid} Misfits ".format(eid=config.event_id))
+    plt.ylabel(f"Count (N={len(misfits)})")
+    plt.title(f"{config.event_id} Misfits")
     plt.grid(linewidth=1.0, which='both', zorder=1)
     plt.legend()
     plt.xlim([-0.05, bins.max() + 0.05])
@@ -141,43 +142,3 @@ def plot_misfit_histogram(misfit_values, config, binsize=0.1):
     plt.show()
 
 
-def plot_cc_time_shift_histogram(cc_time_shifts, config, binsize=0.1):
-    """
-    create a histogram of cross correlation time shifts
-    """
-    raise NotImplementedError
-
-    for model in misfit_values.keys():
-        ccts = np.fromiter(cc_time_shifts[model].values(), dtype="float")
-        max_ccts = myround(max([abs(ccts.max()), abs(ccts.min())]), base=0.1,
-                           choice="up"
-                           )
-        n, bins, patches = plt.hist(x=ccts,
-                                    bins=len(np.arange(0, max_ccts, binsize)),
-                                    range=(-max_ccts, max_ccts), color="orange",
-                                    histtype="bar", edgecolor="black",
-                                    linewidth=1.5, zorder=10, label=model
-                                    )
-        mean = np.mean(ccts)
-        onesigma = np.std(ccts)
-        mean_one_sigma = "$\mu$ + $\sigma$ = {m:.2f} $\pm$ {s:.2f}s".format(
-            m=mean, s=onesigma
-        )
-        plt.text(x=-max_ccts + .5, y=n.max() - 1, s=mean_one_sigma,
-                 bbox=dict(facecolor='w', alpha=0.5), zorder=11
-                 )
-        plt.axvline(x=mean, ymin=n.min(), ymax=n.max(), linestyle='-',
-                    color='k')
-        for i in [-1, 1]:
-            plt.axvline(x=i * onesigma, ymin=n.min(), ymax=n.max(),
-                        linestyle='--', color='k'
-                        )
-    # plot attributes
-    plt.xlabel("CC Time Shift [s]")
-    plt.ylabel("Count (N={})".format(len(ccts)))
-    plt.title("{eid} CC Time Shift ".format(eid=config.event_id))
-    plt.legend()
-    plt.grid(linewidth=1.0, which='both', zorder=1)
-    plt.xlim([-(max_ccts + 0.05), max_ccts + 0.05])
-    plt.ylim([0, max(n) + 0.5])
-    plt.show()

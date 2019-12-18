@@ -35,6 +35,7 @@ def pretty_grids(input_ax, twax=False):
     input_ax.set_axisbelow(True)
     input_ax.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
     input_ax.tick_params(which='both', direction='in', top=True, right=True)
+
     # Set the grids 'on' only if main axis
     if not twax:
         input_ax.minorticks_on()
