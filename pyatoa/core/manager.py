@@ -18,7 +18,6 @@ from obspy.signal.filter import envelope
 
 from pyatoa import logger
 from pyatoa.core.gatherer import Gatherer
-from pyatoa.plugins.pyflex_config import set_pyflex_station_event
 from pyatoa.plugins.pyadjoint_config import src_type
 
 from pyatoa.utils.asdf.additions import write_adj_src_to_asdf
@@ -74,13 +73,13 @@ class Manager:
         :param adj_srcs: adjoint source waveforms stored in dictionaries
 
         """
+        # Main workflow requirements
         self.config = config
         self.ds = ds
         self.gatherer = None
         self.station_code = station_code
-
-        # Make sure streams are copied to avoid affecting original data
         self.inv = inv
+        # Copy Streams to avoid affecting original data
         if st_obs is not None:
             self.st_obs = st_obs.copy()
         else:
@@ -93,141 +92,52 @@ class Manager:
         self.windows = windows
         self.staltas = staltas
         self.adj_srcs = adj_srcs
-        # Internally used statistics
-        self.num_windows = 0
-        self.len_obs = 0
-        self.len_syn = 0
-        self.total_misfit = 0
-        self.time_offset_sec = 0
-        self.half_dur = 0
-        # Flags to show status of workflow
-        self.dataset_id = None
-        self.event_name = None
-        self.inv_name = None
-        self.half_dur_flag = None
-        self.obs_process_flag = False
-        self.syn_process_flag = False
-        self.syn_shift_flag = False
-        self.pyadjoint_misfit = 0
+        # Internal statistics
+        self._num_windows = 0
+        self._len_obs = 0
+        self._len_syn = 0
+        self._misfit = 0
+        self._time_offset_sec = 0
+        self._half_dur = 0
+        # Internal flags for workflow status
+        self._dataset_id = None
+        self._event_name = None
+        self._inv_name = None
+        self._standardize_flag = False
+        self._obs_filter_flag = False
+        self._syn_filter_flag = False
 
-        # If an event is given, manual set event, otherwise event will
-        # be None and gatherer will launch and try to gather an event
-        # If empty and no event, no gatherer is launched, event forced to None
+        # If event ID set, launch gatherer, gather an event
         if not empty or event is not None:
-            self.launch(set_event=event)
+            self._launch(event=event)
         else:
+            # If 'empty' or no event, dont launch gatherer, event is None
             self.event = None
 
     def __str__(self):
         """
-        Print statement shows available information inside the workflow.
+        Print statement shows available data detailing workflow
         """
         self._check()
         return ("DATA\n"
-                f"\tdataset (ds):                 {self.dataset_id}\n"
-                f"\tevent:                        {self.event_name}\n"
-                f"\tinventory (inv):              {self.inv_name}\n"
-                f"\tobserved data (st_obs):       {self.len_obs}\n"
-                f"\tsynthetic data (st_syn):      {self.len_syn}\n"
+                f"\tdataset (ds):                 {self._dataset_id}\n"
+                f"\tevent:                        {self._event_name}\n"
+                f"\tmoment tensor (half_dur):     {self._half_dur}\n"
+                f"\tinventory (inv):              {self._inv_name}\n"
+                f"\tobserved data (st_obs):       {self._len_obs}\n"
+                f"\tsynthetic data (st_syn):      {self._len_syn}\n"
                 "WORKFLOW\n"
-                f"\tobs data preprocessed:        {self.obs_process_flag}\n"
-                f"\tsyn data preprocessed:        {self.syn_process_flag}\n"
-                f"\thalf duration (half_dur):     {self.half_dur_flag}\n"
-                f"\tpyflex (num_windows):         {self.num_windows}\n"
-                f"\tpyadjoint (total_misfit):     {self.pyadjoint_misfit}\n"
+                f"\tstandardized:                 {self._standardize_flag}\n"
+                f"\tobs data preproc:             {self._obs_filter_flag}\n"
+                f"\tsyn data preproc:             {self._syn_filter_flag}\n"
+                f"\tmisfit windows (windows):     {self._num_windows}\n"
+                f"\ttotal misfit (adj_srcs):      {self._misfit}\n"
                 )
-
-    def _check(self):
-        """
-        Update flag information for the User to know location in the workflow
-        """
-        # Give dataset filename if available
-        if self.ds is not None:
-            self.dataset_id = basename(self.ds.filename)
-
-        # Check to see if event is an Event object
-        if isinstance(self.event, obspy.core.event.Event):
-            self.event_name = self.event.resource_id
-        else:
-            self.event_name = None
-
-        # Make sure observed waveforms are Stream objects,
-        # Check if the observed waveforms have been preprocessed
-        if isinstance(self.st_obs, obspy.Stream) and len(self.st_obs):
-            self.len_obs = len(self.st_obs)
-            self.obs_process_flag = (
-                    hasattr(self.st_obs[0].stats, "processing") and
-                    len(self.st_obs[0].stats.processing) >= 3
-            )
-        else:
-            self.len_obs = 0
-            self.obs_process_flag = False
-
-        # Make sure synthetic waveforms are Stream objects
-        # Check if the synthetic waveforms have been preprocessed
-        if isinstance(self.st_syn, obspy.Stream) and len(self.st_syn):
-            self.len_syn = len(self.st_syn)
-            self.syn_process_flag = (
-                    hasattr(self.st_syn[0].stats, "processing") and
-                    len(self.st_syn[0].stats.processing) >= 3
-            )
-        else:
-            self.len_syn = 0
-            self.syn_process_flag = False
-
-        # Check if preprocessing found a source time function
-        if self.half_dur is not None:
-            self.half_dur_flag = f"{self.half_dur:.3f}"
-
-        # Check to see if inv is an Inventory object
-        if isinstance(self.inv, obspy.Inventory):
-            self.inv_name = f"{self.inv[0].code}.{self.inv[0][0].code}"
-        else:
-            self.inv_name = None
-
-        # Check if Pyflex has been run, if so return the number of windows made
-        self.num_windows = 0
-        if isinstance(self.windows, dict):
-            for key in self.windows.keys():
-                self.num_windows += len(self.windows[key])
-
-        # Check if Pyadjoint has been run, if so return the total misfit
-        if isinstance(self.adj_srcs, dict):
-            self.pyadjoint_misfit = f"{self.total_misfit:.3f}"
-
-    def reset(self, hard_reset=False):
-        """
-        Convenience function to delete all data in the Manager, and hence start
-        the workflow from the start without losing your event or gatherer.
-
-        Soft reset retains event information so that another Station can be
-        gathered for the same event
-
-        :type hard_reset: bool
-        :param hard_reset: hard or soft reset, soft reset doesnt re-instantiate
-            gatherer class, and leaves the same event, useful for repeating
-            workflow. Hard reset re-initites. default soft
-        """
-        self.station_code = None
-        self.st_obs = None
-        self.st_syn = None
-        self.inv = None
-        self.windows = None
-        self.staltas = None
-        self.adj_srcs = None
-        self.time_offset_sec = 0
-        self.num_windows = 0
-        self.total_misfit = 0
-        self.half_dur = 0
-
-        if hard_reset:
-            self.launch(reset=True)
-        self._check()
 
     @property
     def st(self):
         """
-        Return all the streams available in the manager class
+        Return all streams available in Class
         """
         if isinstance(self.st_syn, obspy.Stream) and \
                 isinstance(self.st_obs, obspy.Stream):
@@ -241,44 +151,180 @@ class Manager:
         else:
             return None
 
-    def launch(self, reset=False, set_event=None):
+    @property
+    def num_windows(self):
+        return self._num_windows
+
+    @property
+    def misfit(self):
+        return self._misfit
+
+    @property
+    def time_offset_sec(self):
+        return self._time_offset_sec
+
+    @property
+    def half_dur(self):
+        return self._half_dur
+
+    def _check(self):
         """
-        Initiate the prerequisite parts of the Manager class. Populate with
-        an obspy event object which is gathered from FDSN by default.
-        Allow user to provide their own ObsPy event object so that the
-        Gatherer does not need to query FDSN
+        Update flag information for the User to know location in the workflow.
+
+        NOTE:
+        This function rechecks conditions whenever called. This is a safeguard
+        incase something has gone awry mid-workflow. Flags could be set and
+        forget but that could lead to trouble somewhere down the line.
+
+        Flags should only ever be set by _check() or by the individual functions
+        that are allowed to set their own flags, never User.
+        """
+        # Give dataset filename if available
+        if (self.ds is not None) and (self._dataset_id is not None):
+            self._dataset_id = basename(self.ds.filename)
+
+        # Event as object check, set until reset()
+        if (self._event_name is None) and \
+                isinstance(self.event, obspy.core.event.Event):
+            self._event_name = self.event.resource_id
+
+        # Observed waveforms as Stream objects, and preprocessed
+        if isinstance(self.st_obs, obspy.Stream) and len(self.st_obs):
+            self._len_obs = len(self.st_obs)
+            # Check if a filter has been applied in the processing
+            self._obs_filter_flag = (
+                    hasattr(self.st_obs[0].stats, "processing") and
+                    ("filter(options" in
+                     "".join(self.st_obs[0].stats.processing))
+            )
+        else:
+            self._len_obs = 0
+            self._obs_filter_flag = False
+
+        # Synthetic waveforms as Stream objects and preprocessed
+        if isinstance(self.st_syn, obspy.Stream) and len(self.st_syn):
+            self._len_syn = len(self.st_syn)
+            # Check if a filter has been applied in the processing
+            self._syn_filter_flag = (
+                    hasattr(self.st_syn[0].stats, "processing") and
+                    ("filter(options" in
+                     "".join(self.st_syn[0].stats.processing))
+            )
+        else:
+            self._len_syn = 0
+            self._syn_filter_flag = False
+
+        # Standardized waveforms by checking npts and sampling rate.
+        # If any of the traces fails the check, the entire flag is False
+        # TO DO: also check start and end times?
+        if (self.st_obs and self.st_syn) is not None:
+            self._standardize_flag = True
+            for obs, syn in zip(self.st_obs, self.st_syn):
+                if (obs.stats.sampling_rate == syn.stats.sampling_rate) and \
+                        (obs.stats.npts == syn.stats.npts):
+                    continue
+                else:
+                    self._standardize_flag = False
+                    break
+        else:
+            self._standardize_flag = False
+
+        # Inventory station check
+        if isinstance(self.inv, obspy.Inventory):
+            self.inv_name = f"{self.inv[0].code}.{self.inv[0][0].code}"
+        else:
+            self.inv_name = None
+
+        # Pyflex check if run, return the number of windows made
+        self._num_windows = 0
+        if isinstance(self.windows, dict):
+            for key in self.windows.keys():
+                self._num_windows += len(self.windows[key])
+
+    def _launch(self, reset=False, event=None, idx=0):
+        """
+        Appends an event to the Manager class, instantiates low-level Gatherer.
+
+        If an Event or Catalog object is given, passes that to both Manager and
+        Gatherer classes.
+
+        If no Event given, queries FDSN via the Gatherer class to search for
+        an event.
 
         :type reset: bool
         :param reset: Reset the Gatherer class for a new run
-        :type set_event: obspy.core.event.Event
-        :param set_event: if given, will bypass gathering the event and manually
-            set to the user given event
+        :type event: str or obspy.core.event.Event or
+            obspy.core.event.catalog.Catalog
+        :param event: either an event object to manually set event, or an ID
+            to use when searching FDSN for event objects
+        :type idx: int
+        :param idx: if set event given as Catalog, idx allows user to specify
+            which event index in Catalog, defaults to 0.
         """
-        # First, launch the gatherer or reset the gatherer
+        # Launch or reset the Gatherer
         if (self.gatherer is None) or reset:
             logger.info("initiating/resetting gatherer")
             self.gatherer = Gatherer(config=self.config, ds=self.ds)
 
-        # Second, get event information
-        if set_event:
-            # If a catalog and not an event is given, take the first entry
-            if isinstance(set_event, obspy.core.event.catalog.Catalog):
-                logger.info("event given as catalog, taking first entry")
-                set_event = set_event[0]
-            # Populate the gatherer and self
-            self.gatherer.set_event(set_event)
-            self.event = self.gatherer.event
-        # If no event given by User, start searching for the event
-        else:
-            # If the gatherer already has an event, have Manager copy it
-            if self.gatherer.event:
+        # If no Event ID is specified in Config, do nothing.
+        if self.config.event_id is not None:
+            # If the User provides their own Obspy Event or Catalog object
+            if event and not isinstance(event, str):
+                # If catalog given, take the `idx` entry
+                if isinstance(event, obspy.core.event.catalog.Catalog):
+                    logger.info(f"event given as catalog, taking entry {idx}")
+                    event = event[idx]
+                # Populate the Gatherer and Manager with event object
+                self.gatherer.set_event(event)
                 self.event = self.gatherer.event
-            # If this is the first time launching the gatherer, gather event
+            # If no event given by User, turn to Gatherer
             else:
-                if self.config.event_id:
+                # If Gatherer has an event, have Manager copy it
+                if self.gatherer.event:
+                    self.event = self.gatherer.event
+                # If Gatherer empty, try gather event
+                else:
                     self.event = self.gatherer.gather_event()
 
-    def gather_data(self, station_code, choice=None):
+    def reset(self, hard_reset=False):
+        """
+        Delete all collected data in the Manager, to restart workflow.
+        Retains Config, ds.
+
+        Soft reset retains event information so that another Station can be
+        gathered for the same event, without needing to relaunch Gatherer and
+        gather the same event.
+
+        :type hard_reset: bool
+        :param hard_reset: hard or soft reset, soft reset doesnt re-instantiate
+            gatherer class, and leaves the same event, useful for repeating
+            workflow. Hard reset re-initites. default soft
+        """
+        self.station_code = None
+        self.st_obs = None
+        self.st_syn = None
+        self.inv = None
+        self.windows = None
+        self.staltas = None
+        self.adj_srcs = None
+        self._num_windows = 0
+        self._len_obs = 0
+        self._len_syn = 0
+        self._misfit = 0
+        self._time_offset_sec = 0
+        self._half_dur = 0
+        self._dataset_id = None
+        self._event_name = None
+        self._inv_name = None
+        self._standardize_flag = False
+        self._obs_filter_flag = False
+        self._syn_filter_flag = False
+
+        if hard_reset:
+            self._launch(reset=True)
+        self._check()
+
+    def gather(self, station_code, choice=None):
         """
         Launch a gatherer object and gather event, station and waveform
         information given a station code. Fills the manager based on information
@@ -297,10 +343,10 @@ class Manager:
             than gathering all. Allowed: 'inv', 'st_obs', 'st_syn'
         """
         if self.gatherer is None:
-            self.launch()
+            self._launch()
         try:
             self.station_code = station_code
-            logger.info(f"gathering {station_code} for {self.config_event_id}")
+            logger.info(f"gathering {station_code} for {self.config.event_id}")
             # Gather all data
             if choice is None:
                 logger.debug("gathering station information")
@@ -324,34 +370,50 @@ class Manager:
             print(e)
             return
 
-    def save_to_ds(self):
+    def write(self, write_to="ds"):
         """
-        If gather_data is skipped altogether (e.g. User provides streams,
-        inventory and event information in the Manager init), but data should
-        still be saved into an ASDFDataSet for data storage, this function will
-        fill that dataset in the same fashion as the data_gatherer class, and
-        its internal subclasses.
-        """
-        # Only populate if all requisite parts are given
-        if self.event and self.inv and self.st_obs and self.st_syn:
-            try:
-                self.ds.add_quakeml(self.event)
-            except ValueError:
-                logger.debug("event already present, not added")
-            try:
-                self.ds.add_stationxml(self.inv)
-            except TypeError:
-                logger.debug("inv already present, not added")
-            # PyASDF has its own warnings if observed data already present
-            self.ds.add_waveforms(waveform=self.st_obs,
-                                  tag=self.config.observed_tag)
-            self.ds.add_waveforms(waveform=self.st_syn,
-                                  tag=self.config.synthetic_tag)
-        else:
-            logger.debug(
-                "manager does not contain all data, cannot fill dataset")
+        Write the data collected inside Manager to either a Pyasdf Dataset,
+        or to individual files
 
-    def populate(self, station_code, model):
+        :type write_to: str
+        :param write_to: choice to write data to, if "ds" writes to
+            Pyasdf Dataset
+
+        write_to == "ds"
+            If `gather` is skipped but data should still be saved into an
+            ASDFDataSet for data storage, this function will fill that dataset
+            in the same fashion as the Gatherer class
+        write_to == "/path/to/output"
+            write out all the internal data of the manager to a path
+
+        """
+        if write_to == "ds":
+            # Only populate if all requisite parts are given
+            if self.event:
+                try:
+                    self.ds.add_quakeml(self.event)
+                except ValueError:
+                    logger.debug("event already present, not added")
+            if self.inv:
+                try:
+                    self.ds.add_stationxml(self.inv)
+                except TypeError:
+                    logger.debug("inv already present, not added")
+            # PyASDF has its own warnings if waveform data already present
+            if self.st_obs:
+                self.ds.add_waveforms(waveform=self.st_obs,
+                                      tag=self.config.observed_tag)
+            if self.st_syn:
+                self.ds.add_waveforms(waveform=self.st_syn,
+                                      tag=self.config.synthetic_tag)
+            if self.windows:
+                self._save_windows()
+            if self.adj_srcs:
+                self._save_adj_srcs()
+        else:
+            raise NotImplementedError
+
+    def load(self, station_code, model, ds=None):
         """
         Populate the manager using a given PyASDF Dataset, based on user-defined
         station code. Useful for re-instantiating an existing workflow that
@@ -361,34 +423,41 @@ class Manager:
         :param station_code: SEED conv. code, e.g. NZ.BFZ.10.HHZ
         :type model: str
         :param model: model number to search for data, e.g. 'm00'
+        :type ds: None or pyasdf.ASDFDataSet
+        :param ds: dataset can be given to load from, will not set the ds
         """
-        if self.ds:
-            assert len(station_code.split('.')) == 4,\
-                "station_code must be in form 'NN.SSS.LL.CCC'"
+        # Allows a ds to be given to the Manager
+        if self.ds and ds is None:
+            ds = self.ds
+        else:
+            raise AttributeError("load requires a Dataset")
 
-            self.event = self.ds.events[0]
+        assert len(station_code.split('.')) == 4,\
+            "station_code must be in form 'NN.SSS.LL.CCC'"
 
-            net, sta, _, _ = station_code.split('.')
-            sta_tag = f"{net}.{sta}"
-            if sta_tag in self.ds.waveforms.list():
-                self.st_obs = self.ds.waveforms[sta_tag][
-                    self.config.observed_tag]
-                self.st_syn = self.ds.waveforms[sta_tag][
-                    self.config.synthetic_tag.format(model)]
-                self.inv = self.ds.waveforms[sta_tag].StationXML
+        self.event = ds.events[0]
+
+        net, sta, _, _ = station_code.split('.')
+        sta_tag = f"{net}.{sta}"
+        if sta_tag in ds.waveforms.list():
+            self.st_obs = ds.waveforms[sta_tag][self.config.observed_tag]
+            self.st_syn = ds.waveforms[sta_tag][
+                self.config.synthetic_tag.format(model)]
+            self.inv = ds.waveforms[sta_tag].StationXML
 
     def standardize(self):
         """
         Standardize the observed and synthetic traces in place. Ensure that the
         data streams have the same start and endtimes, and sampling rate, so
-        that data comparisons can be made.
-        This function is envisioned as all preprocessing that relates to timing
+        that data comparisons can be made; all preprocessing related to timing
         and sampling rate.
         """
         self._check()
-        if (self.len_obs or self.len_syn) == 0:
+        if (self._len_obs or self._len_syn) == 0:
             logger.info("cannot standardize, no waveform data")
             return
+        elif not self._standardize_flag:
+            logger.info("already standardized")
 
         # Zero pad the data if set by Config
         if self.config.zero_pad:
@@ -404,9 +473,15 @@ class Manager:
             st_a=self.st_obs, st_b=self.st_syn, force="b")
 
         # Retrieve the first timestamp in the .sem? file from Specfem
-        self.time_offset_sec = (self.st_syn[0].stats.starttime -
-                                self.event.preferred_origin().time
-                                )
+        if self.event is not None:
+            self._time_offset_sec = (self.st_syn[0].stats.starttime -
+                                     self.event.preferred_origin().time
+                                     )
+        else:
+            self._time_offset_sec = 0
+        logger.debug(f"time offset set to {self._time_offset_sec}s")
+
+        self._standardize_flag = True
 
     def preprocess(self):
         """
@@ -426,7 +501,7 @@ class Manager:
         if self.config.rotate_to_rtz:
             _, baz = gcd_and_baz(event=self.event, sta=self.inv[0][0])
 
-        # Determine if different preprocessing requried for syn-syn case
+        # Determine if different preprocessing required for syn-syn case
         if self.config.synthetics_only:
             inv_ = None
             synthetic_unit_ = self.config.synthetic_unit
@@ -444,9 +519,8 @@ class Manager:
                               )
         
         logger.info("preprocessing synthetic data")
-        self.st_syn = preproc(st_original=self.st_syn, inv=None,
-                              synthetic_unit=self.config.synthetic_unit,
-                              back_azimuth=baz,
+        self.st_syn = preproc(st_original=self.st_syn, inv=inv_,
+                              synthetic_unit=synthetic_unit_, back_azimuth=baz,
                               unit_output=self.config.unit_output,
                               corners=self.config.filter_corners,
                               filter_bounds=[self.config.min_period,
@@ -455,147 +529,155 @@ class Manager:
         
         # Mid-check to see if preprocessing failed
         self._check()
-        if not self.obs_process_flag or not self.syn_process_flag:
+        if not self._obs_filter_flag or not self._syn_filter_flag:
             logger.info("preprocessing failed")
             return
 
         # Convolve synthetic data with a gaussian source-time-function
+        self._convolve_source_time_function()
+
+    def _convolve_source_time_function(self):
+        """
+        Convolve synthetic data with a gaussian source time function, time
+        shift by a given half duration.
+
+        TO DO:
+            check if time_offset is doing what I want it to do
+        """
         try:
             moment_tensor = self.event.focal_mechanisms[0].moment_tensor
-            self.half_dur = moment_tensor.source_time_function.duration / 2
+            self._half_dur = moment_tensor.source_time_function.duration / 2
             self.st_syn = stf_convolve(st=self.st_syn,
-                                       half_duration=self.half_dur,
+                                       half_duration=self._half_dur,
                                        time_shift=False,
-                                       time_offset=self.time_offset_sec
+                                       time_offset=self._time_offset_sec
                                        )
             # If a synthetic-synthetic case, convolve observations too
             if self.config.synthetics_only:
                 self.st_obs = stf_convolve(st=self.st_obs,
-                                           half_duration=self.half_dur,
-                                           time_shift=False
+                                           half_duration=self._half_dur,
+                                           time_shift=False,
+                                           time_offset=self._time_offset_sec
                                            )
         except (AttributeError, IndexError):
-            logger.info("moment tensor not found for event")
+            logger.info("moment tensor not found for event, cannot convolve")
 
-    def run_pyflex(self):
+    def window(self):
         """
         Call Pyflex to calculate best fitting misfit windows given observation
-        and synthetic data. Return dictionaries of window objects,
-        as well as STA/LTA traces. If a pyasdf dataset is present,
-        save misfit windows in as auxiliary data.
-        If no misfit windows are found for a given station, throw a warning
-        because pyadjoint won't run.
-        """
-        # Pre-check to see if data has already been gathered, standardized
-        self._check()
-        if not self.obs_process_flag or not self.syn_process_flag:
-            logger.info("cannot run Pyflex, no waveforms, or not processed")
-            return
+        and synthetic data. Data must be standardized.
 
+        Save ouputs as dictionaries of window objects, as well as STA/LTAs.
+        If a pyasdf dataset is present, save misfit windows as auxiliary data
+        """
+        # Pre-check to see if data has already been standardized
+        self._check()
+        if not self._standardize_flag:
+            logger.info("cannot window, waveforms not standardized")
+            return
         logger.info(f"running Pyflex type {self.config.pyflex_map}")
 
-        # Create Pyflex Station and Event objects
-        pf_sta, pf_ev = set_pyflex_station_event(inv=self.inv, event=self.event)
-
         # Windows and staltas saved as dictionary objects by component name
-        num_windows = 0
-        windows, staltas = {}, {}
+        num_windows, windows, staltas = 0, {}, {}
         for comp in self.config.component_list:
             try:
-                # Calculate the STA/LTA first, save to dictionary
-                stalta = pyflex.stalta.sta_lta(
+                staltas[comp] = pyflex.stalta.sta_lta(
                     dt=self.st_syn.select(component=comp)[0].stats.delta,
                     min_period=self.config.min_period,
                     data=envelope(self.st_syn.select(component=comp)[0].data)
                 )
-                staltas[comp] = stalta
-
-                # Run Pyflex to select misfit windows as list of Window objects
-                window = pyflex.select_windows(
-                    observed=self.st_obs.select(component=comp),
-                    synthetic=self.st_syn.select(component=comp),
-                    config=self.config.pyflex_config, event=pf_ev,
-                    station=pf_sta,
-                    )
-
-                # Suppress windows that contain signals smaller than some
-                # fraction of the peak amplitude contained in the waveform
-                if window and self.config.window_amplitude_ratio > 0:
-                    windows_by_amplitude = []
-                    for win_ in window:
-                        waveform_peak = abs_max(
-                            self.st_syn.select(component=comp)[0].data
-                        )
-                        window_peak = abs_max(
-                            self.st_syn.select(
-                                component=comp)[0].data[win_.left:win_.right]
-                        )
-                        if (abs(window_peak / waveform_peak) >
-                                self.config.window_amplitude_ratio):
-                            windows_by_amplitude.append(win_)
-                        else:
-                            logger.info("removing window due to global "
-                                        "amplitude ratio: {0} < {1}".format(
-                                            abs(window_peak / waveform_peak),
-                                            self.config.window_amplitude_ratio)
-                                        )
-                            continue
-                    window = windows_by_amplitude
-                # Add window to dictionary object
-                if window:
-                    windows[comp] = window
+                windows[comp] = self._select_windows(comp)
+                _nwin = len(windows[comp])
             except IndexError:
-                window = []
+                _nwin = 0
 
             # Count windows and tell User
-            num_windows += len(window)
-            logger.info("{0} window(s) for comp {1}".format(len(window), comp))
-
-        # Let the User know that no windows were found for this station
-        if num_windows == 0:
-            logger.info("empty windows")
+            num_windows += _nwin
+            logger.info(f"{_nwin} window(s) for comp {comp}")
 
         # Store information for Pyadjoint and plotting
         self.windows = windows
         self.staltas = staltas
-        self.num_windows = num_windows
-    
-        # If an ASDFDataSet is given, save the windows into auxiliary_data
-        if self.ds is not None and (num_windows != 0):
-            logger.debug("saving misfit windows to PyASDF")
-            for comp in windows.keys():
-                for i, window in enumerate(windows[comp]):
-                    tag = (f"{self.config.model_number}/" 
-                           f"{self.st_obs[0].stats.network}_"
-                           f"{self.st_obs[0].stats.station}_{comp}_{i}"
-                           )
+        self._num_windows = num_windows
 
-                    # ASDF auxiliary_data subgroups don't play nice with nested
-                    # dictionaries, which the window parameters are. Format them
-                    # a bit simpler for saving into the dataset
-                    window_dict = create_window_dictionary(window)
-                    with warnings.catch_warnings():
-                        warnings.simplefilter("ignore")
-                        self.ds.add_auxiliary_data(data=np.array([True]),
-                                                   data_type="MisfitWindows",
-                                                   parameters=window_dict,
-                                                   path=tag
-                                                   )
+        if self.ds is not None and (self.num_windows != 0):
+            self._save_windows()
+
         # Let the User know the outcomes of Pyflex
         logger.info(f"{num_windows} window(s) total found")
 
-    def run_pyadjoint(self):
+    def _select_windows(self, comp):
+        """
+        Custom window selection function to include suppression by amplitude
+
+        :type comp: str
+        :param comp: component to select waveform data by
+        :rtype window: pyflex.Window
+        :return window: the windows calculated by Pyflex and filtered by amp rat
+        """
+        # Run Pyflex to select misfit windows as list of Window objects
+        window = pyflex.select_windows(
+            observed=self.st_obs.select(component=comp),
+            synthetic=self.st_syn.select(component=comp),
+            config=self.config.pyflex_config, event=self.event,
+            station=self.inv)
+
+        # Suppress windows that contain signals smaller than some
+        # fraction of the peak amplitude contained in the synthetic waveform
+        if window and self.config.window_amplitude_ratio > 0:
+            windows_by_amplitude = []
+            for win_ in window:
+                waveform_peak = abs_max(
+                    self.st_syn.select(component=comp)[0].data
+                )
+                window_peak = abs_max(
+                    self.st_syn.select(
+                        component=comp)[0].data[win_.left:win_.right]
+                )
+                if (abs(window_peak / waveform_peak) >
+                        self.config.window_amplitude_ratio):
+                    windows_by_amplitude.append(win_)
+                else:
+                    logger.info(
+                        "removing window due to global amplitude ratio: "
+                        f"{ abs(window_peak / waveform_peak)} < "
+                        f"{self.config.window_amplitude_ratio}")
+                    continue
+            window = windows_by_amplitude
+
+        return window
+
+    def _save_windows(self, data_type="MisfitWindows"):
+        """
+        Save the misfit windows that are calculated by Pyflex into a Dataset
+        """
+        logger.debug("saving misfit windows to PyASDF")
+        for comp in self.windows.keys():
+            for i, window in enumerate(self.windows[comp]):
+                tag = (f"{self.config.model_number}/" 
+                       f"{self.st_obs[0].stats.network}_"
+                       f"{self.st_obs[0].stats.station}_{comp}_{i}"
+                       )
+
+                # ASDF auxiliary_data subgroups don't play nice with nested
+                # dictionaries, which the window parameters are. Format them
+                # a bit simpler for saving into the dataset
+                window_dict = create_window_dictionary(window)
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore")
+                    self.ds.add_auxiliary_data(data=np.array([True]),
+                                               data_type=data_type,
+                                               parameters=window_dict,
+                                               path=tag
+                                               )
+
+    def measure_misfit(self):
         """
         Run pyadjoint on observation and synthetic data given misfit windows
         calculated by pyflex. Method for caluculating misfit set in config,
         pyadjoint config set in external configurations. Returns a dictionary
         of adjoint sources based on component. Saves resultant dictionary
         to a pyasdf dataset if given.
-
-        NOTE: This is not in the PyAdjoint docs, but in
-        pyadjoint.calculate_adjoint_source, the window needs to be a list of
-        lists, with each list containing the [left_window,right_window];
-        each window argument should be given in units of time (seconds)
 
         NOTE: Pyatoa was developed with a dev branch of Pyadjoint, located here
 
@@ -605,78 +687,105 @@ class Manager:
         """
         self._check()
 
-        # Check that data is available
-        if not self.obs_process_flag or not self.syn_process_flag:
-            logger.info("cannot run Pyadjoint, no waveforms, or not processed")
+        # Check that data has been filtered, standardized
+        if not (self._obs_filter_flag or self._syn_filter_flag):
+            logger.info("cannot run Pyadjoint, not filtered, or not processed")
             return
-        # Check that windows are available
-        if self.num_windows == 0:
-            logger.info("cannot run Pyadjoint, no Pyflex windows")
-            return
-
+        elif not self._standardize_flag:
+            logger.info("cannot run Pyadjoint, traces not standardized")
         logger.info(f"running Pyadjoint type {self.config.adj_src_type}")
 
-        # Iterate over given windows produced by Pyflex
-        total_misfit = 0
-        adjoint_sources = {}
-        for key in self.windows:
-            adjoint_windows = []
+        # Create list of windows needed for Pyadjoint
+        adjoint_windows = self._format_windows()
 
-            # Prepare Pyflex window indices to give to Pyadjoint
-            for win in self.windows[key]:
-                adj_win = [win.left * self.st_obs[0].stats.delta,
-                           win.right * self.st_obs[0].stats.delta]
-                adjoint_windows.append(adj_win)
-
-            # Run Pyadjoint to retrieve adjoint source objects
+        # Run Pyadjoint to retrieve adjoint source objects
+        total_misfit, adjoint_sources = 0, {}
+        for comp, adjoint_window in adjoint_windows.items():
             adj_src = pyadjoint.calculate_adjoint_source(
                 adj_src_type=src_type(self.config.adj_src_type),
                 config=self.config.pyadjoint_config,
-                observed=self.st_obs.select(component=key)[0],
-                synthetic=self.st_syn.select(component=key)[0],
+                observed=self.st_obs.select(component=comp)[0],
+                synthetic=self.st_syn.select(component=comp)[0],
                 window=adjoint_windows, plot=False
                 )
-            
-            # Save adjoint sources in dictionary object
-            adjoint_sources[key] = adj_src
-            logger.info(f"{adj_src.misfit:.3f} misfit for comp {key}")
+
+            # Save adjoint sources in dictionary object. Sum total misfit
+            adjoint_sources[comp] = adj_src
+            logger.info(f"{adj_src.misfit:.3f} misfit for comp {comp}")
             total_misfit += adj_src.misfit
 
-            # If ASDFDataSet given, save Adjoint source into auxiliary data
-            if self.ds:
-                logger.debug(f"saving adjoint sources {key} to PyASDF")
-                with warnings.catch_warnings():
-                    warnings.simplefilter("ignore")
-                    # The tag hardcodes an X as the second channel index
-                    # to signify that these are synthetic waveforms
-                    # This is required by Specfem3D
-                    tag = "{mod}/{net}_{sta}_{ban}X{cmp}".format(
-                        mod=self.config.model_number, net=adj_src.network,
-                        sta=adj_src.station,
-                        ban=channel_codes(self.st_syn[0].stats.delta),
-                        cmp=adj_src.component[-1]
-                    )
-                    write_adj_src_to_asdf(adj_src=adj_src, ds=self.ds, tag=tag,
-                                          time_offset=self.time_offset_sec)
-        
         # Save adjoint source internally for plotting
         self.adj_srcs = adjoint_sources
+
+        # Save adjoint source to dataset
+        if self.ds:
+            self._save_adj_srcs()
         
         # Save total misfit, calucalated a la Tape (2010) Eq. 6
-        self.total_misfit = 0.5 * total_misfit/self.num_windows
+        self._misfit = 0.5 * total_misfit/self._num_windows
 
         # Let the User know the outcome of Pyadjoint
-        logger.info("total misfit {self.total_misfit:.3f}")
+        logger.info(f"total misfit {self._misfit:.3f}")
 
-    def plot(self, append_title='', length_sec="dynamic",
+    def _format_windows(self):
+        """
+        In `pyadjoint.calculate_adjoint_source`, the window needs to be a list
+        of lists, with each list containing the [left_window, right_window];
+        each window argument should be given in units of time (seconds)
+        Note:
+            This is not in the PyAdjoint docs
+
+        :rtype: dict of list of lists
+        :return: dictionary with key related to individual components,
+            and corresponding to a list of lists containing window start and end
+        """
+        adjoint_windows = {}
+        if self.windows is not None:
+            for comp, window in self.windows.items():
+                adjoint_windows[comp] = []
+                # Prepare Pyflex window indices to give to Pyadjoint
+                for win in window:
+                    adj_win = [win.left * self.st_obs[0].stats.delta,
+                               win.right * self.st_obs[0].stats.delta]
+                    adjoint_windows[comp].append(adj_win)
+        # If no windows given, calculate adjoint source on whole trace
+        else:
+            logger.debug("no windows given, adjoint sources will be "
+                         "calculated on full trace")
+            for comp in self.config.component_list:
+                adjoint_windows[comp] = [[0, self.st_obs.select(
+                                                component=comp)[0].stats.npts]]
+
+        return adjoint_windows
+
+    def _save_adj_srcs(self):
+        """
+        Save adjoint sources to Pyasdf Dataset
+        """
+        for key, adj_src in self.adj_srcs.items():
+            logger.debug(f"saving adjoint sources {key} to PyASDF")
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                # The tag hardcodes an X as the second channel index
+                # to signify that these are synthetic waveforms
+                # This is required by Specfem3D
+                tag = "{mod}/{net}_{sta}_{ban}X{cmp}".format(
+                    mod=self.config.model_number, net=adj_src.network,
+                    sta=adj_src.station,
+                    ban=channel_codes(self.st_syn[0].stats.delta),
+                    cmp=adj_src.component[-1]
+                )
+                write_adj_src_to_asdf(adj_src=adj_src, ds=self.ds, tag=tag,
+                                      time_offset=self._time_offset_sec)
+
+    def plot(self, append_title='', length_sec=None,
              figsize=(11.69, 8.27), dpi=100, show=True, save=None,
              return_figure=False, **kwargs):
         """
         Waveform plots for all given components.
-        If specific components are not given (e.g. adjoint source waveform),
-        they are omitted from the final plot. Plotting should be dynamic, i.e.
-        if only 2 components are present in the streams, only two subplots
-        should be generated in the figure.
+        If specific components are not given they are omitted from the plot.
+        Plotting should be dynamic, i.e. if only 2 components are present in the
+        streams, only two subplots should be generated in the figure.
 
         :type append_title: str
         :param append_title: any string to append the title of the plot
@@ -697,17 +806,10 @@ class Manager:
         """
         # Precheck for waveform data
         self._check()
-        if not self.obs_process_flag or not self.syn_process_flag:
-            logger.info("cannot plot, no/improper waveform data")
+        if not self._standardize_flag:
+            logger.info("cannot plot, waveforms not standardized")
             return
         logger.info("plotting waveform")
-
-        # Make sure the streams are the same length, otherwise plot will fail
-        for comp in self.config.component_list:
-            if len(self.st_obs.select(component=comp)[0].data) != \
-                    len(self.st_syn.select(component=comp)[0].data):
-                logger.info("obs and syn data not same length")
-                return
 
         # Calculate the seismogram length based on given options
         # Dynamically find length based on src rcv distanc
@@ -723,12 +825,11 @@ class Manager:
         # Call on window making function to produce waveform plots
         fig_window = window_maker(
             st_obs=self.st_obs, st_syn=self.st_syn, config=self.config,
-            time_offset_sec=self.time_offset_sec, windows=self.windows,
+            time_offset_sec=self._time_offset_sec, windows=self.windows,
             staltas=self.staltas, adj_srcs=self.adj_srcs, length_sec=length_sec,
             append_title=append_title, figsize=figsize, dpi=dpi, show=show,
             save=save, **kwargs
         )
-
         if return_figure:
             return fig_window
 
