@@ -1,4 +1,10 @@
 ## Python's Adjoint Tomography Operations Assitant
+
+---
+Docs: https://pyatoa.readthedocs.io/en/latest/
+
+---
+
 ![Logo](pyatoa/docs/pyatoa_logo.png)
 ### A misfit quantification package for the modern tomographer
 
