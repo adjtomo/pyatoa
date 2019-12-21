@@ -17,17 +17,21 @@ class Config:
     """
     def __init__(self, yaml_fid=None, model_number=None, event_id=None,
                  min_period=10, max_period=30, filter_corners=4,
-                 rotate_to_rtz=False, unit_output='DISP', pyflex_map='default',
-                 component_list=None, adj_src_type='cc_traveltime_misfit',
-                 start_pad=20, end_pad=500, zero_pad=0, synthetic_unit="DISP",
-                 observed_tag='observed', synthetic_tag='synthetic_{model_num}',
-                 synthetics_only=False, window_amplitude_ratio=0.,
-                 map_corners=None, cfgpaths=None):
+                 client="GEONET", rotate_to_rtz=False, unit_output='DISP',
+                 pyflex_map='default', component_list=None,
+                 adj_src_type='cc_traveltime_misfit', start_pad=20, end_pad=500,
+                 zero_pad=0, synthetic_unit="DISP", observed_tag='observed',
+                 synthetic_tag='synthetic_{model_num}', synthetics_only=False,
+                 window_amplitude_ratio=0., map_corners=None, cfgpaths=None,
+                 **kwargs):
         """
         Allows the user to control the parameters of the workflow, including:
         setting the Config objects for Pyflex and Pyadjoint, and the paths for
         input data, and output figures and results from Pyflex and Pyadjoint.
         Reasonable default values set on initation
+
+        Kwargs are passed to Pyflex and Pyadjoint config objects so those can be
+        set by the User through this Config object
 
         :type yaml_fid: str
         :param yaml_fid: id for .yaml file if config is to be loaded externally
@@ -41,6 +45,8 @@ class Config:
         :param max_period: maximum bandpass filter period
         :type filter_corners: int
         :param filter_corners: filter steepness for obspy filter
+        :type client: str
+        :param client: ObsPy FDSN Client to be used for data gathering.
         :type rotate_to_rtz: bool
         :param rotate_to_rtz: components from NEZ to RTZ
         :type unit_output: str
@@ -108,6 +114,7 @@ class Config:
         self.min_period = float(min_period)
         self.max_period = float(max_period)
         self.filter_corners = float(filter_corners)
+        self.client = client
         self.rotate_to_rtz = rotate_to_rtz
         self.unit_output = unit_output.upper()
         self.synthetic_unit = synthetic_unit.upper()
@@ -125,7 +132,7 @@ class Config:
         self.zero_pad = int(zero_pad)
         self.start_pad = int(start_pad)
         self.end_pad = int(end_pad)
-        self.component_list = component_list or ['Z', 'N', 'E'] 
+        self.component_list = component_list or ['Z', 'N', 'E']
 
         # Make sure User provided paths are list objects as they will be looped
         # on during the workflow
@@ -140,7 +147,7 @@ class Config:
         # Run internal functions to check the Config object
         self.pyflex_config = None
         self.pyadjoint_config = None
-        self._check()
+        self._check(**kwargs)
 
     def __str__(self):
         """
@@ -151,7 +158,7 @@ class Config:
             str_out += f"\t{key+':':<25}{item}\n"
         return str_out
 
-    def _check(self):
+    def _check(self, **kwargs):
         """
         A check to make sure that the configuration parameters are set properly
         to avoid any problems throughout the workflow.
@@ -204,14 +211,15 @@ class Config:
         # Set Pyflex confict through wrapper function
         self.pyflex_config = set_pyflex_config(choice=self.pyflex_map,
                                                min_period=self.min_period,
-                                               max_period=self.max_period
+                                               max_period=self.max_period,
+                                               **kwargs
                                                )
 
         # Set Pyadjoint Config
-        self.pyadjoint_config = set_pyadjoint_config(
-            choice=self.adj_src_type, min_period=self.min_period,
-            max_period=self.max_period
-        )
+        self.pyadjoint_config = set_pyadjoint_config(min_period=self.min_period,
+                                                     max_period=self.max_period,
+                                                     **kwargs
+                                                     )
 
     def write(self, write_to, fmt=None):
         """

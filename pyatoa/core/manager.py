@@ -128,10 +128,10 @@ class Manager:
                 f"\tsynthetic data (st_syn):      {self._len_syn}\n"
                 "WORKFLOW\n"
                 f"\tstandardized:                 {self._standardize_flag}\n"
-                f"\tobs data preproc:             {self._obs_filter_flag}\n"
-                f"\tsyn data preproc:             {self._syn_filter_flag}\n"
+                f"\tst_obs filtered:              {self._obs_filter_flag}\n"
+                f"\tst_syn filtered:              {self._syn_filter_flag}\n"
                 f"\tmisfit windows (windows):     {self._num_windows}\n"
-                f"\ttotal misfit (adj_srcs):      {self._misfit}\n"
+                f"\tmisfit (adj_srcs):            {self._misfit:.2E}\n"
                 )
 
     @property
@@ -231,15 +231,23 @@ class Manager:
 
         # Inventory station check
         if isinstance(self.inv, obspy.Inventory):
-            self.inv_name = f"{self.inv[0].code}.{self.inv[0][0].code}"
+            self._inv_name = f"{self.inv[0].code}.{self.inv[0][0].code}"
         else:
-            self.inv_name = None
+            self._inv_name = None
 
         # Pyflex check if run, return the number of windows made
         self._num_windows = 0
         if isinstance(self.windows, dict):
-            for key in self.windows.keys():
-                self._num_windows += len(self.windows[key])
+            for key, win in self.windows.items():
+                self._num_windows += len(win)
+
+        # Pyadjoint check if adj_srcs and calculate total misfit
+        self._misfit = 0
+        if isinstance(self.adj_srcs, dict):
+            total_misfit = 0
+            for key, adj_src in self.adj_srcs.items():
+                total_misfit += adj_src.misfit
+            self._misfit = 0.5 * total_misfit / self._num_windows
 
     def _launch(self, reset=False, event=None, idx=0):
         """
@@ -393,12 +401,12 @@ class Manager:
                 try:
                     self.ds.add_quakeml(self.event)
                 except ValueError:
-                    logger.debug("event already present, not added")
+                    logger.warning("event already present, not added")
             if self.inv:
                 try:
                     self.ds.add_stationxml(self.inv)
                 except TypeError:
-                    logger.debug("inv already present, not added")
+                    logger.warning("inv already present, not added")
             # PyASDF has its own warnings if waveform data already present
             if self.st_obs:
                 self.ds.add_waveforms(waveform=self.st_obs,
@@ -426,7 +434,7 @@ class Manager:
         :type ds: None or pyasdf.ASDFDataSet
         :param ds: dataset can be given to load from, will not set the ds
         """
-        # Allows a ds to be given to the Manager
+        # Allows a ds to be provided outside the attribute
         if self.ds and ds is None:
             ds = self.ds
         else:
@@ -445,19 +453,25 @@ class Manager:
                 self.config.synthetic_tag.format(model)]
             self.inv = ds.waveforms[sta_tag].StationXML
 
-    def standardize(self):
+    def standardize(self, force=False):
         """
         Standardize the observed and synthetic traces in place. Ensure that the
         data streams have the same start and endtimes, and sampling rate, so
         that data comparisons can be made; all preprocessing related to timing
         and sampling rate.
+
+        :type force: bool
+        :param force: allow the User to force the functino to run even if checks
+            say that the two Streams are already standardized
         """
         self._check()
-        if (self._len_obs or self._len_syn) == 0:
-            logger.info("cannot standardize, no waveform data")
+        if min(self._len_obs, self._len_syn) == 0:
+            logger.warning("cannot standardize, not enough waveform data")
             return
-        elif not self._standardize_flag:
-            logger.info("already standardized")
+        elif self._standardize_flag and not force:
+            logger.warning("already standardized")
+            return
+        logger.info("standardizing streams")
 
         # Zero pad the data if set by Config
         if self.config.zero_pad:
@@ -483,17 +497,24 @@ class Manager:
 
         self._standardize_flag = True
 
-    def preprocess(self):
+    def preprocess(self, which="both"):
         """
         Standard preprocessing of observed and synthetic data in place.
         Called in identical manner for observation and synthetic waveforms.
         Synthetic waveform is convolved with a source time function.
 
         This function can of course be overwritten by a User defined function
+
+        :type which: str
+        :param which: "obs", "syn" or "both" to choose which stream to process
+            defaults to both
         """
         self._check()
-        if not isinstance(self.inv, obspy.core.inventory.Inventory):
-            logger.info("cannot preprocess, no inventory")
+        # Make sure an instrument response is available for removal, or that
+        # this is a synthetic-synthetic case
+        if not isinstance(self.inv, obspy.core.inventory.Inventory) \
+                or self.config.synthetics_only:
+            logger.warning("cannot preprocess, no inventory")
             return
 
         # If required, rotate based on source receiver lat/lon values
@@ -501,59 +522,70 @@ class Manager:
         if self.config.rotate_to_rtz:
             _, baz = gcd_and_baz(event=self.event, sta=self.inv[0][0])
 
-        # Determine if different preprocessing required for syn-syn case
-        if self.config.synthetics_only:
-            inv_ = None
-            synthetic_unit_ = self.config.synthetic_unit
-        else:
-            inv_ = self.inv
-            synthetic_unit_ = None
+        # Preprocess observation and synthetic data the same
+        if self.st_obs is not None and not self._obs_filter_flag and \
+                which.lower() in ["obs", "both"]:
+            # Determine if different preprocessing required for syn-syn case
+            if self.config.synthetics_only:
+                obs_inv = None
+                obs_synthetic_unit = self.config.synthetic_unit
+            else:
+                obs_inv = self.inv
+                obs_synthetic_unit = None
+            logger.info("preprocessing observation data")
+            self.st_obs = preproc(st_original=self.st_obs, inv=obs_inv,
+                                  synthetic_unit=obs_synthetic_unit,
+                                  back_azimuth=baz,
+                                  unit_output=self.config.unit_output,
+                                  corners=self.config.filter_corners,
+                                  filter_bounds=[self.config.min_period,
+                                                 self.config.max_period],
+                                  )
 
-        logger.info("preprocessing observation data")
-        self.st_obs = preproc(st_original=self.st_obs, inv=inv_,
-                              synthetic_unit=synthetic_unit_, back_azimuth=baz,
-                              unit_output=self.config.unit_output,
-                              corners=self.config.filter_corners,
-                              filter_bounds=[self.config.min_period,
-                                             self.config.max_period],
-                              )
+        if self.st_syn is not None and not self._syn_filter_flag and \
+                which.lower() in ["syn", "both"]:
+            logger.info("preprocessing synthetic data")
+            self.st_syn = preproc(st_original=self.st_syn, inv=None,
+                                  synthetic_unit=self.config.synthetic_unit,
+                                  back_azimuth=baz,
+                                  unit_output=self.config.unit_output,
+                                  corners=self.config.filter_corners,
+                                  filter_bounds=[self.config.min_period,
+                                                 self.config.max_period]
+                                  )
         
-        logger.info("preprocessing synthetic data")
-        self.st_syn = preproc(st_original=self.st_syn, inv=inv_,
-                              synthetic_unit=synthetic_unit_, back_azimuth=baz,
-                              unit_output=self.config.unit_output,
-                              corners=self.config.filter_corners,
-                              filter_bounds=[self.config.min_period,
-                                             self.config.max_period]
-                              )
-        
-        # Mid-check to see if preprocessing failed
+        # Check to see if preprocessing failed
         self._check()
         if not self._obs_filter_flag or not self._syn_filter_flag:
-            logger.info("preprocessing failed")
+            logger.warning("preprocessing failed")
             return
 
         # Convolve synthetic data with a gaussian source-time-function
-        self._convolve_source_time_function()
+        self._convolve_source_time_function(which)
 
-    def _convolve_source_time_function(self):
+    def _convolve_source_time_function(self, which="both"):
         """
         Convolve synthetic data with a gaussian source time function, time
         shift by a given half duration.
 
         TO DO:
             check if time_offset is doing what I want it to do
+
+        :type which: str
+        :param which: "obs", "syn" or "both" to choose which stream to process
+            defaults to both
         """
         try:
             moment_tensor = self.event.focal_mechanisms[0].moment_tensor
             self._half_dur = moment_tensor.source_time_function.duration / 2
-            self.st_syn = stf_convolve(st=self.st_syn,
-                                       half_duration=self._half_dur,
-                                       time_shift=False,
-                                       time_offset=self._time_offset_sec
-                                       )
+            if which.lower() in ["syn", "both"]:
+                self.st_syn = stf_convolve(st=self.st_syn,
+                                           half_duration=self._half_dur,
+                                           time_shift=False,
+                                           time_offset=self._time_offset_sec
+                                           )
             # If a synthetic-synthetic case, convolve observations too
-            if self.config.synthetics_only:
+            if self.config.synthetics_only and which in ["obs", "both"]:
                 self.st_obs = stf_convolve(st=self.st_obs,
                                            half_duration=self._half_dur,
                                            time_shift=False,
@@ -562,20 +594,24 @@ class Manager:
         except (AttributeError, IndexError):
             logger.info("moment tensor not found for event, cannot convolve")
 
-    def window(self):
+    def window(self, force=False):
         """
         Call Pyflex to calculate best fitting misfit windows given observation
         and synthetic data. Data must be standardized.
 
         Save ouputs as dictionaries of window objects, as well as STA/LTAs.
         If a pyasdf dataset is present, save misfit windows as auxiliary data
+
+        :type force: bool
+        :param force: ignore flag checks and run function, useful if e.g.
+            external preprocessing is used that doesn't meet flag criteria
         """
         # Pre-check to see if data has already been standardized
         self._check()
-        if not self._standardize_flag:
-            logger.info("cannot window, waveforms not standardized")
+        if not self._standardize_flag and not force:
+            logger.warning("cannot window, waveforms not standardized")
             return
-        logger.info(f"running Pyflex type {self.config.pyflex_map}")
+        logger.info(f"running Pyflex w/ map: {self.config.pyflex_map}")
 
         # Windows and staltas saved as dictionary objects by component name
         num_windows, windows, staltas = 0, {}, {}
@@ -586,8 +622,12 @@ class Manager:
                     min_period=self.config.min_period,
                     data=envelope(self.st_syn.select(component=comp)[0].data)
                 )
-                windows[comp] = self._select_windows(comp)
-                _nwin = len(windows[comp])
+                window = self._select_windows(comp)
+                # Check to see if windows are returned to avoid putting empty
+                # lists into the window dictionary
+                if window:
+                    windows[comp] = window
+                _nwin = len(window)
             except IndexError:
                 _nwin = 0
 
@@ -671,42 +711,52 @@ class Manager:
                                                path=tag
                                                )
 
-    def measure_misfit(self):
+    def measure(self, force=False):
         """
-        Run pyadjoint on observation and synthetic data given misfit windows
-        calculated by pyflex. Method for caluculating misfit set in config,
-        pyadjoint config set in external configurations. Returns a dictionary
-        of adjoint sources based on component. Saves resultant dictionary
-        to a pyasdf dataset if given.
+        Run Pyadjoint on Obs and Syn data for misfit windows or on full trace.
+
+        Method for caluculating misfit set in Config, Pyadjoint expects
+        standardized traces with the same spectral content, so this function
+        will not run unless these flags are passed.
+
+        Returns a dictionary of adjoint sources based on component.
+        Saves resultant dictionary to a pyasdf dataset if given.
 
         NOTE: Pyatoa was developed with a dev branch of Pyadjoint, located here
 
         https://github.com/computational-seismology/pyadjoint/tree/dev
 
         Lion's version of Pyadjoint does not contain some of these functions
+
+        :type force: bool
+        :param force: ignore flag checks and run function, useful if e.g.
+            external preprocessing is used that doesn't meet flag criteria
         """
         self._check()
 
-        # Check that data has been filtered, standardized
-        if not (self._obs_filter_flag or self._syn_filter_flag):
-            logger.info("cannot run Pyadjoint, not filtered, or not processed")
+        # Check that data has been filtered and standardized
+        if not self._standardize_flag and not force:
+            logger.warning("cannot measure misfit, traces not standardized")
             return
-        elif not self._standardize_flag:
-            logger.info("cannot run Pyadjoint, traces not standardized")
-        logger.info(f"running Pyadjoint type {self.config.adj_src_type}")
+        elif not (self._obs_filter_flag or self._syn_filter_flag) and not force:
+            logger.warning(
+                "cannot measure misfit, waveforms not filtered")
+            return
+        logger.info(
+            f"running Pyadjoint w/ adj_src_type: {self.config.adj_src_type}")
 
         # Create list of windows needed for Pyadjoint
         adjoint_windows = self._format_windows()
 
         # Run Pyadjoint to retrieve adjoint source objects
         total_misfit, adjoint_sources = 0, {}
-        for comp, adjoint_window in adjoint_windows.items():
+        for comp, adj_win in adjoint_windows.items():
             adj_src = pyadjoint.calculate_adjoint_source(
                 adj_src_type=src_type(self.config.adj_src_type),
                 config=self.config.pyadjoint_config,
                 observed=self.st_obs.select(component=comp)[0],
                 synthetic=self.st_syn.select(component=comp)[0],
-                window=adjoint_windows, plot=False
+                window=adj_win, plot=False
                 )
 
             # Save adjoint sources in dictionary object. Sum total misfit
@@ -807,7 +857,7 @@ class Manager:
         # Precheck for waveform data
         self._check()
         if not self._standardize_flag:
-            logger.info("cannot plot, waveforms not standardized")
+            logger.warning("cannot plot, waveforms not standardized")
             return
         logger.info("plotting waveform")
 
@@ -867,13 +917,10 @@ class Manager:
         """
         self._check()
         logger.info("plotting map")
-        if self.event is None:
-            logger.info("cannot plot map, no event given")
-            return
  
         # Warn user if no inventory is given
         if not isinstance(self.inv, obspy.Inventory):
-            logger.info("no inventory given, plotting blank map")
+            logger.warning("no inventory given, plotting blank map")
 
         if map_corners is None:
             map_corners = self.config.map_corners

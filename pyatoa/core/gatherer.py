@@ -33,7 +33,7 @@ class Gatherer:
         self.ds = ds
         self.event = None
         self.fetcher = Fetcher(config=self.config, ds=self.ds)
-        self.getter = Getter(config=self.config)
+        self.getter = Getter(config=self.config, client=self.config.client)
 
     def set_event(self, event):
         """
