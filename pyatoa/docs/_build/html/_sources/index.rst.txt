@@ -1,16 +1,16 @@
-Pyatoa
-======
+Python’s
+~~~~~~~~
 
-Python’s Adjoint Tomography Operations Assistant
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Adjoint Tomography Operations Assistant
+---------------------------------------
 
 ``Pyatoa`` is a misfit quantification toolbox for the modern
 tomographer. It provides abstraction over key Python packages to
 facilitate data gathering, preprocessing, misfit analysis and
-visualization in seismic problem. The design of ``Pyatoa`` was inspired
-by ``Obspy``, translating to a design ethos of rapid development,
-through scripting or shell interaction, and useful abstractions to
-accomplish tasks in tomography.
+visualization in a seismic tomography problem. The design of ``Pyatoa``
+was inspired by ``Obspy``, translating to a design ethos of rapid
+development, through scripting or shell interaction, and useful
+abstractions to accomplish tasks in tomography.
 
 The source code of ``Pyatoa`` can be found here:
 https://github.com/bch0w/pyatoa
@@ -50,134 +50,10 @@ Installation
 
 --------------
 
-Quickstart (Part 1: Pyflex, Pyadjoint)
---------------------------------------
+Doc Contents:
+------------------
+.. toctree:: 
+    :maxdepth: 2  
 
-| Here we provide a brief introduction on how ``Pyatoa`` is intended to
-  be used standalone.
-| ``Pyatoa`` is normally very quiet to avoid unnecessary outputs,
-  however it really babbles on about everything.
-| We can use the ``logging`` module to see what’s going on under the
-  hood.
-
-.. code:: ipython3
-
-    %pylab inline
-    import obspy
-    import pyatoa
-    import logging
-    
-    logger = logging.getLogger("pyatoa")
-    logger.setLevel(logging.DEBUG)
-
-
-.. parsed-literal::
-
-    Populating the interactive namespace from numpy and matplotlib
-
-
-``Pyatoa`` is centralized around a ``Config`` object which controls all
-the parameters deemed necessary in the misfit quantification workflow.
-The ``Config`` object supports print statements to tell the User what
-parameters are available, and how they are set.
-
-.. code:: ipython3
-
-    cfg = pyatoa.Config()
-    print(cfg)
-
-
-.. parsed-literal::
-
-    CONFIG
-    	model_number:            None
-    	event_id:                None
-    	min_period:              10.0
-    	max_period:              30.0
-    	filter_corners:          4.0
-    	rotate_to_rtz:           False
-    	unit_output:             DISP
-    	synthetic_unit:          DISP
-    	observed_tag:            observed
-    	synthetic_tag:           synthetic
-    	pyflex_map:              default
-    	adj_src_type:            cc_traveltime_misfit
-    	map_corners:             {'lat_min': -42.5007, 'lat_max': -36.9488, 'lon_min': 172.9998, 'lon_max': 179.5077}
-    	synthetics_only:         False
-    	window_amplitude_ratio:  0.0
-    	zero_pad:                0
-    	start_pad:               20
-    	end_pad:                 500
-    	component_list:          ['Z', 'N', 'E']
-    	cfgpaths:                {'waveforms': [], 'synthetics': [], 'responses': []}
-    	pyflex_config:           <pyflex.config.Config object at 0x1171d6668>
-    	pyadjoint_config:        <pyadjoint.config.ConfigCrossCorrelation object at 0x1099b0ef0>
-    
-
-
-We can see here that we have default filter bands ``min_period`` and
-``max_period`` set, as well as configurations for the ``pyflex_map``
-which specifies the parameters of the ``pyflex_config``. We also can set
-the ``adj_src_type`` whicih controls the parameters of the
-``pyadjoint_config``. For now we will ignore the rest of the parameters
-and move onto the ``Manager`` class.
-
-.. code:: ipython3
-
-    mgmt = pyatoa.Manager(cfg)
-    print(mgmt)
-
-
-.. parsed-literal::
-
-    DATA
-    	dataset (ds):                 None
-    	event:                        None
-    	inventory (inv):              None
-    	observed data (st_obs):       0
-    	synthetic data (st_syn):      0
-    WORKFLOW
-    	obs data preprocessed:        False
-    	syn data preprocessed:        False
-    	half duration (half_dur):     0.000
-    	pyflex (num_windows):         0
-    	pyadjoint (total_misfit):     0
-    
-
-
-The ``Manager`` class always requires a ``Config`` input parameter.
-Printing the ``Manager`` shows us the ``Pyatoa`` workflow status: the
-print statement shows us what Data we currently have, and what outputs
-of our workflow have been collected. We can see above that we have no
-data collected, nor have we completed our workflow. So lets get started
-on that.
-
-.. code:: ipython3
-
-    mgmt.config.event_id = "2018p130600"
-    mgmt.gather_data(station_code="NZ.BFZ.??.HHZ")
-
-
-.. parsed-literal::
-
-    [2019-12-18 12:33:24,316] - pyatoa - INFO: initiating/resetting gatherer
-    [2019-12-18 12:33:24,320] - pyatoa - DEBUG: fetching event from GEONET
-    [2019-12-18 12:33:25,620] - pyatoa - INFO: geonet moment tensor external for event: 2018p130600
-    [2019-12-18 12:33:25,622] - pyatoa - INFO: appending GeoNet moment tensor information to event
-    [2019-12-18 12:33:25,622] - pyatoa - DEBUG: event got from external
-
-
-.. parsed-literal::
-
-    'Manager' object has no attribute 'config_event_id'
-
-
-.. code:: ipython3
-
-    from importlib import reload
-    reload(pyatoa.core.manager)
-    from pyatoa.core.manager import Manager
-
-.. toctree:: :maxdepth: 2 :caption: Contents:
-
+    tutorials  
 

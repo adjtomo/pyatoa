@@ -1,0 +1,456 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>Tutorials &#8212; Pyatoa  documentation</title>
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="_static/language_data.js"></script>
+    <link rel="shortcut icon" href="_static/pyatoa_favicon.png"/>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="prev" title="Python’s" href="index.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="tutorials">
+<h1>Tutorials<a class="headerlink" href="#tutorials" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="tutorial-1-core-classes-general-workflow">
+<h2>Tutorial 1: core classes; general workflow<a class="headerlink" href="#tutorial-1-core-classes-general-workflow" title="Permalink to this headline">¶</a></h2>
+<div class="line-block">
+<div class="line">Here we provide a brief introduction on how <code class="docutils literal notranslate"><span class="pre">Pyatoa</span></code> is intended to
+be used standalone.</div>
+<div class="line"><code class="docutils literal notranslate"><span class="pre">Pyatoa</span></code> is normally very quiet to avoid unnecessary outputs,
+however it really babbles on about everything.</div>
+<div class="line">We can use the <code class="docutils literal notranslate"><span class="pre">logging</span></code> module to see what’s going on under the
+hood.</div>
+</div>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="o">%</span><span class="k">pylab</span> inline
+<span class="kn">import</span> <span class="nn">obspy</span>
+<span class="kn">import</span> <span class="nn">pyatoa</span>
+<span class="kn">import</span> <span class="nn">logging</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s2">&quot;pyatoa&quot;</span><span class="p">)</span>
+<span class="n">logger</span><span class="o">.</span><span class="n">setLevel</span><span class="p">(</span><span class="n">logging</span><span class="o">.</span><span class="n">DEBUG</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="section" id="pyatoa-config">
+<h3>pyatoa.Config()<a class="headerlink" href="#pyatoa-config" title="Permalink to this headline">¶</a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">Pyatoa</span></code> is centralized around a <code class="docutils literal notranslate"><span class="pre">Config</span></code> object which controls all
+the parameters deemed necessary in the misfit quantification workflow.
+The <code class="docutils literal notranslate"><span class="pre">Config</span></code> object supports print statements to tell the User what
+parameters are available, and how they are set.</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">cfg</span> <span class="o">=</span> <span class="n">pyatoa</span><span class="o">.</span><span class="n">Config</span><span class="p">()</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">cfg</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>We can see here that we have some default parameters set, e.g. the
+filter bands <code class="docutils literal notranslate"><span class="pre">min_period</span></code> and <code class="docutils literal notranslate"><span class="pre">max_period</span></code>, as well as
+configurations for the <code class="docutils literal notranslate"><span class="pre">pyflex_map</span></code> which specifies the parameters of
+the <code class="docutils literal notranslate"><span class="pre">pyflex_config</span></code>. We also can set the <code class="docutils literal notranslate"><span class="pre">adj_src_type</span></code> which
+controls the parameters of the <code class="docutils literal notranslate"><span class="pre">pyadjoint_config</span></code>. For now we will
+ignore the rest of the parameters and move onto the <code class="docutils literal notranslate"><span class="pre">Manager</span></code> class.</p>
+</div>
+<div class="section" id="pyatoa-manager">
+<h3>pyatoa.Manager()<a class="headerlink" href="#pyatoa-manager" title="Permalink to this headline">¶</a></h3>
+<p>The <code class="docutils literal notranslate"><span class="pre">Manager</span></code> class always requires a <code class="docutils literal notranslate"><span class="pre">Config</span></code> input parameter.
+Printing the <code class="docutils literal notranslate"><span class="pre">Manager</span></code> shows us the <code class="docutils literal notranslate"><span class="pre">Pyatoa</span></code> data and workflow
+status.</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">mgmt</span> <span class="o">=</span> <span class="n">pyatoa</span><span class="o">.</span><span class="n">Manager</span><span class="p">(</span><span class="n">cfg</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">mgmt</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>We can see above that we have no data collected and our workflow is
+incomplete. Although <code class="docutils literal notranslate"><span class="pre">Pyatoa</span></code> comes with data gathering capabilities,
+for this example we will just read in some test data. We will see that
+once we set the data in the Manager class, the print statement updates
+to show us how many Traces we have in our Streams, and the name of the
+station in our inventory object.</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">mgmt</span><span class="o">.</span><span class="n">inv</span> <span class="o">=</span> <span class="n">obspy</span><span class="o">.</span><span class="n">read_inventory</span><span class="p">(</span><span class="s2">&quot;../tests/data/test_inv.xml&quot;</span><span class="p">)</span>
+<span class="n">mgmt</span><span class="o">.</span><span class="n">st_obs</span> <span class="o">=</span> <span class="n">obspy</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="s2">&quot;../tests/data/test_obs_data.ascii&quot;</span><span class="p">)</span>
+<span class="n">mgmt</span><span class="o">.</span><span class="n">st_syn</span> <span class="o">=</span> <span class="n">obspy</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="s2">&quot;../tests/data/test_syn_m00_data.ascii&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s2">&quot;OBSSERVED DATA</span><span class="se">\n\t</span><span class="s2">sampling_rate:</span><span class="si">{mgmt.st_obs[0].stats.sampling_rate}</span><span class="s2">, npts:</span><span class="si">{mgmt.st_obs[0].stats.npts}</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s2">&quot;SYNTHETIC DATA</span><span class="se">\n\t</span><span class="s2">sampling_rate:</span><span class="si">{mgmt.st_syn[0].stats.sampling_rate}</span><span class="s2">, npts:</span><span class="si">{mgmt.st_syn[0].stats.npts}</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">mgmt</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>We now have the minimum data required to begin the workflow. However, we
+cannot create misfit windows or measure misfit yet, because our traces
+have different sampling rates, start and end-times, and spectral
+content. If we try to run the window() and measure() functions, we will
+be met with some check-stops telling us that we must first run other
+functions.</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">mgmt</span><span class="o">.</span><span class="n">window</span><span class="p">()</span>
+<span class="n">mgmt</span><span class="o">.</span><span class="n">measure</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="data-processing">
+<h3>Data processing<a class="headerlink" href="#data-processing" title="Permalink to this headline">¶</a></h3>
+<p>The first step after gathering data is to standardize Streams.
+standardize() will resample and trim the data so that sampling rate,
+number of points, and start and end times are the same between the
+Observed and Synthetic traces. Data by default should conform to
+Synthetics, due to the requirements of a solver to receive inputs in the
+same manner as its outputs, but running
+<code class="docutils literal notranslate"><span class="pre">mgmt.standardize(standardize_to='obs')</span></code> allows the User to override
+this.</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">mgmt</span><span class="o">.</span><span class="n">standardize</span><span class="p">()</span>
+</pre></div>
+</div>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">mgmt</span><span class="o">.</span><span class="n">preprocess</span><span class="p">()</span>
+</pre></div>
+</div>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="n">mgmt</span><span class="o">.</span><span class="n">st</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>We can now see that after performing standardization and preprocessing,
+3 of the workflow flags have been set <code class="docutils literal notranslate"><span class="pre">True</span></code>, which means we can move
+onto the the window() and measure() functions. Standardization and
+preprocessing are done in place, which means the original data is not
+retrievable. Accessing <code class="docutils literal notranslate"><span class="pre">mgmt.st_obs</span></code> returns the processed data.</p>
+</div>
+<div class="section" id="misfit-quantification">
+<h3>Misfit Quantification<a class="headerlink" href="#misfit-quantification" title="Permalink to this headline">¶</a></h3>
+<p>Now that the data has been processed, we can run our misfit
+quantification:</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">mgmt</span><span class="o">.</span><span class="n">window</span><span class="p">()</span>
+<span class="n">mgmt</span><span class="o">.</span><span class="n">measure</span><span class="p">()</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">Pyatoa</span></code> has run <code class="docutils literal notranslate"><span class="pre">Pyflex</span></code> and recovered 1 window for the traces,
+which is saved into the Manager as a dictionary. It has then run
+<code class="docutils literal notranslate"><span class="pre">Pyadjoint</span></code> to measure the misfit on the recovered windows from
+<code class="docutils literal notranslate"><span class="pre">Pyflex</span></code>. We can take a look at the <code class="docutils literal notranslate"><span class="pre">windows</span></code> and <code class="docutils literal notranslate"><span class="pre">adj_srcs</span></code> to
+see that they are saved as dictionaries following the
+<code class="docutils literal notranslate"><span class="pre">Config.component_list</span></code>. Each entry of the <code class="docutils literal notranslate"><span class="pre">windows</span></code> dictionary is a
+list of <code class="docutils literal notranslate"><span class="pre">Window</span></code> objects from <code class="docutils literal notranslate"><span class="pre">Pyflex</span></code>. Each entry of the
+<code class="docutils literal notranslate"><span class="pre">adj_srcs</span></code> is an AdjointSource object from <code class="docutils literal notranslate"><span class="pre">Pyadjoint</span></code>.</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s2">&quot;Windows:</span><span class="se">\n</span><span class="si">{mgmt.windows}</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s2">&quot;Adjoint Sources:</span><span class="se">\n</span><span class="si">{mgmt.adj_srcs}</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s2">&quot;Adjoint Source Object:</span><span class="se">\n</span><span class="si">{mgmt.adj_srcs[&#39;E&#39;]}</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s2">&quot;Adjoint Source Data:</span><span class="se">\n</span><span class="si">{mgmt.adj_srcs[&#39;E&#39;].adjoint_source}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="plotting-mapping">
+<h3>Plotting, mapping<a class="headerlink" href="#plotting-mapping" title="Permalink to this headline">¶</a></h3>
+<p>Plot functionalities will plot the available streams in the Manager
+class. If windows and adjoint sources are available for a given
+component, they will also be plotted alongside the waveform data. Kwargs
+can be passed to the plot function to change the default look of the
+waveform plots. Information about the chosen misfit windows, such as the
+time shift between Observed and Synthetic traces, will be annotated into
+each window.</p>
+<p>Mapping capabilities are also available. The mapping function will try
+to include as much information as possible. In this case since we have
+not included an Event in our Manager class, the mapper will only be able
+to plot the station. Additionally, as we have not specified any map
+corners, the Map will be plotted for the whole Earth.</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">mgmt</span><span class="o">.</span><span class="n">plot</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="tutorial-2-custom-configs-for-pyflex-and-pyadjoint">
+<h2>Tutorial 2: custom configs for Pyflex and Pyadjoint<a class="headerlink" href="#tutorial-2-custom-configs-for-pyflex-and-pyadjoint" title="Permalink to this headline">¶</a></h2>
+<p>Config objects are written for both
+<a class="reference external" href="https://krischer.github.io/pyflex/_modules/pyflex/config.html">Pyflex</a>
+and
+<a class="reference external" href="https://github.com/krischer/pyadjoint/blob/master/src/pyadjoint/config.py">Pyadjoint</a>
+so that the User could fine tune their misfit measurement criteria. For
+simplicitiy, these Config classes have been wrapped into the Pyatoa
+Config class, either through map names or key word arguments. We can
+take a look at the default settings by printing the Config class.</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">pprint</span> <span class="k">import</span> <span class="n">pprint</span>
+<span class="n">cfg</span> <span class="o">=</span> <span class="n">pyatoa</span><span class="o">.</span><span class="n">Config</span><span class="p">()</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s2">&quot;Pyflex Config Map: </span><span class="si">{cfg.pyflex_map}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="n">pprint</span><span class="p">(</span><span class="nb">vars</span><span class="p">(</span><span class="n">cfg</span><span class="o">.</span><span class="n">pyflex_config</span><span class="p">))</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s2">&quot;Pyadjoint Config: </span><span class="si">{cfg.adj_src_type}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="n">pprint</span><span class="p">(</span><span class="nb">vars</span><span class="p">(</span><span class="n">cfg</span><span class="o">.</span><span class="n">pyadjoint_config</span><span class="p">))</span>
+</pre></div>
+</div>
+<div class="section" id="pyflex-config">
+<h3>Pyflex Config<a class="headerlink" href="#pyflex-config" title="Permalink to this headline">¶</a></h3>
+<p>To override the default parameters of the Pyflex Config, two options are
+given.</p>
+<ol class="arabic simple">
+<li><p>hardcode the source-code of Pyatoa to include a preset Config map in
+pyatoa/plugins/pyflex_config.set_pyflex_config(). There we have
+already set three pre-set maps, “example”, “alaska” and “hikurangi”.
+Users may define their own custom choices and map names.</p></li>
+<li><p>pass keyword arguments through the Pyatoa Config. These are then
+passed to the Pyflex Config if matching attributes are found.</p></li>
+</ol>
+<p>Below we show examples of both types of overwriting. For simplicity we
+just look at the Pyflex Config parameter <code class="docutils literal notranslate"><span class="pre">c_0</span></code> to see how this works.</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">cfg</span> <span class="o">=</span> <span class="n">pyatoa</span><span class="o">.</span><span class="n">Config</span><span class="p">()</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;Default c_0: </span><span class="si">{cfg.pyflex_config.c_0}</span><span class="s1">&#39;</span><span class="p">)</span>
+<span class="n">cfg</span> <span class="o">=</span> <span class="n">pyatoa</span><span class="o">.</span><span class="n">Config</span><span class="p">(</span><span class="n">pyflex_map</span><span class="o">=</span><span class="s2">&quot;incorrect_map_names_will_set_the_pyflex_config_to_default&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;Incorrect map name, no kwargs c_0: </span><span class="si">{cfg.pyflex_config.c_0}</span><span class="s1">&#39;</span><span class="p">)</span>
+<span class="n">cfg</span> <span class="o">=</span> <span class="n">pyatoa</span><span class="o">.</span><span class="n">Config</span><span class="p">(</span><span class="n">pyflex_map</span><span class="o">=</span><span class="s2">&quot;hikurangi&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;Option 1, preset map c_0: </span><span class="si">{cfg.pyflex_config.c_0}</span><span class="s1">&#39;</span><span class="p">)</span>
+<span class="n">cfg</span> <span class="o">=</span> <span class="n">pyatoa</span><span class="o">.</span><span class="n">Config</span><span class="p">(</span><span class="n">pyflex_map</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">c_0</span><span class="o">=</span><span class="mf">2.0</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;Option 2, kwargs c_0: </span><span class="si">{cfg.pyflex_config.c_0}</span><span class="s1">&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="pyadjoint-config">
+<h3>Pyadjoint Config<a class="headerlink" href="#pyadjoint-config" title="Permalink to this headline">¶</a></h3>
+<p>To overwrite the default Config parameters of pyadjoint, kwargs may be
+passed through the Pyatoa <code class="docutils literal notranslate"><span class="pre">Config</span></code> class to overwrite the default
+Pyadjoint Config parameters. Here we show examples for the
+<code class="docutils literal notranslate"><span class="pre">phase_step</span></code> parameter in the pyadjoint.Config() class.</p>
+<p>Note: Adjoint source types must also be passed to the Config parameter.
+Pyadjoint allows custom adjoint source types, so there are no checks for
+correctly specified <code class="docutils literal notranslate"><span class="pre">adj_src_type</span></code>. Attempting to run
+Manager.measure() with an undefined <code class="docutils literal notranslate"><span class="pre">adj_src_type</span></code> will lead to errors
+from Pyadjoint.</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">cfg</span> <span class="o">=</span> <span class="n">pyatoa</span><span class="o">.</span><span class="n">Config</span><span class="p">()</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;Default adj_src_type: </span><span class="si">{cfg.adj_src_type}</span><span class="s1">&#39;</span><span class="p">)</span>
+<span class="n">cfg</span> <span class="o">=</span> <span class="n">pyatoa</span><span class="o">.</span><span class="n">Config</span><span class="p">(</span><span class="n">adj_src_type</span><span class="o">=</span><span class="s2">&quot;custom_adj_src_type&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;Custom adj_src_type: </span><span class="si">{cfg.adj_src_type}</span><span class="s1">&#39;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;Default phase_step: </span><span class="si">{cfg.pyadjoint_config.phase_step}</span><span class="s1">&#39;</span><span class="p">)</span>
+<span class="n">cfg</span> <span class="o">=</span> <span class="n">pyatoa</span><span class="o">.</span><span class="n">Config</span><span class="p">(</span><span class="n">phase_step</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;Kwargs phase_step: </span><span class="si">{cfg.pyadjoint_config.phase_step}</span><span class="s1">&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="tutoral-3-dynamic-data-gathering">
+<h2>Tutoral 3: dynamic data gathering<a class="headerlink" href="#tutoral-3-dynamic-data-gathering" title="Permalink to this headline">¶</a></h2>
+<p>Pyatoa allows for dynamic data gathering based on its mid-level
+<code class="docutils literal notranslate"><span class="pre">Gatherer</span></code> class which calls on the low-level <code class="docutils literal notranslate"><span class="pre">Getter</span></code> and
+<code class="docutils literal notranslate"><span class="pre">Fetcher</span></code> classes. These are all wrapped up in the <code class="docutils literal notranslate"><span class="pre">Manager</span></code> class
+so that the User does not need to interact with the lower levels.</p>
+<p>When data gathering, <code class="docutils literal notranslate"><span class="pre">Manager</span></code> always seeks the path of least
+resistance; that is, the <code class="docutils literal notranslate"><span class="pre">Manager</span></code> will always search for data
+internally (either via a given Pyasdf Dataset, or through directory
+structures), before moving on to more costly external searches which use
+FDSN to query webservices. We can see an example of this in the
+following code.</p>
+<p>Note: Data is fetched based on event origintime information.</p>
+<p>To get the <code class="docutils literal notranslate"><span class="pre">Manager</span></code> to search internal pathways, paths must be given
+in the proper format. 1) Observed data must be saved based on SEED
+observatory convention, that is in a specific directory structure with
+specific file naming, following the format:</p>
+<div class="line-block">
+<div class="line"><code class="docutils literal notranslate"><span class="pre">/path/to/waveforms/YEAR/NETWORK/STATION/CHANNEL/NN.SSS.LL.CCC.D.YYYY.DDD</span></code></div>
+<div class="line">for example</div>
+<div class="line"><code class="docutils literal notranslate"><span class="pre">/path/to/waveforms/2018/NZ/BFZ/HHZ.D/NZ.BFZ.10.HHZ.D.2018.049</span></code></div>
+</div>
+<ol class="arabic simple" start="2">
+<li><p>Synthetic data should be placed in a directory, with the convention
+<code class="docutils literal notranslate"><span class="pre">path/to/synthetics/NN.SSS.CCC.sem?</span></code></p></li>
+</ol>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">from</span> <span class="nn">pyatoa</span> <span class="k">import</span> <span class="n">Config</span><span class="p">,</span> <span class="n">Manager</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s2">&quot;pyatoa&quot;</span><span class="p">)</span>
+<span class="n">logger</span><span class="o">.</span><span class="n">setLevel</span><span class="p">(</span><span class="n">logging</span><span class="o">.</span><span class="n">DEBUG</span><span class="p">)</span>
+
+<span class="n">cfg</span> <span class="o">=</span> <span class="n">Config</span><span class="p">(</span><span class="n">event_id</span><span class="o">=</span><span class="s2">&quot;2018p130600&quot;</span><span class="p">,</span>
+             <span class="n">cfgpaths</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;waveforms&quot;</span><span class="p">:</span><span class="s2">&quot;../tests/data/test_directories/waveforms&quot;</span><span class="p">,</span>
+                       <span class="s2">&quot;synthetics&quot;</span><span class="p">:</span><span class="s2">&quot;../tests/data/test_directories/synthetics&quot;</span><span class="p">}</span>
+            <span class="p">)</span>
+<span class="n">mgmt</span> <span class="o">=</span> <span class="n">Manager</span><span class="p">(</span><span class="n">cfg</span><span class="p">)</span>
+<span class="n">mgmt</span><span class="o">.</span><span class="n">gather</span><span class="p">(</span><span class="n">station_code</span><span class="o">=</span><span class="s2">&quot;NZ.BFZ.??.HH?&quot;</span><span class="p">,</span> <span class="n">choice</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;st_obs&quot;</span><span class="p">,</span> <span class="s2">&quot;st_syn&quot;</span><span class="p">])</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">mgmt</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>We can see that we have collected data from the given directories. Since
+data gathering happens using event origin times, the Event must be
+gathered before the data. If no paths are given in the
+<code class="docutils literal notranslate"><span class="pre">Config.cfgpaths</span></code> parameter, and no pyasdf.ASDFDataSet is assigned to
+the <code class="docutils literal notranslate"><span class="pre">Manager</span></code>, then the Gatherer will query the FDSN webservice in
+order to download data. This has been tested with New Zealand’s GeoNet
+FDSN client, and IRIS’ FDSN client, however not with other webservices,
+although no problems are expected.</p>
+<p>The Gatherer will also try to fetch moment tensor information. So far
+this only works for GeoNet and IRIS events. For GeoNet events, the
+github repository containing John Ristau’s moment tensors will be read
+in and appended. For IRIS events, GCMT will be queried for moment tensor
+information.</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">mgmt</span> <span class="o">=</span> <span class="n">Manager</span><span class="p">(</span><span class="n">Config</span><span class="p">(</span><span class="n">event_id</span><span class="o">=</span><span class="s2">&quot;2018p130600&quot;</span><span class="p">,</span> <span class="n">client</span><span class="o">=</span><span class="s2">&quot;GEONET&quot;</span><span class="p">))</span>
+<span class="n">mgmt</span><span class="o">.</span><span class="n">gather</span><span class="p">(</span><span class="s1">&#39;NZ.BFZ.??.HH?&#39;</span><span class="p">,</span> <span class="n">choice</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;inv&quot;</span><span class="p">,</span> <span class="s2">&quot;st_obs&quot;</span><span class="p">])</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">mgmt</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># e.g. we can look at the 2018-01-23 Mww7.9 Gulf Of Alaska event,</span>
+<span class="c1"># recorded at the Black Forest Observatory in Germany</span>
+<span class="n">mgmt</span> <span class="o">=</span> <span class="n">Manager</span><span class="p">(</span><span class="n">pyatoa</span><span class="o">.</span><span class="n">Config</span><span class="p">(</span><span class="n">event_id</span><span class="o">=</span><span class="s2">&quot;10607586&quot;</span><span class="p">,</span> <span class="n">client</span><span class="o">=</span><span class="s2">&quot;IRIS&quot;</span><span class="p">))</span>
+<span class="n">mgmt</span><span class="o">.</span><span class="n">gather</span><span class="p">(</span><span class="s2">&quot;II.ERM.00.BHZ&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">mgmt</span><span class="p">)</span>
+<span class="n">mgmt</span><span class="o">.</span><span class="n">st_obs</span><span class="o">.</span><span class="n">plot</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="tutorial-4-interacting-with-pyasdf">
+<h2>Tutorial 4: interacting with pyasdf<a class="headerlink" href="#tutorial-4-interacting-with-pyasdf" title="Permalink to this headline">¶</a></h2>
+<p>Pyasdf datasets are HDF5 datasets that allow for heirarchical storage of
+seismic data. It provides a very clean and compact way to store all the
+data that is collected during this workflow, including raw seismic
+waveforms, event and response information, misfit window and adjoint
+source information. To enable saving to a Pyasdf Dataset, you simply
+need to set your target dataset as an input when calling the <code class="docutils literal notranslate"><span class="pre">Manager</span></code>
+class.</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">pyasdf</span>
+<span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">from</span> <span class="nn">pyatoa</span> <span class="k">import</span> <span class="n">Config</span><span class="p">,</span> <span class="n">Manager</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s2">&quot;pyatoa&quot;</span><span class="p">)</span>
+<span class="n">logger</span><span class="o">.</span><span class="n">setLevel</span><span class="p">(</span><span class="n">logging</span><span class="o">.</span><span class="n">DEBUG</span><span class="p">)</span>
+
+<span class="n">ds</span> <span class="o">=</span> <span class="n">pyasdf</span><span class="o">.</span><span class="n">ASDFDataSet</span><span class="p">(</span><span class="s2">&quot;test_dataset.h5&quot;</span><span class="p">)</span>
+
+<span class="n">cfg</span> <span class="o">=</span> <span class="n">Config</span><span class="p">(</span><span class="n">event_id</span><span class="o">=</span><span class="s2">&quot;2018p130600&quot;</span><span class="p">,</span> <span class="n">client</span><span class="o">=</span><span class="s2">&quot;GEONET&quot;</span><span class="p">,</span>
+             <span class="n">cfgpaths</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;synthetics&quot;</span><span class="p">:</span><span class="s2">&quot;../tests/data/test_directories/synthetics&quot;</span><span class="p">,</span>
+                       <span class="s2">&quot;waveforms&quot;</span><span class="p">:</span><span class="s2">&quot;../tests/data/test_directories/waveforms&quot;</span><span class="p">}</span>
+             <span class="p">)</span>
+<span class="n">cfg</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">write_to</span><span class="o">=</span><span class="n">ds</span><span class="p">)</span>
+<span class="n">mgmt</span> <span class="o">=</span> <span class="n">Manager</span><span class="p">(</span><span class="n">cfg</span><span class="p">,</span> <span class="n">ds</span><span class="o">=</span><span class="n">ds</span><span class="p">)</span>
+<span class="n">mgmt</span><span class="o">.</span><span class="n">gather</span><span class="p">(</span><span class="s2">&quot;NZ.BFZ.??.HH?&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">mgmt</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s2">&quot;DATASET:</span><span class="se">\n</span><span class="si">{ds}</span><span class="se">\n\n</span><span class="s2">&quot;</span>
+      <span class="n">f</span><span class="s2">&quot;EVENTS:</span><span class="se">\n</span><span class="si">{ds.events}</span><span class="se">\n\n</span><span class="s2">&quot;</span>
+      <span class="n">f</span><span class="s2">&quot;STATION:</span><span class="se">\n</span><span class="si">{ds.waveforms[&#39;NZ.BFZ&#39;]}</span><span class="se">\n\n</span><span class="s2">&quot;</span>
+      <span class="n">f</span><span class="s2">&quot;INVENTORY:</span><span class="se">\n</span><span class="si">{ds.waveforms[&#39;NZ.BFZ&#39;].StationXML}</span><span class="se">\n\n</span><span class="s2">&quot;</span>
+      <span class="n">f</span><span class="s2">&quot;WAVEFORMS:</span><span class="se">\n</span><span class="si">{ds.waveforms[&#39;NZ.BFZ&#39;][&#39;observed&#39;]}</span><span class="s2">&quot;</span>
+     <span class="p">)</span>
+</pre></div>
+</div>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">mgmt</span><span class="o">.</span><span class="n">standardize</span><span class="p">()</span>
+<span class="n">mgmt</span><span class="o">.</span><span class="n">preprocess</span><span class="p">()</span>
+<span class="n">mgmt</span><span class="o">.</span><span class="n">window</span><span class="p">()</span>
+<span class="n">mgmt</span><span class="o">.</span><span class="n">measure</span><span class="p">()</span>
+</pre></div>
+</div>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s2">&quot;AUX DATA:</span><span class="se">\n</span><span class="si">{ds.auxiliary_data}</span><span class="se">\n\n</span><span class="s2">&quot;</span>
+      <span class="n">f</span><span class="s2">&quot;WINDOWS:</span><span class="se">\n</span><span class="si">{ds.auxiliary_data.MisfitWindows[&#39;None&#39;].NZ_BFZ_E_0}</span><span class="se">\n\n</span><span class="s2">&quot;</span>
+      <span class="n">f</span><span class="s2">&quot;ADJOINT SOURCES:</span><span class="se">\n</span><span class="si">{ds.auxiliary_data.AdjointSources[&#39;None&#39;].NZ_BFZ_HXE}</span><span class="s2">&quot;</span>
+     <span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="tutorial-6-visualization">
+<h2>Tutorial 6: visualization<a class="headerlink" href="#tutorial-6-visualization" title="Permalink to this headline">¶</a></h2>
+<p>To be written</p>
+</div>
+<div class="section" id="tutorial-7-export-to-specfem3d">
+<h2>Tutorial 7: export to Specfem3D<a class="headerlink" href="#tutorial-7-export-to-specfem3d" title="Permalink to this headline">¶</a></h2>
+<p>To be written</p>
+</div>
+<div class="section" id="tutorial-8-plugin-to-seisflows">
+<h2>Tutorial 8: plugin to Seisflows<a class="headerlink" href="#tutorial-8-plugin-to-seisflows" title="Permalink to this headline">¶</a></h2>
+<p>To be written</p>
+</div>
+<div class="section" id="tutorial-9-misfit-statistics">
+<h2>Tutorial 9: misfit statistics<a class="headerlink" href="#tutorial-9-misfit-statistics" title="Permalink to this headline">¶</a></h2>
+<p>To be written</p>
+</div>
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="index.html">
+              <img class="logo" src="_static/pyatoa_logo.png" alt="Logo"/>
+            </a></p>
+<h1 class="logo"><a href="index.html">Pyatoa</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Tutorials</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#tutorial-1-core-classes-general-workflow">Tutorial 1: core classes; general workflow</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#tutorial-2-custom-configs-for-pyflex-and-pyadjoint">Tutorial 2: custom configs for Pyflex and Pyadjoint</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#tutoral-3-dynamic-data-gathering">Tutoral 3: dynamic data gathering</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#tutorial-4-interacting-with-pyasdf">Tutorial 4: interacting with pyasdf</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#tutorial-6-visualization">Tutorial 6: visualization</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#tutorial-7-export-to-specfem3d">Tutorial 7: export to Specfem3D</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#tutorial-8-plugin-to-seisflows">Tutorial 8: plugin to Seisflows</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#tutorial-9-misfit-statistics">Tutorial 9: misfit statistics</a></li>
+</ul>
+</li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="index.html" title="previous chapter">Python’s</a></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2019, Bryant Chow.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.3.0</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="_sources/tutorials.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

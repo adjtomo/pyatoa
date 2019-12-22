@@ -4,7 +4,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta charset="utf-8" />
-    <title>Pyatoa &#8212; Pyatoa  documentation</title>
+    <title>Python’s &#8212; Pyatoa  documentation</title>
     <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
     <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
@@ -15,6 +15,7 @@
     <link rel="shortcut icon" href="_static/pyatoa_favicon.png"/>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Tutorials" href="tutorials.html" />
    
   <link rel="stylesheet" href="_static/custom.css" type="text/css" />
   
@@ -31,17 +32,17 @@
 
           <div class="body" role="main">
             
-  <div class="section" id="pyatoa">
-<h1>Pyatoa<a class="headerlink" href="#pyatoa" title="Permalink to this headline">¶</a></h1>
-<div class="section" id="pythons-adjoint-tomography-operations-assistant">
-<h2>Python’s Adjoint Tomography Operations Assistant<a class="headerlink" href="#pythons-adjoint-tomography-operations-assistant" title="Permalink to this headline">¶</a></h2>
+  <div class="section" id="pythons">
+<h1>Python’s<a class="headerlink" href="#pythons" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="adjoint-tomography-operations-assistant">
+<h2>Adjoint Tomography Operations Assistant<a class="headerlink" href="#adjoint-tomography-operations-assistant" title="Permalink to this headline">¶</a></h2>
 <p><code class="docutils literal notranslate"><span class="pre">Pyatoa</span></code> is a misfit quantification toolbox for the modern
 tomographer. It provides abstraction over key Python packages to
 facilitate data gathering, preprocessing, misfit analysis and
-visualization in seismic problem. The design of <code class="docutils literal notranslate"><span class="pre">Pyatoa</span></code> was inspired
-by <code class="docutils literal notranslate"><span class="pre">Obspy</span></code>, translating to a design ethos of rapid development,
-through scripting or shell interaction, and useful abstractions to
-accomplish tasks in tomography.</p>
+visualization in a seismic tomography problem. The design of <code class="docutils literal notranslate"><span class="pre">Pyatoa</span></code>
+was inspired by <code class="docutils literal notranslate"><span class="pre">Obspy</span></code>, translating to a design ethos of rapid
+development, through scripting or shell interaction, and useful
+abstractions to accomplish tasks in tomography.</p>
 <p>The source code of <code class="docutils literal notranslate"><span class="pre">Pyatoa</span></code> can be found here:
 <a class="reference external" href="https://github.com/bch0w/pyatoa">https://github.com/bch0w/pyatoa</a></p>
 <hr class="docutils" />
@@ -61,9 +62,10 @@ visualization of waveforms, statistics, misfit etc</div>
 source receiver distributions, raypaths, etc. (deprecated, Cartopy in
 the future).</div>
 </div>
+</div>
 <hr class="docutils" />
 <div class="section" id="installation">
-<h3>Installation<a class="headerlink" href="#installation" title="Permalink to this headline">¶</a></h3>
+<h2>Installation<a class="headerlink" href="#installation" title="Permalink to this headline">¶</a></h2>
 <div class="line-block">
 <div class="line">Pyatoa is still currently under development so a package manager
 install has not been implemented.</div>
@@ -76,110 +78,22 @@ $ python setup.py install
 </div>
 </div>
 <hr class="docutils" />
-<div class="section" id="quickstart-part-1-pyflex-pyadjoint">
-<h3>Quickstart (Part 1: Pyflex, Pyadjoint)<a class="headerlink" href="#quickstart-part-1-pyflex-pyadjoint" title="Permalink to this headline">¶</a></h3>
-<div class="line-block">
-<div class="line">Here we provide a brief introduction on how <code class="docutils literal notranslate"><span class="pre">Pyatoa</span></code> is intended to
-be used standalone.</div>
-<div class="line"><code class="docutils literal notranslate"><span class="pre">Pyatoa</span></code> is normally very quiet to avoid unnecessary outputs,
-however it really babbles on about everything.</div>
-<div class="line">We can use the <code class="docutils literal notranslate"><span class="pre">logging</span></code> module to see what’s going on under the
-hood.</div>
-</div>
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="o">%</span><span class="k">pylab</span> inline
-<span class="kn">import</span> <span class="nn">obspy</span>
-<span class="kn">import</span> <span class="nn">pyatoa</span>
-<span class="kn">import</span> <span class="nn">logging</span>
-
-<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s2">&quot;pyatoa&quot;</span><span class="p">)</span>
-<span class="n">logger</span><span class="o">.</span><span class="n">setLevel</span><span class="p">(</span><span class="n">logging</span><span class="o">.</span><span class="n">DEBUG</span><span class="p">)</span>
-</pre></div>
-</div>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">Populating</span> <span class="n">the</span> <span class="n">interactive</span> <span class="n">namespace</span> <span class="kn">from</span> <span class="nn">numpy</span> <span class="ow">and</span> <span class="n">matplotlib</span>
-</pre></div>
-</div>
-<p><code class="docutils literal notranslate"><span class="pre">Pyatoa</span></code> is centralized around a <code class="docutils literal notranslate"><span class="pre">Config</span></code> object which controls all
-the parameters deemed necessary in the misfit quantification workflow.
-The <code class="docutils literal notranslate"><span class="pre">Config</span></code> object supports print statements to tell the User what
-parameters are available, and how they are set.</p>
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">cfg</span> <span class="o">=</span> <span class="n">pyatoa</span><span class="o">.</span><span class="n">Config</span><span class="p">()</span>
-<span class="nb">print</span><span class="p">(</span><span class="n">cfg</span><span class="p">)</span>
-</pre></div>
-</div>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">CONFIG</span>
-    <span class="n">model_number</span><span class="p">:</span>            <span class="kc">None</span>
-    <span class="n">event_id</span><span class="p">:</span>                <span class="kc">None</span>
-    <span class="n">min_period</span><span class="p">:</span>              <span class="mf">10.0</span>
-    <span class="n">max_period</span><span class="p">:</span>              <span class="mf">30.0</span>
-    <span class="n">filter_corners</span><span class="p">:</span>          <span class="mf">4.0</span>
-    <span class="n">rotate_to_rtz</span><span class="p">:</span>           <span class="kc">False</span>
-    <span class="n">unit_output</span><span class="p">:</span>             <span class="n">DISP</span>
-    <span class="n">synthetic_unit</span><span class="p">:</span>          <span class="n">DISP</span>
-    <span class="n">observed_tag</span><span class="p">:</span>            <span class="n">observed</span>
-    <span class="n">synthetic_tag</span><span class="p">:</span>           <span class="n">synthetic</span>
-    <span class="n">pyflex_map</span><span class="p">:</span>              <span class="n">default</span>
-    <span class="n">adj_src_type</span><span class="p">:</span>            <span class="n">cc_traveltime_misfit</span>
-    <span class="n">map_corners</span><span class="p">:</span>             <span class="p">{</span><span class="s1">&#39;lat_min&#39;</span><span class="p">:</span> <span class="o">-</span><span class="mf">42.5007</span><span class="p">,</span> <span class="s1">&#39;lat_max&#39;</span><span class="p">:</span> <span class="o">-</span><span class="mf">36.9488</span><span class="p">,</span> <span class="s1">&#39;lon_min&#39;</span><span class="p">:</span> <span class="mf">172.9998</span><span class="p">,</span> <span class="s1">&#39;lon_max&#39;</span><span class="p">:</span> <span class="mf">179.5077</span><span class="p">}</span>
-    <span class="n">synthetics_only</span><span class="p">:</span>         <span class="kc">False</span>
-    <span class="n">window_amplitude_ratio</span><span class="p">:</span>  <span class="mf">0.0</span>
-    <span class="n">zero_pad</span><span class="p">:</span>                <span class="mi">0</span>
-    <span class="n">start_pad</span><span class="p">:</span>               <span class="mi">20</span>
-    <span class="n">end_pad</span><span class="p">:</span>                 <span class="mi">500</span>
-    <span class="n">component_list</span><span class="p">:</span>          <span class="p">[</span><span class="s1">&#39;Z&#39;</span><span class="p">,</span> <span class="s1">&#39;N&#39;</span><span class="p">,</span> <span class="s1">&#39;E&#39;</span><span class="p">]</span>
-    <span class="n">cfgpaths</span><span class="p">:</span>                <span class="p">{</span><span class="s1">&#39;waveforms&#39;</span><span class="p">:</span> <span class="p">[],</span> <span class="s1">&#39;synthetics&#39;</span><span class="p">:</span> <span class="p">[],</span> <span class="s1">&#39;responses&#39;</span><span class="p">:</span> <span class="p">[]}</span>
-    <span class="n">pyflex_config</span><span class="p">:</span>           <span class="o">&lt;</span><span class="n">pyflex</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">Config</span> <span class="nb">object</span> <span class="n">at</span> <span class="mh">0x1171d6668</span><span class="o">&gt;</span>
-    <span class="n">pyadjoint_config</span><span class="p">:</span>        <span class="o">&lt;</span><span class="n">pyadjoint</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">ConfigCrossCorrelation</span> <span class="nb">object</span> <span class="n">at</span> <span class="mh">0x1099b0ef0</span><span class="o">&gt;</span>
-</pre></div>
-</div>
-<p>We can see here that we have default filter bands <code class="docutils literal notranslate"><span class="pre">min_period</span></code> and
-<code class="docutils literal notranslate"><span class="pre">max_period</span></code> set, as well as configurations for the <code class="docutils literal notranslate"><span class="pre">pyflex_map</span></code>
-which specifies the parameters of the <code class="docutils literal notranslate"><span class="pre">pyflex_config</span></code>. We also can set
-the <code class="docutils literal notranslate"><span class="pre">adj_src_type</span></code> whicih controls the parameters of the
-<code class="docutils literal notranslate"><span class="pre">pyadjoint_config</span></code>. For now we will ignore the rest of the parameters
-and move onto the <code class="docutils literal notranslate"><span class="pre">Manager</span></code> class.</p>
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">mgmt</span> <span class="o">=</span> <span class="n">pyatoa</span><span class="o">.</span><span class="n">Manager</span><span class="p">(</span><span class="n">cfg</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="n">mgmt</span><span class="p">)</span>
-</pre></div>
-</div>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">DATA</span>
-    <span class="n">dataset</span> <span class="p">(</span><span class="n">ds</span><span class="p">):</span>                 <span class="kc">None</span>
-    <span class="n">event</span><span class="p">:</span>                        <span class="kc">None</span>
-    <span class="n">inventory</span> <span class="p">(</span><span class="n">inv</span><span class="p">):</span>              <span class="kc">None</span>
-    <span class="n">observed</span> <span class="n">data</span> <span class="p">(</span><span class="n">st_obs</span><span class="p">):</span>       <span class="mi">0</span>
-    <span class="n">synthetic</span> <span class="n">data</span> <span class="p">(</span><span class="n">st_syn</span><span class="p">):</span>      <span class="mi">0</span>
-<span class="n">WORKFLOW</span>
-    <span class="n">obs</span> <span class="n">data</span> <span class="n">preprocessed</span><span class="p">:</span>        <span class="kc">False</span>
-    <span class="n">syn</span> <span class="n">data</span> <span class="n">preprocessed</span><span class="p">:</span>        <span class="kc">False</span>
-    <span class="n">half</span> <span class="n">duration</span> <span class="p">(</span><span class="n">half_dur</span><span class="p">):</span>     <span class="mf">0.000</span>
-    <span class="n">pyflex</span> <span class="p">(</span><span class="n">num_windows</span><span class="p">):</span>         <span class="mi">0</span>
-    <span class="n">pyadjoint</span> <span class="p">(</span><span class="n">total_misfit</span><span class="p">):</span>     <span class="mi">0</span>
-</pre></div>
-</div>
-<p>The <code class="docutils literal notranslate"><span class="pre">Manager</span></code> class always requires a <code class="docutils literal notranslate"><span class="pre">Config</span></code> input parameter.
-Printing the <code class="docutils literal notranslate"><span class="pre">Manager</span></code> shows us the <code class="docutils literal notranslate"><span class="pre">Pyatoa</span></code> workflow status: the
-print statement shows us what Data we currently have, and what outputs
-of our workflow have been collected. We can see above that we have no
-data collected, nor have we completed our workflow. So lets get started
-on that.</p>
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">mgmt</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">event_id</span> <span class="o">=</span> <span class="s2">&quot;2018p130600&quot;</span>
-<span class="n">mgmt</span><span class="o">.</span><span class="n">gather_data</span><span class="p">(</span><span class="n">station_code</span><span class="o">=</span><span class="s2">&quot;NZ.BFZ.??.HHZ&quot;</span><span class="p">)</span>
-</pre></div>
-</div>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="mi">2019</span><span class="o">-</span><span class="mi">12</span><span class="o">-</span><span class="mi">18</span> <span class="mi">12</span><span class="p">:</span><span class="mi">33</span><span class="p">:</span><span class="mi">24</span><span class="p">,</span><span class="mi">316</span><span class="p">]</span> <span class="o">-</span> <span class="n">pyatoa</span> <span class="o">-</span> <span class="n">INFO</span><span class="p">:</span> <span class="n">initiating</span><span class="o">/</span><span class="n">resetting</span> <span class="n">gatherer</span>
-<span class="p">[</span><span class="mi">2019</span><span class="o">-</span><span class="mi">12</span><span class="o">-</span><span class="mi">18</span> <span class="mi">12</span><span class="p">:</span><span class="mi">33</span><span class="p">:</span><span class="mi">24</span><span class="p">,</span><span class="mi">320</span><span class="p">]</span> <span class="o">-</span> <span class="n">pyatoa</span> <span class="o">-</span> <span class="n">DEBUG</span><span class="p">:</span> <span class="n">fetching</span> <span class="n">event</span> <span class="kn">from</span> <span class="nn">GEONET</span>
-<span class="p">[</span><span class="mi">2019</span><span class="o">-</span><span class="mi">12</span><span class="o">-</span><span class="mi">18</span> <span class="mi">12</span><span class="p">:</span><span class="mi">33</span><span class="p">:</span><span class="mi">25</span><span class="p">,</span><span class="mi">620</span><span class="p">]</span> <span class="o">-</span> <span class="n">pyatoa</span> <span class="o">-</span> <span class="n">INFO</span><span class="p">:</span> <span class="n">geonet</span> <span class="n">moment</span> <span class="n">tensor</span> <span class="n">external</span> <span class="k">for</span> <span class="n">event</span><span class="p">:</span> <span class="mi">2018</span><span class="n">p130600</span>
-<span class="p">[</span><span class="mi">2019</span><span class="o">-</span><span class="mi">12</span><span class="o">-</span><span class="mi">18</span> <span class="mi">12</span><span class="p">:</span><span class="mi">33</span><span class="p">:</span><span class="mi">25</span><span class="p">,</span><span class="mi">622</span><span class="p">]</span> <span class="o">-</span> <span class="n">pyatoa</span> <span class="o">-</span> <span class="n">INFO</span><span class="p">:</span> <span class="n">appending</span> <span class="n">GeoNet</span> <span class="n">moment</span> <span class="n">tensor</span> <span class="n">information</span> <span class="n">to</span> <span class="n">event</span>
-<span class="p">[</span><span class="mi">2019</span><span class="o">-</span><span class="mi">12</span><span class="o">-</span><span class="mi">18</span> <span class="mi">12</span><span class="p">:</span><span class="mi">33</span><span class="p">:</span><span class="mi">25</span><span class="p">,</span><span class="mi">622</span><span class="p">]</span> <span class="o">-</span> <span class="n">pyatoa</span> <span class="o">-</span> <span class="n">DEBUG</span><span class="p">:</span> <span class="n">event</span> <span class="n">got</span> <span class="kn">from</span> <span class="nn">external</span>
-</pre></div>
-</div>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="s1">&#39;Manager&#39;</span> <span class="nb">object</span> <span class="n">has</span> <span class="n">no</span> <span class="n">attribute</span> <span class="s1">&#39;config_event_id&#39;</span>
-</pre></div>
-</div>
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">importlib</span> <span class="k">import</span> <span class="n">reload</span>
-<span class="n">reload</span><span class="p">(</span><span class="n">pyatoa</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">manager</span><span class="p">)</span>
-<span class="kn">from</span> <span class="nn">pyatoa.core.manager</span> <span class="k">import</span> <span class="n">Manager</span>
-</pre></div>
-</div>
+<div class="section" id="doc-contents">
+<h2>Doc Contents:<a class="headerlink" href="#doc-contents" title="Permalink to this headline">¶</a></h2>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="tutorials.html">Tutorials</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="tutorials.html#tutorial-1-core-classes-general-workflow">Tutorial 1: core classes; general workflow</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorials.html#tutorial-2-custom-configs-for-pyflex-and-pyadjoint">Tutorial 2: custom configs for Pyflex and Pyadjoint</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorials.html#tutoral-3-dynamic-data-gathering">Tutoral 3: dynamic data gathering</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorials.html#tutorial-4-interacting-with-pyasdf">Tutorial 4: interacting with pyasdf</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorials.html#tutorial-6-visualization">Tutorial 6: visualization</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorials.html#tutorial-7-export-to-specfem3d">Tutorial 7: export to Specfem3D</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorials.html#tutorial-8-plugin-to-seisflows">Tutorial 8: plugin to Seisflows</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorials.html#tutorial-9-misfit-statistics">Tutorial 9: misfit statistics</a></li>
+</ul>
+</li>
+</ul>
 </div>
 </div>
 </div>
@@ -204,11 +118,15 @@ on that.</p>
 
 
 <h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="tutorials.html">Tutorials</a></li>
+</ul>
 
 <div class="relations">
 <h3>Related Topics</h3>
 <ul>
   <li><a href="#">Documentation overview</a><ul>
+      <li>Next: <a href="tutorials.html" title="next chapter">Tutorials</a></li>
   </ul></li>
 </ul>
 </div>
