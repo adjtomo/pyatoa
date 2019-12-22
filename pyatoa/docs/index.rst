@@ -374,7 +374,7 @@ corners, the Map will be plotted for the whole Earth.
 
 
 
-.. image:: output_21_1.png
+.. image:: index_files/index_21_1.png
 
 
 Tutorial 2: custom configs for Pyflex and Pyadjoint
