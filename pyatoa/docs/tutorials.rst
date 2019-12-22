@@ -1,6 +1,6 @@
-=========
 Tutorials
 =========
+
 Tutorial 1: core classes; general workflow
 ------------------------------------------
 
@@ -21,6 +21,12 @@ Tutorial 1: core classes; general workflow
     logger = logging.getLogger("pyatoa")
     logger.setLevel(logging.DEBUG)
 
+
+.. parsed-literal::
+
+    Populating the interactive namespace from numpy and matplotlib
+
+
 pyatoa.Config()
 ~~~~~~~~~~~~~~~
 
@@ -33,6 +39,36 @@ parameters are available, and how they are set.
 
     cfg = pyatoa.Config()
     print(cfg)
+
+
+.. parsed-literal::
+
+    CONFIG
+    	model_number:            None
+    	event_id:                None
+    	min_period:              10.0
+    	max_period:              30.0
+    	filter_corners:          4.0
+    	client:                  GEONET
+    	rotate_to_rtz:           False
+    	unit_output:             DISP
+    	synthetic_unit:          DISP
+    	observed_tag:            observed
+    	synthetic_tag:           synthetic
+    	pyflex_map:              default
+    	adj_src_type:            cc_traveltime_misfit
+    	map_corners:             None
+    	synthetics_only:         False
+    	window_amplitude_ratio:  0.0
+    	zero_pad:                0
+    	start_pad:               20
+    	end_pad:                 500
+    	component_list:          ['Z', 'N', 'E']
+    	cfgpaths:                {'waveforms': [], 'synthetics': [], 'responses': []}
+    	pyflex_config:           <pyflex.config.Config object at 0x104812cc0>
+    	pyadjoint_config:        <pyadjoint.config.Config object at 0x104812c88>
+    
+
 
 We can see here that we have some default parameters set, e.g. the
 filter bands ``min_period`` and ``max_period``, as well as
@@ -53,6 +89,25 @@ status.
     mgmt = pyatoa.Manager(cfg)
     print(mgmt)
 
+
+.. parsed-literal::
+
+    DATA
+    	dataset (ds):                 None
+    	event:                        None
+    	moment tensor (half_dur):     0
+    	inventory (inv):              None
+    	observed data (st_obs):       0
+    	synthetic data (st_syn):      0
+    WORKFLOW
+    	standardized:                 False
+    	st_obs filtered:              False
+    	st_syn filtered:              False
+    	misfit windows (windows):     0
+    	misfit (adj_srcs):            0.00E+00
+    
+
+
 We can see above that we have no data collected and our workflow is
 incomplete. Although ``Pyatoa`` comes with data gathering capabilities,
 for this example we will just read in some test data. We will see that
@@ -69,6 +124,31 @@ station in our inventory object.
     print(f"SYNTHETIC DATA\n\tsampling_rate:{mgmt.st_syn[0].stats.sampling_rate}, npts:{mgmt.st_syn[0].stats.npts}\n")
     print(mgmt)
 
+
+.. parsed-literal::
+
+    OBSSERVED DATA
+    	sampling_rate:100.0, npts:52001
+    
+    SYNTHETIC DATA
+    	sampling_rate:125.0, npts:30000
+    
+    DATA
+    	dataset (ds):                 None
+    	event:                        None
+    	moment tensor (half_dur):     0
+    	inventory (inv):              NZ.BFZ
+    	observed data (st_obs):       3
+    	synthetic data (st_syn):      3
+    WORKFLOW
+    	standardized:                 False
+    	st_obs filtered:              False
+    	st_syn filtered:              False
+    	misfit windows (windows):     0
+    	misfit (adj_srcs):            0.00E+00
+    
+
+
 We now have the minimum data required to begin the workflow. However, we
 cannot create misfit windows or measure misfit yet, because our traces
 have different sampling rates, start and end-times, and spectral
@@ -80,6 +160,13 @@ functions.
 
     mgmt.window()
     mgmt.measure()
+
+
+.. parsed-literal::
+
+    [2019-12-21 19:31:54,913] - pyatoa - WARNING: cannot window, waveforms not standardized
+    [2019-12-21 19:31:54,915] - pyatoa - WARNING: cannot measure misfit, traces not standardized
+
 
 Data processing
 ~~~~~~~~~~~~~~~
@@ -97,13 +184,45 @@ this.
 
     mgmt.standardize()
 
+
+.. parsed-literal::
+
+    [2019-12-21 19:31:54,923] - pyatoa - INFO: standardizing streams
+    /Users/Chow/miniconda3/envs/tomo/lib/python3.7/site-packages/obspy/core/trace.py:2111: FutureWarning: Conversion of the second argument of issubdtype from `float` to `np.floating` is deprecated. In future, it will be treated as `np.float64 == np.dtype(float).type`.
+      if not np.issubdtype(self.data.dtype, float):
+    [2019-12-21 19:31:55,030] - pyatoa - DEBUG: time offset set to 0s
+
+
 .. code:: ipython3
 
     mgmt.preprocess()
 
+
+.. parsed-literal::
+
+    [2019-12-21 19:31:55,037] - pyatoa - INFO: preprocessing observation data
+    [2019-12-21 19:31:55,172] - pyatoa - DEBUG: remove response, units of DISP
+    [2019-12-21 19:31:55,199] - pyatoa - DEBUG: filter 10.0s to 30.0s
+    [2019-12-21 19:31:55,200] - pyatoa - INFO: preprocessing synthetic data
+    [2019-12-21 19:31:55,235] - pyatoa - DEBUG: filter 10.0s to 30.0s
+    [2019-12-21 19:31:55,237] - pyatoa - INFO: moment tensor not found for event, cannot convolve
+
+
 .. code:: ipython3
 
     print(mgmt.st)
+
+
+.. parsed-literal::
+
+    6 Trace(s) in Stream:
+    NZ.BFZ..HXE   | 2018-02-18T07:43:47.972644Z - 2018-02-18T07:47:47.964644Z | 125.0 Hz, 30000 samples
+    NZ.BFZ..HXN   | 2018-02-18T07:43:47.972644Z - 2018-02-18T07:47:47.964644Z | 125.0 Hz, 30000 samples
+    NZ.BFZ..HXZ   | 2018-02-18T07:43:47.972644Z - 2018-02-18T07:47:47.964644Z | 125.0 Hz, 30000 samples
+    NZ.BFZ.10.HHE | 2018-02-18T07:43:47.976394Z - 2018-02-18T07:47:47.968394Z | 125.0 Hz, 30000 samples
+    NZ.BFZ.10.HHN | 2018-02-18T07:43:47.976394Z - 2018-02-18T07:47:47.968394Z | 125.0 Hz, 30000 samples
+    NZ.BFZ.10.HHZ | 2018-02-18T07:43:47.976394Z - 2018-02-18T07:47:47.968394Z | 125.0 Hz, 30000 samples
+
 
 We can now see that after performing standardization and preprocessing,
 3 of the workflow flags have been set ``True``, which means we can move
@@ -122,6 +241,30 @@ quantification:
     mgmt.window()
     mgmt.measure()
 
+
+.. parsed-literal::
+
+    [2019-12-21 19:31:55,275] - pyatoa - INFO: running Pyflex w/ map: default
+    [2019-12-21 19:31:55,401] - pyflex - WARNING: No rejection based on traveltime possible. Event and/or station information is not available.
+    /Users/Chow/Documents/academic/vuw_seismo/packages/pyflex/src/pyflex/window_selector.py:332: PyflexWarning: No rejection based on traveltime possible. Event and/or station information is not available.
+      warnings.warn(msg, PyflexWarning)
+    [2019-12-21 19:31:55,407] - pyflex - WARNING: Cannot calculate the end of the noise as event and/or station information is not given and thus the theoretical arrival times cannot be calculated
+    [2019-12-21 19:31:55,411] - pyflex - WARNING: Cannot reject windows based on their signal to noise ratio. Please give station and event information or information about the temporal range of the noise.
+    [2019-12-21 19:31:55,498] - pyatoa - INFO: 0 window(s) for comp Z
+    [2019-12-21 19:31:55,583] - pyflex - WARNING: No rejection based on traveltime possible. Event and/or station information is not available.
+    [2019-12-21 19:31:55,583] - pyflex - WARNING: Cannot calculate the end of the noise as event and/or station information is not given and thus the theoretical arrival times cannot be calculated
+    [2019-12-21 19:31:55,585] - pyflex - WARNING: Cannot reject windows based on their signal to noise ratio. Please give station and event information or information about the temporal range of the noise.
+    [2019-12-21 19:31:55,589] - pyatoa - INFO: 0 window(s) for comp N
+    [2019-12-21 19:31:55,661] - pyflex - WARNING: No rejection based on traveltime possible. Event and/or station information is not available.
+    [2019-12-21 19:31:55,662] - pyflex - WARNING: Cannot calculate the end of the noise as event and/or station information is not given and thus the theoretical arrival times cannot be calculated
+    [2019-12-21 19:31:55,664] - pyflex - WARNING: Cannot reject windows based on their signal to noise ratio. Please give station and event information or information about the temporal range of the noise.
+    [2019-12-21 19:31:55,695] - pyatoa - INFO: 1 window(s) for comp E
+    [2019-12-21 19:31:55,696] - pyatoa - INFO: 1 window(s) total found
+    [2019-12-21 19:31:55,697] - pyatoa - INFO: running Pyadjoint w/ adj_src_type: cc_traveltime_misfit
+    [2019-12-21 19:31:55,757] - pyatoa - INFO: 0.074 misfit for comp E
+    [2019-12-21 19:31:55,758] - pyatoa - INFO: total misfit 0.037
+
+
 ``Pyatoa`` has run ``Pyflex`` and recovered 1 window for the traces,
 which is saved into the Manager as a dictionary. It has then run
 ``Pyadjoint`` to measure the misfit on the recovered windows from
@@ -137,6 +280,24 @@ list of ``Window`` objects from ``Pyflex``. Each entry of the
     print(f"Adjoint Sources:\n{mgmt.adj_srcs}\n")
     print(f"Adjoint Source Object:\n{mgmt.adj_srcs['E']}\n")
     print(f"Adjoint Source Data:\n{mgmt.adj_srcs['E'].adjoint_source}")
+
+
+.. parsed-literal::
+
+    Windows:
+    {'E': [Window(left=1649, right=9765, center=5707, channel_id=NZ.BFZ.10.HHE, max_cc_value=0.8385478628040428, cc_shift=54, dlnA=-0.8993776279578864)]}
+    
+    Adjoint Sources:
+    {'E': <pyadjoint.adjoint_source.AdjointSource object at 0x112323be0>}
+    
+    Adjoint Source Object:
+    Cross Correlation Traveltime Misfit Adjoint Source for component HHE at station NZ.BFZ
+        Misfit: 0.07393
+        Adjoint source available with 30000 samples
+    
+    Adjoint Source Data:
+    [0. 0. 0. ... 0. 0. 0.]
+
 
 Plotting, mapping
 ~~~~~~~~~~~~~~~~~
@@ -158,6 +319,16 @@ corners, the Map will be plotted for the whole Earth.
 .. code:: ipython3
 
     mgmt.plot()
+
+
+.. parsed-literal::
+
+    [2019-12-21 19:31:55,774] - pyatoa - INFO: plotting waveform
+
+
+
+.. image:: output_20_1.png
+
 
 Tutorial 2: custom configs for Pyflex and Pyadjoint
 ---------------------------------------------------
@@ -181,6 +352,64 @@ take a look at the default settings by printing the Config class.
     print('\n')
     print(f"Pyadjoint Config: {cfg.adj_src_type}")
     pprint(vars(cfg.pyadjoint_config))
+
+
+.. parsed-literal::
+
+    Pyflex Config Map: default
+    {'c_0': 1.0,
+     'c_1': 1.5,
+     'c_2': 0.0,
+     'c_3a': 4.0,
+     'c_3b': 2.5,
+     'c_4a': 2.0,
+     'c_4b': 6.0,
+     'cc_acceptance_level': 0.7,
+     'check_global_data_quality': False,
+     'dlna_acceptance_level': 1.3,
+     'dlna_reference': 0.0,
+     'earth_model': 'ak135',
+     'max_period': 30.0,
+     'max_time_before_first_arrival': 50.0,
+     'min_period': 10.0,
+     'min_surface_wave_velocity': 3.0,
+     'noise_end_index': None,
+     'noise_start_index': 0,
+     'resolution_strategy': 'interval_scheduling',
+     's2n_limit': 1.5,
+     'signal_end_index': None,
+     'signal_start_index': 0,
+     'snr_integrate_base': 3.5,
+     'snr_max_base': 3.0,
+     'stalta_waterlevel': 0.07,
+     'tshift_acceptance_level': 10.0,
+     'tshift_reference': 0.0,
+     'window_signal_to_noise_type': 'amplitude',
+     'window_weight_fct': None}
+    
+    
+    Pyadjoint Config: cc_traveltime_misfit
+    {'dlna_sigma_min': 0.5,
+     'dt_fac': 2.0,
+     'dt_max_scale': 3.5,
+     'dt_sigma_min': 1.0,
+     'err_fac': 2.5,
+     'ipower_costaper': 10,
+     'lnpt': 15,
+     'max_period': 30.0,
+     'measure_type': 'dt',
+     'min_cycle_in_window': 0.5,
+     'min_period': 10.0,
+     'mt_nw': 4.0,
+     'num_taper': 5,
+     'phase_step': 1.5,
+     'taper_percentage': 0.3,
+     'taper_type': 'hann',
+     'transfunc_waterlevel': 1e-10,
+     'use_cc_error': False,
+     'use_mt_error': False,
+     'water_threshold': 0.02}
+
 
 Pyflex Config
 ~~~~~~~~~~~~~
@@ -210,6 +439,15 @@ just look at the Pyflex Config parameter ``c_0`` to see how this works.
     cfg = pyatoa.Config(pyflex_map=None, c_0=2.0)
     print(f'Option 2, kwargs c_0: {cfg.pyflex_config.c_0}')
 
+
+.. parsed-literal::
+
+    Default c_0: 1.0
+    Incorrect map name, no kwargs c_0: 1.0
+    Option 1, preset map c_0: 0.7
+    Option 2, kwargs c_0: 2.0
+
+
 Pyadjoint Config
 ~~~~~~~~~~~~~~~~
 
@@ -233,6 +471,15 @@ from Pyadjoint.
     print(f'Default phase_step: {cfg.pyadjoint_config.phase_step}')
     cfg = pyatoa.Config(phase_step=3)
     print(f'Kwargs phase_step: {cfg.pyadjoint_config.phase_step}')
+
+
+.. parsed-literal::
+
+    Default adj_src_type: cc_traveltime_misfit
+    Custom adj_src_type: custom_adj_src_type
+    Default phase_step: 1.5
+    Kwargs phase_step: 3
+
 
 Tutoral 3: dynamic data gathering
 ---------------------------------
@@ -282,6 +529,43 @@ specific file naming, following the format:
     mgmt.gather(station_code="NZ.BFZ.??.HH?", choice=["st_obs", "st_syn"])
     print(mgmt)
 
+
+.. parsed-literal::
+
+    [2019-12-21 19:31:58,073] - pyatoa - INFO: initiating/resetting gatherer
+    [2019-12-21 19:31:58,637] - pyatoa - DEBUG: fetching event from GEONET
+    [2019-12-21 19:32:00,221] - pyatoa - INFO: geonet moment tensor external for event: 2018p130600
+    [2019-12-21 19:32:00,224] - pyatoa - INFO: appending GeoNet moment tensor information to event
+    [2019-12-21 19:32:00,225] - pyatoa - DEBUG: event got from external
+    [2019-12-21 19:32:00,226] - pyatoa - INFO: gathering NZ.BFZ.??.HH? for 2018p130600
+    [2019-12-21 19:32:00,227] - pyatoa - DEBUG: gathering observation waveforms
+    [2019-12-21 19:32:00,316] - pyatoa - DEBUG: stream fetched from directory ../tests/data/test_directories/waveforms/2018/NZ/BFZ/HHZ.D/NZ.BFZ.10.HHZ.D.2018.049
+    [2019-12-21 19:32:00,394] - pyatoa - DEBUG: stream fetched from directory ../tests/data/test_directories/waveforms/2018/NZ/BFZ/HHE.D/NZ.BFZ.10.HHE.D.2018.049
+    [2019-12-21 19:32:00,484] - pyatoa - DEBUG: stream fetched from directory ../tests/data/test_directories/waveforms/2018/NZ/BFZ/HHN.D/NZ.BFZ.10.HHN.D.2018.049
+    [2019-12-21 19:32:00,486] - pyatoa - DEBUG: gathering synthetic waveforms
+    [2019-12-21 19:32:00,777] - pyatoa - DEBUG: stream fetched by event NZ.BFZ.HXE.semd
+    [2019-12-21 19:32:01,008] - pyatoa - DEBUG: stream fetched by event NZ.BFZ.HXZ.semd
+    [2019-12-21 19:32:01,212] - pyatoa - DEBUG: stream fetched by event NZ.BFZ.HXN.semd
+
+
+.. parsed-literal::
+
+    DATA
+    	dataset (ds):                 None
+    	event:                        smi:nz.org.geonet/2018p130600
+    	moment tensor (half_dur):     0
+    	inventory (inv):              None
+    	observed data (st_obs):       3
+    	synthetic data (st_syn):      3
+    WORKFLOW
+    	standardized:                 False
+    	st_obs filtered:              False
+    	st_syn filtered:              False
+    	misfit windows (windows):     0
+    	misfit (adj_srcs):            0.00E+00
+    
+
+
 External Getting
 ''''''''''''''''
 
@@ -309,6 +593,44 @@ information.
     mgmt.gather('NZ.BFZ.??.HH?', choice=["inv", "st_obs"])
     print(mgmt)
 
+
+.. parsed-literal::
+
+    [2019-12-21 19:32:01,227] - pyatoa - INFO: initiating/resetting gatherer
+    [2019-12-21 19:32:01,232] - pyatoa - DEBUG: fetching event from GEONET
+    [2019-12-21 19:32:02,129] - pyatoa - INFO: geonet moment tensor external for event: 2018p130600
+    [2019-12-21 19:32:02,131] - pyatoa - INFO: appending GeoNet moment tensor information to event
+    [2019-12-21 19:32:02,132] - pyatoa - DEBUG: event got from external
+    [2019-12-21 19:32:02,133] - pyatoa - INFO: gathering NZ.BFZ.??.HH? for 2018p130600
+    [2019-12-21 19:32:02,134] - pyatoa - DEBUG: gathering station information
+    [2019-12-21 19:32:02,135] - pyatoa - DEBUG: no response found for given paths
+    [2019-12-21 19:32:02,137] - pyatoa - DEBUG: internal station information not found, searching ext.
+    [2019-12-21 19:32:02,138] - pyatoa - DEBUG: fetching station from GEONET
+    [2019-12-21 19:32:02,588] - pyatoa - DEBUG: gathering observation waveforms
+    [2019-12-21 19:32:02,588] - pyatoa - DEBUG: no waveforms found for NZ.BFZ.??.HH? for given directories
+    [2019-12-21 19:32:02,589] - pyatoa - DEBUG: internal obs data unavailable, searching external
+    [2019-12-21 19:32:02,591] - pyatoa - DEBUG: fetching observations from GEONET
+    [2019-12-21 19:32:05,528] - pyatoa - DEBUG: stream got external NZ.BFZ.??.HH?
+
+
+.. parsed-literal::
+
+    DATA
+    	dataset (ds):                 None
+    	event:                        smi:nz.org.geonet/2018p130600
+    	moment tensor (half_dur):     0
+    	inventory (inv):              NZ.BFZ
+    	observed data (st_obs):       3
+    	synthetic data (st_syn):      0
+    WORKFLOW
+    	standardized:                 False
+    	st_obs filtered:              False
+    	st_syn filtered:              False
+    	misfit windows (windows):     0
+    	misfit (adj_srcs):            0.00E+00
+    
+
+
 .. code:: ipython3
 
     # e.g. we can look at the 2018-01-23 Mww7.9 Gulf Of Alaska event,
@@ -317,6 +639,51 @@ information.
     mgmt.gather("II.ERM.00.BHZ")
     print(mgmt)
     mgmt.st_obs.plot()
+
+
+.. parsed-literal::
+
+    [2019-12-21 19:32:05,539] - pyatoa - INFO: initiating/resetting gatherer
+    [2019-12-21 19:32:05,731] - pyatoa - DEBUG: fetching event from IRIS
+    [2019-12-21 19:32:05,843] - pyatoa - INFO: querying GCMT database for moment tensor
+    [2019-12-21 19:32:07,067] - pyatoa - INFO: gcmt event found matching criteria
+    [2019-12-21 19:32:07,077] - pyatoa - DEBUG: event got from external
+    [2019-12-21 19:32:07,078] - pyatoa - INFO: gathering II.ERM.00.BHZ for 10607586
+    [2019-12-21 19:32:07,079] - pyatoa - DEBUG: gathering station information
+    [2019-12-21 19:32:07,080] - pyatoa - DEBUG: no response found for given paths
+    [2019-12-21 19:32:07,082] - pyatoa - DEBUG: internal station information not found, searching ext.
+    [2019-12-21 19:32:07,086] - pyatoa - DEBUG: fetching station from IRIS
+    [2019-12-21 19:32:07,217] - pyatoa - DEBUG: gathering observation waveforms
+    [2019-12-21 19:32:07,217] - pyatoa - DEBUG: no waveforms found for II.ERM.00.BHZ for given directories
+    [2019-12-21 19:32:07,218] - pyatoa - DEBUG: internal obs data unavailable, searching external
+    [2019-12-21 19:32:07,219] - pyatoa - DEBUG: fetching observations from IRIS
+    [2019-12-21 19:32:07,784] - pyatoa - DEBUG: stream got external II.ERM.00.BHZ
+    [2019-12-21 19:32:07,785] - pyatoa - DEBUG: gathering synthetic waveforms
+    [2019-12-21 19:32:07,785] - pyatoa - INFO: no synthetic waveforms for II.ERM.00.BHZ found for event
+
+
+.. parsed-literal::
+
+    
+    DATA
+    	dataset (ds):                 None
+    	event:                        smi:local/ndk/C201801230931A/event
+    	moment tensor (half_dur):     0
+    	inventory (inv):              II.ERM
+    	observed data (st_obs):       1
+    	synthetic data (st_syn):      0
+    WORKFLOW
+    	standardized:                 False
+    	st_obs filtered:              False
+    	st_syn filtered:              False
+    	misfit windows (windows):     0
+    	misfit (adj_srcs):            0.00E+00
+    
+
+
+
+.. image:: output_31_2.png
+
 
 Tutorial 4: interacting with pyasdf
 -----------------------------------
@@ -344,10 +711,56 @@ class.
                  cfgpaths={"synthetics":"../tests/data/test_directories/synthetics",
                            "waveforms":"../tests/data/test_directories/waveforms"}
                  )
-    cfg.write(write_to=ds)
     mgmt = Manager(cfg, ds=ds)
     mgmt.gather("NZ.BFZ.??.HH?")
     print(mgmt)
+
+
+.. parsed-literal::
+
+    [2019-12-21 19:32:29,835] - pyatoa - INFO: initiating/resetting gatherer
+    [2019-12-21 19:32:29,838] - pyatoa - DEBUG: fetching event from GEONET
+    [2019-12-21 19:32:30,747] - pyatoa - INFO: geonet moment tensor external for event: 2018p130600
+    [2019-12-21 19:32:30,749] - pyatoa - INFO: appending GeoNet moment tensor information to event
+    [2019-12-21 19:32:30,817] - pyatoa - DEBUG: event got from external, added to pyasdf dataset
+    [2019-12-21 19:32:30,817] - pyatoa - INFO: gathering NZ.BFZ.??.HH? for 2018p130600
+    [2019-12-21 19:32:30,818] - pyatoa - DEBUG: gathering station information
+    [2019-12-21 19:32:30,819] - pyatoa - DEBUG: searching station internal asdf
+    [2019-12-21 19:32:30,821] - pyatoa - DEBUG: internal asdf station 
+    [2019-12-21 19:32:30,822] - pyatoa - DEBUG: no response found for given paths
+    [2019-12-21 19:32:30,823] - pyatoa - DEBUG: internal station information not found, searching ext.
+    [2019-12-21 19:32:30,823] - pyatoa - DEBUG: fetching station from GEONET
+    [2019-12-21 19:32:30,909] - pyatoa - DEBUG: gathering observation waveforms
+    [2019-12-21 19:32:30,910] - pyatoa - DEBUG: fetching obs internal asdf
+    [2019-12-21 19:32:30,912] - pyatoa - DEBUG: obs internal asdf failed, fetching by dir
+    [2019-12-21 19:32:30,998] - pyatoa - DEBUG: stream fetched from directory ../tests/data/test_directories/waveforms/2018/NZ/BFZ/HHZ.D/NZ.BFZ.10.HHZ.D.2018.049
+    [2019-12-21 19:32:31,080] - pyatoa - DEBUG: stream fetched from directory ../tests/data/test_directories/waveforms/2018/NZ/BFZ/HHE.D/NZ.BFZ.10.HHE.D.2018.049
+    [2019-12-21 19:32:31,192] - pyatoa - DEBUG: stream fetched from directory ../tests/data/test_directories/waveforms/2018/NZ/BFZ/HHN.D/NZ.BFZ.10.HHN.D.2018.049
+    [2019-12-21 19:32:31,224] - pyatoa - DEBUG: gathering synthetic waveforms
+    [2019-12-21 19:32:31,225] - pyatoa - DEBUG: fetching syn internal asdf
+    [2019-12-21 19:32:31,229] - pyatoa - DEBUG: syn internal asdf failed, fetching by dir
+    [2019-12-21 19:32:31,458] - pyatoa - DEBUG: stream fetched by event NZ.BFZ.HXE.semd
+    [2019-12-21 19:32:31,695] - pyatoa - DEBUG: stream fetched by event NZ.BFZ.HXZ.semd
+    [2019-12-21 19:32:31,916] - pyatoa - DEBUG: stream fetched by event NZ.BFZ.HXN.semd
+
+
+.. parsed-literal::
+
+    DATA
+    	dataset (ds):                 None
+    	event:                        smi:nz.org.geonet/2018p130600
+    	moment tensor (half_dur):     0
+    	inventory (inv):              NZ.BFZ
+    	observed data (st_obs):       3
+    	synthetic data (st_syn):      3
+    WORKFLOW
+    	standardized:                 False
+    	st_obs filtered:              False
+    	st_syn filtered:              False
+    	misfit windows (windows):     0
+    	misfit (adj_srcs):            0.00E+00
+    
+
 
 .. code:: ipython3
 
@@ -359,6 +772,51 @@ class.
          )
 
 
+
+.. parsed-literal::
+
+    /Users/Chow/miniconda3/envs/tomo/lib/python3.7/site-packages/h5py/_hl/dataset.py:313: H5pyDeprecationWarning: dataset.value has been deprecated. Use dataset[()] instead.
+      "Use dataset[()] instead.", H5pyDeprecationWarning)
+
+
+.. parsed-literal::
+
+    DATASET:
+    ASDF file [format version: 1.0.2]: 'test_dataset.h5' (1.0 MB)
+    	Contains 1 event(s)
+    	Contains waveform data from 1 station(s).
+    
+    EVENTS:
+    1 Event(s) in Catalog:
+    2018-02-18T07:43:48.127644Z | -39.949, +176.300 | 5.156706293 M  | manual
+    
+    STATION:
+    Contents of the data set for station NZ.BFZ:
+        - Has a StationXML file
+        - 2 Waveform Tag(s):
+            observed
+            synthetic
+    
+    INVENTORY:
+    Inventory created at 2019-12-20T04:48:30.000000Z
+    	Created by: Delta
+    		    None
+    	Sending institution: GeoNet (WEL(GNS_Test))
+    	Contains:
+    		Networks (1):
+    			NZ
+    		Stations (1):
+    			NZ.BFZ (Birch Farm)
+    		Channels (3):
+    			NZ.BFZ.10.HHZ, NZ.BFZ.10.HHN, NZ.BFZ.10.HHE
+    
+    WAVEFORMS:
+    3 Trace(s) in Stream:
+    NZ.BFZ.10.HHE | 2018-02-18T07:43:28.128394Z - 2018-02-18T07:52:08.128394Z | 100.0 Hz, 52001 samples
+    NZ.BFZ.10.HHN | 2018-02-18T07:43:28.128394Z - 2018-02-18T07:52:08.128394Z | 100.0 Hz, 52001 samples
+    NZ.BFZ.10.HHZ | 2018-02-18T07:43:28.128394Z - 2018-02-18T07:52:08.128394Z | 100.0 Hz, 52001 samples
+
+
 .. code:: ipython3
 
     mgmt.standardize()
@@ -366,12 +824,89 @@ class.
     mgmt.window()
     mgmt.measure()
 
+
+.. parsed-literal::
+
+    [2019-12-21 19:32:36,304] - pyatoa - INFO: standardizing streams
+    [2019-12-21 19:32:36,399] - pyatoa - DEBUG: time offset set to -0.0775s
+    [2019-12-21 19:32:36,400] - pyatoa - INFO: preprocessing observation data
+    [2019-12-21 19:32:36,522] - pyatoa - DEBUG: remove response, units of DISP
+    [2019-12-21 19:32:36,547] - pyatoa - DEBUG: filter 10.0s to 30.0s
+    [2019-12-21 19:32:36,547] - pyatoa - INFO: preprocessing synthetic data
+    [2019-12-21 19:32:36,577] - pyatoa - DEBUG: filter 10.0s to 30.0s
+    [2019-12-21 19:32:36,578] - pyatoa - DEBUG: convolve w/ gaussian half-dur=0.70s
+    [2019-12-21 19:32:36,587] - pyatoa - INFO: running Pyflex w/ map: default
+    [2019-12-21 19:32:36,985] - pyatoa - INFO: 0 window(s) for comp Z
+    [2019-12-21 19:32:37,270] - pyatoa - INFO: 0 window(s) for comp N
+    [2019-12-21 19:32:37,537] - pyatoa - INFO: 1 window(s) for comp E
+    [2019-12-21 19:32:37,538] - pyatoa - DEBUG: saving misfit windows to PyASDF
+    [2019-12-21 19:32:37,547] - pyatoa - INFO: 1 window(s) total found
+    [2019-12-21 19:32:37,548] - pyatoa - INFO: running Pyadjoint w/ adj_src_type: cc_traveltime_misfit
+    [2019-12-21 19:32:37,593] - pyatoa - INFO: 0.042 misfit for comp E
+    [2019-12-21 19:32:37,596] - pyatoa - DEBUG: saving adjoint sources E to PyASDF
+    [2019-12-21 19:32:37,617] - pyatoa - INFO: total misfit 0.021
+
+
 .. code:: ipython3
 
     print(f"AUX DATA:\n{ds.auxiliary_data}\n\n"
-          f"WINDOWS:\n{ds.auxiliary_data.MisfitWindows['None'].NZ_BFZ_E_0}\n\n"
-          f"ADJOINT SOURCES:\n{ds.auxiliary_data.AdjointSources['None'].NZ_BFZ_HXE}"
+          f"WINDOWS:\n{ds.auxiliary_data.MisfitWindows['Default'].NZ_BFZ_E_0}\n\n"
+          f"ADJOINT SOURCES:\n{ds.auxiliary_data.AdjointSources['Default'].NZ_BFZ_HXE}"
          )
+
+
+.. parsed-literal::
+
+    AUX DATA:
+    Data set contains the following auxiliary data types:
+    	AdjointSources (1 item(s))
+    	MisfitWindows (1 item(s))
+    
+    WINDOWS:
+    Auxiliary Data of Type 'MisfitWindows'
+    	Path: 'Default/NZ_BFZ_E_0'
+    	Data shape: '(1,)', dtype: 'bool'
+    	Parameters:
+    		absolute_endtime: 2018-02-18T07:44:45.210144Z
+    		absolute_starttime: 2018-02-18T07:44:01.250144Z
+    		cc_shift_in_samples: 43
+    		cc_shift_in_seconds: 0.34400000000000003
+    		center_index: 4397
+    		channel_id: NZ.BFZ.10.HHE
+    		dlnA: -0.8990262679871982
+    		dt: 0.008
+    		left_index: 1650
+    		max_cc_value: 0.84104863069917
+    		min_period: 10.0
+    		phase_arrival_P: 15.262626335461087
+    		phase_arrival_Pn: 15.131893962613248
+    		phase_arrival_S: 25.701646985505022
+    		phase_arrival_Sn: 25.67509457717087
+    		phase_arrival_p: 14.046040658280816
+    		phase_arrival_s: 23.621667003141294
+    		phase_arrival_sP: 18.780030497780345
+    		relative_endtime: 57.160000000000004
+    		relative_starttime: 13.200000000000001
+    		right_index: 7145
+    		time_of_first_sample: 2018-02-18T07:43:48.050144Z
+    		window_weight: 3.6972497805535514
+    
+    ADJOINT SOURCES:
+    Auxiliary Data of Type 'AdjointSources'
+    	Path: 'Default/NZ_BFZ_HXE'
+    	Data shape: '(30000, 2)', dtype: 'float64'
+    	Parameters:
+    		adjoint_source_type: cc_traveltime_misfit
+    		component: HHE
+    		dt: 0.008
+    		elevation_in_m: 283.0
+    		latitude: -40.679647283
+    		longitude: 176.246245098
+    		max_period: 30.0
+    		min_period: 10.0
+    		misfit_value: 0.042070475725622086
+    		station_id: NZ.BFZ
+    		units: m
 
 
 Tutorial 6: visualization

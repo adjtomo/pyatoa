@@ -1,8 +1,5 @@
-Python’s
-~~~~~~~~
-
-Adjoint Tomography Operations Assistant
----------------------------------------
+Python’s Adjoint Tomography Operations Assistant
+------------------------------------------------
 
 ``Pyatoa`` is a misfit quantification toolbox for the modern
 tomographer. It provides abstraction over key Python packages to
@@ -11,6 +8,8 @@ visualization in a seismic tomography problem. The design of ``Pyatoa``
 was inspired by ``Obspy``, translating to a design ethos of rapid
 development, through scripting or shell interaction, and useful
 abstractions to accomplish tasks in tomography.
+
+--------------
 
 The source code of ``Pyatoa`` can be found here:
 https://github.com/bch0w/pyatoa
@@ -50,10 +49,11 @@ Installation
 
 --------------
 
-Doc Contents:
-------------------
-.. toctree:: 
-    :maxdepth: 2  
+Doc Contents
+------------
 
-    tutorials  
+.. toctree::
+   :maxdepth: 2
+
+   tutorials
 
