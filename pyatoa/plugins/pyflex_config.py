@@ -104,11 +104,10 @@ Pyflex Parameter Descrpitions (from Pyflex docs):
         Interval scheduling will chose the optimal subset of non-overlapping
         windows. Merging will simply merge overlapping windows.
 """
-import warnings
-from pyflex import Config, Station, Event
+from pyflex import Config as pyflexConfig
 
 
-def set_pyflex_config(choice, min_period, max_period):
+def set_pyflex_config(min_period, max_period, choice=None, **kwargs):
     """
     Overwriting the default Pyflex parameters with User-defined criteria
 
@@ -123,76 +122,67 @@ def set_pyflex_config(choice, min_period, max_period):
     :rtype: pyflex.Config
     :return: the pyflex Config option to use when running Pyflex
     """
-    available_cfgs = {
-        # Default config parameters, i.e. don't overwrite anything
-        "default": {},
-        # Config parameter values from the Pyflex example script
-        "example": {
-            "stalta_waterlevel": 0.08,
-            "tshift_acceptance_level": 15.0,
-            "dlna_acceptance_level": 1.0,
-            "cc_acceptance_level": 0.8,
-            "c_0": 0.7,
-            "c_1": 4.0,
-            "c_3a": 1.0,
-            "c_3b": 2.0,
-            "c_4a": 3.0,
-            "c_4b": 10.0
-        },
-        # Config parameter values from researchers at UAF studying Alaska
-        "alaska": {
-            "stalta_waterlevel": 0.18,
-            "tshift_acceptance_level": 4.0,
-            "dlna_acceptance_level": 1.5,
-            "cc_acceptance_level": 0.71,
-            "c_0": 0.7,
-            "c_1": 2.0,
-            "c_3a": 3.0,
-            "c_3b": 2.0,
-            "c_4a": 2.5,
-            "c_4b": 12.0
-        },
-        # Config values from researchers at VUW/GNS studying New Zealand NI
-        "hikurangi": {
-            "stalta_waterlevel": 0.18,
-            "tshift_acceptance_level": 8.0,  # based on sign flip waveforms
-            "dlna_acceptance_level": 1.5,
-            "cc_acceptance_level": 0.7,
-            "s2n_limit": 3.,
-            "max_time_before_first_arrival": 0.,  # min start of window (s)
-            "c_0": 0.7, 
-            "c_1": 2.5,  # min win length = c_1 * min_period
-            "c_3a": 3,
-            "c_3b": 2.,
-            "c_4a": 2.5,
-            "c_4b": 12.,
-            },
-        # User can choose to overwrite parameters with a custom map
-        "custom": {},
-    }
+    # Instantiate the pyflex Config object
+    pfconfig = pyflexConfig(min_period=min_period, max_period=max_period)
 
-    # instantiate the pyflex Config object
-    pf_config = Config(min_period=min_period, max_period=max_period)
+    # From the example on the Pyflex website
+    if choice == "example":
+        setattr(pfconfig, "stalta_waterlevel", 0.08)
+        setattr(pfconfig, "tshift_acceptance_level", 15.0)
+        setattr(pfconfig, "dlna_acceptance_level", 1.0)
+        setattr(pfconfig, "cc_acceptance_level", 0.8)
+        setattr(pfconfig, "c_0", 0.7)
+        setattr(pfconfig, "c_1", 4.0)
+        setattr(pfconfig, "c_3a", 1.0)
+        setattr(pfconfig, "c_3b", 2.0)
+        setattr(pfconfig, "c_4a", 3.0)
+        setattr(pfconfig, "c_4b", 10.0)
+    # From the UAF group doing regional studies of Alaska
+    elif choice == "alaska":
+        setattr(pfconfig, "stalta_waterlevel", 0.18)
+        setattr(pfconfig, "tshift_acceptance_level", 4.0)
+        setattr(pfconfig, "dlna_acceptance_level", 1.5)
+        setattr(pfconfig, "cc_acceptance_level", 0.71)
+        setattr(pfconfig, "c_0", 0.7)
+        setattr(pfconfig, "c_1", 2.0)
+        setattr(pfconfig, "c_3a", 3.0)
+        setattr(pfconfig, "c_3b", 2.0)
+        setattr(pfconfig, "c_4a", 2.5)
+        setattr(pfconfig, "c_4b", 12.0)
+    # From the VUW/GNS group doing regional studies of North Island, New Zealand
+    elif choice == "hikurangi":
+        setattr(pfconfig, "stalta_waterlevel", 0.18)
+        setattr(pfconfig, "tshift_acceptance_level", 8.0)  # based on sign flip
+        setattr(pfconfig, "dlna_acceptance_level", 1.5)
+        setattr(pfconfig, "cc_acceptance_level", 0.7)
+        setattr(pfconfig, "s2n_limit", 3.)
+        setattr(pfconfig, "max_time_before_first_arrival", 0.)  # min strt wind.
+        setattr(pfconfig, "c_0", 0.7)
+        setattr(pfconfig, "c_1", 2.5)  # min win len = c_1 * min_period
+        setattr(pfconfig, "c_3a", 3.0)
+        setattr(pfconfig, "c_3b", 2.0)
+        setattr(pfconfig, "c_4a", 2.5)
+        setattr(pfconfig, "c_4b", 12.0)
+    elif choice == "CUSTOM_CHOICE_1":
+        # SET ATTRIBUTES FOR CUSTOM PYFLEX CONFIGS HERE
+        pass
+    # If no choice, kwargs can also be passed from the pyatoa.Config object
+    # this removes the need for the User to interact with the Pyflex Config
+    else:
+        for key, item in kwargs.items():
+            if hasattr(pfconfig, key):
+                setattr(pfconfig, key, item)
 
-    # Check if given key is available, if not set to default
-    if choice not in available_cfgs.keys():
-        warnings.warn(
-            "Pyflex Config choice not in available keys: {}"
-            "setting 'default' parameter map.".format(available_cfgs.keys()),
-            UserWarning
-        )
-
-    # Overwrite the default config values 
-    overwrite = available_cfgs[choice]
-    for key in overwrite.keys():
-        setattr(pf_config, key, overwrite[key])
-    
-    return pf_config
+    return pfconfig
 
 
 def set_pyflex_station_event(inv, event):
     """
-    Set event and station objects expected by Pyflex
+    DEPRECATED
+    This isn't necessary anymore because Pyflex can take Inventory and Event
+    objects so we skip this level of abstraction
+
+    Set event and station objects expected by Pyflex.
 
     :type inv: obspy.core.inventory.Inventory
     :param inv: inventory containing station of interest
@@ -203,6 +193,7 @@ def set_pyflex_station_event(inv, event):
     :rtype pf_event pyflex.Event
     :return pf_event: pyflex event object specifyin event location and time
     """
+    from pyflex import Station, Event
     pf_station = Station(latitude=inv[0][0].latitude,
                          longitude=inv[0][0].longitude
                          )

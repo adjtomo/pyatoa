@@ -453,7 +453,7 @@ class Manager:
                 self.config.synthetic_tag.format(model)]
             self.inv = ds.waveforms[sta_tag].StationXML
 
-    def standardize(self, force=False):
+    def standardize(self, force=False, standardize_to="syn"):
         """
         Standardize the observed and synthetic traces in place. Ensure that the
         data streams have the same start and endtimes, and sampling rate, so
@@ -463,6 +463,11 @@ class Manager:
         :type force: bool
         :param force: allow the User to force the functino to run even if checks
             say that the two Streams are already standardized
+        :type standardize_to: str
+        :param standardize_to: allows User to set which Stream conforms to which
+            by default the Observed traces should conform to the Synthetic ones
+            because exports to Specfem should be controlled by the Synthetic
+            sampling rate, npts, etc.
         """
         self._check()
         if min(self._len_obs, self._len_syn) == 0:
@@ -477,14 +482,18 @@ class Manager:
         if self.config.zero_pad:
             self.st_obs = zero_pad_stream(self.st_obs, self.config.zero_pad)
             self.st_syn = zero_pad_stream(self.st_syn, self.config.zero_pad)
-            logger.debug("zero padding front, back by {self.config.zero_pad}s")
+            logger.debug(f"zero padding front, back by {self.config.zero_pad}s")
 
-        # Ensure the synthetics control the sampling rate
-        self.st_obs.resample(self.st_syn[0].stats.sampling_rate)
+        # Resample one Stream to match the other
+        if standardize_to == "syn":
+            self.st_obs.resample(self.st_syn[0].stats.sampling_rate)
+        else:
+            self.st_syn.resample(self.st_obs[0].stats.sampling_rate)
 
-        # Trim observations and synthetics to the length of synthetics
+        # Trim observations and synthetics to the length of chosen
+        trim_to = {"obs": "a", "syn": "b"}
         self.st_obs, self.st_syn = trimstreams(
-            st_a=self.st_obs, st_b=self.st_syn, force="b")
+            st_a=self.st_obs, st_b=self.st_syn, force=trim_to[standardize_to])
 
         # Retrieve the first timestamp in the .sem? file from Specfem
         if self.event is not None:
@@ -582,14 +591,13 @@ class Manager:
                 self.st_syn = stf_convolve(st=self.st_syn,
                                            half_duration=self._half_dur,
                                            time_shift=False,
-                                           time_offset=self._time_offset_sec
+                                           # time_offset=self._time_offset_sec
                                            )
             # If a synthetic-synthetic case, convolve observations too
             if self.config.synthetics_only and which in ["obs", "both"]:
                 self.st_obs = stf_convolve(st=self.st_obs,
                                            half_duration=self._half_dur,
                                            time_shift=False,
-                                           time_offset=self._time_offset_sec
                                            )
         except (AttributeError, IndexError):
             logger.info("moment tensor not found for event, cannot convolve")
@@ -694,7 +702,7 @@ class Manager:
         logger.debug("saving misfit windows to PyASDF")
         for comp in self.windows.keys():
             for i, window in enumerate(self.windows[comp]):
-                tag = (f"{self.config.model_number}/" 
+                tag = (f"{self.config.model_number or 'Default'}/"
                        f"{self.st_obs[0].stats.network}_"
                        f"{self.st_obs[0].stats.station}_{comp}_{i}"
                        )
@@ -738,7 +746,8 @@ class Manager:
         if not self._standardize_flag and not force:
             logger.warning("cannot measure misfit, traces not standardized")
             return
-        elif not (self._obs_filter_flag or self._syn_filter_flag) and not force:
+        elif not (self._obs_filter_flag and self._syn_filter_flag) \
+                and not force:
             logger.warning(
                 "cannot measure misfit, waveforms not filtered")
             return
@@ -820,8 +829,8 @@ class Manager:
                 # to signify that these are synthetic waveforms
                 # This is required by Specfem3D
                 tag = "{mod}/{net}_{sta}_{ban}X{cmp}".format(
-                    mod=self.config.model_number, net=adj_src.network,
-                    sta=adj_src.station,
+                    mod=self.config.model_number or "Default",
+                    net=adj_src.network, sta=adj_src.station,
                     ban=channel_codes(self.st_syn[0].stats.delta),
                     cmp=adj_src.component[-1]
                 )

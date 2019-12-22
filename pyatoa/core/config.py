@@ -176,24 +176,22 @@ class Config:
                 assert(key in acceptable_keys), "key should be in {}".format(
                     acceptable_keys)
         else:
-            self.map_corners = {'lat_min': -42.5007, 'lat_max': -36.9488,
-                                'lon_min': 172.9998, 'lon_max': 179.5077
-                                }
+            self.map_corners = None
 
         # Check if unit output properly set
         acceptable_units = ['DISP', 'VEL', 'ACC']
         assert(self.unit_output in acceptable_units), \
-            "unit_output should be in {acceptable_units}"
+            f"unit_output should be in {acceptable_units}"
 
         assert(self.synthetic_unit in acceptable_units), \
-            "synthetic_unit should be in {acceptable_units}"
+            f"synthetic_unit should be in {acceptable_units}"
 
         # Check that paths are in the proper format
         required_keys = ['synthetics', 'waveforms', 'responses']
         assert(isinstance(self.cfgpaths, dict)), "paths should be a dict"
         for key in self.cfgpaths.keys():
             assert(key in required_keys), \
-                "path keys can only be in {required_keys}"
+                f"path keys can only be in {required_keys}"
         # Make sure that all the required keys are given in the dictionary
         for key in required_keys:
             if key not in self.cfgpaths.keys():

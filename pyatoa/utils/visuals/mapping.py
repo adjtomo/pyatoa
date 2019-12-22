@@ -352,12 +352,17 @@ def manager_map(map_corners, inv=None, event=None, stations=None,
                           color_by_network=color_by_network
                           )
 
+    # Plot the station
+    if inv is not None:
+        plot_stations(m, inv)
+
     # If an event is given, try to plot the focal-mechanism beachball
+    import ipdb;ipdb.set_trace()
     if event is not None:
         event_beachball(m, event)
 
     # If an inventory object is given, plot source receiver line, and info
-    if inv is not None:
+    if (inv and event) is not None:
         connect_source_receiver(m, event=event, sta=inv[0][0])
         annotate_srcrcv_information(m, event=event, inv=inv)
 

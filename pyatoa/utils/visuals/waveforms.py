@@ -220,10 +220,12 @@ def window_maker(st_obs, st_syn, config, time_offset_sec=0., windows=None,
                 # Adjoint source info in window annotation, set height
                 if adj_srcs is not None and plot_adjsrc:
                     y_anno = window_anno_height * (ymax - ymin) + ymin
-                    window_anno = "type={typ}\nmsft={mft:.1E}\n".format(
-                        typ=adj_srcs[comp].measurement[j]["type"],
-                        mft=adj_srcs[comp].measurement[j]["misfit_dt"]
-                    ) + window_anno
+                    if hasattr(adj_srcs[comp], "measurement"):
+                        # Prepend annotation with adjoint source information
+                        window_anno = "type={typ}\nmsft={mft:.1E}\n".format(
+                            typ=adj_srcs[comp].measurement[j]["type"],
+                            mft=adj_srcs[comp].measurement[j]["misfit_dt"]
+                        ) + window_anno
                 # Annotate window information
                 if plot_window_anno:
                     axes[i].annotate(s=window_anno, xy=(t_anno, y_anno),
@@ -314,7 +316,7 @@ def window_maker(st_obs, st_syn, config, time_offset_sec=0., windows=None,
     if config.event_id is not None:
         title = " ".join([title, config.event_id])
     # Filter bounds to plot title
-    title += " [{config.min_period}s, {config.max_period}s]"
+    title += f" [{config.min_period}s, {config.max_period}s]"
     # User appended title information
     if append_title is not None:
         title = " ".join([title, append_title])

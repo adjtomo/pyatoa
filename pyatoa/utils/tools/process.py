@@ -266,16 +266,22 @@ def stf_convolve(st, half_duration, source_decay=4., time_shift=None,
         if time_shift:
             tr.stats.starttime += time_shift
         # if time offset is given, split the trace into before and after origin
-        if time_offset:
-            after_origin = np.convolve(tr.data[time_offset_in_samp:],
-                                       gaussian_stf, mode="same"
-                                       )
-            data_out = np.concatenate([tr.data[:time_offset_in_samp],
-                                       after_origin])
-            tr.data = data_out
-        else:
-            data_out = np.convolve(tr.data, gaussian_stf, mode="same")
-            tr.data = data_out
+        # only convolve after zero time
+
+        # This doesn't actually work? It just adds more samples to the trace
+        # which is not what we want
+        # if time_offset:
+        #     after_origin = np.convolve(tr.data[time_offset_in_samp:],
+        #                                gaussian_stf, mode="same"
+        #                                )
+        #     data_out = np.concatenate([tr.data[:time_offset_in_samp],
+        #                                after_origin])
+        #     tr.data = data_out
+        # else:
+        #     data_out = np.convolve(tr.data, gaussian_stf, mode="same")
+        #     tr.data = data_out
+        data_out = np.convolve(tr.data, gaussian_stf, mode="same")
+        tr.data = data_out
 
     return st_out
 

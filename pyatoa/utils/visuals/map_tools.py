@@ -132,7 +132,7 @@ def event_beachball(m, event, fm_type="focal_mechanism", **kwargs):
 
 
 def plot_stations(m, inv, event=None, annotate_names=False,
-                  color_by_network=False, simple=False):
+                  color_by_network=False):
     """
     Fill map with stations based on station availability and network
 
@@ -163,7 +163,7 @@ def plot_stations(m, inv, event=None, annotate_names=False,
 
     # Plot stations
     for i, net_code in enumerate(network_codes):
-        net = inv.select(net_code)
+        net = inv.select(net_code)[0]
         # For legend
         m.scatter(0, 0, marker='v', color=available_colors[i],
                   linestyle='-', s=80, linewidth=1.25, zorder=1,
@@ -336,7 +336,7 @@ def interpolate_and_contour(m, x, y, z, len_xi, len_yi, fill=True,
               )
 
 
-def initiate_basemap(map_corners, scalebar=True, **kwargs):
+def initiate_basemap(map_corners=None, scalebar=True, **kwargs):
     """
     Set up the basemap object in the same way each time
 
@@ -355,26 +355,33 @@ def initiate_basemap(map_corners, scalebar=True, **kwargs):
     scalebar_location = kwargs.get("scalebar_location", "lower-right")
     latlon_linewidth = kwargs.get("latlon_linewidth", 0.)   
 
-    # Initiate map and draw in style
-    m = Basemap(projection='stere', resolution='h', rsphere=6371200,
-                lat_0=(map_corners['lat_min'] + map_corners['lat_max'])/2,
-                lon_0=(map_corners['lon_min'] + map_corners['lon_max'])/2,
-                llcrnrlat=map_corners['lat_min'],
-                urcrnrlat=map_corners['lat_max'],
-                llcrnrlon=map_corners['lon_min'],
-                urcrnrlon=map_corners['lon_max'],
-                )
+    # Initiate map and draw in style. Stereographic projection if regional
+    # corners are given, otherwise world map
+    if map_corners:
+        m = Basemap(projection='stere', resolution='h', rsphere=6371200,
+                    lat_0=(map_corners['lat_min'] + map_corners['lat_max'])/2,
+                    lon_0=(map_corners['lon_min'] + map_corners['lon_max'])/2,
+                    llcrnrlat=map_corners['lat_min'],
+                    urcrnrlat=map_corners['lat_max'],
+                    llcrnrlon=map_corners['lon_min'],
+                    urcrnrlon=map_corners['lon_max'],
+                    )
+        m.drawparallels(np.arange(int(map_corners['lat_min']),
+                                  int(map_corners['lat_max']), 1),
+                        labels=[1, 0, 0, 0], linewidth=latlon_linewidth,
+                        )
+        m.drawmeridians(np.arange(int(map_corners['lon_min']),
+                                  int(map_corners['lon_max']) + 1, 1),
+                        labels=[0, 0, 0, 1], linewidth=latlon_linewidth,
+                        )
+    else:
+        m = Basemap(projection='cyl', resolution='c', llcrnrlat=-90,
+                    urcrnrlat=90, llcrnrlon=-180, urcrnrlon=180,
+                    )
+
     m.drawcoastlines(linewidth=coastline_linewidth, zorder=coastline_zorder)
     m.fillcontinents(color=continent_color, lake_color=lake_color)
     m.drawmapboundary(fill_color=fill_color)
-    m.drawparallels(np.arange(int(map_corners['lat_min']),
-                              int(map_corners['lat_max']), 1),
-                    labels=[1, 0, 0, 0], linewidth=latlon_linewidth,
-                    )
-    m.drawmeridians(np.arange(int(map_corners['lon_min']),
-                              int(map_corners['lon_max'])+1, 1),
-                    labels=[0, 0, 0, 1], linewidth=latlon_linewidth,
-                    )
 
     if scalebar:
         place_scalebar(m, map_corners, loc=scalebar_location)

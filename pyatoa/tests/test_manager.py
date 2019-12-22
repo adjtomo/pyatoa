@@ -51,30 +51,60 @@ class TestManager(unittest.TestCase):
         if os.path.exists(cls.empty_ds_fid):
             os.remove(cls.empty_ds_fid)
 
-    def test_manager_init(self):
+    def test_empty_manager(self):
         """
-        Make sure empty manager can be initiated
-        :return:
+        Check empty Manager and calling commands with no data
         """
+        # Empty manager initiation
         with self.assertRaises(TypeError):
-            mgmt = Manager()
-        # Test that empty gathering works
+            Manager()
+
+        # Test that `empty` gathering works
         mgmt = Manager(config=self.config, empty=True)
         self.assertIsNone(mgmt.event)
+
         # Assert empty Manager returns nothing
+        self.assertISNone(mgmt.standardize())
         self.assertIsNone(mgmt.preprocess())
-        self.assertIsNone(mgmt.run_pyflex())
-        self.assertIsNone(mgmt.run_pyadjoint())
-        self.assertIsNone(mgmt.plot_wav())
+        self.assertIsNone(mgmt.window())
+        self.assertIsNone(mgmt.measure())
+        self.assertIsNone(mgmt.plot())
+        self.assertIsNone(mgmt.map())
+
+    def test_standardize(self):
+        """
+        Make sure the standardize function returns two traces that have the
+        same sampling rate and number of points
+        """
+        mgmt = Manager(config=self.config, empty=True, st_obs=self.st_obs,
+                       st_syn=self.st_syn)
+
+        # Make sure that the raw traces are not standardized
+        for comp in mgmt.config.component_list():
+            obs = mgmt.st_obs.select(component=comp)[0]
+            syn = mgmt.st_obs.select(component=comp)[0]
+            self.assertFalse(obs.stats.sampling_rate == syn.stats.sampling_rate)
+            self.assertFalse(obs.stats.npts == syn.stats.npts)
+
+        mgmt.standardize()
+
+        # Make sure the new traces are standardized
+        for comp in mgmt.config.component_list():
+            obs = mgmt.st_obs.select(component=comp)[0]
+            syn = mgmt.st_obs.select(component=comp)[0]
+            self.assertTrue(obs.stats.sampling_rate == syn.stats.sampling_rate)
+            self.assertTrue(obs.stats.npts == syn.stats.npts)
 
     def test_preprocess(self):
         """
-        Test that the preprocess function works
-        :return:
+        Make sure that preprocess function works
         """
         mgmt = Manager(config=self.config, empty=True, event=self.event,
                        st_obs=self.st_obs, st_syn=self.st_syn, inv=self.inv)
+        mgmt.standardize()
         mgmt.preprocess()
+
+        import ipdb;ipdb.set_trace()
 
         # Check that the proper processing has occurred
         for tr in mgmt.st_obs:

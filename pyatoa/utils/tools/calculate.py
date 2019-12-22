@@ -106,3 +106,5 @@ def amplitude_anomaly(a, b, dt):
     integral_b = np.trapz(b**2, dx=dt)
     
     return 0.5 * np.log(integral_a/integral_b)
+
+

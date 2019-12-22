@@ -14,7 +14,7 @@ from obspy import Stream, Trace, UTCDateTime
 
 def read_fortran_binary(path):
     """
-    Convert a fortran .bin file into a NumPy array,
+    Convert a Specfem3D fortran .bin file into a NumPy array,
     Copied verbatim from Seisflows/plugins/solver_io/fortran_binary.py/_read()
 
     :type path: str
@@ -39,6 +39,7 @@ def read_fortran_binary(path):
 def read_ascii(path, origintime=None, location=''):
     """
     Specfem3D outputs seismograms to ASCII (.sem?) files
+
     Pyatoa expects seismograms as Obspy Stream objects.
     This convenience function converts the .sem? files into Stream objects
     with the correct header information.
@@ -196,8 +197,8 @@ def write_misfit_json(ds, model, step, fidout="./misfits.json"):
                   "windows": int(windows), 
                   "adjsrcs": int(adjsrcs),
                   }
-    step_dict = {"{}".format(event_id): event_dict}
-    model_dict = {"{}".format(step): step_dict}
+    step_dict = {event_id: event_dict}
+    model_dict = {step: step_dict}
     misfit_dict = {model: model_dict}
     
     # To allow multiple CPUs clean, simultaenous write capability, create a
