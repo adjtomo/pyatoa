@@ -1,13 +1,19 @@
+"""
+After a Pyatoa workflow has been completed, the dataset contains information
+about the misfit from each receiver. This script creates a map of all the
+receivers, color coding them by misfit, and then interpolates a contour
+grid on top of each of the receivers. This makes visualization of misfit for
+each event simpler.
+"""
 import os
 import glob
 import json
 import pyasdf
 import numpy as np
 import matplotlib.pyplot as plt
-
+from pyatoa.utils.asdf.extractions import sum_misfits
 from pyatoa.utils.visuals.map_tools import initiate_basemap, \
     interpolate_and_contour
-from pyatoa.utils.asdf.extractions import sum_misfits
 
 
 def read_datasets(path_to_ds="./", model="m00", save="./misfitinfo.json"):
@@ -45,7 +51,6 @@ def read_datasets(path_to_ds="./", model="m00", save="./misfitinfo.json"):
         if save:
             with open(save, 'w') as f:
                 json.dump(misdict, f, indent=4)
-
     else:
         with open(save) as f:
             misdict = json.load(f)
@@ -54,13 +59,18 @@ def read_datasets(path_to_ds="./", model="m00", save="./misfitinfo.json"):
 
 
 if __name__ == "__main__":
+    # Set the model the interrogate here
     model = "m00"
+    plot_title = "Misfit Map"
 
+    # Set the map corners
+    map_corners = {'lat_min': -42.5007, 'lat_max': -36.9488,
+                   'lon_min': 172.9998, 'lon_max': 178.6500}
+
+    # Set some plot attributes
     markersize = 75
     linewidth = 1.75
     alpha = 1.0
-    map_corners = {'lat_min': -42.5007, 'lat_max': -36.9488,
-                   'lon_min': 172.9998, 'lon_max': 178.6500}
 
     misdict = read_datasets(path_to_ds=os.getcwd(), model=model)
 
@@ -73,7 +83,6 @@ if __name__ == "__main__":
     anno_y_step = ((m.urcrnry - m.llcrnry)/2) / len(misdict.keys())
     anno_x = (m.urcrnrx - m.llcrnrx) * 0.79 + m.llcrnrx
 
-
     # Plot all the event locations
     sta_misfit = {}
     sta_coords = {}
@@ -84,14 +93,14 @@ if __name__ == "__main__":
                   linewidth=linewidth, zorder=500
                   )
        
-        # determine how many measurements each event has
+        # Determine how many measurements each event has
         plt.annotate(s=f"{i}", xy=(ev_x, ev_y), zorder=501, fontsize=10, 
                      color='k', weight='bold')
         plt.annotate(s=f"{i:0>2}: {event_id}", xy=(ev_x, ev_y), 
                      xytext=(anno_x, anno_y), fontsize=8)
-                     # arrowprops=dict(facecolor='black', arrowstyle="->"))
         anno_y -= anno_y_step
 
+        # Retrieve the misfit assigned to each station.
         for sta in misdict[event_id].keys():
             if sta in ['lat', 'lon']:
                 continue
@@ -101,25 +110,25 @@ if __name__ == "__main__":
             else:
                 sta_misfit[sta] = [misdict[event_id][sta]['misfit']]
 
-            # grab coordinate info
+            # Grab coordinate info
             sta_x, sta_y = m(misdict[event_id][sta]['lon'], 
                              misdict[event_id][sta]['lat'])
-            if not sta in sta_coords:
+            if sta not in sta_coords:
                 sta_coords[sta] = {"x": sta_x, "y": sta_y}
             
-            # connect source and receiver
+            # Connect source and receiver with a line
             m.plot([ev_x, sta_x], [ev_y, sta_y], linestyle='-', linewidth=1,
                    c='k', alpha=0.1)
 
+    # Create lists to be passed to interpolation function.
     x_plot, y_plot, misfit_plot = [], [], []
     for sta in sta_misfit.keys():
-        plt.annotate(s=f"{sta}", xy=(sta_coords[sta]['x'], 
-                                     sta_coords[sta]['y']), 
+        plt.annotate(s=f"{sta}", xy=(sta_coords[sta]['x'], sta_coords[sta]['y']),
                      fontsize=7, zorder=499)
         x_plot.append(sta_coords[sta]['x'])
         y_plot.append(sta_coords[sta]['y'])
 
-        # get some variables from the misfit
+        # Get some variables from the misfit
         mean_misfit = np.mean(sta_misfit[sta])
         total_misfit = sum(sta_misfit[sta])
         max_misfit = max(sta_misfit[sta])
@@ -133,6 +142,5 @@ if __name__ == "__main__":
                             fill=False, cbar_label='misfit'
                             )
 
-    plt.title("Misfit Map for 30event Real Data")
-
+    plt.title(plot_title)
     plt.show()

@@ -1,6 +1,6 @@
 """
 Simple scatterplot to show misfit convergence based on the misfits.json
-output that is created during a Seisflows plugin run
+output that is created during a Seisflows run
 """
 import os
 import json
@@ -12,9 +12,13 @@ mpl.rcParams['lines.linewidth'] = 2.
 mpl.rcParams['lines.markersize'] = 6
 mpl.rcParams['axes.linewidth'] = 3
 
+
 def parse_json(fid):
     """
-    Parse the misfits json file and 
+    Parse the misfits json file
+
+    :type fid: str
+    :param fid: File identifier for misfits.json file
     """
     misfits = json.load(open(fid))
 
@@ -40,13 +44,15 @@ def parse_json(fid):
 
 
 if __name__ == "__main__":
-    # For comparisons of various misfit criteria
+    # Set pathanames here
     basepath = ("/scale_wlg_nobackup/filesets/nobackup/nesi00263/bchow/tomo/"
                 "seisflows/checkerboard/30event_75e1785/")
     fid_list = [os.path.join(basepath, "cc/pyatoa.io/misfits.json"),
                 os.path.join(basepath, "mtm/pyatoa.io/misfits.json"),
                 os.path.join(basepath, "both/pyatoa.io/misfits.json")
-                ]    
+                ]
+
+    # Colors and labels for the various files, must match length fid_list
     color_list = ["mediumpurple", "darkorange", "mediumturquoise"]
     label_list = ["traveltime_cc", "multitaper misfit", "both"]
 
@@ -54,11 +60,13 @@ if __name__ == "__main__":
     f, ax1 = plt.subplots(figsize=(8,6))
     ax2 = ax1.twinx()
 
+    # Plot the scatterplot
     for i, fid in enumerate(fid_list):
         models, misfits, windows = parse_json(fid)
         ax1.plot(models, misfits, 'o-', c=color_list[i], label=label_list[i])
         ax2.plot(models, windows, 'd-.', c=color_list[i], alpha=0.5)
-    
+
+    # Finalize plotting attributes
     ax1.legend(loc="center right")
     plt.title('Checkerboard Convergence')
     ax1.set_xticks(models)
@@ -69,4 +77,5 @@ if __name__ == "__main__":
     
     plt.savefig('convergence.png') 
     plt.show()
-        
+
+

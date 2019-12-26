@@ -1,3 +1,7 @@
+"""
+Create an event misfit map from the auxiliary data in a Pyasdf
+Dataset.
+"""
 import os
 import glob
 import pyasdf

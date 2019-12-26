@@ -1,6 +1,6 @@
 """
 Create waveform plots that show the changes in synthetic waveforms with
-progressive model updates. All waveforms superimposed on one another
+progressive model updates. Each individual model gets its on row in the plot
 """
 import sys
 import os
@@ -102,12 +102,43 @@ def center_on_peak_energy(st, thresh_value=0.1):
     return start_index, end_index
 
 
-def plot_iterative_waveforms(datasets_path, output_dir, event_id="*.h5",
-                             select_models=[], select_stations=[], 
-                             synthetics_only=False, trace_length=[], 
-                             cross_corr=False, label_units=False, show=True):
+def plot_iterative_waveforms(datasets_path, output_dir, min_period, max_period,
+                             event_id="*.h5", select_models=[],
+                             select_stations=[], synthetics_only=False,
+                             trace_length=[], cross_corr=False,
+                             label_units=False, show=True):
     """
     Main function to plot waveforms iterative based on model updates
+
+    :type datasets_path: str
+    :param datasets_path: path to directory containing pyasdf datasets
+    :type output_dir: str
+    :param output_dir: path to save the figure to
+    :type min_period: float
+    :param min_period: minimum filter period for waveforms
+    :type max_period: float
+    :param max_period: maximum filter period for waveforms
+    :type event_id: str
+    :param event_id: event id to identify the asdf dataset, can be wildcard
+    :type select_models: list of str
+    :param select_models: allows User to select which models are included in the
+        waveform plots
+    :type select_stations: list of str
+    :param select_stations: allows User to select which stations queried
+        for the waveform plots
+    :type synthetics_only: bool
+    :param synthetics_only: synthetics only parameter to be passed to the
+        Config. if False, instrument response will be removed from obs.
+    :type trace_length: list of floats
+    :param trace_length: [trace_start, trace_end] will be used to set the x
+        limit on the waveform data. If none, no xlim will be set
+    :type cross_corr: bool
+    :param cross_corr: if True, cross correlation will be taken between traces
+        at each model and max correlation will be annotated to each plot.
+    :type label_units: bool
+    :param label_units: if True, units will be placed on the y-axis
+    :type show: bool
+    :param show: Show the plot or do not
     """
     # Plotting parameters
     dpi = 125
@@ -127,8 +158,8 @@ def plot_iterative_waveforms(datasets_path, output_dir, event_id="*.h5",
             config = Config(
                 event_id=event_id,
                 model_number=0,
-                min_period=10,
-                max_period=30,
+                min_period=min_period,
+                max_period=max_period,
                 filter_corners=4,
                 rotate_to_rtz=False,
                 unit_output="DISP",
@@ -154,13 +185,13 @@ def plot_iterative_waveforms(datasets_path, output_dir, event_id="*.h5",
                             continue
                         mgmt.st_obs = ds.waveforms[sta].observed.copy()
                         mgmt.st_syn = ds.waveforms[sta][syn_tag].copy()
+                        mgmt.standardize()
                         mgmt.preprocess()
                         synthetics[syn_tag] = mgmt.st_syn.copy()
                         windows[syn_tag] = windows_from_ds(
                                                ds, model=syn_tag.split('_')[-1],
                                                net=sta.split('.')[0],
                                                sta=sta.split('.')[1])
-                                                        
 
                 # Collect the observed trace last
                 st_obs = mgmt.st_obs.copy()
@@ -173,12 +204,11 @@ def plot_iterative_waveforms(datasets_path, output_dir, event_id="*.h5",
                 )
 
                 # Instantiate plotting instances
-                f = plt.figure() # figsize=figsize, dpi=dpi)
+                f = plt.figure()
                 axes = setup_plot(nrows=len(synthetics.keys()), 
                                   ncols=len(st_obs), label_units=label_units
                                   )
                 middle_column = len(st_obs) // 2
-                middle_row = len(synthetics.keys()) // 2
 
                 # Create time axis based on data statistics
                 t = st_obs[0].times(
@@ -202,7 +232,6 @@ def plot_iterative_waveforms(datasets_path, output_dir, event_id="*.h5",
                         ylab += syn_key.split('_')[-1]
                     if label_units:
                         ylab += f"\n{unit_dict[config.unit_output]}"
-                    
                 
                     # Plot each component in a different column
                     for col, comp in enumerate(config.component_list):
@@ -232,8 +261,7 @@ def plot_iterative_waveforms(datasets_path, output_dir, event_id="*.h5",
                                           height=ymax-ymin, color='orange',
                                           alpha=(win.max_cc_value **2) / 4)
                                                     )
-                            
-                        
+
                         # cross-correlate obs and syn for a sense of misfit
                         if cross_corr:
                             cc = correlate(obs[0].data, syn[0].data, 
@@ -305,11 +333,11 @@ if __name__ == "__main__":
         # Set parameters here 
         datasets_path = "./"
 
-        # Path to save figures to, if none given, figures wil not be saved
+        # Path to save figures to, if None given, figures wil not be saved
         output_dir = "./waveforms"
         
-        # If you only want to choose one event in your dataset, wildcards okay
-        event_id = "*mtm*.h5"
+        # If you only want to choose one event in your directory, wildcards okay
+        event_id = "*.h5"
 
         # If you don't want to plot all models, can add e.g. 'synthetic_m00' 
         select_models = ['synthetic_m00', 'synthetic_m09']

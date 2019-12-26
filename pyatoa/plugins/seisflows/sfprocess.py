@@ -1,7 +1,9 @@
 """
 A plugin to seisflows solver.specfem3d_nz.eval_func() to use in evaluating the
 misfit functional within the automated workflow, in the context of
-requirements mandated by seisflows. Seisflows interacts with Pyatoa via an
+requirements mandated by Seisflows.
+
+Seisflows is written in Python 2, so Pyatoa interacts with it via an
 argument parser and a user defined configuration dictionary.
 """
 import os
@@ -62,6 +64,7 @@ def initialize_parser(args):
 def assemble_paths(parser, mode=''):
     """
     Make the necessary output directories for Pyatoa
+
     :type parser: argparse.Parser
     :param parser: arguments passed in from seisflows
     :type mode: str
@@ -268,7 +271,7 @@ def process(parser):
                  fix_windows=usrcfg["fix_windows"])
 
         # Write the Config to auxiliary_data for provenance
-        config.write_to_asdf(ds)
+        config.write(write_to=ds)
 
         # Instantiate the Manager
         mgmt = pyatoa.Manager(config=config, ds=ds)
@@ -288,23 +291,24 @@ def process(parser):
 
                 # Gather data, searching internal pathways, else fetching from
                 # external pathways if possible. Preprocess identically
-                mgmt.gather_data(station_code="{net}.{sta}.{loc}.{cha}".format(
-                                 net=net, sta=sta, loc="*", cha="HH*")
-                                 )
+                mgmt.gather(station_code="{net}.{sta}.{loc}.{cha}".format(
+                            net=net, sta=sta, loc="*", cha="HH*")
+                            )
+                mgmt.standardize()
                 mgmt.preprocess()
 
                 # Either no fixed misfit windows or no windows exist yet
                 if not usrcfg["fix_windows"] or \
                         not hasattr(ds.auxiliary_data.MisfitWindows,
                                     config.model_number):
-                    mgmt.run_pyflex()
+                    mgmt.window()
                 else:
                     # If windows exist and fixed windows, grab from ASDF dataset
                     misfit_windows = windows_from_ds(
                                               ds, config.model_number, net, sta)
                     mgmt.windows = misfit_windows
 
-                mgmt.run_pyadjoint()
+                mgmt.measure()
 
                 # Plot waveforms with misfit windows and adjoint sources
                 if usrcfg["plot_waveforms"]:
@@ -314,17 +318,15 @@ def process(parser):
                             md=config.model_number, sn=parser.step_count, 
                             pf=config.pyflex_map, pa=config.adj_src_type)
                     )
-                    if mgmt.total_misfit is not None:
+                    if mgmt.misfit is not None:
                         append_title = " ".join([
                             append_title,
-                            "misfit={:.2E}".format(mgmt.total_misfit)]
+                            "misfit={:.2E}".format(mgmt.misfit)]
                         )
-                    f = mgmt.plot_wav(
-                        append_title=append_title,
-                        save=os.path.join(
+                    f = mgmt.plot(append_title=append_title, save=os.path.join(
                                   paths["EVENT_FIGURES"], "wav_{}".format(sta)),
-                        show=False, return_figure=True
-                        )
+                                  show=False, return_figure=True
+                                  )
 
                 # Plot source-receiver maps, don't make a map if no wav data
                 # Don't make the map if the map has already been made
@@ -333,7 +335,7 @@ def process(parser):
                                            "map_{}".format(sta)
                                            )
                     if not os.path.exists(map_fid):
-                        mgmt.plot_map(stations=coords, save=map_fid, show=False)
+                        mgmt.plot(stations=coords, save=map_fid, show=False)
 
                 print("\n")
             # Traceback ensures more detailed error tracking
