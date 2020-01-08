@@ -1,0 +1,518 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>core.config &#8212; Pyatoa  documentation</title>
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/language_data.js"></script>
+    <link rel="shortcut icon" href="../../_static/pyatoa_favicon.png"/>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for core.config</h1><div class="highlight"><pre>
+<span></span><span class="ch">#!/usr/bin/env python3</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Configuration object for Pyatoa.</span>
+
+<span class="sd">The config class is the main interaction object between the User and workflow.</span>
+<span class="sd">Fed into the processor class for workflow management, and also used for</span>
+<span class="sd">information sharing between objects and functions.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">import</span> <span class="nn">yaml</span>
+<span class="kn">from</span> <span class="nn">pyatoa.plugins.pyflex_config</span> <span class="k">import</span> <span class="n">set_pyflex_config</span>
+<span class="kn">from</span> <span class="nn">pyatoa.plugins.pyadjoint_config</span> <span class="k">import</span> <span class="n">set_pyadjoint_config</span>
+
+
+<div class="viewcode-block" id="Config"><a class="viewcode-back" href="../../index.html#core.config.Config">[docs]</a><span class="k">class</span> <span class="nc">Config</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Configuration class that controls functionalities inside Pyatoa</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">yaml_fid</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">model_number</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">event_id</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                 <span class="n">min_period</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">max_period</span><span class="o">=</span><span class="mi">30</span><span class="p">,</span> <span class="n">filter_corners</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span>
+                 <span class="n">rotate_to_rtz</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">unit_output</span><span class="o">=</span><span class="s1">&#39;DISP&#39;</span><span class="p">,</span> <span class="n">pyflex_map</span><span class="o">=</span><span class="s1">&#39;default&#39;</span><span class="p">,</span>
+                 <span class="n">component_list</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">adj_src_type</span><span class="o">=</span><span class="s1">&#39;cc_traveltime_misfit&#39;</span><span class="p">,</span>
+                 <span class="n">start_pad</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span> <span class="n">end_pad</span><span class="o">=</span><span class="mi">500</span><span class="p">,</span> <span class="n">zero_pad</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">synthetic_unit</span><span class="o">=</span><span class="s2">&quot;DISP&quot;</span><span class="p">,</span>
+                 <span class="n">observed_tag</span><span class="o">=</span><span class="s1">&#39;observed&#39;</span><span class="p">,</span> <span class="n">synthetic_tag</span><span class="o">=</span><span class="s1">&#39;synthetic_</span><span class="si">{model_num}</span><span class="s1">&#39;</span><span class="p">,</span>
+                 <span class="n">synthetics_only</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">window_amplitude_ratio</span><span class="o">=</span><span class="mf">0.</span><span class="p">,</span>
+                 <span class="n">map_corners</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">cfgpaths</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Allows the user to control the parameters of the workflow, including:</span>
+<span class="sd">        setting the Config objects for Pyflex and Pyadjoint, and the paths for</span>
+<span class="sd">        input data, and output figures and results from Pyflex and Pyadjoint.</span>
+<span class="sd">        Reasonable default values set on initation</span>
+
+<span class="sd">        :type yaml_fid: str</span>
+<span class="sd">        :param yaml_fid: id for .yaml file if config is to be loaded externally</span>
+<span class="sd">        :type model_number: int or str</span>
+<span class="sd">        :param model_number: model iteration number for annotations and tags</span>
+<span class="sd">        :type event_id: str</span>
+<span class="sd">        :param event_id: unique event identifier for data gathering, annotations</span>
+<span class="sd">        :type: min_period: float</span>
+<span class="sd">        :param min_period: minimum bandpass filter period</span>
+<span class="sd">        :type max_period: float</span>
+<span class="sd">        :param max_period: maximum bandpass filter period</span>
+<span class="sd">        :type filter_corners: int</span>
+<span class="sd">        :param filter_corners: filter steepness for obspy filter</span>
+<span class="sd">        :type rotate_to_rtz: bool</span>
+<span class="sd">        :param rotate_to_rtz: components from NEZ to RTZ</span>
+<span class="sd">        :type unit_output: str</span>
+<span class="sd">        :param unit_output: units of stream, to be fed into preprocessor for</span>
+<span class="sd">            instrument response removal. Available: &#39;DISP&#39;, &#39;VEL&#39;, &#39;ACC&#39;</span>
+<span class="sd">        :type pyflex_map: str</span>
+<span class="sd">        :param pyflex_map: name to map to pyflex preset config</span>
+<span class="sd">        :type adj_src_type: str</span>
+<span class="sd">        :param adj_src_type: method of misfit quantification for Pyadjoint</span>
+<span class="sd">        :type start_pad: int</span>
+<span class="sd">        :param start_pad: seconds before event origintime to grab waveform data</span>
+<span class="sd">            for use by data gathering class</span>
+<span class="sd">        :type end_pad: int</span>
+<span class="sd">        :param end_pad: seconds after event origintime to grab waveform data</span>
+<span class="sd">        :type zero_pad: int</span>
+<span class="sd">        :type zero_pad: seconds to zero-pad data front and back, used by the</span>
+<span class="sd">            preprocess functions, useful for very small source-receiver</span>
+<span class="sd">            distances where there may not be much time from origin time</span>
+<span class="sd">            to first arrival</span>
+<span class="sd">        :type synthetic_unit: str</span>
+<span class="sd">        :param synthetic_unit: units of Specfem synthetics, &#39;DISP&#39;, &#39;VEL&#39;, &#39;ACC&#39;</span>
+<span class="sd">        :type synthetics_only: bool</span>
+<span class="sd">        :param synthetics_only: If the user is doing a synthetic-synthetic</span>
+<span class="sd">            example, e.g. in a checkerboard test, this will tell the internal</span>
+<span class="sd">            fetcher to search for observation data in the &#39;waveforms&#39; path</span>
+<span class="sd">            in the same manner that it searches for synthetic data. Also changes</span>
+<span class="sd">            tags on waveform plots so it&#39;s obvious that the &#39;data&#39; is synthetic.</span>
+<span class="sd">        :type observed_tag: str</span>
+<span class="sd">        :param observed_tag: Tag to use for asdf dataset to label and search</span>
+<span class="sd">            for obspy streams of observation data. Defaults &#39;observed&#39;</span>
+<span class="sd">        :type synthetic_tag: str</span>
+<span class="sd">        :param synthetic_tag: Tag to use for asdf dataset to label and search</span>
+<span class="sd">            for obspy streams of synthetic data. Default &#39;synthetic_{model_num}&#39;</span>
+<span class="sd">            Tag must be formatted before use.</span>
+<span class="sd">        :type cfgpaths: dict of str</span>
+<span class="sd">        :param cfgpaths: any absolute paths for Pyatoa to search for</span>
+<span class="sd">            waveforms in. If path does not exist, it will automatically be</span>
+<span class="sd">            skipped. Allows for work on multiple machines, by giving multiple</span>
+<span class="sd">            paths for the same set of data, without needing to change config.</span>
+<span class="sd">            Waveforms must be saved in a specific directory structure with a</span>
+<span class="sd">            specific naming scheme</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Load config parameters from .yaml</span>
+        <span class="k">if</span> <span class="n">yaml_fid</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_read_yaml</span><span class="p">(</span><span class="n">yaml_fid</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_check</span><span class="p">()</span>
+            <span class="k">return</span>
+
+        <span class="k">if</span> <span class="n">model_number</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># Format the model number to the way Pyatoa expects it</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">model_number</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+                <span class="c1"># If e.g. model_number = &quot;0&quot;</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">model_number</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;m&quot;</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">model_number</span> <span class="o">=</span> <span class="n">f</span><span class="s2">&quot;m</span><span class="si">{model_number:0&gt;2}</span><span class="s2">&quot;</span>
+                <span class="c1"># If e.g. model_number = &quot;m00&quot;</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">model_number</span> <span class="o">=</span> <span class="n">model_number</span>
+            <span class="c1"># If e.g. model_number = 0</span>
+            <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">model_number</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">model_number</span> <span class="o">=</span> <span class="n">f</span><span class="s2">&quot;m</span><span class="si">{model_number:0&gt;2}</span><span class="s2">&quot;</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">model_number</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">event_id</span> <span class="o">=</span> <span class="n">event_id</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">min_period</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">min_period</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">max_period</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">max_period</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">filter_corners</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">filter_corners</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">rotate_to_rtz</span> <span class="o">=</span> <span class="n">rotate_to_rtz</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">unit_output</span> <span class="o">=</span> <span class="n">unit_output</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">synthetic_unit</span> <span class="o">=</span> <span class="n">synthetic_unit</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">observed_tag</span> <span class="o">=</span> <span class="n">observed_tag</span>
+        <span class="k">if</span> <span class="n">model_number</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">synthetic_tag</span> <span class="o">=</span> <span class="n">synthetic_tag</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                <span class="n">model_num</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">model_number</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">synthetic_tag</span> <span class="o">=</span> <span class="s2">&quot;synthetic&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pyflex_map</span> <span class="o">=</span> <span class="n">pyflex_map</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">adj_src_type</span> <span class="o">=</span> <span class="n">adj_src_type</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">map_corners</span> <span class="o">=</span> <span class="n">map_corners</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">synthetics_only</span> <span class="o">=</span> <span class="n">synthetics_only</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">window_amplitude_ratio</span> <span class="o">=</span> <span class="n">window_amplitude_ratio</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">zero_pad</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">zero_pad</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">start_pad</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">start_pad</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">end_pad</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">end_pad</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">component_list</span> <span class="o">=</span> <span class="n">component_list</span> <span class="ow">or</span> <span class="p">[</span><span class="s1">&#39;Z&#39;</span><span class="p">,</span> <span class="s1">&#39;N&#39;</span><span class="p">,</span> <span class="s1">&#39;E&#39;</span><span class="p">]</span> 
+
+        <span class="c1"># Make sure User provided paths are list objects as they will be looped</span>
+        <span class="c1"># on during the workflow</span>
+        <span class="k">if</span> <span class="n">cfgpaths</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">cfgpaths</span><span class="p">:</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">cfgpaths</span><span class="p">[</span><span class="n">key</span><span class="p">],</span> <span class="nb">list</span><span class="p">):</span>
+                    <span class="n">cfgpaths</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="n">cfgpaths</span><span class="p">[</span><span class="n">key</span><span class="p">]]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">cfgpaths</span> <span class="o">=</span> <span class="n">cfgpaths</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">cfgpaths</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;waveforms&quot;</span><span class="p">:</span> <span class="p">[],</span> <span class="s2">&quot;synthetics&quot;</span><span class="p">:</span> <span class="p">[],</span> <span class="s2">&quot;responses&quot;</span><span class="p">:</span> <span class="p">[]}</span>
+
+        <span class="c1"># Run internal functions to check the Config object</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pyflex_config</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pyadjoint_config</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_check</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        String representation of class Config for print statements</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">str_out</span> <span class="o">=</span> <span class="s2">&quot;CONFIG</span><span class="se">\n</span><span class="s2">&quot;</span>
+        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">item</span> <span class="ow">in</span> <span class="nb">vars</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">str_out</span> <span class="o">+=</span> <span class="n">f</span><span class="s2">&quot;</span><span class="se">\t</span><span class="s2">{key+&#39;:&#39;:&lt;25}</span><span class="si">{item}</span><span class="se">\n</span><span class="s2">&quot;</span>
+        <span class="k">return</span> <span class="n">str_out</span>
+
+    <span class="k">def</span> <span class="nf">_check</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        A check to make sure that the configuration parameters are set properly</span>
+<span class="sd">        to avoid any problems throughout the workflow.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Check period range is acceptable</span>
+        <span class="k">assert</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">min_period</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_period</span><span class="p">)</span>
+
+        <span class="c1"># Check that the map corners is a dict and contains proper keys</span>
+        <span class="c1"># else, set to default map corners for New Zealand North Island</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">map_corners</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">assert</span><span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">map_corners</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)),</span> \
+                <span class="s2">&quot;map_corners must be a dictionary object&quot;</span>
+            <span class="n">acceptable_keys</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;lat_min&#39;</span><span class="p">,</span> <span class="s1">&#39;lat_max&#39;</span><span class="p">,</span> <span class="s1">&#39;lon_min&#39;</span><span class="p">,</span> <span class="s1">&#39;lon_max&#39;</span><span class="p">]</span>
+            <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">map_corners</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+                <span class="k">assert</span><span class="p">(</span><span class="n">key</span> <span class="ow">in</span> <span class="n">acceptable_keys</span><span class="p">),</span> <span class="s2">&quot;key should be in </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                    <span class="n">acceptable_keys</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">map_corners</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;lat_min&#39;</span><span class="p">:</span> <span class="o">-</span><span class="mf">42.5007</span><span class="p">,</span> <span class="s1">&#39;lat_max&#39;</span><span class="p">:</span> <span class="o">-</span><span class="mf">36.9488</span><span class="p">,</span>
+                                <span class="s1">&#39;lon_min&#39;</span><span class="p">:</span> <span class="mf">172.9998</span><span class="p">,</span> <span class="s1">&#39;lon_max&#39;</span><span class="p">:</span> <span class="mf">179.5077</span>
+                                <span class="p">}</span>
+
+        <span class="c1"># Check if unit output properly set</span>
+        <span class="n">acceptable_units</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;DISP&#39;</span><span class="p">,</span> <span class="s1">&#39;VEL&#39;</span><span class="p">,</span> <span class="s1">&#39;ACC&#39;</span><span class="p">]</span>
+        <span class="k">assert</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">unit_output</span> <span class="ow">in</span> <span class="n">acceptable_units</span><span class="p">),</span> \
+            <span class="s2">&quot;unit_output should be in </span><span class="si">{acceptable_units}</span><span class="s2">&quot;</span>
+
+        <span class="k">assert</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">synthetic_unit</span> <span class="ow">in</span> <span class="n">acceptable_units</span><span class="p">),</span> \
+            <span class="s2">&quot;synthetic_unit should be in </span><span class="si">{acceptable_units}</span><span class="s2">&quot;</span>
+
+        <span class="c1"># Check that paths are in the proper format</span>
+        <span class="n">required_keys</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;synthetics&#39;</span><span class="p">,</span> <span class="s1">&#39;waveforms&#39;</span><span class="p">,</span> <span class="s1">&#39;responses&#39;</span><span class="p">]</span>
+        <span class="k">assert</span><span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cfgpaths</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)),</span> <span class="s2">&quot;paths should be a dict&quot;</span>
+        <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">cfgpaths</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="k">assert</span><span class="p">(</span><span class="n">key</span> <span class="ow">in</span> <span class="n">required_keys</span><span class="p">),</span> \
+                <span class="s2">&quot;path keys can only be in </span><span class="si">{required_keys}</span><span class="s2">&quot;</span>
+        <span class="c1"># Make sure that all the required keys are given in the dictionary</span>
+        <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">required_keys</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">cfgpaths</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">cfgpaths</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="c1"># Rotate component list if necessary</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">rotate_to_rtz</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">component_list</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;Z&#39;</span><span class="p">,</span> <span class="s1">&#39;R&#39;</span><span class="p">,</span> <span class="s1">&#39;T&#39;</span><span class="p">]</span>
+
+        <span class="c1"># Check that the amplitude ratio is a reasonable number</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">window_amplitude_ratio</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">assert</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">window_amplitude_ratio</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">),</span> \
+                <span class="s2">&quot;window amplitude ratio should be &lt; 1&quot;</span>
+
+        <span class="c1"># Set Pyflex confict through wrapper function</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pyflex_config</span> <span class="o">=</span> <span class="n">set_pyflex_config</span><span class="p">(</span><span class="n">choice</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">pyflex_map</span><span class="p">,</span>
+                                               <span class="n">min_period</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">min_period</span><span class="p">,</span>
+                                               <span class="n">max_period</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">max_period</span>
+                                               <span class="p">)</span>
+
+        <span class="c1"># Set Pyadjoint Config</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pyadjoint_config</span> <span class="o">=</span> <span class="n">set_pyadjoint_config</span><span class="p">(</span>
+            <span class="n">choice</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">adj_src_type</span><span class="p">,</span> <span class="n">min_period</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">min_period</span><span class="p">,</span>
+            <span class="n">max_period</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">max_period</span>
+        <span class="p">)</span>
+
+<div class="viewcode-block" id="Config.write"><a class="viewcode-back" href="../../index.html#core.config.Config.write">[docs]</a>    <span class="k">def</span> <span class="nf">write</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">write_to</span><span class="p">,</span> <span class="n">fmt</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Wrapper for write functions</span>
+
+<span class="sd">        :type fmt: str</span>
+<span class="sd">        :param fmt: format to save parameters to,</span>
+<span class="sd">            (available: &#39;yaml&#39;, &#39;ascii&#39;, &#39;asdf&#39;)</span>
+<span class="sd">        :type write_to: str or pyasdf.ASDFDataSet</span>
+<span class="sd">        :param write_to: filename to save config to, or dataset to save to</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># If no format given, try to guess the format</span>
+        <span class="n">acceptable_formats</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;yaml&quot;</span><span class="p">,</span> <span class="s2">&quot;asdf&quot;</span><span class="p">,</span> <span class="s2">&quot;ascii&quot;</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">fmt</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">acceptable_formats</span><span class="p">:</span>
+            <span class="kn">from</span> <span class="nn">pyasdf.asdf_data_set</span> <span class="k">import</span> <span class="n">ASDFDataSet</span>
+
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">write_to</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+                <span class="k">if</span> <span class="p">(</span><span class="s2">&quot;yaml&quot;</span> <span class="ow">or</span> <span class="s2">&quot;yml&quot;</span><span class="p">)</span> <span class="ow">in</span> <span class="n">write_to</span><span class="p">:</span>
+                    <span class="n">fmt</span> <span class="o">=</span> <span class="s2">&quot;yaml&quot;</span>
+                <span class="k">elif</span> <span class="p">(</span><span class="s2">&quot;txt&quot;</span> <span class="ow">or</span> <span class="s2">&quot;ascii&quot;</span><span class="p">)</span> <span class="ow">in</span> <span class="n">write_to</span><span class="p">:</span>
+                    <span class="n">fmt</span> <span class="o">=</span> <span class="s2">&quot;ascii&quot;</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s2">&quot;format must be given in </span><span class="si">{acceptable_formats}</span><span class="s2">&quot;</span><span class="p">)</span>
+                    <span class="k">return</span>
+            <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">write_to</span><span class="p">,</span> <span class="n">ASDFDataSet</span><span class="p">):</span>
+                <span class="n">fmt</span> <span class="o">=</span> <span class="s2">&quot;asdf&quot;</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s2">&quot;format must be given in </span><span class="si">{acceptable_formats}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="k">return</span>
+
+        <span class="k">if</span> <span class="n">fmt</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;ascii&quot;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_write_ascii</span><span class="p">(</span><span class="n">write_to</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">fmt</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;yaml&quot;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_write_yaml</span><span class="p">(</span><span class="n">write_to</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">fmt</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;asdf&quot;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_write_asdf</span><span class="p">(</span><span class="n">write_to</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Config.read"><a class="viewcode-back" href="../../index.html#core.config.Config.read">[docs]</a>    <span class="k">def</span> <span class="nf">read</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">read_from</span><span class="p">,</span> <span class="n">path</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">fmt</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Wrapper for read functions</span>
+
+<span class="sd">        :type read_from: str or pyasdf.ASDFDataSet</span>
+<span class="sd">        :param read_from: filename to read config from, or ds to read from</span>
+<span class="sd">        :type path: str</span>
+<span class="sd">        :param path: if fmt=&#39;asdf&#39;, path to the config in the aux data</span>
+<span class="sd">        :type fmt: str</span>
+<span class="sd">        :param fmt: file format to read parameters from, will be guessed but</span>
+<span class="sd">            can also be explicitely set (available: &#39;yaml&#39;, &#39;ascii&#39;, &#39;asdf&#39;)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># If no format given, try to guess the format</span>
+        <span class="n">acceptable_formats</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;yaml&quot;</span><span class="p">,</span> <span class="s2">&quot;asdf&quot;</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">fmt</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">acceptable_formats</span><span class="p">:</span>
+            <span class="kn">from</span> <span class="nn">pyasdf.asdf_data_set</span> <span class="k">import</span> <span class="n">ASDFDataSet</span>
+
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">read_from</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+                <span class="k">if</span> <span class="p">(</span><span class="s2">&quot;yaml&quot;</span> <span class="ow">or</span> <span class="s2">&quot;yml&quot;</span><span class="p">)</span> <span class="ow">in</span> <span class="n">read_from</span><span class="p">:</span>
+                    <span class="n">fmt</span> <span class="o">=</span> <span class="s2">&quot;yaml&quot;</span>
+                <span class="k">elif</span> <span class="p">(</span><span class="s2">&quot;txt&quot;</span> <span class="ow">or</span> <span class="s2">&quot;ascii&quot;</span><span class="p">)</span> <span class="ow">in</span> <span class="n">read_from</span><span class="p">:</span>
+                    <span class="n">fmt</span> <span class="o">=</span> <span class="s2">&quot;ascii&quot;</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s2">&quot;format must be given in </span><span class="si">{acceptable_formats}</span><span class="s2">&quot;</span><span class="p">)</span>
+                    <span class="k">return</span>
+            <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">read_from</span><span class="p">,</span> <span class="n">ASDFDataSet</span><span class="p">):</span>
+                <span class="n">fmt</span> <span class="o">=</span> <span class="s2">&quot;asdf&quot;</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s2">&quot;format must be given in </span><span class="si">{acceptable_formats}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="k">return</span>
+
+        <span class="k">if</span> <span class="n">fmt</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;yaml&quot;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_read_yaml</span><span class="p">(</span><span class="n">read_from</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">fmt</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;asdf&quot;</span><span class="p">:</span>
+            <span class="k">assert</span><span class="p">(</span><span class="n">path</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">),</span> <span class="s2">&quot;path must be defined&quot;</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_read_asdf</span><span class="p">(</span><span class="n">read_from</span><span class="p">,</span> <span class="n">path</span><span class="o">=</span><span class="n">path</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">_write_yaml</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filename</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Write config parameters to a yaml file, retain order</span>
+
+<span class="sd">        :type filename: str</span>
+<span class="sd">        :param filename: filename to save yaml file</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Ensure file ending</span>
+        <span class="k">if</span> <span class="n">filename</span><span class="p">[</span><span class="o">-</span><span class="mi">5</span><span class="p">:]</span> <span class="o">!=</span> <span class="s2">&quot;.yaml&quot;</span><span class="p">:</span>
+            <span class="n">filename</span> <span class="o">+=</span> <span class="s2">&quot;.yaml&quot;</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">yaml</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="nb">vars</span><span class="p">(</span><span class="bp">self</span><span class="p">),</span> <span class="n">f</span><span class="p">,</span> <span class="n">default_flow_style</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">sort_keys</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_write_asdf</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ds</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Save the config values as a dictionary in the pyasdf data format</span>
+<span class="sd">        for easy lookback</span>
+
+<span class="sd">        :type ds: pyasdf.ASDFDataSet</span>
+<span class="sd">        :param ds: dataset to save the config file to</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Lazy imports because this function isn&#39;t always called</span>
+        <span class="kn">from</span> <span class="nn">numpy</span> <span class="k">import</span> <span class="n">array</span>
+        <span class="kn">from</span> <span class="nn">obspy</span> <span class="k">import</span> <span class="n">UTCDateTime</span>
+
+        <span class="c1"># Add/standardize some variables before passing to dataset</span>
+        <span class="n">attrs</span> <span class="o">=</span> <span class="nb">vars</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+
+        <span class="c1"># Auxiliary data doesn&#39;t like Nonetype objects</span>
+        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">attrs</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">item</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">attrs</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>
+
+        <span class="n">attrs</span><span class="p">[</span><span class="s2">&quot;creation_time&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">UTCDateTime</span><span class="p">())</span>
+
+        <span class="c1"># Auxiliary data can&#39;t take dictionaries so convert to lists, variables</span>
+        <span class="n">attrs</span><span class="p">[</span><span class="s2">&quot;map_corners&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">map_corners</span><span class="p">[</span><span class="s1">&#39;lat_min&#39;</span><span class="p">],</span>
+                                <span class="bp">self</span><span class="o">.</span><span class="n">map_corners</span><span class="p">[</span><span class="s1">&#39;lat_max&#39;</span><span class="p">],</span>
+                                <span class="bp">self</span><span class="o">.</span><span class="n">map_corners</span><span class="p">[</span><span class="s1">&#39;lon_min&#39;</span><span class="p">],</span>
+                                <span class="bp">self</span><span class="o">.</span><span class="n">map_corners</span><span class="p">[</span><span class="s1">&#39;lon_max&#39;</span><span class="p">]</span>
+                                <span class="p">]</span>
+
+        <span class="n">attrs</span><span class="p">[</span><span class="s2">&quot;cfgpaths_waveforms&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cfgpaths</span><span class="p">[</span><span class="s2">&quot;waveforms&quot;</span><span class="p">]</span>
+        <span class="n">attrs</span><span class="p">[</span><span class="s2">&quot;cfgpaths_synthetics&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cfgpaths</span><span class="p">[</span><span class="s2">&quot;synthetics&quot;</span><span class="p">]</span>
+        <span class="n">attrs</span><span class="p">[</span><span class="s2">&quot;cfgpaths_responses&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cfgpaths</span><span class="p">[</span><span class="s2">&quot;responses&quot;</span><span class="p">]</span>
+
+        <span class="c1"># remove the Config objects because pyASDF doesn&#39;t recognize them</span>
+        <span class="k">del</span> <span class="n">attrs</span><span class="p">[</span><span class="s2">&quot;pyflex_config&quot;</span><span class="p">]</span>
+        <span class="k">del</span> <span class="n">attrs</span><span class="p">[</span><span class="s2">&quot;pyadjoint_config&quot;</span><span class="p">]</span>
+        <span class="k">del</span> <span class="n">attrs</span><span class="p">[</span><span class="s2">&quot;cfgpaths&quot;</span><span class="p">]</span>
+
+        <span class="n">ds</span><span class="o">.</span><span class="n">add_auxiliary_data</span><span class="p">(</span><span class="n">data_type</span><span class="o">=</span><span class="s2">&quot;Configs&quot;</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">array</span><span class="p">([</span><span class="kc">True</span><span class="p">]),</span>
+                              <span class="n">path</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">model_number</span> <span class="ow">or</span> <span class="s2">&quot;default&quot;</span><span class="p">,</span>
+                              <span class="n">parameters</span><span class="o">=</span><span class="n">attrs</span>
+                              <span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_write_ascii</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filename</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Write the config parameters to an ascii file</span>
+
+<span class="sd">        :type filename: str</span>
+<span class="sd">        :param filename: filename to write the ascii file to</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">attrs</span> <span class="o">=</span> <span class="nb">vars</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;PYATOA CONFIGURATION FILE</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">key_a</span><span class="p">,</span> <span class="n">item_a</span> <span class="ow">in</span> <span class="n">attrs</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="c1"># Excludes writing the Pyflex and Pyadjoint Config classes, but</span>
+                <span class="c1"># instead writes the parameters of those Configs separately</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">attrs_b</span> <span class="o">=</span> <span class="nb">vars</span><span class="p">(</span><span class="n">item_a</span><span class="p">)</span>
+                    <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">f</span><span class="s2">&quot;</span><span class="si">{key_a}</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+                    <span class="k">for</span> <span class="n">key_b</span><span class="p">,</span> <span class="n">item_b</span> <span class="ow">in</span> <span class="n">attrs_b</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                        <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">f</span><span class="s2">&quot;</span><span class="se">\t</span><span class="si">{key_b}</span><span class="s2">: </span><span class="si">{item_b}</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="k">except</span> <span class="ne">TypeError</span><span class="p">:</span>
+                    <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">f</span><span class="s2">&quot;</span><span class="si">{key_a}</span><span class="s2">: </span><span class="si">{item_a}</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_read_yaml</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filename</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Read config parameters from a yaml file, parse to attributes</span>
+
+<span class="sd">        :type filename: str</span>
+<span class="sd">        :param filename: filename to save yaml file</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">attrs</span> <span class="o">=</span> <span class="n">yaml</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">Loader</span><span class="o">=</span><span class="n">yaml</span><span class="o">.</span><span class="n">Loader</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">attrs</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="nb">setattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">item</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_read_asdf</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ds</span><span class="p">,</span> <span class="n">path</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Read and set config parameters from an ASDF Dataset, assumes that all</span>
+<span class="sd">        necessary parameters are located in the auxiliary data subgroup of the</span>
+<span class="sd">        dataset, which will be the case if the write_to_asdf() function was used</span>
+<span class="sd">        Assumes some things about the structure of the auxiliary data.</span>
+
+<span class="sd">        :type ds: pyasdf.ASDFDataSet</span>
+<span class="sd">        :param ds: dataset with config parameter to read</span>
+<span class="sd">        :type path: str</span>
+<span class="sd">        :param path: model number e.g. &#39;m00&#39; or &#39;default&#39;</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">cfgin</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">auxiliary_data</span><span class="o">.</span><span class="n">Configs</span><span class="p">[</span><span class="n">path</span><span class="p">]</span><span class="o">.</span><span class="n">parameters</span>
+        <span class="n">cfgpaths</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">cfgin</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="s2">&quot;cfgpaths&quot;</span> <span class="ow">in</span> <span class="n">key</span><span class="p">:</span>
+                <span class="n">cfgpaths</span><span class="p">[</span><span class="n">key</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;_&#39;</span><span class="p">)[</span><span class="mi">1</span><span class="p">]]</span> <span class="o">=</span> <span class="n">item</span><span class="o">.</span><span class="n">any</span><span class="p">()</span> <span class="ow">or</span> <span class="p">[]</span>
+            <span class="k">elif</span> <span class="n">key</span> <span class="o">==</span> <span class="s2">&quot;map_corners&quot;</span><span class="p">:</span>
+                <span class="n">map_corners</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;lat_min&#39;</span><span class="p">:</span> <span class="n">item</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">item</span><span class="p">(),</span>
+                               <span class="s1">&#39;lat_max&#39;</span><span class="p">:</span> <span class="n">item</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">item</span><span class="p">(),</span>
+                               <span class="s1">&#39;lon_min&#39;</span><span class="p">:</span> <span class="n">item</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">item</span><span class="p">(),</span>
+                               <span class="s1">&#39;lon_max&#39;</span><span class="p">:</span> <span class="n">item</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span><span class="o">.</span><span class="n">item</span><span class="p">()</span>
+                               <span class="p">}</span>
+                <span class="nb">setattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">map_corners</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># Convert numpy objects into native python objects to avoid</span>
+                <span class="c1"># any confusion when reading from ASDF format</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="nb">setattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">item</span><span class="o">.</span><span class="n">item</span><span class="p">())</span>
+                <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+                    <span class="nb">setattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">item</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>
+                <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+                    <span class="nb">setattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">item</span><span class="p">)</span>
+        <span class="nb">setattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;cfgpaths&quot;</span><span class="p">,</span> <span class="n">cfgpaths</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_check</span><span class="p">()</span></div>
+
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../../index.html">
+              <img class="logo" src="../../_static/pyatoa_logo.png" alt="Logo"/>
+            </a></p>
+<h1 class="logo"><a href="../../index.html">Pyatoa</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../tutorials.html">Tutorials</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2019, Bryant Chow.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.3.0</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

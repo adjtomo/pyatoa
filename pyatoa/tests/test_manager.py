@@ -51,29 +51,57 @@ class TestManager(unittest.TestCase):
         if os.path.exists(cls.empty_ds_fid):
             os.remove(cls.empty_ds_fid)
 
-    def test_manager_init(self):
+    def test_empty_manager(self):
         """
-        Make sure empty manager can be initiated
-        :return:
+        Check empty Manager and calling commands with no data
         """
+        # Empty manager initiation
         with self.assertRaises(TypeError):
-            mgmt = Manager()
-        # Test that empty gathering works
+            Manager()
+
+        # Test that `empty` gathering works
         mgmt = Manager(config=self.config, empty=True)
         self.assertIsNone(mgmt.event)
+
         # Assert empty Manager returns nothing
+        self.assertIsNone(mgmt.standardize())
         self.assertIsNone(mgmt.preprocess())
-        self.assertIsNone(mgmt.run_pyflex())
-        self.assertIsNone(mgmt.run_pyadjoint())
-        self.assertIsNone(mgmt.plot_wav())
+        self.assertIsNone(mgmt.window())
+        self.assertIsNone(mgmt.measure())
+        self.assertIsNone(mgmt.plot())
+        self.assertIsNone(mgmt.map())
+
+    def test_standardize(self):
+        """
+        Make sure the standardize function returns two traces that have the
+        same sampling rate and number of points
+        """
+        mgmt = Manager(config=self.config, empty=True, st_obs=self.st_obs,
+                       st_syn=self.st_syn)
+
+        # Make sure that the raw traces are not standardized
+        for comp in mgmt.config.component_list:
+            obs = mgmt.st_obs.select(component=comp)[0]
+            syn = mgmt.st_obs.select(component=comp)[0]
+            self.assertFalse(obs.stats.sampling_rate != syn.stats.sampling_rate)
+            self.assertFalse(obs.stats.npts != syn.stats.npts)
+
+        mgmt.standardize()
+
+        # Make sure the new traces are standardized
+        for comp in mgmt.config.component_list:
+            obs = mgmt.st_obs.select(component=comp)[0]
+            syn = mgmt.st_obs.select(component=comp)[0]
+            self.assertTrue(obs.stats.sampling_rate == syn.stats.sampling_rate)
+            self.assertTrue(obs.stats.npts == syn.stats.npts)
 
     def test_preprocess(self):
         """
-        Test that the preprocess function works
-        :return:
+        Make sure that preprocess function works
         """
         mgmt = Manager(config=self.config, empty=True, event=self.event,
                        st_obs=self.st_obs, st_syn=self.st_syn, inv=self.inv)
+        mgmt.standardize()
         mgmt.preprocess()
 
         # Check that the proper processing has occurred
@@ -87,8 +115,7 @@ class TestManager(unittest.TestCase):
 
     def test_preprocess_unit(self):
         """
-
-        :return:
+        Ensure that preprocess returns the correct component
         """
         config = self.config
         config.output_unit = "DISP"
@@ -97,16 +124,16 @@ class TestManager(unittest.TestCase):
         comp = "Z"
         mgmt = Manager(config=self.config, empty=True, event=self.event,
                        st_obs=self.st_obs, st_syn=self.st_syn, inv=self.inv)
+        mgmt.standardize()
         mgmt.preprocess()
 
         # Make sure preprocess recognized different units and adjusted syn's
         self.assertNotEqual(mgmt.st_syn.select(component=comp)[0].max(),
                             self.st_syn.select(component=comp)[0].max())
 
-    def test_preprocess_extras(self):
+    def test_zero_pad(self):
         """
-
-        :return:
+        Ensure that zero padding works in preprocess
         """
         config = self.config
 
@@ -114,35 +141,48 @@ class TestManager(unittest.TestCase):
         expected_length = 42500
         mgmt = Manager(config=self.config, empty=True, event=self.event,
                        st_obs=self.st_obs, st_syn=self.st_syn, inv=self.inv)
+        mgmt.standardize()
         mgmt.preprocess()
 
         # Make sure preprocess recognized different units and adjusted syn's
         self.assertEqual(len(mgmt.st_syn[0].data), expected_length)
 
-    def test_run_pyflex_pyadjoint(self):
+    def test_window(self):
         """
-
-        :return:
+        Make sure Pyflex returns expected windows from a "default" config
         """
         assert(self.config.pyflex_config[0] == "default")
         assert(self.config.pyadjoint_config[0] == "multitaper_misfit")
 
         mgmt = Manager(config=self.config, empty=True, event=self.event,
                        st_obs=self.st_obs, st_syn=self.st_syn, inv=self.inv)
+        mgmt.standardize()
         mgmt.preprocess()
 
         # Simple check to make sure Pyflex found windows using default params
         expected_windows = 3
-        mgmt.run_pyflex()
+        mgmt.window()
         self.assertEqual(len(mgmt.windows), expected_windows)
         self.assertEqual(len(mgmt.staltas), expected_windows)
         self.assertEqual(mgmt.num_windows, expected_windows)
 
-        # Check that Pyadjoint multitaper retrieves the correct misfit value
+    def test_measure(self):
+        """
+        Ensure Pyadjoint returns the correct misfit for given windows
+        """
         misfit_check = 4.115253378447238
-        mgmt.run_pyadjoint()
+
+        assert(self.config.pyflex_config[0] == "default")
+        assert(self.config.pyadjoint_config[0] == "multitaper_misfit")
+
+        mgmt = Manager(config=self.config, empty=True, event=self.event,
+                       st_obs=self.st_obs, st_syn=self.st_syn, inv=self.inv)
+        mgmt.standardize()
+        mgmt.preprocess()
+
+        mgmt.measure()
         self.assertEqual(len(mgmt.adj_srcs), 3)
-        self.assertAlmostEqual(mgmt.total_misfit, misfit_check)
+        self.assertAlmostEqual(mgmt.misfit, misfit_check)
 
     def test_fill_dataset(self):
         """
@@ -156,9 +196,10 @@ class TestManager(unittest.TestCase):
                            event=self.event, st_obs=self.st_obs,
                            st_syn=self.st_syn, inv=self.inv
                            )
-            mgmt.populate_dataset()
+            mgmt.populate()
+            mgmt.standardize()
             mgmt.preprocess()
-            mgmt.run_pyflex()
+            mgmt.window()
 
             # Check that the dataset contains the correct auxiliary data
             check_model = self.config.model_number
@@ -179,7 +220,6 @@ class TestManager(unittest.TestCase):
 
             # Remove the contents of the test database for future testing
             clean_ds(test_ds)
-
         del test_ds
 
 

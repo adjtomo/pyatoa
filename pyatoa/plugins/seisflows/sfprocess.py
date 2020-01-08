@@ -1,7 +1,9 @@
 """
 A plugin to seisflows solver.specfem3d_nz.eval_func() to use in evaluating the
 misfit functional within the automated workflow, in the context of
-requirements mandated by seisflows. Seisflows interacts with Pyatoa via an
+requirements mandated by Seisflows.
+
+Seisflows is written in Python 2, so Pyatoa interacts with it via an
 argument parser and a user defined configuration dictionary.
 """
 import os
@@ -22,8 +24,8 @@ import numpy as np
 from pyatoa.utils.asdf.deletions import clean_ds
 from pyatoa.utils.asdf.additions import write_stats_to_asdf
 from pyatoa.utils.asdf.extractions import windows_from_ds
-from pyatoa.utils.operations.file_generation import create_stations_adjoint, \
-                write_misfit_json, write_adj_src_to_ascii, write_misfit_stats
+from pyatoa.utils.tools.io import create_stations_adjoint, write_misfit_json, \
+    write_adj_src_to_ascii, write_misfit_stats, tile_combine_imgs
 
 
 def initialize_parser(args):
@@ -62,6 +64,7 @@ def initialize_parser(args):
 def assemble_paths(parser, mode=''):
     """
     Make the necessary output directories for Pyatoa
+
     :type parser: argparse.Parser
     :param parser: arguments passed in from seisflows
     :type mode: str
@@ -106,8 +109,8 @@ def assemble_paths(parser, mode=''):
             "EVENT_DATA": os.path.join(parser.current_dir, "DATA"),
             "STATIONS": os.path.join(parser.current_dir, "DATA", "STATIONS"),
             "EVENT_FIGURES": os.path.join(paths["PYATOA_FIGURES"],
-                                          parser.model_number, parser.event_id
-                                          )
+                                          parser.model_number, parser.event_id),
+            "EVENT_MAPS": os.path.join(paths["PYATOA_MAPS"], parser.event_id)
         }
         # Make the event figure if necessary
         if not os.path.exists(event_paths["EVENT_FIGURES"]):
@@ -145,16 +148,15 @@ def finalize(parser):
     paths, usrcfg = assemble_paths(parser)
 
     # Plot the output.optim file outputted by Seisflows
-    from pyatoa.utils.visuals.statistics import parse_plot_output_optim
-    parse_plot_output_optim(
+    from pyatoa.utils.visuals.statistics import plot_output_optim
+    plot_output_optim(
         path_to_optim=os.path.join(parser.working_dir, "output.optim"),
         save=os.path.join(paths["PYATOA_FIGURES"], "output_optim.png")
     )
 
     # Generate .vtk files for given source and receivers
     if usrcfg["create_srcrcv_vtk"]:
-        from pyatoa.utils.operations.file_generation import \
-            create_srcrcv_vtk_multiple
+        from pyatoa.utils.tools.io import create_srcrcv_vtk_multiple
         create_srcrcv_vtk_multiple(
             pathin=paths["PYATOA_DATA"], pathout=paths["PYATOA_VTKS"],
             model=parser.model_number
@@ -174,7 +176,7 @@ def finalize(parser):
     # Only create misfit maps for the first step count
     if usrcfg["plot_misfit_maps"] and (parser.step_count == "s00"):
         from pyatoa.utils.visuals.mapping import event_misfit_map
-        from pyatoa.utils.visuals.convert_images import combine_images
+        from pyatoa.utils.visuals.combine_imgs import combine_images
 
         name_template = "{eid}_{m}_{s}_misfit_map.png"
         file_ids = []
@@ -247,7 +249,7 @@ def process(parser):
         filter_corners=usrcfg["filter_corners"],
         rotate_to_rtz=usrcfg["rotate_to_rtz"],
         unit_output=usrcfg["unit_output"],
-        pyflex_config=usrcfg["pyflex_config"],
+        pyflex_map=usrcfg["pyflex_map"],
         adj_src_type=usrcfg["adj_src_type"],
         synthetics_only=usrcfg["synthetics_only"],
         window_amplitude_ratio=usrcfg["window_amplitude_ratio"],
@@ -269,7 +271,7 @@ def process(parser):
                  fix_windows=usrcfg["fix_windows"])
 
         # Write the Config to auxiliary_data for provenance
-        config.write_to_asdf(ds)
+        config.write(write_to=ds)
 
         # Instantiate the Manager
         mgmt = pyatoa.Manager(config=config, ds=ds)
@@ -289,23 +291,24 @@ def process(parser):
 
                 # Gather data, searching internal pathways, else fetching from
                 # external pathways if possible. Preprocess identically
-                mgmt.gather_data(station_code="{net}.{sta}.{loc}.{cha}".format(
-                                 net=net, sta=sta, loc="*", cha="HH*")
-                                 )
+                mgmt.gather(station_code="{net}.{sta}.{loc}.{cha}".format(
+                            net=net, sta=sta, loc="*", cha="HH*")
+                            )
+                mgmt.standardize()
                 mgmt.preprocess()
 
                 # Either no fixed misfit windows or no windows exist yet
                 if not usrcfg["fix_windows"] or \
                         not hasattr(ds.auxiliary_data.MisfitWindows,
                                     config.model_number):
-                    mgmt.run_pyflex()
+                    mgmt.window()
                 else:
                     # If windows exist and fixed windows, grab from ASDF dataset
                     misfit_windows = windows_from_ds(
                                               ds, config.model_number, net, sta)
                     mgmt.windows = misfit_windows
 
-                mgmt.run_pyadjoint()
+                mgmt.measure()
 
                 # Plot waveforms with misfit windows and adjoint sources
                 if usrcfg["plot_waveforms"]:
@@ -313,30 +316,26 @@ def process(parser):
                     append_title = (
                         "\n{md}{sn} pyflex={pf}, pyadjoint={pa},".format(
                             md=config.model_number, sn=parser.step_count, 
-                            pf=config.pyflex_config[0],
-                            pa=config.pyadjoint_config[0])
+                            pf=config.pyflex_map, pa=config.adj_src_type)
                     )
-                    if mgmt.total_misfit is not None:
+                    if mgmt.misfit is not None:
                         append_title = " ".join([
                             append_title,
-                            "misfit={:.2E}".format(mgmt.total_misfit)]
+                            "misfit={:.2E}".format(mgmt.misfit)]
                         )
-                    f = mgmt.plot_wav(
-                        append_title=append_title,
-                        save=os.path.join(
+                    f = mgmt.plot(append_title=append_title, save=os.path.join(
                                   paths["EVENT_FIGURES"], "wav_{}".format(sta)),
-                        show=False, return_figure=True
-                        )
+                                  show=False, return_figure=True
+                                  )
 
                 # Plot source-receiver maps, don't make a map if no wav data
                 # Don't make the map if the map has already been made
                 if usrcfg["plot_maps"] and f:
-                    map_fid = os.path.join(
-                                paths["PYATOA_MAPS"], "map_{eid}_{sta}".format(
-                                    eid=config.event_id, sta=sta)
+                    map_fid = os.path.join(paths["EVENT_MAPS"],
+                                           "map_{}".format(sta)
                                            )
                     if not os.path.exists(map_fid):
-                        mgmt.plot_map(stations=coords, save=map_fid, show=False)
+                        mgmt.plot(stations=coords, save=map_fid, show=False)
 
                 print("\n")
             # Traceback ensures more detailed error tracking
@@ -345,34 +344,27 @@ def process(parser):
                 print("\n")
                 continue
 
-        # Add statistics to auxiliary_data
         print("writing stats to ASDF file")
         write_stats_to_asdf(ds, config.model_number, parser.step_count)
 
-        # Create the .sem ascii files required by specfem
         print("writing adjoint sources to .sem? files")
         write_adj_src_to_ascii(ds, config.model_number, paths["ADJ_TRACES"])
 
-        # Create the STATIONS_ADJOINT file required by specfem
         print("creating STATIONS_ADJOINT file")
         create_stations_adjoint(ds, config.model_number,
                                 specfem_station_file=paths["STATIONS"],
                                 pathout=paths["EVENT_DATA"])
 
-        # Write misfits for seisflows into individual text files
         print("writing individual misfit to file")
         write_misfit_stats(ds, config.model_number, paths["PYATOA_MISFITS"])
 
-        # Sum and write misfits information to a JSON file
         print("writing misfits.json file")
         write_misfit_json(ds, parser.model_number, parser.step_count,
                           paths["MISFIT_FILE"])
 
-        # Combine .png images into a composite .pdf for easy fetching
-        # Only do it for the first step, otherwise we get too many pdfs
-        if usrcfg["tile_and_combine"] and (parser.step_count == "s00"):
+        # Only run this for the first 'step', otherwise we get too many pdfs
+        if usrcfg["tile_combine_imgs"] and (parser.step_count == "s00"):
             print("creating composite pdf")
-            from pyatoa.utils.visuals.convert_images import tile_and_combine
 
             # Create the name of the pdf to save to
             save_to = os.path.join(
@@ -380,12 +372,12 @@ def process(parser):
                     e=config.event_id, m=config.model_number,
                     s=parser.step_count)
             )
-            tile_and_combine(ds=ds, model=parser.model_number, save_to=save_to,
-                             figure_path=paths["PYATOA_FIGURES"],
-                             maps_path=paths["PYATOA_MAPS"],
-                             purge_originals=usrcfg["purge_originals"],
-                             purge_tiles=usrcfg["purge_tiles"]
-                             )
+            tile_combine_imgs(ds=ds, save_pdf_to=save_to,
+                              wavs_path=paths["EVENT_FIGURES"],
+                              maps_path=paths["EVENT_MAPS"],
+                              purge_wavs=usrcfg["purge_originals"],
+                              purge_tiles=usrcfg["purge_tiles"]
+                              )
 
 
 if __name__ == "__main__":

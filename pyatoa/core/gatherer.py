@@ -8,11 +8,11 @@ Directly called by the processor class in the main Pyatoa workflow
 import obspy
 
 from pyatoa import logger
-from pyatoa.utils.gathering.internal_fetcher import Fetcher
-from pyatoa.utils.gathering.external_getter import Getter
-from pyatoa.utils.gathering.grab_auxiliaries import grab_geonet_moment_tensor,\
+from pyatoa.utils.gather.internal_fetcher import Fetcher
+from pyatoa.utils.gather.external_getter import Getter
+from pyatoa.utils.gather.grab_auxiliaries import grab_geonet_moment_tensor,\
     grab_gcmt_moment_tensor
-from pyatoa.utils.operations.source_receiver import generate_focal_mechanism
+from pyatoa.utils.tools.srcrcv import generate_focal_mechanism
 
 
 class Gatherer:
@@ -33,7 +33,7 @@ class Gatherer:
         self.ds = ds
         self.event = None
         self.fetcher = Fetcher(config=self.config, ds=self.ds)
-        self.getter = Getter(config=self.config)
+        self.getter = Getter(config=self.config, client=self.config.client)
 
     def set_event(self, event):
         """

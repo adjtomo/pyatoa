@@ -10,12 +10,12 @@ import json
 
 
 def sfconfig(min_period=10, max_period=30, filter_corners=4,
-             rotate_to_rtz=False, unit_output="DISP", pyflex_config="default",
+             rotate_to_rtz=False, unit_output="DISP", pyflex_map="default",
              adj_src_type="cc_traveltime_misfit", paths_to_waveforms=[],
              paths_to_responses=[], set_logging="info", fix_windows=False,
              plot_waveforms=True, plot_maps=True, synthetics_only=False,
              window_amplitude_ratio=.0, write_misfit_json=True,
-             tile_and_combine=False,  purge_originals=False, purge_tiles=True,
+             tile_combine_imgs=False,  purge_originals=False, purge_tiles=True,
              create_srcrcv_vtk=True, snapshot=True, plot_misfit_maps=True,
              fidout='./sfconfig.json'):
     """
@@ -30,8 +30,8 @@ def sfconfig(min_period=10, max_period=30, filter_corners=4,
     :param rotate_to_rtz: rotate compoments from north east to radial transverse
     :type unit_output: str
     :param unit_output: ground motion units, can be 'DISP', 'VEL' or 'ACC'
-    :type pyflex_config: str
-    :param pyflex_config: user-set parameters to be given to pyflex, for
+    :type pyflex_map: str
+    :param pyflex_map: user-set parameters to be given to pyflex, for
         avilable config types, see:
         ~pyatoa.utils.configurations.external.pyflex_configs()~
     :type adj_src_type: str
@@ -62,8 +62,8 @@ def sfconfig(min_period=10, max_period=30, filter_corners=4,
     :type write_misfit_json: bool
     :param write_misfit_json: write misfit information, number of windows,
         number of adjoint sources to a json file
-    :type tile_and_combine: bool
-    :param tile_and_combine: combine the waveforms and maps into a single pdf
+    :type tile_combine_imgs: bool
+    :param tile_combine_imgs: combine the waveforms and maps into a single pdf
         file, saved into 'figures'/composites
     :type purge_originals: bool
     :type purge_tiles: bool
@@ -89,7 +89,7 @@ def sfconfig(min_period=10, max_period=30, filter_corners=4,
         "filter_corners": filter_corners,
         "rotate_to_rtz": rotate_to_rtz,
         "unit_output": unit_output,
-        "pyflex_config": pyflex_config,
+        "pyflex_map": pyflex_map,
         "adj_src_type": adj_src_type,
         "paths_to_waveforms": paths_to_waveforms,
         "paths_to_responses": paths_to_responses,
@@ -104,7 +104,7 @@ def sfconfig(min_period=10, max_period=30, filter_corners=4,
 
         # Pyatoa Outputs
         "write_misfit_json": write_misfit_json,
-        "tile_and_combine": tile_and_combine,
+        "tile_combine_imgs": tile_combine_imgs,
         "purge_originals": purge_originals,
         "purge_tiles": purge_tiles,
         "create_srcrcv_vtk": create_srcrcv_vtk,

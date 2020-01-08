@@ -2,34 +2,40 @@
 """
 Configuration object for Pyatoa.
 
+The config class is the main interaction object between the User and workflow.
 Fed into the processor class for workflow management, and also used for
 information sharing between objects and functions.
 """
-import pyatoa.utils.extcfg as extcfg
+import yaml
+from pyatoa.plugins.pyflex_config import set_pyflex_config
+from pyatoa.plugins.pyadjoint_config import set_pyadjoint_config
 
 
 class Config:
     """
-    Configuration class that controls functionalities inside pyatoa
+    Configuration class that controls functionalities inside Pyatoa
     """
-    def __init__(self, model_number=None, event_id=None, min_period=10,
-                 max_period=30, filter_corners=4, rotate_to_rtz=False,
-                 unit_output='DISP', pyflex_config='default',
+    def __init__(self, yaml_fid=None, model_number=None, event_id=None,
+                 min_period=10, max_period=30, filter_corners=4,
+                 client="GEONET", rotate_to_rtz=False, unit_output='DISP',
+                 pyflex_map='default', component_list=None,
                  adj_src_type='cc_traveltime_misfit', start_pad=20, end_pad=500,
                  zero_pad=0, synthetic_unit="DISP", observed_tag='observed',
                  synthetic_tag='synthetic_{model_num}', synthetics_only=False,
-                 window_amplitude_ratio=0.,
-                 map_corners={'lat_min': -42.5007, 'lat_max': -36.9488,
-                              'lon_min': 172.9998, 'lon_max': 179.5077},
-                 cfgpaths={'synthetics': [], 'waveforms': [], 'responses': []}):
+                 window_amplitude_ratio=0., map_corners=None, cfgpaths=None,
+                 **kwargs):
         """
-        Allows the user to control the parameters of the packages called within
-        pyatoa, as well as control where the outputs (i.e. pyasdf and plots) are
-        sent after processing occurs
-
+        Allows the user to control the parameters of the workflow, including:
+        setting the Config objects for Pyflex and Pyadjoint, and the paths for
+        input data, and output figures and results from Pyflex and Pyadjoint.
         Reasonable default values set on initation
 
-        :type model_number: int
+        Kwargs are passed to Pyflex and Pyadjoint config objects so those can be
+        set by the User through this Config object
+
+        :type yaml_fid: str
+        :param yaml_fid: id for .yaml file if config is to be loaded externally
+        :type model_number: int or str
         :param model_number: model iteration number for annotations and tags
         :type event_id: str
         :param event_id: unique event identifier for data gathering, annotations
@@ -39,13 +45,15 @@ class Config:
         :param max_period: maximum bandpass filter period
         :type filter_corners: int
         :param filter_corners: filter steepness for obspy filter
+        :type client: str
+        :param client: ObsPy FDSN Client to be used for data gathering.
         :type rotate_to_rtz: bool
         :param rotate_to_rtz: components from NEZ to RTZ
         :type unit_output: str
         :param unit_output: units of stream, to be fed into preprocessor for
             instrument response removal. Available: 'DISP', 'VEL', 'ACC'
-        :type pyflex_config: str
-        :param pyflex_config: name of pyflex preset config to use
+        :type pyflex_map: str
+        :param pyflex_map: name to map to pyflex preset config
         :type adj_src_type: str
         :param adj_src_type: method of misfit quantification for Pyadjoint
         :type start_pad: int
@@ -64,14 +72,15 @@ class Config:
         :param synthetics_only: If the user is doing a synthetic-synthetic
             example, e.g. in a checkerboard test, this will tell the internal
             fetcher to search for observation data in the 'waveforms' path
-            in the same manner that it searches for synthetic data.
+            in the same manner that it searches for synthetic data. Also changes
+            tags on waveform plots so it's obvious that the 'data' is synthetic.
         :type observed_tag: str
         :param observed_tag: Tag to use for asdf dataset to label and search
             for obspy streams of observation data. Defaults 'observed'
         :type synthetic_tag: str
         :param synthetic_tag: Tag to use for asdf dataset to label and search
-            for obspy streams of synthetic data. Defaults 'synthetic_{model_num}
-            Tag must be formatted before use
+            for obspy streams of synthetic data. Default 'synthetic_{model_num}'
+            Tag must be formatted before use.
         :type cfgpaths: dict of str
         :param cfgpaths: any absolute paths for Pyatoa to search for
             waveforms in. If path does not exist, it will automatically be
@@ -79,30 +88,25 @@ class Config:
             paths for the same set of data, without needing to change config.
             Waveforms must be saved in a specific directory structure with a
             specific naming scheme
-
-
-
-        Example call:
-        config = Config(model_number=0,event_id='2014p240655',
-            min_period=10,max_period=30,rotate_to_rtz=True,unit_output="DISP",
-            pyflex_config='UAF',adj_src_type='multitaper_misfit',verbose=True,
-            log=True,
-            paths_to_waveforms=['/Users/chowbr/Documents/subduction/seismic',
-                '/seis/prj/fwi/bchow/seismic','/geonet/seismic'],
-            )
         """
+        # Load config parameters from .yaml
+        if yaml_fid:
+            self._read_yaml(yaml_fid)
+            self._check()
+            return
+
         if model_number is not None:
             # Format the model number to the way Pyatoa expects it
             if isinstance(model_number, str):
                 # If e.g. model_number = "0"
                 if not model_number[0] == "m":
-                    self.model_number = 'm{:0>2}'.format(model_number)
+                    self.model_number = f"m{model_number:0>2}"
                 # If e.g. model_number = "m00"
                 else:
                     self.model_number = model_number
             # If e.g. model_number = 0
             elif isinstance(model_number, int):
-                self.model_number = 'm{:0>2}'.format(model_number)
+                self.model_number = f"m{model_number:0>2}"
         else:
             self.model_number = None
 
@@ -110,238 +114,307 @@ class Config:
         self.min_period = float(min_period)
         self.max_period = float(max_period)
         self.filter_corners = float(filter_corners)
+        self.client = client
         self.rotate_to_rtz = rotate_to_rtz
         self.unit_output = unit_output.upper()
         self.synthetic_unit = synthetic_unit.upper()
         self.observed_tag = observed_tag
-        self.synthetic_tag = synthetic_tag.format(model_num=self.model_number)
-        self.pyflex_config = (pyflex_config, None)
-        self.pyadjoint_config = (adj_src_type, None)
+        if model_number:
+            self.synthetic_tag = synthetic_tag.format(
+                model_num=self.model_number)
+        else:
+            self.synthetic_tag = "synthetic"
+        self.pyflex_map = pyflex_map
+        self.adj_src_type = adj_src_type
         self.map_corners = map_corners
         self.synthetics_only = synthetics_only
         self.window_amplitude_ratio = window_amplitude_ratio
-
-        # Path searching looks for lists, but this allows the User to provide
-        # a path of type(str), the Config object will just wrap it in a list
-        for key in cfgpaths.keys():
-            if isinstance(cfgpaths[key], str):
-                cfgpaths[key] = [cfgpaths[key]]
-
-        self.cfgpaths = cfgpaths
         self.zero_pad = int(zero_pad)
         self.start_pad = int(start_pad)
         self.end_pad = int(end_pad)
+        self.component_list = component_list or ['Z', 'N', 'E']
+
+        # Make sure User provided paths are list objects as they will be looped
+        # on during the workflow
+        if cfgpaths:
+            for key in cfgpaths:
+                if not isinstance(cfgpaths[key], list):
+                    cfgpaths[key] = [cfgpaths[key]]
+            self.cfgpaths = cfgpaths
+        else:
+            self.cfgpaths = {"waveforms": [], "synthetics": [], "responses": []}
 
         # Run internal functions to check the Config object
-        self.component_list = ['Z', 'N', 'E']
-        self._check_config()
+        self.pyflex_config = None
+        self.pyadjoint_config = None
+        self._check(**kwargs)
 
     def __str__(self):
         """
-        string representation of class Config for print statements
-        :return:
+        String representation of class Config for print statements
         """
-        return ("CONFIG\n"
-                "\tmodel_number:          {model_number}\n"
-                "\tevent_id:              {event_id}\n"
-                "\tmin_period:            {min_period}\n"
-                "\tmax_period:            {max_period}\n"
-                "\tfilter_corners:        {corner}\n"
-                "\trotate_to_rtz:         {rotate}\n"
-                "\tunit_output:           {output}\n"
-                "\tpyflex_config:         {pyflex}\n"
-                "\tpyadjoint_config:      {adjoint}\n"
-                "\tpaths['waveforms']:    {paths_to_wavs}\n"
-                "\tpaths['synthetics']:   {paths_to_syns}\n"
-                "\tpaths['responses']:    {paths_to_resp}"
-                ).format(model_number=self.model_number,
-                         event_id=self.event_id, min_period=self.min_period,
-                         max_period=self.max_period, corner=self.filter_corners,
-                         rotate=self.rotate_to_rtz, output=self.unit_output,
-                         pyflex=self.pyflex_config[0],
-                         adjoint=self.pyadjoint_config[0],
-                         paths_to_wavs=self.cfgpaths['waveforms'],
-                         paths_to_syns=self.cfgpaths['synthetics'],
-                         paths_to_resp=self.cfgpaths['responses']
-                         )
+        str_out = "CONFIG\n"
+        for key, item in vars(self).items():
+            str_out += f"\t{key+':':<25}{item}\n"
+        return str_out
 
-    def _check_config(self):
+    def _check(self, **kwargs):
         """
-        Just make sure that some of the configuration parameters are set proper
+        A check to make sure that the configuration parameters are set properly
+        to avoid any problems throughout the workflow.
         """
         # Check period range is acceptable
         assert(self.min_period < self.max_period)
 
         # Check that the map corners is a dict and contains proper keys
-        acceptable_keys = ['lat_min', 'lat_max', 'lon_min', 'lon_max']
-        assert(isinstance(self.map_corners, dict)), "map_corners should be dict"
-        for key in self.map_corners.keys():
-            assert(key in acceptable_keys), "key should be in {}".format(
-                acceptable_keys)
+        # else, set to default map corners for New Zealand North Island
+        if self.map_corners is not None:
+            assert(isinstance(self.map_corners, dict)), \
+                "map_corners must be a dictionary object"
+            acceptable_keys = ['lat_min', 'lat_max', 'lon_min', 'lon_max']
+            for key in self.map_corners.keys():
+                assert(key in acceptable_keys), "key should be in {}".format(
+                    acceptable_keys)
+        else:
+            self.map_corners = None
 
         # Check if unit output properly set
         acceptable_units = ['DISP', 'VEL', 'ACC']
         assert(self.unit_output in acceptable_units), \
-            "unit_output should be in {}".format(acceptable_units)
+            f"unit_output should be in {acceptable_units}"
 
         assert(self.synthetic_unit in acceptable_units), \
-            "synthetic_unit should be in {}".format(acceptable_units)
+            f"synthetic_unit should be in {acceptable_units}"
 
         # Check that paths are in the proper format
-        acceptable_keys = [
-            'synthetics', 'waveforms', 'responses', 'auxiliary_data']
+        required_keys = ['synthetics', 'waveforms', 'responses']
         assert(isinstance(self.cfgpaths, dict)), "paths should be a dict"
         for key in self.cfgpaths.keys():
-            assert(key in acceptable_keys), \
-                "path keys can only be in {}".format(acceptable_keys)
+            assert(key in required_keys), \
+                f"path keys can only be in {required_keys}"
+        # Make sure that all the required keys are given in the dictionary
+        for key in required_keys:
+            if key not in self.cfgpaths.keys():
+                self.cfgpaths[key] = []
 
         # Rotate component list if necessary
         if self.rotate_to_rtz:
             self.component_list = ['Z', 'R', 'T']
-
-        # If all the assertions pass, set a few behind-the-scenes settings
-        # Set Pyflex config as a tuple, (name, pyflex.Config)
-        self.pyflex_config = (self.pyflex_config[0], 
-                              extcfg.set_pyflex_config(self)
-                              )
-        # Set Pyadjoint Config as a tuple, (adj source type, pyadjoint.Config)
-        self.pyadjoint_config = extcfg.get_pyadjoint_config(
-            choice=self.pyadjoint_config[0], min_period=self.min_period,
-            max_period=self.max_period
-        )
 
         # Check that the amplitude ratio is a reasonable number
         if self.window_amplitude_ratio > 0:
             assert(self.window_amplitude_ratio < 1), \
                 "window amplitude ratio should be < 1"
 
-    def write_to_txt(self, filename="./pyatoa_config.txt"):
+        # Set Pyflex confict through wrapper function
+        self.pyflex_config = set_pyflex_config(choice=self.pyflex_map,
+                                               min_period=self.min_period,
+                                               max_period=self.max_period,
+                                               **kwargs
+                                               )
+
+        # Set Pyadjoint Config
+        self.pyadjoint_config = set_pyadjoint_config(min_period=self.min_period,
+                                                     max_period=self.max_period,
+                                                     **kwargs
+                                                     )
+
+    def write(self, write_to, fmt=None):
         """
-        write out config file to text file
+        Wrapper for write functions
+
+        :type fmt: str
+        :param fmt: format to save parameters to,
+            (available: 'yaml', 'ascii', 'asdf')
+        :type write_to: str or pyasdf.ASDFDataSet
+        :param write_to: filename to save config to, or dataset to save to
+        """
+        # If no format given, try to guess the format
+        acceptable_formats = ["yaml", "asdf", "ascii"]
+        if fmt not in acceptable_formats:
+            from pyasdf.asdf_data_set import ASDFDataSet
+
+            if isinstance(write_to, str):
+                if ("yaml" or "yml") in write_to:
+                    fmt = "yaml"
+                elif ("txt" or "ascii") in write_to:
+                    fmt = "ascii"
+                else:
+                    print(f"format must be given in {acceptable_formats}")
+                    return
+            elif isinstance(write_to, ASDFDataSet):
+                fmt = "asdf"
+            else:
+                print(f"format must be given in {acceptable_formats}")
+                return
+
+        if fmt.lower() == "ascii":
+            self._write_ascii(write_to)
+        elif fmt.lower() == "yaml":
+            self._write_yaml(write_to)
+        elif fmt.lower() == "asdf":
+            self._write_asdf(write_to)
+
+    def read(self, read_from, path=None, fmt=None):
+        """
+        Wrapper for read functions
+
+        :type read_from: str or pyasdf.ASDFDataSet
+        :param read_from: filename to read config from, or ds to read from
+        :type path: str
+        :param path: if fmt='asdf', path to the config in the aux data
+        :type fmt: str
+        :param fmt: file format to read parameters from, will be guessed but
+            can also be explicitely set (available: 'yaml', 'ascii', 'asdf')
+        """
+        # If no format given, try to guess the format
+        acceptable_formats = ["yaml", "asdf"]
+        if fmt not in acceptable_formats:
+            from pyasdf.asdf_data_set import ASDFDataSet
+
+            if isinstance(read_from, str):
+                if ("yaml" or "yml") in read_from:
+                    fmt = "yaml"
+                elif ("txt" or "ascii") in read_from:
+                    fmt = "ascii"
+                else:
+                    print(f"format must be given in {acceptable_formats}")
+                    return
+            elif isinstance(read_from, ASDFDataSet):
+                fmt = "asdf"
+            else:
+                print(f"format must be given in {acceptable_formats}")
+                return
+
+        if fmt.lower() == "yaml":
+            self._read_yaml(read_from)
+        elif fmt.lower() == "asdf":
+            assert(path is not None), "path must be defined"
+            self._read_asdf(read_from, path=path)
+
+    def _write_yaml(self, filename):
+        """
+        Write config parameters to a yaml file, retain order
+
         :type filename: str
-        :param filename: filename to save config to
+        :param filename: filename to save yaml file
         """
-        with open(filename.format(model_num=self.model_number), "w") as f:
-            f.write("PYATOA CONFIGURATION FILE\n\n")
-            f.write("Model Number:            {model_number}\n"
-                    "Event ID:                {event_id}\n\n"
-                    "PROCESSING\n"
-                    "\tMinimum Filter Period: {min_period}\n"
-                    "\tMaximum Filter Period: {max_period}\n"
-                    "\tZero Pad:              {zero_pad}s\n"
-                    "\tStart Pad:             {start_pad}s\n"
-                    "\tEnd Pad:               {end_pad}s\n"
-                    "\tFilter Corners:        {corner}\n"
-                    "\tRotate to RTZ:         {rotate}\n"
-                    "\tUnit Output:           {output}\n"
-                    "\tSynthetic Unit:        {synunit}\n"
-                    "ASDF Dataset\n"
-                    "\tObserved Tag:          {obstag}\n"
-                    "\tSynthetic Tag:         {syntag}\n"
-                    "AUX. CONFIGS\n"
-                    "\tPyflex Config:         {pyflex}\n"
-                    "\tAdjoint Source Type:   {adjoint}\n"
-                    "MISC\n"
-                    "\tMap Corners            {mapcorners}\n"
-                    "\tPaths to waveforms:    {paths_to_wavs}\n"
-                    "\tPaths to synthetics:   {paths_to_syns}\n"
-                    "\tPaths to responses:    {paths_to_resp}".format(
-                        model_number=self.model_number, event_id=self.event_id,
-                        min_period=self.min_period, max_period=self.max_period,
-                        zero_pad=self.zero_pad, start_pad=self.start_pad,
-                        end_pad=self.end_pad, corner=self.filter_corners,
-                        rotate=self.rotate_to_rtz, output=self.unit_output,
-                        synunit=self.synthetic_unit, obstag=self.observed_tag,
-                        syntag=self.synthetic_tag, pyflex=self.pyflex_config[0],
-                        adjoint=self.pyadjoint_config[0],
-                        mapcorners=self.map_corners,
-                        paths_to_wavs=self.cfgpaths['waveforms'],
-                        paths_to_syns=self.cfgpaths['synthetics'],
-                        paths_to_resp=self.cfgpaths['responses'])
-                    )
+        # Ensure file ending
+        if filename[-5:] != ".yaml":
+            filename += ".yaml"
+        with open(filename, "w") as f:
+            yaml.dump(vars(self), f, default_flow_style=False, sort_keys=False)
 
-    def read_from_asdf(self, ds, model):
-        """
-        Read and set config parameters from an ASDF Dataset, assumes that all
-        necessary parameters are located in the auxiliary data subgroup of the
-        dataset.
-
-        :type ds: pyasdf.ASDFDataSet
-        :param ds: dataset with config parameter to read
-        :type model: str
-        :param model: model number e.g. 'm00'
-        """
-        cfgin = ds.auxiliary_data.Configs[model].parameters
-
-        self.model_number = cfgin['model_number']
-        self.event_id = cfgin['event_id']
-        self.min_period = float(cfgin['min_period'])
-        self.max_period = float(cfgin['max_period'])
-        self.filter_corners = float(cfgin['filter_corners'])
-        self.rotate_to_rtz = cfgin['rotate_to_rtz']
-        self.unit_output = cfgin['unit_output'].upper()
-        self.synthetic_unit = cfgin['synthetic_unit'].upper()
-        self.observed_tag = cfgin['observed_tag']
-        self.synthetic_tag = cfgin['synthetic_tag'].format(model_num=model)
-        self.pyflex_config = (cfgin['pyflex_config'], None)
-        self.pyadjoint_config = (cfgin['pyadjoint_config'], None)
-        self.map_corners = {'lat_min': cfgin['map_corners'][0],
-                            'lat_max': cfgin['map_corners'][1],
-                            'lon_min': cfgin['map_corners'][2],
-                            'lon_max': cfgin['map_corners'][3]
-                            }
-        self.synthetics_only = cfgin['synthetics_only']
-        self.window_amplitude_ratio = cfgin['window_amplitude_ratio']
-
-        self.cfgpaths = {'synthetics': cfgin['paths_to_synthetics'],
-                         'waveforms': cfgin['paths_to_waveforms'],
-                         'responses': cfgin['paths_to_responses'],
-                         'auxiliary_data': cfgin['paths_to_auxiliary_data']
-                         }
-        self.zero_pad = int(cfgin['zero_pad'])
-        self.start_pad = int(cfgin['start_pad'])
-        self.end_pad = int(cfgin['end_pad'])
-
-        # Run internal functions to check the Config object
-        self.component_list = ['Z', 'N', 'E']
-        self._check_config()
-
-    def write_to_asdf(self, ds):
+    def _write_asdf(self, ds):
         """
         Save the config values as a dictionary in the pyasdf data format
         for easy lookback
+
+        :type ds: pyasdf.ASDFDataSet
+        :param ds: dataset to save the config file to
         """
         # Lazy imports because this function isn't always called
         from numpy import array
         from obspy import UTCDateTime
 
-        par_dict = {"creation_time": str(UTCDateTime()),
-                    "model_number": self.model_number,
-                    "event_id": self.event_id,
-                    "min_period": self.min_period,
-                    "max_period": self.max_period,
-                    "filter_corners": self.filter_corners,
-                    "rotate_to_rtz": self.rotate_to_rtz,
-                    "unit_output": self.unit_output,
-                    "pyflex_config": self.pyflex_config[0],
-                    "pyadjoint_config": self.pyadjoint_config[0],
-                    "start_pad": self.start_pad,
-                    "end_pad": self.end_pad,
-                    "observed_tag": self.observed_tag,
-                    "synthetic_tag": self.synthetic_tag,
-                    "synthetics_only": self.synthetics_only,
-                    "zero_pad": self.zero_pad,
-                    "window_amplitude_ratio": self.window_amplitude_ratio,
-                    "map_corners": [self.map_corners['lat_min'],
-                                    self.map_corners['lat_max'],
-                                    self.map_corners['lon_min'],
-                                    self.map_corners['lon_max']],
-                    "path_to_synthetics": self.cfgpaths['synthetics'],
-                    "path_to_waveforms": self.cfgpaths['waveforms'],
-                    "paths_to_responses": self.cfgpaths['responses'],
-                    }
+        # Add/standardize some variables before passing to dataset
+        attrs = vars(self)
+
+        # Auxiliary data doesn't like Nonetype objects
+        for key, item in attrs.items():
+            if item is None:
+                attrs[key] = ''
+
+        attrs["creation_time"] = str(UTCDateTime())
+
+        # Auxiliary data can't take dictionaries so convert to lists, variables
+        attrs["map_corners"] = [self.map_corners['lat_min'],
+                                self.map_corners['lat_max'],
+                                self.map_corners['lon_min'],
+                                self.map_corners['lon_max']
+                                ]
+
+        attrs["cfgpaths_waveforms"] = self.cfgpaths["waveforms"]
+        attrs["cfgpaths_synthetics"] = self.cfgpaths["synthetics"]
+        attrs["cfgpaths_responses"] = self.cfgpaths["responses"]
+
+        # remove the Config objects because pyASDF doesn't recognize them
+        del attrs["pyflex_config"]
+        del attrs["pyadjoint_config"]
+        del attrs["cfgpaths"]
 
         ds.add_auxiliary_data(data_type="Configs", data=array([True]),
-                              path="{}".format(self.model_number),
-                              parameters=par_dict)
+                              path=self.model_number or "default",
+                              parameters=attrs
+                              )
+
+    def _write_ascii(self, filename):
+        """
+        Write the config parameters to an ascii file
+
+        :type filename: str
+        :param filename: filename to write the ascii file to
+        """
+        attrs = vars(self)
+        with open(filename, "w") as f:
+            f.write("PYATOA CONFIGURATION FILE\n")
+            for key_a, item_a in attrs.items():
+                # Excludes writing the Pyflex and Pyadjoint Config classes, but
+                # instead writes the parameters of those Configs separately
+                try:
+                    attrs_b = vars(item_a)
+                    f.write(f"{key_a}\n")
+                    for key_b, item_b in attrs_b.items():
+                        f.write(f"\t{key_b}: {item_b}\n")
+                except TypeError:
+                    f.write(f"{key_a}: {item_a}\n")
+
+    def _read_yaml(self, filename):
+        """
+        Read config parameters from a yaml file, parse to attributes
+
+        :type filename: str
+        :param filename: filename to save yaml file
+        """
+        with open(filename, "r") as f:
+            attrs = yaml.load(f, Loader=yaml.Loader)
+        for key, item in attrs.items():
+            setattr(self, key, item)
+
+    def _read_asdf(self, ds, path):
+        """
+        Read and set config parameters from an ASDF Dataset, assumes that all
+        necessary parameters are located in the auxiliary data subgroup of the
+        dataset, which will be the case if the write_to_asdf() function was used
+        Assumes some things about the structure of the auxiliary data.
+
+        :type ds: pyasdf.ASDFDataSet
+        :param ds: dataset with config parameter to read
+        :type path: str
+        :param path: model number e.g. 'm00' or 'default'
+        """
+        cfgin = ds.auxiliary_data.Configs[path].parameters
+        cfgpaths = {}
+        for key, item in cfgin.items():
+            if "cfgpaths" in key:
+                cfgpaths[key.split('_')[1]] = item.any() or []
+            elif key == "map_corners":
+                map_corners = {'lat_min': item[0].item(),
+                               'lat_max': item[1].item(),
+                               'lon_min': item[2].item(),
+                               'lon_max': item[3].item()
+                               }
+                setattr(self, key, map_corners)
+            else:
+                # Convert numpy objects into native python objects to avoid
+                # any confusion when reading from ASDF format
+                try:
+                    setattr(self, key, item.item())
+                except ValueError:
+                    setattr(self, key, item.tolist())
+                except AttributeError:
+                    setattr(self, key, item)
+        setattr(self, "cfgpaths", cfgpaths)
+
+        self._check()
 
