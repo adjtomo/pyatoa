@@ -357,7 +357,6 @@ def manager_map(map_corners, inv=None, event=None, stations=None,
         plot_stations(m, inv)
 
     # If an event is given, try to plot the focal-mechanism beachball
-    import ipdb;ipdb.set_trace()
     if event is not None:
         event_beachball(m, event)
 

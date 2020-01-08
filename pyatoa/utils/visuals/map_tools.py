@@ -383,7 +383,7 @@ def initiate_basemap(map_corners=None, scalebar=True, **kwargs):
     m.fillcontinents(color=continent_color, lake_color=lake_color)
     m.drawmapboundary(fill_color=fill_color)
 
-    if scalebar:
+    if scalebar and map_corners:
         place_scalebar(m, map_corners, loc=scalebar_location)
 
     return m
