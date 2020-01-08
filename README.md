@@ -14,8 +14,6 @@ Pyatoa is a waveform-based misfit quantification package, which provides abstrac
 **[Pyflex:](https://krischer.github.io/pyflex/)** a Python port of Flexwin, an automatic time window selection algorithm.  
 **[Pyadjoint:](http://krischer.github.io/pyadjoint/)** a package for calculating misfit and creating adjoint sources.  
 **[PyASDF:](https://seismicdata.github.io/pyasdf/)** heirarchical data storage for seismic data.  
-**[Matplotlib:](https://matplotlib.org/)** 2D plotting library for visualization of waveforms, statistics, misfit etc.  
-**[Basemap:](https://matplotlib.org/basemap/)** A mapping library for source receiver distributions, raypaths, etc. (deprecated, Cartopy in the future).  
 
 Pyatoa can be used bog-standard, or customized with simple Python scripting, to gather, process, window, measure misfit, visualize, save and export waveform data. It was designed as a tool to be used in conjunction with [Seisflows](https://github.com/rmodrak/seisflows), an automated workflow for seismic inversions, and [Specfem3D Cartesian](https://geodynamics.org/cig/software/specfem3d/), a numerical solver for seismic wave propogation.
 
