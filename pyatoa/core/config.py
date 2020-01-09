@@ -89,12 +89,6 @@ class Config:
             Waveforms must be saved in a specific directory structure with a
             specific naming scheme
         """
-        # Load config parameters from .yaml
-        if yaml_fid:
-            self._read_yaml(yaml_fid)
-            self._check()
-            return
-
         if model_number is not None:
             # Format the model number to the way Pyatoa expects it
             if isinstance(model_number, str):
@@ -147,6 +141,11 @@ class Config:
         # Run internal functions to check the Config object
         self.pyflex_config = None
         self.pyadjoint_config = None
+
+        # Overwrite config parameters from .yaml
+        if yaml_fid:
+            self._read_yaml(yaml_fid)
+
         self._check(**kwargs)
 
     def __str__(self):
@@ -379,7 +378,9 @@ class Config:
         with open(filename, "r") as f:
             attrs = yaml.load(f, Loader=yaml.Loader)
         for key, item in attrs.items():
-            setattr(self, key, item)
+            import ipdb;ipdb.set_trace()
+            if hasattr(self, key):
+                setattr(self, key, item)
 
     def _read_asdf(self, ds, path):
         """
