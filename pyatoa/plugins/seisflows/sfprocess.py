@@ -4,13 +4,14 @@ misfit functional within the automated workflow, in the context of
 requirements mandated by Seisflows.
 
 Seisflows is written in Python 2, so Pyatoa interacts with it via an
-argument parser and a user defined configuration dictionary.
+argument parser and a user defined configuration file.
 """
 import os
 
 import sys
-import json
 import time
+import yaml
+import json
 import glob
 import pyasdf
 import pyatoa
@@ -32,8 +33,9 @@ def initialize_parser(args):
     """
     Seisflows calls pyatoa via subprocess, so we use an argparser to provide
     Pyatoa with information that it requires
-
-    :return:
+    
+    :rtpye argparser.args
+    :return: arguments passed in from external call
     """
     argparser = argparse.ArgumentParser(description="Inputs from Seisflows")
 
@@ -43,7 +45,6 @@ def initialize_parser(args):
                                 "available: initialize, process, finalize")
     argparser.add_argument("--working_dir", type=str,
                            help="Working dir: main Seisflows directory")
-
     # Processing arguments
     argparser.add_argument("--event_id", type=str, default=None,
                            help="Event Identifier")
@@ -53,7 +54,6 @@ def initialize_parser(args):
                            help="Event Specfem directory, w/ 'DATA', 'traces'")
     argparser.add_argument("--suffix", type=str, default=None,
                            help="Seisflows suffix")
-    
     # Processing and Finalize arguments
     argparser.add_argument("--step_count", type=str, default=None,
                            help="Step Count, e.g. s00")
@@ -82,23 +82,20 @@ def assemble_paths(parser, mode=''):
 
     # User defined configuration for Pyatoa, controlling processing params
     # pathing and switches for outputs and logging
-    usrcfg_json = os.path.join(pyatoa_io, "sfconfig.json")
-    with open(usrcfg_json, "r") as f:
-        usrcfg = json.load(f)
+    usrcfg_yaml = os.path.join(pyatoa_io, "sfconfig.yaml")
+    with open(usrcfg_yaml, "r") as f:
+        usrcfg = yaml.load(f, loader=yaml.Loader)
 
-    # Set Pyatoa paths, these is a hardcoded directory structure
-    figs = os.path.join(pyatoa_io, "figures")
-    maps = os.path.join(figs, "maps")
-    vtks = os.path.join(figs, "vtks")
-    composites = os.path.join(figs, "composites")
-    data = os.path.join(pyatoa_io, "data")
-    misfits = os.path.join(data, "misfits")
-    misfit_file = os.path.join(pyatoa_io, "misfits.json")
-
-    paths = {"PYATOA_FIGURES": figs, "PYATOA_DATA": data, "PYATOA_MAPS": maps,
-             "PYATOA_VTKS": vtks, "PYATOA_MISFITS": misfits,
-             "PYATOA_COMPOSITES": composites, "MISFIT_FILE": misfit_file
-             }
+    # Set Pyatoa paths, this is a hardcoded directory structure
+    paths = {
+        "PYATOA_FIGURES": os.path.join(pyatoa_io, "figures"), 
+        "PYATOA_DATA": os.path.join(pyatoa_io, "data"), 
+        "PYATOA_MISFITS": os.path.join(pyatoa_io, "data", "misfits"),
+        "PYATOA_MAPS": os.path.join(pyatoa_io, "figures", "maps"),
+        "PYATOA_VTKS": os.path.join(pyatoa_io, "figures", "vtks"), 
+        "PYATOA_COMPOSITES": os.path.join(pyatoa_io, "figures", "composites"), 
+        "MISFIT_FILE": os.path.join(pyatoa_io, "misfits.json"),
+        }
 
     # Processing requires extra process dependent paths
     if mode == "process":
@@ -138,6 +135,81 @@ def initialize(parser):
             os.makedirs(paths[key])
 
 
+def _snapshot(paths):    
+    """
+    Internal function to be called by finalize()
+
+    Create a copy of each HDF5 file in the data/snapshot directory
+    
+    :type paths: dict
+    :parma paths: paths from assemble_paths()
+    """
+    snapshot_path = os.path.join(paths["PYATOA_DATA"], "snapshot")
+    if not os.path.exists(snapshot_path):
+        os.makedirs(snapshot_path)
+    srcs = glob.glob(os.path.join(paths["PYATOA_DATA"], "*.h5"))
+    for src in srcs:
+        shutil.copy(src, os.path.join(snapshot_path, os.path.basename(src)))
+
+
+def _misfit_maps(paths, parser, usrcfg):
+    """
+    Internal function to be called by finalize()
+
+    Create misfit maps for each of the HDF5 datasets available
+
+    :type paths: dict
+    :parma paths: paths from assemble_paths()
+    :type parser: argparse.Parser
+    :param parser: arguments passed in from Seisflows
+    :type usrcfg: dict
+    :param usrcfg: user configuration from .yaml file
+    """
+    from pyatoa.utils.visuals.mapping import event_misfit_map
+    from pyatoa.utils.visuals.combine_imgs import combine_images
+
+    name_template = "{eid}_{m}_{s}_misfit_map.png"
+    file_ids = []
+    # Loop through each available dataset to create misfit map
+    datasets = glob.glob(os.path.join(paths["PYATOA_DATA"], "*.h5"))
+    for dataset in datasets:
+        with pyasdf.ASDFDataSet(dataset) as ds:
+            event_id = os.path.basename(ds.filename).split('.')[0]
+             
+            # Save figures into event directories
+            event_figures = os.path.join(paths["PYATOA_FIGURES"], 
+                                         parser.model_number, event_id
+                                         )
+            # Save the fid based on event id, model number, step count
+            fidout = os.path.join(event_figures, 
+                                  name_template.format(eid=event_id, 
+                                                       m=parser.model_number, 
+                                                       s=parser.step_count)
+                                  )
+            file_ids.append(fidout)
+
+            # Use the average misfit to normalize the misfit map
+            stats = ds.auxiliary_data.Statistics[
+                parser.model_number][parser.step_count].parameters
+            average_misfit = stats['average_misfit']
+            
+            event_misfit_map(map_corners=usrcfg.map_corners,
+                             ds=ds, model=parser.model_number,
+                             step=parser.step_count,
+                             normalize=average_misfit,
+                             annotate_station_info='simple',
+                             contour_overlay=True, filled_contours=True,
+                             show=False, save=fidout
+                             )
+
+    # Combine all the misfit maps into a single pdf
+    save_to = os.path.join(
+                    paths["PYATOA_COMPOSITES"], 
+                    f"{parser.model_number}_{parser.step_count}_misfitmaps.pdf"
+    )
+    combine_images(file_ids=file_ids, save_to=save_to, purge=False)
+
+
 def finalize(parser):
     """
     Before finishing the iteration, create some final objects
@@ -165,59 +237,12 @@ def finalize(parser):
     # Create copies of .h5 files at the end of each iteration, because .h5
     # files are easy to corrupt so it's good to have a backup
     if usrcfg["snapshot"]:
-        snapshot_path = os.path.join(paths["PYATOA_DATA"], "snapshot")
-        if not os.path.exists(snapshot_path):
-            os.makedirs(snapshot_path)
-        srcs = glob.glob(os.path.join(paths["PYATOA_DATA"], "*.h5"))
-        for src in srcs:
-            shutil.copy(src, os.path.join(snapshot_path, os.path.basename(src)))
+        _snapshot(paths)
 
     # Create misfit maps for each event with contour overlay showing misfit
     # Only create misfit maps for the first step count
     if usrcfg["plot_misfit_maps"] and (parser.step_count == "s00"):
-        from pyatoa.utils.visuals.mapping import event_misfit_map
-        from pyatoa.utils.visuals.combine_imgs import combine_images
-
-        name_template = "{eid}_{m}_{s}_misfit_map.png"
-        file_ids = []
-        # Loop through each available dataset to create misfit map
-        datasets = glob.glob(os.path.join(paths["PYATOA_DATA"], "*.h5"))
-        for dataset in datasets:
-            with pyasdf.ASDFDataSet(dataset) as ds:
-                event_id = os.path.basename(ds.filename).split('.')[0]
-                 
-                # Save figures into event directories
-                event_figures = os.path.join(paths["PYATOA_FIGURES"], 
-                                             parser.model_number, event_id
-                                             )
-                # Save the fid based on event id, model number, step count
-                fidout = os.path.join(
-                            event_figures, name_template.format(eid=event_id,
-                                     m=parser.model_number, s=parser.step_count)
-                                      )
-                file_ids.append(fidout)
-
-                # Use the average misfit to normalize the misfit map
-                stats = ds.auxiliary_data.Statistics[
-                    parser.model_number][parser.step_count].parameters
-                average_misfit = stats['average_misfit']
-
-                # TO DO: set map corners using usrcfg, and not default Config?
-                event_misfit_map(map_corners=pyatoa.Config().map_corners,
-                                 ds=ds, model=parser.model_number,
-                                 step=parser.step_count,
-                                 normalize=average_misfit,
-                                 annotate_station_info='simple',
-                                 contour_overlay=True, filled_contours=True,
-                                 show=False, save=fidout
-                                 )
-
-        # Combine all the misfit maps into a single pdf
-        save_to = os.path.join(
-            paths["PYATOA_COMPOSITES"], "{m}_{s}_misfitmaps.pdf".format(
-                m=parser.model_number, s=parser.step_count)
-        )
-        combine_images(file_ids=file_ids, save_to=save_to, purge=False)
+        _misfit_maps(paths, parser, usrcfg)
 
 
 def process(parser):
@@ -230,14 +255,15 @@ def process(parser):
     """
     paths, usrcfg = assemble_paths(parser, mode="process")
 
-    # Set loggging output, allow user to specify less output using 'info'
+    # Set logging output for Pyflex and Pyatoa, less output using 'info'
     if usrcfg["set_logging"]:
         logger_pyatoa = logging.getLogger("pyatoa")
+        logger_pyflex = logging.getLogger("pyflex")
         if usrcfg["set_logging"].lower() == "info":
             logger_pyatoa.setLevel(logging.INFO)
+            logger_pyflex.setLevel(logging.INFO)
         else:
             logger_pyatoa.setLevel(logging.DEBUG)
-            logger_pyflex = logging.getLogger("pyflex")
             logger_pyflex.setLevel(logging.DEBUG)
 
     # Set the Pyatoa Config object for misfit quantification
@@ -381,6 +407,7 @@ def process(parser):
 
 
 if __name__ == "__main__":
+    # TO DO: change this, ignoring all warnings is pretty dangerous
     # Ignoring warnings due to H5PY deprecation warning
     warnings.filterwarnings("ignore")
 
