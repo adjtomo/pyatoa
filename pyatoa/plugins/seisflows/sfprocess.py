@@ -84,7 +84,7 @@ def assemble_paths(parser, mode=''):
 
     # Set Pyatoa paths, this is a hardcoded directory structure
     paths = {
-        "PYATOA_CONFIG": os.path.join(pyatoa_io, "sfconfig.yaml",
+        "PYATOA_CONFIG": os.path.join(parser.working_dir, "parameters.yaml",
         "PYATOA_FIGURES": os.path.join(pyatoa_io, "figures"), 
         "PYATOA_DATA": os.path.join(pyatoa_io, "data"), 
         "PYATOA_MISFITS": os.path.join(pyatoa_io, "data", "misfits"),
@@ -95,9 +95,10 @@ def assemble_paths(parser, mode=''):
         }
 
     # User defined configuration for Pyatoa, controlling processing params
-    # pathing and switches for outputs and logging
+    # pathing and switches for outputs and logging. This is set by the 
+    # parameters.yaml file in Seisflows
     with open(paths["PYATOA_CONFIG"], "r") as f:
-        usrcfg = yaml.load(f, loader=yaml.Loader)
+        usrcfg = yaml.load(f, Loader=yaml.Loader)["PYATOA"]
 
     # Processing requires extra process dependent paths
     if mode == "process":
@@ -272,12 +273,12 @@ def process(parser):
     config = pyatoa.Config(yaml_fid=paths["PYATOA_CONFIG"])
     config.event_id = parser.event_id
     config.model_number = parser.model_number
+    config.synthetic_tag = f"synthetic_{parser.model_number}"
     config.cfgpaths["synthetics"].append(paths["SYN_TRACES"])
     config.cfgpaths["waveforms"].append(paths["OBS_TRACES"])
 
     # Save HDF5 output by event id
     ds_name = os.path.join(paths["PYATOA_DATA"], f"{config.event_id}.h5")
-
     with pyasdf.ASDFDataSet(ds_name) as ds:
         # Make sure the ASDFDataSet doesn't already contain auxiliary_data
         # because it will be collected in this workflow
@@ -341,7 +342,8 @@ def process(parser):
                 if usrcfg["plot_maps"] and f:
                     map_fid = os.path.join(paths["EVENT_MAPS"], f"map_{sta}")
                     if not os.path.exists(map_fid):
-                        mgmt.srcrcvmap(stations=coords, save=map_fid, show=False)
+                        mgmt.srcrcvmap(stations=coords, save=map_fid, 
+                                       show=False)
 
                 print("\n")
             # Traceback ensures more detailed error tracking
@@ -374,10 +376,10 @@ def process(parser):
 
             # Create the name of the pdf to save to
             save_to = os.path.join(
-                paths["PYATOA_COMPOSITES"], "{e}_{m}_{s}_wavmap.pdf".format(
-                    e=config.event_id, m=config.model_number,
-                    s=parser.step_count)
-            )
+                    paths["PYATOA_COMPOSITES"], 
+                    f"{config.event_id}_{config.model_number}_"
+                    f"{parser.step_count}_wavmap.pdf"
+                    )
             tile_combine_imgs(ds=ds, save_pdf_to=save_to,
                               wavs_path=paths["EVENT_FIGURES"],
                               maps_path=paths["EVENT_MAPS"],
@@ -402,7 +404,6 @@ if __name__ == "__main__":
         except Exception as e:
             traceback.print_exc()
             sys.exit(1)
-
     # Run some cleanup scripts at the end of an iteration
     elif parser.mode == "finalize":
         try:
@@ -411,19 +412,17 @@ if __name__ == "__main__":
         except Exception as e:
             traceback.print_exc()
             sys.exit(1)
-
     # Process misfit values
     elif parser.mode == "process":
         # Run Pyatoa, return successful exit code. Time for posterity
         try:
             tstart = time.time()
             process(parser)
-            print("{:.2f}m elapsed".format((time.time() - tstart) / 60.))
+            print(f"{(time.time() - tstart) / 60.:.2f}m elapsed"
             sys.exit(0)
         except Exception as e:
             traceback.print_exc()
             sys.exit(1)
-
     else:
         print("invalid 'mode' argument")
         sys.exit(1)

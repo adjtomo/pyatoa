@@ -377,9 +377,14 @@ class Config:
         """
         with open(filename, "r") as f:
             attrs = yaml.load(f, Loader=yaml.Loader)
-        for key, item in attrs.items():
-            if hasattr(self, key):
-                setattr(self, key, item)
+        # Check if we're reading from a Seisflows yaml file
+        if 'PYATOA' in attrs.keys():
+            attr_list = attrs['PYATOA'].items()
+        else:
+            attr_list = attrs.items()
+        for key, item in attr_list:
+            if hasattr(self, key.lower()):
+                setattr(self, key.lower(), item)
 
     def _read_asdf(self, ds, path):
         """
