@@ -63,7 +63,8 @@ def initialize_parser(args):
 
 def assemble_paths(parser, mode=''):
     """
-    Make the necessary output directories for Pyatoa
+    Make the necessary output directories for Pyatoa.
+    All paths should be defined and referenced from this function.
 
     :type parser: argparse.Parser
     :param parser: arguments passed in from seisflows
@@ -80,14 +81,10 @@ def assemble_paths(parser, mode=''):
     # Pyatoa input/output directory, supplied by User in seisflows paths 
     pyatoa_io = sf_paths["PYATOA_IO"]
 
-    # User defined configuration for Pyatoa, controlling processing params
-    # pathing and switches for outputs and logging
-    usrcfg_yaml = os.path.join(pyatoa_io, "sfconfig.yaml")
-    with open(usrcfg_yaml, "r") as f:
-        usrcfg = yaml.load(f, loader=yaml.Loader)
 
     # Set Pyatoa paths, this is a hardcoded directory structure
     paths = {
+        "PYATOA_CONFIG": os.path.join(pyatoa_io, "sfconfig.yaml",
         "PYATOA_FIGURES": os.path.join(pyatoa_io, "figures"), 
         "PYATOA_DATA": os.path.join(pyatoa_io, "data"), 
         "PYATOA_MISFITS": os.path.join(pyatoa_io, "data", "misfits"),
@@ -96,6 +93,11 @@ def assemble_paths(parser, mode=''):
         "PYATOA_COMPOSITES": os.path.join(pyatoa_io, "figures", "composites"), 
         "MISFIT_FILE": os.path.join(pyatoa_io, "misfits.json"),
         }
+
+    # User defined configuration for Pyatoa, controlling processing params
+    # pathing and switches for outputs and logging
+    with open(paths["PYATOA_CONFIG"], "r") as f:
+        usrcfg = yaml.load(f, loader=yaml.Loader)
 
     # Processing requires extra process dependent paths
     if mode == "process":
@@ -266,30 +268,16 @@ def process(parser):
             logger_pyatoa.setLevel(logging.DEBUG)
             logger_pyflex.setLevel(logging.DEBUG)
 
-    # Set the Pyatoa Config object for misfit quantification
-    config = pyatoa.Config(
-        event_id=parser.event_id,
-        model_number=parser.model_number,
-        min_period=usrcfg["min_period"],
-        max_period=usrcfg["max_period"],
-        filter_corners=usrcfg["filter_corners"],
-        rotate_to_rtz=usrcfg["rotate_to_rtz"],
-        unit_output=usrcfg["unit_output"],
-        pyflex_map=usrcfg["pyflex_map"],
-        adj_src_type=usrcfg["adj_src_type"],
-        synthetics_only=usrcfg["synthetics_only"],
-        window_amplitude_ratio=usrcfg["window_amplitude_ratio"],
-        cfgpaths={"synthetics": paths["SYN_TRACES"],
-                  "waveforms": usrcfg["paths_to_waveforms"] +
-                               [paths["OBS_TRACES"]],
-                  "responses": usrcfg["paths_to_responses"]
-                  }
-        )
+    # Read in the Pyatoa Config object and set some attributes based on workflow
+    config = pyatoa.Config(yaml_fid=paths["PYATOA_CONFIG"])
+    config.event_id = parser.event_id
+    config.model_number = parser.model_number
+    config.cfgpaths["synthetics"].append(paths["SYN_TRACES"])
+    config.cfgpaths["waveforms"].append(paths["OBS_TRACES"])
 
     # Save HDF5 output by event id
-    ds_name = os.path.join(paths["PYATOA_DATA"],
-                           "{}.h5".format(config.event_id)
-                           )
+    ds_name = os.path.join(paths["PYATOA_DATA"], f"{config.event_id}.h5")
+
     with pyasdf.ASDFDataSet(ds_name) as ds:
         # Make sure the ASDFDataSet doesn't already contain auxiliary_data
         # because it will be collected in this workflow
@@ -302,8 +290,7 @@ def process(parser):
         # Instantiate the Manager
         mgmt = pyatoa.Manager(config=config, ds=ds)
 
-        # Calculate misfit by station, get stations from Specfem STATIONS file
-        # Station file has the form NET STA LAT LON ...
+        # Get stations from Specfem STATIONS file in form NET STA LAT LON ...
         stations = np.loadtxt(paths["STATIONS"], usecols=[0, 1, 2, 3],
                               dtype=str)
         coords = stations[:, 2:]
@@ -311,15 +298,13 @@ def process(parser):
         # Loop through stations and invoke Pyatoa workflow
         for station in stations:
             sta, net = station[:2]
-            print("{}.{}".format(net, sta))
+            print(f"{net}.{sta}")
             try:
                 mgmt.reset()
 
                 # Gather data, searching internal pathways, else fetching from
                 # external pathways if possible. Preprocess identically
-                mgmt.gather(station_code="{net}.{sta}.{loc}.{cha}".format(
-                            net=net, sta=sta, loc="*", cha="HH*")
-                            )
+                mgmt.gather(station_code=f"{net}.{sta}.*.HH*")
                 mgmt.standardize()
                 mgmt.preprocess()
 
@@ -340,28 +325,23 @@ def process(parser):
                 if usrcfg["plot_waveforms"]:
                     # Format some strings to append to the waveform plot title
                     append_title = (
-                        "\n{md}{sn} pyflex={pf}, pyadjoint={pa},".format(
-                            md=config.model_number, sn=parser.step_count, 
-                            pf=config.pyflex_map, pa=config.adj_src_type)
-                    )
+                        f"\n{config.model_number}{parser.step_count} "
+                        f"pyflex={config.pyflex_map}, "
+                        f"pyadjoint={config.adj_src_type},")
                     if mgmt.misfit is not None:
-                        append_title = " ".join([
-                            append_title,
-                            "misfit={:.2E}".format(mgmt.misfit)]
-                        )
+                        append_title = " ".join([append_title, 
+                                                 f"misfit={mgmt.misfit:.2E}"])
                     f = mgmt.plot(append_title=append_title, save=os.path.join(
-                                  paths["EVENT_FIGURES"], "wav_{}".format(sta)),
+                                  paths["EVENT_FIGURES"], f"wav_{sta}"),
                                   show=False, return_figure=True
                                   )
 
                 # Plot source-receiver maps, don't make a map if no wav data
                 # Don't make the map if the map has already been made
                 if usrcfg["plot_maps"] and f:
-                    map_fid = os.path.join(paths["EVENT_MAPS"],
-                                           "map_{}".format(sta)
-                                           )
+                    map_fid = os.path.join(paths["EVENT_MAPS"], f"map_{sta}")
                     if not os.path.exists(map_fid):
-                        mgmt.plot(stations=coords, save=map_fid, show=False)
+                        mgmt.srcrcvmap(stations=coords, save=map_fid, show=False)
 
                 print("\n")
             # Traceback ensures more detailed error tracking

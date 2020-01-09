@@ -378,7 +378,6 @@ class Config:
         with open(filename, "r") as f:
             attrs = yaml.load(f, Loader=yaml.Loader)
         for key, item in attrs.items():
-            import ipdb;ipdb.set_trace()
             if hasattr(self, key):
                 setattr(self, key, item)
 

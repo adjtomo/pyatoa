@@ -892,7 +892,7 @@ class Manager:
         if return_figure:
             return fig_window
 
-    def map(self, map_corners=None, stations=None, show_nz_faults=False,
+    def srcrcvmap(self, map_corners=None, stations=None, show_nz_faults=False,
             annotate_names=False, color_by_network=False,
             figsize=(8, 8.27), dpi=100, show=True, save=None, **kwargs):
         """
