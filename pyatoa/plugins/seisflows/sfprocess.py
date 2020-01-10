@@ -81,7 +81,6 @@ def assemble_paths(parser, mode=''):
     # Pyatoa input/output directory, supplied by User in seisflows paths 
     pyatoa_io = sf_paths["PYATOA_IO"]
 
-
     # Set Pyatoa paths, this is a hardcoded directory structure
     paths = {
         "PYATOA_CONFIG": os.path.join(parser.working_dir, "parameters.yaml",
