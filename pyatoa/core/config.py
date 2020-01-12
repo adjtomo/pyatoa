@@ -315,9 +315,11 @@ class Config:
         # Lazy imports because this function isn't always called
         from numpy import array
         from obspy import UTCDateTime
+        from copy import deepcopy
 
         # Add/standardize some variables before passing to dataset
-        attrs = vars(self)
+        # Copy to ensure that we aren't editing the Config parameters
+        attrs = vars(deepcopy(self))
 
         # Auxiliary data doesn't like Nonetype objects
         for key, item in attrs.items():

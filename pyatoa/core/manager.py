@@ -12,6 +12,7 @@ import warnings
 import obspy
 import pyflex
 import pyadjoint
+import traceback
 import numpy as np
 from os.path import basename
 from obspy.signal.filter import envelope
@@ -375,7 +376,7 @@ class Manager:
                     logger.debug("gathering synthetic waveforms")
                     self.st_syn = self.gatherer.gather_synthetic(station_code)
         except Exception as e:
-            print(e)
+            traceback.print_exc() 
             return
 
     def write(self, write_to="ds"):
