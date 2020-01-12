@@ -352,7 +352,7 @@ def initiate_basemap(map_corners=None, scalebar=True, **kwargs):
     coastline_zorder = kwargs.get("coastline_zorder", 5)
     coastline_linewidth = kwargs.get("coastline_linewidth", 2.0)
     fill_color = kwargs.get("fill_color", "w")
-    scalebar_location = kwargs.get("scalebar_location", "lower-right")
+    scalebar_location = kwargs.get("scalebar_location", "upper-right")
     latlon_linewidth = kwargs.get("latlon_linewidth", 0.)   
 
     # Initiate map and draw in style. Stereographic projection if regional
