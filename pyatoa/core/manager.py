@@ -375,6 +375,9 @@ class Manager:
                 if "st_syn" in choice:
                     logger.debug("gathering synthetic waveforms")
                     self.st_syn = self.gatherer.gather_synthetic(station_code)
+        except obspy.clients.fdsn.header.FDSNNoDataException:
+            logger.info("No data found internally or externally")
+            return
         except Exception as e:
             traceback.print_exc() 
             return
@@ -894,8 +897,8 @@ class Manager:
             return fig_window
 
     def srcrcvmap(self, map_corners=None, stations=None, show_nz_faults=False,
-            annotate_names=False, color_by_network=False,
-            figsize=(8, 8.27), dpi=100, show=True, save=None, **kwargs):
+                  annotate_names=False, color_by_network=False,
+                  figsize=(8, 8.27), dpi=100, show=True, save=None, **kwargs):
         """
         Map plot showing a map of the given target region. All stations that
         show data availability (according to the station master list) are

@@ -112,9 +112,10 @@ def assemble_paths(parser, mode=''):
                                           parser.model_number, parser.event_id),
             "EVENT_MAPS": os.path.join(paths["PYATOA_MAPS"], parser.event_id)
         }
-        # Make the event figure if necessary
-        if not os.path.exists(event_paths["EVENT_FIGURES"]):
-            os.makedirs(event_paths["EVENT_FIGURES"])
+        # Make process specific directories if necessary
+        for key in ["EVENT_MAPS", "EVENT_FIGURES"]:
+            if not os.path.exists(event_paths[key]):
+                os.makedirs(event_paths[key])
 
         paths = {**paths, **event_paths}
 
@@ -355,27 +356,27 @@ def process(parser):
                 print("\n")
                 continue
 
-        print("writing stats to ASDF file")
+        print("writing stats to ASDF file...")
         write_stats_to_asdf(ds, config.model_number, parser.step_count)
 
-        print("writing adjoint sources to .sem? files")
+        print("writing adjoint sources to .sem? files...")
         write_adj_src_to_ascii(ds, config.model_number, paths["ADJ_TRACES"])
 
-        print("creating STATIONS_ADJOINT file")
+        print("creating STATIONS_ADJOINT file...")
         create_stations_adjoint(ds, config.model_number,
                                 specfem_station_file=paths["STATIONS"],
                                 pathout=paths["EVENT_DATA"])
 
-        print("writing individual misfit to file")
+        print("writing individual misfit to file...")
         write_misfit_stats(ds, config.model_number, paths["PYATOA_MISFITS"])
 
-        print("writing misfits.json file")
+        print("writing misfits.json file...")
         write_misfit_json(ds, parser.model_number, parser.step_count,
                           paths["MISFIT_FILE"])
 
         # Only run this for the first 'step', otherwise we get too many pdfs
-        if usrcfg["tile_combine_imgs"] and (parser.step_count == "s00"):
-            print("creating composite pdf")
+        if usrcfg["combine_imgs"] and (parser.step_count == "s00"):
+            print("creating composite pdf...")
 
             # Create the name of the pdf to save to
             save_to = os.path.join(
@@ -386,7 +387,7 @@ def process(parser):
             tile_combine_imgs(ds=ds, save_pdf_to=save_to,
                               wavs_path=paths["EVENT_FIGURES"],
                               maps_path=paths["EVENT_MAPS"],
-                              purge_wavs=usrcfg["purge_originals"],
+                              purge_wavs=usrcfg["purge_waveforms"],
                               purge_tiles=usrcfg["purge_tiles"]
                               )
 
