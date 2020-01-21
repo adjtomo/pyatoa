@@ -653,7 +653,7 @@ def tile_combine_imgs(ds, wavs_path, maps_path, save_pdf_to,
     from pyatoa.utils.tools.srcrcv import sort_by_backazimuth
 
     # Set the template filenames to look for/ use
-    wav_fid = "wav_{sta}.png",
+    wav_fid = "wav_{sta}.png"
     map_fid = "map_{sta}.png"
     tile_fid = "tile_{sta}.png"
 
