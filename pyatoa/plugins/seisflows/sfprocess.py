@@ -99,7 +99,6 @@ def assemble_paths(parser, mode=''):
         "MISFIT_FILE": os.path.join(pyatoa_io, "misfits.json"),
         }
 
-
     # Processing requires path names set by Seisflows
     if mode == "process":
         event_paths = {
