@@ -12,6 +12,7 @@ import pyasdf
 import pyatoa
 import shutil
 import logging
+import warnings
 import traceback
 import numpy as np
 
@@ -34,9 +35,9 @@ class Pyaflowa:
     """
     def __init__(self, par, paths):
         """
-        Pyaflowa only needs to know where the main Seisflows working directory
-        is located. With this information it can create the internal directory
-        structure that it uses to navigate around Seisflows
+        Pyaflowa only needs to know what Seisflows knows.
+        With this information it can create the internal directory
+        structure that it uses to navigate around Seisflows.
 
         :type par: dict
         :param par: a dictionary of the Seisflows parameters contained in the
@@ -66,7 +67,7 @@ class Pyaflowa:
             }
 
         # Create Pyatoa directory structure
-        for key, item in self.int_paths:
+        for key, item in self.int_paths.items():
             if "file" not in key:
                 if os.path.exists(item):
                     os.makedirs(item)
@@ -74,14 +75,13 @@ class Pyaflowa:
         # Set some attributes that will be set/used during the workflow
         self.iteration = 0
         self.step = 0
-        self.suffix = ""
 
     @property
     def model_number(self):
         """
         The model number is based on the current iteration
         """
-        return f"m{self.iteration - 1:0>2}"
+        return f"m{max(self.iteration - 1, 0):0>2}"
 
     @property
     def model_ind(self):
@@ -99,8 +99,13 @@ class Pyaflowa:
 
     def set(self, **kwargs):
         """
-        Overwrite internally used attributes using kwargs
+        Overwrite internally used attributes using kwargs. Ensure that
+        attributes other than the ones set in __init__ are allowed
         """
+        for key in list(kwargs.keys()):
+            if not hasattr(self, key):
+                warnings.warn(f"Pyaflowa has no attribute '{key}', ignoring")
+                del kwargs[key]
         self.__dict__.update(kwargs)
 
     def process(self, cwd, event_id=None):
