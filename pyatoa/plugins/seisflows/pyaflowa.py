@@ -120,7 +120,7 @@ class Pyaflowa:
 
         # Process specific internal directories for the processing
         event = {"stations": os.path.join(cwd, "DATA", "STATIONS"),
-                 "maps": os.path.join(self.int_paths["PYATOA_MAPS"], event_id)
+                 "maps": os.path.join(self.int_paths["maps"], event_id),
                  "figures": os.path.join(self.int_paths["figures"],
                                          self.model_number, event_id),
                  }
