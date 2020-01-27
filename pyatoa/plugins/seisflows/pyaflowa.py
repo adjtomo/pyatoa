@@ -69,7 +69,7 @@ class Pyaflowa:
         # Create Pyatoa directory structure
         for key, item in self.int_paths.items():
             if "file" not in key:
-                if os.path.exists(item):
+                if not os.path.exists(item):
                     os.makedirs(item)
 
         # Set some attributes that will be set/used during the workflow
@@ -84,13 +84,6 @@ class Pyaflowa:
         return f"m{max(self.iteration - 1, 0):0>2}"
 
     @property
-    def model_ind(self):
-        """
-        The model number is based on the current iteration
-        """
-        return int(self.iteration - 1)
-
-    @property
     def step_count(self):
         """
         Step count based on
@@ -99,8 +92,11 @@ class Pyaflowa:
 
     def set(self, **kwargs):
         """
+        Convenience function to easily set multiple parameters before calling
+        other functions.
+
         Overwrite internally used attributes using kwargs. Ensure that
-        attributes other than the ones set in __init__ are allowed
+        attributes other than the ones set in __init__ are allowed.
         """
         for key in list(kwargs.keys()):
             if not hasattr(self, key):
@@ -108,26 +104,26 @@ class Pyaflowa:
                 del kwargs[key]
         self.__dict__.update(kwargs)
 
-    def process(self, cwd, event_id=None):
+    def _setup_process(self, cwd, event_id=None):
         """
-        Main workflow calling on the core functionality of Pyatoa to process
-        observed and synthetic waveforms and perform misfit quantification
+        Set up the workflow by creating process dependent pathways, and creating
+        the Pyatoa Config object that will control the worklow
 
         :type cwd: str
         :param cwd: current working directory for this instance of Pyatoa
         :type event_id: str
         :param event_id: event identifier tag for file naming etc.
         """
-        # !!! SETUP WORKFLOW !!!
         # Default event id is the name of the current working directory
         if event_id is None:
             event_id = os.path.basename(cwd)
 
-        # Multiply-used internal directories for the processing
-        event_stations = os.path.join(cwd, "DATA", "STATIONS"),
-        event_figures = os.path.join(self.int_paths["figures"],
-                                     self.model_number, event_id)
-        event_maps = os.path.join(self.int_paths["PYATOA_MAPS"], event_id)
+        # Process specific internal directories for the processing
+        event = {"stations": os.path.join(cwd, "DATA", "STATIONS"),
+                 "maps": os.path.join(self.int_paths["PYATOA_MAPS"], event_id)
+                 "figures": os.path.join(self.int_paths["figures"],
+                                         self.model_number, event_id),
+                 }
 
         # Set logging output for Pyflex and Pyatoa, less output using 'info'
         if self.par["set_logging"]:
@@ -150,8 +146,20 @@ class Pyaflowa:
         config.cfgpaths["synthetics"].append(os.path.join(cwd, "traces", "syn"))
         config.cfgpaths["waveforms"].append(os.path.join(cwd, "traces", "obs"))
 
-        # !!! MAIN WORKFLOW !!!
-        # Save HDF5 output by event id
+        return config, event
+
+    def process(self, cwd, event_id=None):
+        """
+        Main workflow calling on the core functionality of Pyatoa to process
+        observed and synthetic waveforms and perform misfit quantification
+
+        :type cwd: str
+        :param cwd: current working directory for this instance of Pyatoa
+        :type event_id: str
+        :param event_id: event identifier tag for file naming etc.
+        """
+        config, event = self._setup_process(cwd, event_id)
+
         ds_name = os.path.join(self.int_paths["pyatoa_data"],
                                f"{config.event_id}.h5")
         with pyasdf.ASDFDataSet(ds_name) as ds:
@@ -166,7 +174,7 @@ class Pyaflowa:
             mgmt = pyatoa.Manager(config=config, ds=ds)
 
             # Get stations from Specfem STATIONS file in form NET STA LAT LON ..
-            stations = np.loadtxt(event_stations, usecols=[0, 1, 2, 3],
+            stations = np.loadtxt(event["stations"], usecols=[0, 1, 2, 3],
                                   dtype=str)
             coords = stations[:, 2:]
 
@@ -208,14 +216,14 @@ class Pyaflowa:
                                 [append_title, f"misfit={mgmt.misfit:.2E}"])
                         f = mgmt.plot(
                             append_title=append_title,
-                            save=os.path.join(event_figures, f"wav_{sta}"),
+                            save=os.path.join(event["figures"], f"wav_{sta}"),
                             show=False, return_figure=True
                         )
 
                     # Plot source-receiver maps, don't make a map if no wav data
                     # Don't make the map if the map has already been made
                     if self.par["plot_srcrcv_maps"] and f:
-                        map_fid = os.path.join(event_maps, f"map_{sta}")
+                        map_fid = os.path.join(event["maps"], f"map_{sta}")
                         if not os.path.exists(map_fid):
                             mgmt.srcrcvmap(stations=coords, save=map_fid,
                                            show=False)
@@ -226,45 +234,71 @@ class Pyaflowa:
                     print("\n")
                     continue
 
-            # !!! FINALIZE WORKFLOW !!!
-            print("writing stats to ASDF file...")
-            write_stats_to_asdf(ds, config.model_number, self.step_count)
+            # Run finalization procedures for processing
+            self._finalize_process(ds=ds, cwd=cwd, event=event, config=config)
 
-            print("writing adjoint sources to .sem? files...")
-            # Write adjoint sources directly to the Seisflows traces/adj dir
-            write_adj_src_to_ascii(ds, config.model_number,
-                                   os.path.join(cwd, "traces", "adj"))
 
-            print("creating STATIONS_ADJOINT file...")
-            # Write the STATIONS_ADJOINT file to the DATA directory of cwd
-            create_stations_adjoint(
-                ds, config.model_number,
-                specfem_station_file=self.int_paths["stations"],
-                pathout=os.path.join(cwd, "DATA"))
 
-            print("writing individual misfit to file...")
-            write_misfit_stats(ds, config.model_number,
-                               self.int_paths["misfits"])
+    def _export_specfem3d(self, **kwargs):
+        """
+        Create necessary input files for the adjoint solver of Specfem3D
+        Place them into the proper directories within Seisflows, so that
+        Seisflows can find these input files
+        """
+        ds = kwargs.get("ds", None)
+        cwd = kwargs.get("cwd", None)
+        config = kwargs.get("config", None)
 
-            print("writing misfits.json file...")
-            write_misfit_json(ds, self.model_number, self.step_count,
-                              self.int_paths["misfit_file"])
+        # Write adjoint sources directly to the Seisflows traces/adj dir
+        print("writing adjoint sources to .sem? files...")
+        write_adj_src_to_ascii(ds, config.model_number,
+                               os.path.join(cwd, "traces", "adj"))
 
-            # Only run this for the first 'step', otherwise we get too many pdfs
-            if self.pars["combine_imgs"] and (self.step_count == "s00"):
-                print("creating composite pdf...")
+        # Write the STATIONS_ADJOINT file to the DATA directory of cwd
+        print("creating STATIONS_ADJOINT file...")
+        create_stations_adjoint(ds, config.model_number,
+                                specfem_station_file=self.int_paths["stations"],
+                                pathout=os.path.join(cwd, "DATA")
+                                )
 
-                # Create the name of the pdf to save to
-                save_to = os.path.join(
-                    self.int_paths["composites"],
-                    f"{config.event_id}_{config.model_number}_"
-                    f"{parser.step_count}_wavmap.pdf"
-                )
-                tile_combine_imgs(ds=ds, save_pdf_to=save_to,
-                                  wavs_path=event_figures, maps_path=event_maps,
-                                  purge_wavs=self.pars["purge_waveforms"],
-                                  purge_tiles=self.pars["purge_tiles"]
-                                  )
+    def _finalize_process(self, **kwargs):
+        """
+        After all waveforms have been windowed and measured, run some functions
+        that create output files useful for Specfem, or for the User.
+
+        Pass arguemnts as kwargs to give some flexibility to input parameters
+        """
+        ds = kwargs.get("ds", None)
+        event = kwargs.get("event", None)
+        config = kwargs.get("config", None)
+
+        self._export_specfem3d(**kwargs)
+
+        print("writing stats to ASDF file...")
+        write_stats_to_asdf(ds, config.model_number, self.step_count)
+
+        print("writing individual misfit to file...")
+        write_misfit_stats(ds, config.model_number,
+                           self.int_paths["misfits"])
+
+        print("writing misfits.json file...")
+        write_misfit_json(ds, self.model_number, self.step_count,
+                          self.int_paths["misfit_file"])
+
+        # Only run this for the first 'step', otherwise we get too many pdfs
+        if self.pars["combine_imgs"] and (self.step_count == "s00"):
+            print("creating composite pdf...")
+
+            # Create the name of the pdf to save to
+            save_to = os.path.join(self.int_paths["composites"],
+                                   f"{config.event_id}_{config.model_number}_"
+                                   f"{parser.step_count}_wavmap.pdf"
+                                   )
+            tile_combine_imgs(ds=ds, save_pdf_to=save_to,
+                              wavs_path=event["figures"], maps_path=event["maps"],
+                              purge_wavs=self.pars["purge_waveforms"],
+                              purge_tiles=self.pars["purge_tiles"]
+                              )
 
     def finalize(self):
         """
