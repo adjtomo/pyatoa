@@ -187,7 +187,7 @@ def write_misfit_json(ds, model, step, fidout="./misfits.json"):
     """
     # organize information to be written
     stats = ds.auxiliary_data.Statistics[model][step].parameters
-    misfit = ds.auxiliary_data.Statistics[model][step].data.value[0]
+    misfit = ds.auxiliary_data.Statistics[model][step].data[()][0]
     windows = stats["number_misfit_windows"]
     adjsrcs = stats["number_adjoint_sources"]
     event_id = os.path.basename(ds.filename).split(".")[0]
