@@ -18,13 +18,12 @@ import numpy as np
 
 from pyatoa.utils.asdf.deletions import clean_ds
 from pyatoa.utils.asdf.additions import write_stats_to_asdf
-from pyatoa.utils.asdf.extractions import windows_from_ds
+from pyatoa.utils.asdf.extractions import windows_from_ds, sum_misfits
 from pyatoa.utils.visuals.statistics import plot_output_optim
 from pyatoa.utils.visuals.mapping import event_misfit_map
 from pyatoa.utils.visuals.plot_tools import imgs_to_pdf
 from pyatoa.utils.tools.io import (create_stations_adjoint, write_misfit_json,
-                                   write_adj_src_to_ascii, write_misfit_stats,
-                                   tile_combine_imgs,
+                                   write_adj_src_to_ascii, tile_combine_imgs,
                                    create_srcrcv_vtk_multiple)
 
 
@@ -46,13 +45,14 @@ class Pyaflowa:
         :param paths: a dictionary of the Seisflows paths contained in the
             `PATH` variable. should be passed here as vars(PATH)
         """
-        # Ensure that these are accessible by the class
+        # Ensure that necessary inputs are accessible by the class
         self.par = par["PYATOA"]
         self.ext_paths = paths
 
         # Distribute internal hardcoded path structure
         assert("PYATOA_IO" in self.ext_paths.keys())
         pyatoa_io = self.ext_paths["PYATOA_IO"]
+
         self.int_paths = {
             "config_file": os.path.join(self.ext_paths["WORKDIR"],
                                         "parameters.yaml"),
@@ -75,6 +75,7 @@ class Pyaflowa:
         # Set some attributes that will be set/used during the workflow
         self.iteration = 0
         self.step = 0
+        self.misfits = {}
 
     @property
     def model_number(self):
@@ -242,8 +243,6 @@ class Pyaflowa:
             # Run finalization procedures for processing
             self._finalize_process(ds=ds, cwd=cwd, event=event, config=config)
 
-
-
     def _export_specfem3d(self, **kwargs):
         """
         Create necessary input files for the adjoint solver of Specfem3D
@@ -276,7 +275,6 @@ class Pyaflowa:
         """
         ds = kwargs.get("ds", None)
         event = kwargs.get("event", None)
-        cwd = kwargs.get("cwd", None)
         config = kwargs.get("config", None)
 
         self._export_specfem3d(**kwargs)
@@ -284,9 +282,8 @@ class Pyaflowa:
         print("writing stats to ASDF file...")
         write_stats_to_asdf(ds, config.model_number, self.step_count)
 
-        print("writing individual misfit to file...")
-        write_misfit_stats(ds, config.model_number,
-                           self.int_paths["misfits"])
+        print("writing total event misfit to pyaflowa.misfits...")
+        self.misfits[config.event_id] = sum_misfits(ds, self.model_number)
 
         print("writing misfits.json file...")
         write_misfit_json(ds, self.model_number, self.step_count,
