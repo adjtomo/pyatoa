@@ -601,7 +601,7 @@ def write_adj_src_to_ascii(ds, model, pathout=None, comp_list=["N", "E", "Z"]):
         station = adj_src.replace('_', '.')
         fid = os.path.join(pathout, f"{station}.adj")
         with open(fid, "w") as f:
-            write_to_ascii(f, adjsrcs[adj_src].data.value)
+            write_to_ascii(f, adjsrcs[adj_src].data[()])
 
         # Write blank adjoint sources for components with no misfit windows
         for comp in comp_list:
@@ -609,7 +609,7 @@ def write_adj_src_to_ascii(ds, model, pathout=None, comp_list=["N", "E", "Z"]):
             if station_blank.replace('.', '_') not in adjsrcs.list() and \
                     station_blank not in already_written:
                 # Use the same adjoint source, but set the data to zeros
-                blank_adj_src = adjsrcs[adj_src].data.value
+                blank_adj_src = adjsrcs[adj_src].data[()]
                 blank_adj_src[:, 1] = np.zeros(len(blank_adj_src[:, 1]))
 
                 # Write out the blank adjoint source
