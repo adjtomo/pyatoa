@@ -124,17 +124,20 @@ class Pyaflowa:
                  "figures": os.path.join(self.int_paths["figures"],
                                          self.model_number, event_id),
                  }
+        
+        # Make the process specific event directories
+        for key, item in event.items():
+            if not os.path.exists(item):
+                os.makedirs(item)
 
         # Set logging output for Pyflex and Pyatoa, less output using 'info'
-        if self.par["set_logging"]:
-            logger_pyatoa = logging.getLogger("pyatoa")
-            logger_pyflex = logging.getLogger("pyflex")
-            if self.par["set_logging"] == "info":
-                logger_pyatoa.setLevel(logging.INFO)
-                logger_pyflex.setLevel(logging.INFO)
-            else:
-                logger_pyatoa.setLevel(logging.DEBUG)
-                logger_pyflex.setLevel(logging.DEBUG)
+        for log, level in self.par["set_logging"].items():
+            if level:
+                logger = logging.getLogger(log)
+                if level == "info":
+                    logger.setLevel(logging.INFO)
+                elif level == "debug":
+                    logger.setLevel(logging.DEBUG)
 
         # Read in the Pyatoa Config object and set attributes based on workflow
         config = pyatoa.Config(yaml_fid=self.int_paths["config_file"])
@@ -185,32 +188,34 @@ class Pyaflowa:
                 try:
                     mgmt.reset()
 
-                    # Gather data, searching internal pathways, else fetching from
+                    # Gather data, searching internal pathways, else fetching 
                     # external pathways if possible. Preprocess identically
                     mgmt.gather(station_code=f"{net}.{sta}.*.HH*")
                     mgmt.standardize()
                     mgmt.preprocess()
 
                     # Either no fixed misfit windows or no windows exist yet
-                    if not self.pyatoa_par["fix_windows"] or \
-                            not hasattr(ds.auxiliary_data.MisfitWindows,
-                                        config.model_number):
+                    if not self.par["fix_windows"]:
                         mgmt.window()
                     else:
-                        # If windows exist and fixed windows, grab from ASDF
-                        misfit_windows = windows_from_ds(
-                            ds, config.model_number, net, sta)
-                        mgmt.windows = misfit_windows
-
+                        try:
+                            # If windows exist and fixed windows, grab from ASDF
+                            windows = windows_from_ds(ds, config.model_number, 
+                                                      net, sta)
+                            setattr(mgmt, "windows", windows)
+                        except AttributeError:
+                            mgmt.window()
+            
+                    # Calculate adjoint sources with Pyadjoint
                     mgmt.measure()
 
                     # Plot waveforms with misfit windows and adjoint sources
-                    if self.pars["plot_waveforms"]:
-                        # Format some strings to append to the waveform plot title
-                        append_title = (
-                            f"\n{config.model_number}{parser.step_count} "
-                            f"pyflex={config.pyflex_map}, "
-                            f"pyadjoint={config.adj_src_type},")
+                    if self.par["plot_waveforms"]:
+                        # Format some strings to append to the waveform title
+                        append_title = " ".join([
+                            f"\n{config.model_number}{self.step_count}"
+                            f"pyflex={config.pyflex_map},"
+                            f"pyadjoint={config.adj_src_type},"])
                         if mgmt.misfit is not None:
                             append_title = " ".join(
                                 [append_title, f"misfit={mgmt.misfit:.2E}"])
@@ -286,18 +291,18 @@ class Pyaflowa:
                           self.int_paths["misfit_file"])
 
         # Only run this for the first 'step', otherwise we get too many pdfs
-        if self.pars["combine_imgs"] and (self.step_count == "s00"):
+        if self.par["combine_imgs"] and (self.step_count == "s00"):
             print("creating composite pdf...")
 
             # Create the name of the pdf to save to
             save_to = os.path.join(self.int_paths["composites"],
                                    f"{config.event_id}_{config.model_number}_"
-                                   f"{parser.step_count}_wavmap.pdf"
+                                   f"{self.step_count}_wavmap.pdf"
                                    )
             tile_combine_imgs(ds=ds, save_pdf_to=save_to,
                               wavs_path=event["figures"], maps_path=event["maps"],
-                              purge_wavs=self.pars["purge_waveforms"],
-                              purge_tiles=self.pars["purge_tiles"]
+                              purge_wavs=self.par["purge_waveforms"],
+                              purge_tiles=self.par["purge_tiles"]
                               )
 
     def finalize(self):
@@ -355,7 +360,7 @@ class Pyaflowa:
                         self.step_count].parameters
                     average_misfit = stats['average_misfit']
 
-                    event_misfit_map(map_corners=self.pars["map_corners"],
+                    event_misfit_map(map_corners=self.par["map_corners"],
                                      ds=ds, model=self.model_number,
                                      step=self.step_count,
                                      normalize=average_misfit,

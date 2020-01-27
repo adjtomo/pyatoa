@@ -134,7 +134,7 @@ class Manager:
                 f"\tmisfit windows (windows):     {self._num_windows}\n"
                 f"\tmisfit (adj_srcs):            {self._misfit:.2E}\n"
                 )
-
+    
     @property
     def st(self):
         """
@@ -734,12 +734,6 @@ class Manager:
         Returns a dictionary of adjoint sources based on component.
         Saves resultant dictionary to a pyasdf dataset if given.
 
-        NOTE: Pyatoa was developed with a dev branch of Pyadjoint, located here
-
-        https://github.com/computational-seismology/pyadjoint/tree/dev
-
-        Lion's version of Pyadjoint does not contain some of these functions
-
         :type force: bool
         :param force: ignore flag checks and run function, useful if e.g.
             external preprocessing is used that doesn't meet flag criteria
@@ -754,6 +748,9 @@ class Manager:
                 and not force:
             logger.warning(
                 "cannot measure misfit, waveforms not filtered")
+            return
+        elif self._num_windows == 0 and not force:
+            logger.warning("cannot measure misfit, no windows")
             return
         logger.info(
             f"running Pyadjoint w/ adj_src_type: {self.config.adj_src_type}")
@@ -784,8 +781,11 @@ class Manager:
         if self.ds:
             self._save_adj_srcs()
         
-        # Save total misfit, calucalated a la Tape (2010) Eq. 6
-        self._misfit = 0.5 * total_misfit/self._num_windows
+        # Save total misfit, calculated a la Tape (2010) Eq. 6
+        if self._num_windows:
+            self._misfit = 0.5 * total_misfit/self._num_windows
+        else:
+            self._misfit = total_misfit
 
         # Let the User know the outcome of Pyadjoint
         logger.info(f"total misfit {self._misfit:.3f}")

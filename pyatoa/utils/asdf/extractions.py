@@ -13,6 +13,8 @@ def windows_from_ds(ds, model, net, sta):
     These windows only contain enough information so that Pyflex cooperates,
     Pyadjoint can use them, and Pyatoa can generate plots.
 
+    :raises AttributeError: if no windows are found for the given parameters
+
     :type ds: pyasdf.ASDFDataSet
     :param ds: ASDF dataset containing MisfitWindows subgroup
     :type model: str
@@ -33,9 +35,9 @@ def windows_from_ds(ds, model, net, sta):
     # Pyflex Window objects
     window_dict = {}
     for window_name in misfit_windows.list():
+        net_, sta_, comp_, n_ = window_name.split("_")
         # Check the title of the misfit window to see if applicable
-        if (net in window_name) and (sta in window_name):
-            net_, sta_, comp_, n_ = window_name.split("_")
+        if (net == net_) and (sta == sta_):
             par = misfit_windows[window_name].parameters
 
             # Create the misfit window
@@ -58,6 +60,9 @@ def windows_from_ds(ds, model, net, sta):
             # Or create the first entry
             else:
                 window_dict[comp_] = [window_]
+    
+    if not window_dict:
+        raise AttributeError(f"No windows found for {model}.{net}.{sta}")
 
     return window_dict
 
