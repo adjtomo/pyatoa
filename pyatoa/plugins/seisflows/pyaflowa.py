@@ -23,7 +23,8 @@ from pyatoa.utils.visuals.statistics import plot_output_optim
 from pyatoa.utils.visuals.mapping import event_misfit_map
 from pyatoa.utils.visuals.plot_tools import imgs_to_pdf
 from pyatoa.utils.tools.io import (create_stations_adjoint, write_misfit_json,
-                                   write_adj_src_to_ascii, tile_combine_imgs,
+                                   write_adj_src_to_ascii, write_misfit_stats,
+                                   tile_combine_imgs,
                                    create_srcrcv_vtk_multiple)
 
 
@@ -75,7 +76,6 @@ class Pyaflowa:
         # Set some attributes that will be set/used during the workflow
         self.iteration = 0
         self.step = 0
-        self.misfits = {}
 
     @property
     def model_number(self):
@@ -282,10 +282,10 @@ class Pyaflowa:
         print("writing stats to ASDF file...")
         write_stats_to_asdf(ds, config.model_number, self.step_count)
 
-        print("writing total event misfit to pyaflowa.misfits...")
-        self.misfits[config.event_id] = sum_misfits(ds, self.model_number)
+        print("writing event misfit to disk...")
+        write_misfit_stats(ds, config.model_number, self.int_paths["misfits"])
 
-        print("writing misfits.json file...")
+        print("writing misfits.json to disk...")
         write_misfit_json(ds, self.model_number, self.step_count,
                           self.int_paths["misfit_file"])
 
@@ -299,7 +299,7 @@ class Pyaflowa:
                                    f"{self.step_count}_wavmap.pdf"
                                    )
             tile_combine_imgs(ds=ds, save_pdf_to=save_to,
-                              wavs_path=event["figures"], 
+                              wavs_path=event["figures"],
                               maps_path=event["maps"],
                               purge_wavs=self.par["purge_waveforms"],
                               purge_tiles=self.par["purge_tiles"]
