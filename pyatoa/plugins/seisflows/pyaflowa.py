@@ -252,6 +252,7 @@ class Pyaflowa:
         """
         ds = kwargs.get("ds", None)
         cwd = kwargs.get("cwd", None)
+        event = kwargs.get("event", None)
         config = kwargs.get("config", None)
 
         # Write adjoint sources directly to the Seisflows traces/adj dir
@@ -262,7 +263,7 @@ class Pyaflowa:
         # Write the STATIONS_ADJOINT file to the DATA directory of cwd
         print("creating STATIONS_ADJOINT file...")
         create_stations_adjoint(ds, config.model_number,
-                                specfem_station_file=self.int_paths["stations"],
+                                specfem_station_file=event["stations"],
                                 pathout=os.path.join(cwd, "DATA")
                                 )
 
@@ -271,10 +272,11 @@ class Pyaflowa:
         After all waveforms have been windowed and measured, run some functions
         that create output files useful for Specfem, or for the User.
 
-        Pass arguemnts as kwargs to give some flexibility to input parameters
+        Pass arguments as kwargs to give some flexibility to input parameters
         """
         ds = kwargs.get("ds", None)
         event = kwargs.get("event", None)
+        cwd = kwargs.get("cwd", None)
         config = kwargs.get("config", None)
 
         self._export_specfem3d(**kwargs)
@@ -300,7 +302,8 @@ class Pyaflowa:
                                    f"{self.step_count}_wavmap.pdf"
                                    )
             tile_combine_imgs(ds=ds, save_pdf_to=save_to,
-                              wavs_path=event["figures"], maps_path=event["maps"],
+                              wavs_path=event["figures"], 
+                              maps_path=event["maps"],
                               purge_wavs=self.par["purge_waveforms"],
                               purge_tiles=self.par["purge_tiles"]
                               )
