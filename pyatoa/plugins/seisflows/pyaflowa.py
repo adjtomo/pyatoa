@@ -47,8 +47,8 @@ class Pyaflowa:
             `PATH` variable. should be passed here as vars(PATH)
         """
         # Ensure that necessary inputs are accessible by the class
-        self.par = par["PYATOA"]
         self.ext_paths = paths
+        self.par = par["PYATOA"]
 
         # Distribute internal hardcoded path structure
         assert("PYATOA_IO" in self.ext_paths.keys())
@@ -59,7 +59,7 @@ class Pyaflowa:
                                         "parameters.yaml"),
             "misfit_file": os.path.join(pyatoa_io, "misfits.json"),
             "figures": os.path.join(pyatoa_io, "figures"),
-            "pyatoa_data": os.path.join(pyatoa_io, "data"),
+            "data": os.path.join(pyatoa_io, "data"),
             "misfits": os.path.join(pyatoa_io, "data", "misfits"),
             "maps": os.path.join(pyatoa_io, "figures", "maps"),
             "vtks": os.path.join(pyatoa_io, "figures", "vtks"),
@@ -76,7 +76,8 @@ class Pyaflowa:
         # Set some attributes that will be set/used during the workflow
         self.iteration = 0
         self.step = 0
-
+        self.synthetics_only = bool(par["CASE"].lower() == "synthetic")
+        
     @property
     def model_number(self):
         """
@@ -145,6 +146,7 @@ class Pyaflowa:
         setattr(config, "event_id", event_id)
         setattr(config, "model_number", self.model_number)
         setattr(config, "synthetic_tag", f"synthetic_{self.model_number}")
+        setattr(config, "synthetics_only", self.synthetics_only)
 
         # Make sure Pyatoa knows to look in the Seisflows directories for data
         config.cfgpaths["synthetics"].append(os.path.join(cwd, "traces", "syn"))
@@ -164,7 +166,7 @@ class Pyaflowa:
         """
         config, event = self._setup_process(cwd, event_id)
 
-        ds_name = os.path.join(self.int_paths["pyatoa_data"],
+        ds_name = os.path.join(self.int_paths["data"],
                                f"{config.event_id}.h5")
         with pyasdf.ASDFDataSet(ds_name) as ds:
             # Make sure the ASDFDataSet doesn't already contain auxiliary_data
