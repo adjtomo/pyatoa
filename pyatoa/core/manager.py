@@ -525,8 +525,8 @@ class Manager:
         self._check()
         # Make sure an instrument response is available for removal, or that
         # this is a synthetic-synthetic case
-        if not isinstance(self.inv, obspy.core.inventory.Inventory) \
-                or self.config.synthetics_only:
+        if (not isinstance(self.inv, obspy.core.inventory.Inventory)) \
+                and (not self.config.synthetics_only):
             logger.warning("cannot preprocess, no inventory")
             return
 
