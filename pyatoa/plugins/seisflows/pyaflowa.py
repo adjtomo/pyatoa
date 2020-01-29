@@ -168,6 +168,7 @@ class Pyaflowa:
 
         ds_name = os.path.join(self.int_paths["data"],
                                f"{config.event_id}.h5")
+        errors = 0
         with pyasdf.ASDFDataSet(ds_name) as ds:
             # Make sure the ASDFDataSet doesn't already contain auxiliary_data
             clean_ds(ds=ds, model=self.model_number, step=self.step_count,
@@ -203,8 +204,7 @@ class Pyaflowa:
                     else:
                         try:
                             # If windows exist and fixed windows, grab from ASDF
-                            windows = windows_from_ds(ds, config.model_number, 
-                                                      net, sta)
+                            windows = windows_from_ds(ds, net, sta)
                             setattr(mgmt, "windows", windows)
                         except AttributeError:
                             mgmt.window()
@@ -240,6 +240,11 @@ class Pyaflowa:
                 except Exception:
                     traceback.print_exc()
                     print("\n")
+                    errors += 1
+                    # If errors for every station, something is going wrong
+                    if errors >= len(stations):
+                        print("Pyaflowa workflow error")
+                        sys.exit(-1)
                     continue
 
             # Run finalization procedures for processing

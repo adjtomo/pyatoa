@@ -3,7 +3,7 @@ Functions for extracting information from a Pyasdf ASDFDataSet object
 """
 
 
-def windows_from_ds(ds, model, net, sta):
+def windows_from_ds(ds, net, sta, model=None):
     """
     If misfit windows are to be fixed, then window information needs to be saved
     between calls of Pyatoa. Fortunately, Pyatoa stores misfit window
@@ -17,17 +17,20 @@ def windows_from_ds(ds, model, net, sta):
 
     :type ds: pyasdf.ASDFDataSet
     :param ds: ASDF dataset containing MisfitWindows subgroup
-    :type model: str
-    :param model: model number, e.g. "m00"
     :type net: str
     :param net: network code used to find the name of the misfit window
     :type sta: str
     :param sta: station code used to find the name of the misfit window
+    :type model: str or None
+    :param model: model number, e.g. "m00". If None, most recent windows used
     :rtype window_dict: dict
     :return window_dict: dictionary containing misfit windows, in a format
         expected by Pyatoa Manager class
     """
     from pyflex.window import Window
+
+    if not model:
+        model = ds.auxiliary_data.MisfitWindows.list()[-1]
     misfit_windows = ds.auxiliary_data.MisfitWindows[model]
 
     # Pyatoa expects the Manager class windows as a dictionary with keys
