@@ -141,7 +141,14 @@ def misfit_stats(ds, model, include_lists=False):
     """
     # collect relevant information
     ds_adjsrc = ds.auxiliary_data.AdjointSources[model]
-    ds_windows = ds.auxiliary_data.MisfitWindows[model]
+    
+    # If no windows available for given model, that means previous windows were
+    # used for this iteration. Retrieve those instead
+    try:
+        ds_windows = ds.auxiliary_data.MisfitWindows[model]
+    except KeyError:
+        window_model = ds.auxiliary_data.MisfitWindows.list()[-1]
+        ds_window = ds.auxiliary_data.MisfitWindows[window_model]
     
     syn_n, obs_n = _count_waveforms(ds.waveforms, model) 
     misfits, max_misfit, min_misfit = _misfit_info(ds_adjsrc) 
