@@ -141,14 +141,11 @@ def misfit_stats(ds, model, include_lists=False):
     """
     # collect relevant information
     ds_adjsrc = ds.auxiliary_data.AdjointSources[model]
-    
-    # If no windows available for given model, that means previous windows were
-    # used for this iteration. Retrieve those instead
-    try:
+    if not hasattr(ds.auxiliary_data.MisfitWindows, model):
+        latest_model = ds.auxiliary_data.MisfitWindows.list()[-1]
+        ds_windows = ds.auxiliary_data.MisfitWindows[latest_model]
+    else:
         ds_windows = ds.auxiliary_data.MisfitWindows[model]
-    except KeyError:
-        window_model = ds.auxiliary_data.MisfitWindows.list()[-1]
-        ds_window = ds.auxiliary_data.MisfitWindows[window_model]
     
     syn_n, obs_n = _count_waveforms(ds.waveforms, model) 
     misfits, max_misfit, min_misfit = _misfit_info(ds_adjsrc) 
@@ -203,14 +200,16 @@ def count_misfit_windows(ds, model, count_by_stations=False):
     :return counted_windows: station name as key, number of windows as value
     """
     components = []
+    # Determine where to count windows from
     if hasattr(ds.auxiliary_data.MisfitWindows, model):
-        for window in ds.auxiliary_data.MisfitWindows[model].list():
-            components.append(
-                ds.auxiliary_data.MisfitWindows[model]
-                [window].parameters['channel_id']
-            )
+        windows = ds.auxiliary_data.MisfitWindows[model]
     else:
-        return
+        latest_model = ds.auxiliary_data.MisfitWindows.list()[-1] 
+        windows = ds.auxiliary_data.MisfitWindows[latest_model]
+
+    # Count up windows for each channel
+    for window in windows.list():
+        components.append(windows[model][window].parameters['channel_id'])
 
     counted_windows = {}
     # Count by component

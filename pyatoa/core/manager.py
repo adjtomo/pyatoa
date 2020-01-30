@@ -419,7 +419,7 @@ class Manager:
                 self.ds.add_waveforms(waveform=self.st_syn,
                                       tag=self.config.synthetic_tag)
             if self.windows:
-                self._save_windows()
+                self.save_windows()
             if self.adj_srcs:
                 self._save_adj_srcs()
         else:
@@ -653,7 +653,7 @@ class Manager:
         self._num_windows = num_windows
 
         if self.ds is not None and (self.num_windows != 0):
-            self._save_windows()
+            self.save_windows()
 
         # Let the User know the outcomes of Pyflex
         logger.info(f"{num_windows} window(s) total found")
@@ -699,7 +699,7 @@ class Manager:
 
         return window
 
-    def _save_windows(self, data_type="MisfitWindows"):
+    def save_windows(self, data_type="MisfitWindows"):
         """
         Save the misfit windows that are calculated by Pyflex into a Dataset
         """

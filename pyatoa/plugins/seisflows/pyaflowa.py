@@ -106,7 +106,7 @@ class Pyaflowa:
                 del kwargs[key]
         self.__dict__.update(kwargs)
 
-    def _setup_process(self, cwd, event_id=None):
+    def setup_process(self, cwd, event_id=None):
         """
         Set up the workflow by creating process dependent pathways, and creating
         the Pyatoa Config object that will control the worklow
@@ -164,7 +164,7 @@ class Pyaflowa:
         :type event_id: str
         :param event_id: event identifier tag for file naming etc.
         """
-        config, event = self._setup_process(cwd, event_id)
+        config, event = self.setup_process(cwd, event_id)
 
         ds_name = os.path.join(self.int_paths["data"],
                                f"{config.event_id}.h5")
@@ -204,8 +204,7 @@ class Pyaflowa:
                     else:
                         try:
                             # If windows exist and fixed windows, grab from ASDF
-                            windows = windows_from_ds(ds, net, sta)
-                            setattr(mgmt, "windows", windows)
+                            mgmt.windows = windows_from_ds(ds, net, sta)
                         except AttributeError:
                             mgmt.window()
             
@@ -241,14 +240,14 @@ class Pyaflowa:
                     traceback.print_exc()
                     print("\n")
                     errors += 1
-                    # If errors for every station, something is going wrong
-                    if errors >= len(stations):
+                    # If errors for more than half of stations, somethings wrong
+                    if errors >= len(stations) // 2:
                         print("Pyaflowa workflow error")
                         sys.exit(-1)
                     continue
 
             # Run finalization procedures for processing
-            self._finalize_process(ds=ds, cwd=cwd, event=event, config=config)
+            self.finalize_process(ds=ds, cwd=cwd, event=event, config=config)
 
     def _export_specfem3d(self, **kwargs):
         """
@@ -273,7 +272,7 @@ class Pyaflowa:
                                 pathout=os.path.join(cwd, "DATA")
                                 )
 
-    def _finalize_process(self, **kwargs):
+    def finalize_process(self, **kwargs):
         """
         After all waveforms have been windowed and measured, run some functions
         that create output files useful for Specfem, or for the User.
