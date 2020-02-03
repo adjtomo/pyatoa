@@ -107,7 +107,6 @@ def sum_misfits(ds, model, station=None):
         windows = ds.auxiliary_data.MisfitWindows[latest_model]
     else:
         windows = ds.auxiliary_data.MisfitWindows[model]
-        
 
     # Sum misfits only for a given station
     if station:

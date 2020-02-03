@@ -1,12 +1,10 @@
 """
 Plots of statistical information for use in misfit analysis
 """
-import pyasdf
 import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 from matplotlib import cm
-from pyatoa.utils.tools.calculate import myround
 
 mpl.rcParams['font.size'] = 12
 mpl.rcParams['lines.linewidth'] = 1.25
@@ -125,9 +123,17 @@ def plot_misfit_histogram(path_to_datasets, choice, show=False, save=False):
     :param binsize:
     :return:
     """
-    choices = 
-    assert(choice in ["cc_shift_in_seconds", "amplitude"]), "choice must be
-    # Set the x-axis label for each of the data types
+    import os
+    import pyasdf
+    from glob import glob
+    from pyatoa.utils.asdf.extractions import histogram_data
+
+    # Pre set available data types
+    data_types = ["cc_shift_in_seconds", "amplitude", "both"]
+    colors = ["darkorange", "deepskyblue"]
+    assert(choice in data_types), f"choice must be in {data_types}"
+
+    # Pre set the x-axis label for each of the data types
     label_dict = {"cc_shift_in_seconds": "Time Shift (s)",
                   "amplitude": "dlnA=ln(A_obs/A_syn)"}
 
@@ -136,13 +142,16 @@ def plot_misfit_histogram(path_to_datasets, choice, show=False, save=False):
     for dtype in data_types:
         histo_data[dtype] = {}
 
-    # Read in the ASDF Dataset and collect the relevant information as per data_type
-    for fid in glob.glob(os.path.join(path_to_datasets, "*.h5")):
-        print(fid)
+    # Read in the ASDF Dataset and collect relevant information per data_type
+    for fid in glob(os.path.join(path_to_datasets, "*.h5")):
         with pyasdf.ASDFDataSet(fid) as ds:
-            for model in models_to_compare:
+            # Models comprise the first and final models
+            models = [ds.auxiliary_data.Statistics.list()[0],
+                      ds.auxiliary_data.Statistics.list()[-1]
+                      ]
+            for model in models:
                 for dtype in data_types:
-                    # initiate dictionary lists, fill them with data from dataset
+                    # initiate dictionary lists, fill them with data from ds
                     if model not in histo_data[dtype]:
                         histo_data[dtype][model] = []
                     histo_data[dtype][model] += histogram_data(ds, model, dtype)
@@ -160,25 +169,23 @@ def plot_misfit_histogram(path_to_datasets, choice, show=False, save=False):
                 binsize = 0.25
 
             # Plot the main histogram in full color
-            n, bins, patches = plt.hist(
-                                    x=histo_data[data_type][model],
-                                    bins=len(np.arange(-1*bound, bound, binsize)),
-                                    color=colors[i], histtype="bar",
-                                    edgecolor="black", linewidth=2.5, label=model,
-                                    alpha=1 - i*0.2, zorder=10
-                                    )
+            plt.hist(x=histo_data[data_type][model],
+                     bins=len(np.arange(-1*bound, bound, binsize)),
+                     color=colors[i], histtype="bar",
+                     edgecolor="black", linewidth=2.5, label=model,
+                     alpha=1 - i * 0.2, zorder=10
+                     )
 
-            # Plot the overlying histogram that sits ontop of all the full histo,
+            # Plot the overlying histogram that sits ontop of all the full histo
             # this allows for visualization of histograms that overlap.
             if i < len(histo_data[data_type].keys()) - 1:
-                n, bins, patches = plt.hist(
-                                    x=histo_data[data_type][model],
-                                    bins=len(np.arange(-1*bound, bound, binsize)),
-                                    histtype="step", edgecolor=colors[i], linewidth=2.,
-                                    alpha=0.7, zorder=100
-                                            )
+                plt.hist(x=histo_data[data_type][model],
+                         bins=len(np.arange(-1*bound, bound, binsize)),
+                         histtype="step", edgecolor=colors[i], linewidth=2.,
+                         alpha=0.7, zorder=100
+                         )
 
-        # dln(A) information only relevant in these bounds
+        # dln(A) information only relevant between -1 and 1
         if data_type == "amplitude":
             plt.xlim([-1.25, 1.25])
 
@@ -188,10 +195,14 @@ def plot_misfit_histogram(path_to_datasets, choice, show=False, save=False):
         plt.title("Misfit Histogram")
         plt.tick_params(which='both', direction='in', top=True, right=True)
         plt.grid(linewidth=1, linestyle=":", which="both", zorder=1)
-        plt.axvline(x=0, ymin=0, ymax=1, linewidth=1.5, c="k", zorder=2, alpha=0.75,
-                    linestyle='--')
+        plt.axvline(x=0, ymin=0, ymax=1, linewidth=1.5, c="k", zorder=2,
+                    alpha=0.75, linestyle='--')
         plt.legend()
-        plt.savefig(output_figure_template.format(data_type))
+
+        if save:
+            plt.savefig(save)
+        if show:
+            plt.show()
         plt.close() 
 
 

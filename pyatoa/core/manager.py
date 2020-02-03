@@ -22,6 +22,7 @@ from pyatoa.core.gatherer import Gatherer
 from pyatoa.plugins.pyadjoint_config import src_type
 
 from pyatoa.utils.asdf.additions import write_adj_src_to_asdf
+from pyatoa.utils.asdf.extractions import windows_from_ds
 from pyatoa.utils.tools.srcrcv import gcd_and_baz, seismogram_length
 from pyatoa.utils.tools.format import create_window_dictionary, channel_codes
 from pyatoa.utils.tools.calculate import abs_max
@@ -616,7 +617,7 @@ class Manager:
         except (AttributeError, IndexError):
             logger.info("moment tensor not found for event, cannot convolve")
 
-    def window(self, force=False):
+    def window(self, fix_windows=False, force=False):
         """
         Call Pyflex to calculate best fitting misfit windows given observation
         and synthetic data. Data must be standardized.
@@ -624,6 +625,9 @@ class Manager:
         Save ouputs as dictionaries of window objects, as well as STA/LTAs.
         If a pyasdf dataset is present, save misfit windows as auxiliary data
 
+        :type fix_windows: bool
+        :param fix_windows: do not pick new windows, but load windows from the
+            given dataset
         :type force: bool
         :param force: ignore flag checks and run function, useful if e.g.
             external preprocessing is used that doesn't meet flag criteria
@@ -633,10 +637,13 @@ class Manager:
         if not self._standardize_flag and not force:
             logger.warning("cannot window, waveforms not standardized")
             return
+        if fix_windows and not self.ds:
+            logger.warning("cannot fix window, no windows in dataset")
+            fix_windows = False
         logger.info(f"running Pyflex w/ map: {self.config.pyflex_map}")
 
-        # Windows and staltas saved as dictionary objects by component name
-        num_windows, windows, staltas = 0, {}, {}
+        # Get STA/LTA information
+        staltas = {}
         for comp in self.config.component_list:
             try:
                 staltas[comp] = pyflex.stalta.sta_lta(
@@ -644,22 +651,34 @@ class Manager:
                     min_period=self.config.min_period,
                     data=envelope(self.st_syn.select(component=comp)[0].data)
                 )
-                window = self._select_windows(comp)
-                # Check to see if windows are returned to avoid putting empty
-                # lists into the window dictionary
-                if window:
-                    windows[comp] = window
-                _nwin = len(window)
             except IndexError:
-                _nwin = 0
+                continue
+        self.staltas = staltas
 
-            # Count windows and tell User
-            num_windows += _nwin
-            logger.info(f"{_nwin} window(s) for comp {comp}")
+        # Determine misfit windows
+        if fix_windows:
+            net, sta, _, _ = self.st_obs.get_id().split(".")
+            self.windows = windows_from_ds(self.ds, net, sta)
+        else:
+            # Windows and staltas saved as dictionary objects by component name
+            num_windows, windows = 0, {}
+            for comp in self.config.component_list:
+                try:
+                    window = self._select_windows(comp)
+                    # Check to see if windows are returned to avoid putting empty
+                    # lists into the window dictionary
+                    if window:
+                        windows[comp] = window
+                    _nwin = len(window)
+                except IndexError:
+                    _nwin = 0
+
+                # Count windows and tell User
+                num_windows += _nwin
+                logger.info(f"{_nwin} window(s) for comp {comp}")
 
         # Store information for Pyadjoint and plotting
         self.windows = windows
-        self.staltas = staltas
         self._num_windows = num_windows
 
         if self.ds is not None and (self.num_windows != 0):

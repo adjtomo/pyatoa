@@ -200,6 +200,7 @@ class Pyaflowa:
                     mgmt.gather(station_code=f"{net}.{sta}.*.HH*")
                     mgmt.standardize()
                     mgmt.preprocess(overwrite=preproc)
+                    mgmt.window(fix_windows=self.par["fix_windows"])
 
                     # Either no fixed misfit windows or no windows exist yet
                     if not self.par["fix_windows"]:
@@ -288,7 +289,6 @@ class Pyaflowa:
         print("writing files for internal use")
         print("\twriting stats to ASDF file...")
         write_stats_to_asdf(ds, config.model_number, self.step_count)
-
 
         print("\twriting misfits.json to disk...")
         write_misfit_json(ds, self.model_number, self.step_count,
