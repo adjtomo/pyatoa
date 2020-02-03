@@ -181,7 +181,7 @@ class Manager:
         that are allowed to set their own flags, never User.
         """
         # Give dataset filename if available
-        if (self.ds is not None) and (self._dataset_id is not None):
+        if (self.ds is not None) and (self._dataset_id is None):
             self._dataset_id = basename(self.ds.filename)
 
         # Event as object check, set until reset()
@@ -397,7 +397,6 @@ class Manager:
             in the same fashion as the Gatherer class
         write_to == "/path/to/output"
             write out all the internal data of the manager to a path
-
         """
         if write_to == "ds":
             # Only populate if all requisite parts are given
@@ -421,7 +420,7 @@ class Manager:
             if self.windows:
                 self.save_windows()
             if self.adj_srcs:
-                self._save_adj_srcs()
+                self.save_adj_srcs()
         else:
             raise NotImplementedError
 
@@ -790,7 +789,7 @@ class Manager:
 
         # Save adjoint source to dataset
         if self.ds:
-            self._save_adj_srcs()
+            self.save_adj_srcs()
         
         # Save total misfit, calculated a la Tape (2010) Eq. 6
         if self._num_windows:
@@ -832,7 +831,7 @@ class Manager:
 
         return adjoint_windows
 
-    def _save_adj_srcs(self):
+    def save_adj_srcs(self):
         """
         Save adjoint sources to Pyasdf Dataset
         """

@@ -37,13 +37,13 @@ def scale_beacon_amplitudes(st):
 
     # Determine group by checking station name
     try: 
-        idx = int(st_scale[0].stats.station[:2])
+        idx = int(st_scale[0].stats.station[2:])
     except ValueError:
-        logger.debug("Station code does not match BEACON station formatting")
-        return  
+        logger.debug("station code does not match BEACON station formatting")
+        return st 
     for s, g in zip(scales, groups):
         if idx in g:
-            logger.debug(f"Scaling {st_scale[0].get_id()} by {s}")
+            logger.debug(f"scaling {st_scale[0].get_id()} by {s}")
             for tr in st_scale:
                 tr.data *= s
             return st_scale
