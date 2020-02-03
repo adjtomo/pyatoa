@@ -1,6 +1,7 @@
 """
 Plots of statistical information for use in misfit analysis
 """
+import pyasdf
 import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
@@ -116,29 +117,81 @@ def plot_output_optim(path_to_optim, show=False, save=''):
         plt.savefig(save)
 
 
-def plot_misfit_histogram(misfit_values, config, binsize=0.1):
+def plot_misfit_histogram(path_to_datasets, choice, show=False, save=False):
     """
     Make histograms of misfit values for model m_a, can compare with model m_b
+
     :param misfit_values: dict
     :param binsize:
     :return:
     """
-    for model in misfit_values.keys():
-        misfits = np.fromiter(misfit_values[model].values(), dtype="float")
-        maxmisfit = myround(misfits.max(), base=1, choice="up")
-        n, bins, patches = plt.hist(x=misfits,
-                                    bins=len(np.arange(0, maxmisfit, binsize)),
-                                    range=(0, maxmisfit), color="orange",
-                                    histtype="bar", edgecolor="black",
-                                    linewidth=1.5, zorder=10, label=model
+    choices = 
+    assert(choice in ["cc_shift_in_seconds", "amplitude"]), "choice must be
+    # Set the x-axis label for each of the data types
+    label_dict = {"cc_shift_in_seconds": "Time Shift (s)",
+                  "amplitude": "dlnA=ln(A_obs/A_syn)"}
+
+    # initiate the dictionary to hold values
+    histo_data = {}
+    for dtype in data_types:
+        histo_data[dtype] = {}
+
+    # Read in the ASDF Dataset and collect the relevant information as per data_type
+    for fid in glob.glob(os.path.join(path_to_datasets, "*.h5")):
+        print(fid)
+        with pyasdf.ASDFDataSet(fid) as ds:
+            for model in models_to_compare:
+                for dtype in data_types:
+                    # initiate dictionary lists, fill them with data from dataset
+                    if model not in histo_data[dtype]:
+                        histo_data[dtype][model] = []
+                    histo_data[dtype][model] += histogram_data(ds, model, dtype)
+
+    # Initiate the plot and construct the histograms
+    for data_type in histo_data.keys():
+        f, ax = plt.subplots(1)
+        for i, model in enumerate(histo_data[data_type].keys()):
+            min_value = np.floor(min(histo_data[data_type][model]))
+            max_value = np.ceil(max(histo_data[data_type][model]))
+            bound = max(abs(min_value), abs(max_value))
+            if data_type == "amplitude":
+                binsize = 0.2
+            else:
+                binsize = 0.25
+
+            # Plot the main histogram in full color
+            n, bins, patches = plt.hist(
+                                    x=histo_data[data_type][model],
+                                    bins=len(np.arange(-1*bound, bound, binsize)),
+                                    color=colors[i], histtype="bar",
+                                    edgecolor="black", linewidth=2.5, label=model,
+                                    alpha=1 - i*0.2, zorder=10
                                     )
-    plt.xlabel("Misfit Value ")
-    plt.ylabel(f"Count (N={len(misfits)})")
-    plt.title(f"{config.event_id} Misfits")
-    plt.grid(linewidth=1.0, which='both', zorder=1)
-    plt.legend()
-    plt.xlim([-0.05, bins.max() + 0.05])
-    plt.ylim([0, max(n) + 0.5])
-    plt.show()
+
+            # Plot the overlying histogram that sits ontop of all the full histo,
+            # this allows for visualization of histograms that overlap.
+            if i < len(histo_data[data_type].keys()) - 1:
+                n, bins, patches = plt.hist(
+                                    x=histo_data[data_type][model],
+                                    bins=len(np.arange(-1*bound, bound, binsize)),
+                                    histtype="step", edgecolor=colors[i], linewidth=2.,
+                                    alpha=0.7, zorder=100
+                                            )
+
+        # dln(A) information only relevant in these bounds
+        if data_type == "amplitude":
+            plt.xlim([-1.25, 1.25])
+
+        # Finalize plot details
+        plt.xlabel(label_dict[data_type])
+        plt.ylabel("Count")
+        plt.title("Misfit Histogram")
+        plt.tick_params(which='both', direction='in', top=True, right=True)
+        plt.grid(linewidth=1, linestyle=":", which="both", zorder=1)
+        plt.axvline(x=0, ymin=0, ymax=1, linewidth=1.5, c="k", zorder=2, alpha=0.75,
+                    linestyle='--')
+        plt.legend()
+        plt.savefig(output_figure_template.format(data_type))
+        plt.close() 
 
 
