@@ -656,7 +656,9 @@ class Manager:
         self.staltas = staltas
 
         # Get misfit windows
-        if fix_windows:
+        # If windows are to be fixed, ensure that there are windows in dataset
+        if fix_windows and (hasattr(self.ds, "auxiliary_data") and
+                            hasattr(self.ds.auxiliary_data, "MisfitWindows")):
             net, sta, _, _ = self.st_obs[0].get_id().split(".")
             self.windows, self._num_windows = windows_from_ds(self.ds, net, sta)
         # If not fixed windows, calculate windows using Pyflex
