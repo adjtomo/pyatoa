@@ -655,18 +655,19 @@ class Manager:
                 continue
         self.staltas = staltas
 
-        # Determine misfit windows
+        # Get misfit windows
         if fix_windows:
             net, sta, _, _ = self.st_obs.get_id().split(".")
-            self.windows = windows_from_ds(self.ds, net, sta)
+            self.windows, self._num_windows = windows_from_ds(self.ds, net, sta)
+        # If not fixed windows, calculate windows using Pyflex
         else:
             # Windows and staltas saved as dictionary objects by component name
             num_windows, windows = 0, {}
             for comp in self.config.component_list:
                 try:
                     window = self._select_windows(comp)
-                    # Check to see if windows are returned to avoid putting empty
-                    # lists into the window dictionary
+                    # Check to see if windows are returned to avoid putting
+                    # empty lists into the window dictionary
                     if window:
                         windows[comp] = window
                     _nwin = len(window)
@@ -677,11 +678,11 @@ class Manager:
                 num_windows += _nwin
                 logger.info(f"{_nwin} window(s) for comp {comp}")
 
-        # Store information for Pyadjoint and plotting
-        self.windows = windows
-        self._num_windows = num_windows
+            self.windows = windows
+            self._num_windows = num_windows
 
-        if self.ds is not None and (self.num_windows != 0):
+        # Save to dataset
+        if self.ds is not None and (self._num_windows != 0):
             self.save_windows()
 
         # Let the User know the outcomes of Pyflex

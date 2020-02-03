@@ -6,6 +6,7 @@ The Seisflows plugin class that allows easy scripting of Pyatoa
 functionality into a Seisflows workflow. Pre-written functionalities simplify
 calls made in Seisflows to Pyatoa, to reduce clutter inside the workflow
 """
+import sys
 import os
 import glob
 import pyasdf
@@ -18,7 +19,6 @@ import numpy as np
 
 from pyatoa.utils.asdf.deletions import clean_ds
 from pyatoa.utils.asdf.additions import write_stats_to_asdf
-from pyatoa.utils.asdf.extractions import windows_from_ds, sum_misfits
 from pyatoa.utils.visuals.statistics import plot_output_optim
 from pyatoa.utils.visuals.mapping import event_misfit_map
 from pyatoa.utils.visuals.plot_tools import imgs_to_pdf
@@ -179,12 +179,11 @@ class Pyaflowa:
 
             # Write the Config to auxiliary_data for provenance
             config.write(write_to=ds)
-
-            # Instantiate the Manager
             mgmt = pyatoa.Manager(config=config, ds=ds)
 
             # Get stations from Specfem STATIONS file in form NET STA LAT LON ..
-            stations = np.loadtxt(ev_paths["stations"], usecols=[0, 1, 2, 3],
+            stations = np.loadtxt(ev_paths["stations"],
+                                  usecols=[0, 1, 2, 3],
                                   dtype=str)
             coords = stations[:, 2:]
 
@@ -194,50 +193,34 @@ class Pyaflowa:
                 print(f"{net}.{sta}")
                 try:
                     mgmt.reset()
-
-                    # Gather data, searching internal pathways, else fetching 
-                    # external pathways if possible. Preprocess identically
                     mgmt.gather(station_code=f"{net}.{sta}.*.HH*")
                     mgmt.standardize()
                     mgmt.preprocess(overwrite=preproc)
                     mgmt.window(fix_windows=self.par["fix_windows"])
-
-                    # Either no fixed misfit windows or no windows exist yet
-                    if not self.par["fix_windows"]:
-                        mgmt.window()
-                    else:
-                        try:
-                            # If windows exist and fixed windows, grab from ASDF
-                            mgmt.windows = windows_from_ds(ds, net, sta)
-                        except AttributeError:
-                            mgmt.window()
-            
-                    # Calculate adjoint sources with Pyadjoint
                     mgmt.measure()
 
                     # Plot waveforms with misfit windows and adjoint sources
                     if self.par["plot_waveforms"]:
                         # Format some strings to append to the waveform title
-                        append_title = " ".join([
-                            f"\n{config.model_number}{self.step_count}"
-                            f"pyflex={config.pyflex_map},"
-                            f"pyadjoint={config.adj_src_type},"])
-                        if mgmt.misfit is not None:
-                            append_title = " ".join(
-                                [append_title, f"misfit={mgmt.misfit:.2E}"])
-                        f = mgmt.plot(
-                            append_title=append_title,
-                            save=os.path.join(ev_paths["figures"], f"wav_{sta}"),
-                            show=False, return_figure=True
-                        )
+                        tit = " ".join([
+                            f"\n{config.model_number}{self.step_count}",
+                            f"pyflex={config.pyflex_map},",
+                            f"pyadjoint={config.adj_src_type},",
+                            f"misfit={mgmt.misfit or 'N/A':.2E}"
+                        ])
+                        f = mgmt.plot(append_title=tit,
+                                      save=os.path.join(ev_paths["figures"],
+                                                        f"wav_{sta}"),
+                                      show=False, return_figure=True
+                                      )
 
-                    # Plot source-receiver maps, don't make a map if no wav data
-                    # Don't make the map if the map has already been made
-                    if self.par["plot_srcrcv_maps"] and f:
-                        map_fid = os.path.join(ev_paths["maps"], f"map_{sta}")
-                        if not os.path.exists(map_fid):
-                            mgmt.srcrcvmap(stations=coords, save=map_fid,
-                                           show=False)
+                        # Plot source-receiver maps of waveforms were plotted
+                        if self.par["plot_srcrcv_maps"]:
+                            map_fid = os.path.join(ev_paths["maps"],
+                                                   f"map_{sta}")
+                            if not os.path.exists(map_fid):
+                                mgmt.srcrcvmap(stations=coords, save=map_fid,
+                                               show=False)
                     print("\n")
                 # Traceback ensures more detailed error tracking
                 except Exception:

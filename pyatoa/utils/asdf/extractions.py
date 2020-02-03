@@ -26,6 +26,8 @@ def windows_from_ds(ds, net, sta, model=None):
     :rtype window_dict: dict
     :return window_dict: dictionary containing misfit windows, in a format
         expected by Pyatoa Manager class
+    :rtype num_windows: int
+    :return num_windows: number of windows
     """
     from pyflex.window import Window
 
@@ -36,7 +38,7 @@ def windows_from_ds(ds, net, sta, model=None):
     # Pyatoa expects the Manager class windows as a dictionary with keys
     # corresponding to components, each item is then a list, containing
     # Pyflex Window objects
-    window_dict = {}
+    window_dict, num_windows = {}, 0
     for window_name in misfit_windows.list():
         net_, sta_, comp_, n_ = window_name.split("_")
         # Check the title of the misfit window to see if applicable
@@ -63,11 +65,13 @@ def windows_from_ds(ds, net, sta, model=None):
             # Or create the first entry
             else:
                 window_dict[comp_] = [window_]
+
+            num_windows += 1
     
     if not window_dict:
         raise AttributeError(f"No windows found for {model}.{net}.{sta}")
 
-    return window_dict
+    return window_dict, num_windows
 
 
 def sum_misfits(ds, model, station=None):
