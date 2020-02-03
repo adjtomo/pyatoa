@@ -657,7 +657,7 @@ class Manager:
 
         # Get misfit windows
         if fix_windows:
-            net, sta, _, _ = self.st_obs.get_id().split(".")
+            net, sta, _, _ = self.st_obs[0].get_id().split(".")
             self.windows, self._num_windows = windows_from_ds(self.ds, net, sta)
         # If not fixed windows, calculate windows using Pyflex
         else:
@@ -681,12 +681,12 @@ class Manager:
             self.windows = windows
             self._num_windows = num_windows
 
-        # Save to dataset
-        if self.ds is not None and (self._num_windows != 0):
-            self.save_windows()
+            # Save to dataset only if new windows are picked
+            if self.ds is not None and (self._num_windows != 0):
+                self.save_windows()
 
         # Let the User know the outcomes of Pyflex
-        logger.info(f"{num_windows} window(s) total found")
+        logger.info(f"{self._num_windows} window(s) total found")
 
     def _select_windows(self, comp):
         """
