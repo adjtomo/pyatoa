@@ -81,7 +81,7 @@ def trimstreams(st_a, st_b, force=None):
     return st_a, st_b
 
 
-def _is_preprocessed(st):
+def is_preprocessed(st):
     """
     Small check to make sure a stream object has not yet been run through
     preprocessing. Simple, as it assumes that a fresh stream will have no
@@ -112,9 +112,6 @@ def preproc(st_original, inv=None, unit_output="VEL", synthetic_unit=None,
     Preprocess waveform data. Because synthetics can be in any unit,
     requires user to specify what units they are.
 
-    TO DO:
-        get rid of that FutureWarning ignore
-
     :type st_original: obspy.stream.Stream
     :param st_original: stream object to process
     :type inv: obspy.core.inventory.Inventory or None
@@ -139,9 +136,7 @@ def preproc(st_original, inv=None, unit_output="VEL", synthetic_unit=None,
     """
     # Copy the stream to avoid editing in place
     st = st_original.copy()
-
-    warnings.filterwarnings("ignore", category=FutureWarning)
-    if _is_preprocessed(st):
+    if is_preprocessed(st):
         return st
 
     # Standard preprocessing
@@ -175,27 +170,10 @@ def preproc(st_original, inv=None, unit_output="VEL", synthetic_unit=None,
     # No inventory means synthetic data
     elif not inv:
         if unit_output != synthetic_unit:
-            logger.debug(
-                "unit output and synthetic output do not match, adjusting")
-            # Determine the difference between synthetic unit and observed unit
-            diff_dict = {"DISP": 1, "VEL": 2, "ACC": 3}
-            difference = diff_dict[unit_output] - diff_dict[synthetic_unit]
-
-            # Integrate or differentiate stream to retrieve correct units
-            if difference == 1:
-                logger.debug("integrating synthetic data")
-                st.integrate(method="cumtrapz")
-            elif difference == 2:
-                logger.debug("double integrating synthetic data")
-                st.integrate(method="cumtrapz").integrate(method="cumtrapz")
-            elif difference == -1:
-                logger.debug("differentiating synthetic data")
-                st.differentiate(method="gradient")
-            elif difference == -2:
-                logger.debug("double differentiating synthetic data")
-                st.differentiate(
-                    method="gradient").differentiate(method="gradient")
-
+            logger.debug("unit output and synthetic output do not match, "
+                         "adjusting")
+            st = change_syn_units(st, current=unit_output,
+                                  desired=synthetic_unit)
             st.detrend("linear")
             st.detrend("demean")
 
@@ -214,6 +192,41 @@ def preproc(st_original, inv=None, unit_output="VEL", synthetic_unit=None,
         logger.debug(f"filter {filter_bounds[0]}s to {filter_bounds[1]}s")
 
     return st
+
+
+def change_syn_units(st, current, desired):
+    """
+    Change the synthetic units based on the desired unit output and the current
+    unit output
+
+    :type st: obspy.stream.Stream
+    :param st: obspy stream with synthetic data
+    :type current: str
+    :param current: current units, 'DISP', 'VEL', or 'ACC'
+    :type desired: str
+    :param desired: desired unit output key, same keys as `current`
+    :rtype: obspy.stream.Stream
+    :return: stream with desired units
+    """
+    # Copy to avoid editing in place
+    st_diff = st.copy()
+
+    # Determine the difference between synthetic unit and observed unit
+    diff_dict = {"DISP": 1, "VEL": 2, "ACC": 3}
+    difference = diff_dict[current] - diff_dict[desired]
+
+    # Integrate or differentiate stream to retrieve correct units
+    if difference == 1:
+        st_diff.integrate(method="cumtrapz")
+    elif difference == 2:
+        st_diff.integrate(method="cumtrapz").integrate(method="cumtrapz")
+    elif difference == -1:
+        st_diff.differentiate(method="gradient")
+    elif difference == -2:
+        st_diff.differentiate(method="gradient").differentiate(
+            method="gradient")
+
+    return st_diff
 
 
 def stf_convolve(st, half_duration, source_decay=4., time_shift=None,
@@ -284,4 +297,3 @@ def stf_convolve(st, half_duration, source_decay=4., time_shift=None,
         tr.data = data_out
 
     return st_out
-

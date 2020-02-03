@@ -8,35 +8,9 @@ Used for preprocessing data through filtering and tapering, zero padding etc.
 Also contains tools for synthetic traces such as source time function
 convolutions
 """
-import warnings
-import numpy as np
-
 from pyatoa import logger
+from pyatoa.utils.tools.process import is_preprocessed, change_syn_units
 
-
-def _is_preprocessed(st):
-    """
-    Small check to make sure a stream object has not yet been run through
-    preprocessing. Simple, as it assumes that a fresh stream will have no
-    processing attribute in their stats, or if they do, will not have been
-    filtered (getting cut waveforms from FDSN appends a 'trim' stat).
-    :type st: obspy.stream.Stream
-    :param st: stream to check processing on
-    :rtype: bool
-    :return: if preprocessing has occurred
-    """
-    for tr in st:
-        if hasattr(tr.stats, 'processing'):
-            for processing in tr.stats.processing:
-                # A little hacky, but processing flag will have the str
-                # ..': filter(options'... to signify that a filter is applied
-                if 'filter(' in processing:
-                    warnings.warn("stream already preprocessed", UserWarning)
-                    return True
-
-    # If nothing found, return False
-    return False
-    
 
 def scale_beacon_amplitudes(st):
     """
@@ -44,7 +18,11 @@ def scale_beacon_amplitudes(st):
 
     :type st: obspy.core.stream.Stream
     :param st: stream containing waveform data to be scaled
+    :rtype: obspy.core.stream.Stream
+    :return: stream with scaled waveforms
     """
+    st_scale = st.copy()
+
     # Amplitude scaling
     scale_1 = 22.
     scale_2 = 0.4
@@ -57,24 +35,27 @@ def scale_beacon_amplitudes(st):
     group_3 = [4, 5, 18]
     groups = [group_1, group_2, group_3]
 
+    # Determine group by checking station name
     try: 
-        idx = int(st.stats.station[:2])
+        idx = int(st_scale[0].stats.station[:2])
     except ValueError:
-        print("Station code does not match BEACON station formatting")
+        logger.debug("Station code does not match BEACON station formatting")
         return  
     for s, g in zip(scales, groups):
         if idx in g:
-            for tr in st:
+            logger.debug(f"Scaling {st_scale[0].get_id()} by {s}")
+            for tr in st_scale:
                 tr.data *= s
-            return st
+            return st_scale
 
 
 def preproc(st_original, inv=None, unit_output="VEL", synthetic_unit=None,
             back_azimuth=None, filter_bounds=(10, 30), water_level=60,
             corners=4, taper_percentage=0.05):
     """
-    Preprocess waveform data. Similar to the default preprocessing script
-    except there are some checks on temporary data to differ processing slightly
+    Preprocess waveform data. Almost identical to the default preprocessing
+    script except there are some checks on temporary data to differ processing
+    slightly
 
     :type st_original: obspy.stream.Stream
     :param st_original: stream object to process
@@ -100,9 +81,7 @@ def preproc(st_original, inv=None, unit_output="VEL", synthetic_unit=None,
     """
     # Copy the stream to avoid editing in place
     st = st_original.copy()
-
-    warnings.filterwarnings("ignore", category=FutureWarning)
-    if _is_preprocessed(st):
+    if is_preprocessed(st):
         return st
 
     # Standard preprocessing
@@ -112,32 +91,46 @@ def preproc(st_original, inv=None, unit_output="VEL", synthetic_unit=None,
 
     # If inventory is given, assume working with observation data
     if inv:
-        # Occasionally, inventory issues arise, as ValueErrors due to 
-        # station availability, e.g. NZ.COVZ. Try/except to catch these.
-        try:
-            st.attach_response(inv)
-            st.remove_response(output=unit_output,
-                               water_level=water_level,
-                               plot=False)
-        except ValueError:
-            logger.debug(f"Error removing response from {st[0].get_id()}")
-            return None
-    
-        logger.debug("remove response, units of {}".format(unit_output))
+        # Bannister data does not require instrument response removal
+        if st[0].stats.network in ["Z8", "ZX"]:
+            # Clean up streams after response removal
+            st.detrend("linear")
+            st.detrend("demean")
+            st.taper(max_percentage=taper_percentage)
 
-        # Clean up streams after response removal
-        st.detrend("linear")
-        st.detrend("demean")
-        st.taper(max_percentage=taper_percentage)
+            # Rotate streams if they are not in the ZNE coordinate system
+            st.rotate(method="->ZNE", inventory=inv)
+        else:
+            try:
+                st.attach_response(inv)
+                st.remove_response(output=unit_output,
+                                   water_level=water_level,
+                                   plot=False)
+            except ValueError:
+                logger.debug(f"Error removing response from {st[0].get_id()}")
+                return None
 
-        # Rotate streams if they are not in the ZNE coordinate system
-        st.rotate(method="->ZNE", inventory=inv)
+            logger.debug("remove response, units of {}".format(unit_output))
+
+            # Clean up streams after response removal
+            st.detrend("linear")
+            st.detrend("demean")
+            st.taper(max_percentage=taper_percentage)
+
+            # Rotate streams if they are not in the ZNE coordinate system
+            st.rotate(method="->ZNE", inventory=inv)
+
+            # Beacon data requires amplitude scaling
+            if st[0].stats.network == "XX":
+                st = scale_beacon_amplitudes(st)
 
     # No inventory means synthetic data
     elif not inv:
         if unit_output != synthetic_unit:
-            logger.debug(
-                "unit output and synthetic output do not match, adjusting")
+            logger.debug("unit output and synthetic output do not match, "
+                         "adjusting")
+            st = change_syn_units(st, current=unit_output,
+                                  desired=synthetic_unit)
             st.detrend("linear")
             st.detrend("demean")
 
@@ -156,26 +149,3 @@ def preproc(st_original, inv=None, unit_output="VEL", synthetic_unit=None,
         logger.debug(f"filter {filter_bounds[0]}s to {filter_bounds[1]}s")
 
     return st
-
-def _synthetic_units()
-
-        # Determine the difference between synthetic unit and observed unit
-        diff_dict = {"DISP": 1, "VEL": 2, "ACC": 3}
-        difference = diff_dict[unit_output] - diff_dict[synthetic_unit]
-
-        # Integrate or differentiate stream to retrieve correct units
-        if difference == 1:
-            logger.debug("integrating synthetic data")
-            st.integrate(method="cumtrapz")
-        elif difference == 2:
-            logger.debug("double integrating synthetic data")
-            st.integrate(method="cumtrapz").integrate(method="cumtrapz")
-        elif difference == -1:
-            logger.debug("differentiating synthetic data")
-            st.differentiate(method="gradient")
-        elif difference == -2:
-            logger.debug("double differentiating synthetic data")
-            st.differentiate(
-                method="gradient").differentiate(method="gradient")
-
-
