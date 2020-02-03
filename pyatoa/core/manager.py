@@ -663,18 +663,11 @@ class Manager:
                 self.windows, self._num_windows = windows_from_ds(self.ds, net, 
                                                                   sta)
             except AttributeError:
-                self.windows, self._num_windows = self.select_windows()
+                self.select_windows()
         # If not fixed windows, calculate windows using Pyflex
         else:
             # Windows and staltas saved as dictionary objects by component name
-            self.windows, self._num_windows = self.select_windows()
-
-        # Save to dataset only if new windows are picked
-        if self.ds is not None and (self._num_windows != 0) and not fix_windows:
-            self.save_windows()
-
-        # Let the User know the outcomes of Pyflex
-        logger.info(f"{self._num_windows} window(s) total found")
+            self.select_windows()
 
     def select_windows(self):
         """
@@ -687,7 +680,7 @@ class Manager:
         """
         logger.info(f"running Pyflex w/ map: {self.config.pyflex_map}")
 
-        num_windows, windows = 0, {}
+        nwin, windows = 0, {}
         for comp in self.config.component_list:
             try:
                 # Pyflex throws a TauP warning from ObsPy #2280, ignore that
@@ -730,11 +723,19 @@ class Manager:
             except IndexError:
                 _nwin = 0
 
-                # Count windows and tell User
-                num_windows += _nwin
-                logger.info(f"{_nwin} window(s) for comp {comp}")
+            # Count windows and tell User
+            nwin += _nwin
+            logger.info(f"{_nwin} window(s) for comp {comp}")
 
-        return windows, num_windows
+        self.windows = windows
+        self._num_windows = nwin
+
+        # Save to dataset only if new windows are picked
+        if self.ds is not None and (nwin != 0):
+            self.save_windows()
+
+        # Let the User know the outcomes of Pyflex
+        logger.info(f"{self._num_windows} window(s) total found")
 
     def save_windows(self, data_type="MisfitWindows"):
         """
