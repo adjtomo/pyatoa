@@ -660,37 +660,24 @@ class Manager:
         if fix_windows and (hasattr(self.ds, "auxiliary_data") and
                             hasattr(self.ds.auxiliary_data, "MisfitWindows")):
             net, sta, _, _ = self.st_obs[0].get_id().split(".")
-            self.windows, self._num_windows = windows_from_ds(self.ds, net, sta)
+            try:
+                self.windows, self._num_windows = windows_from_ds(self.ds, net, 
+                                                                  sta)
+            except AttributeError:
+                self.windows, self._num_windows = select_windows()
         # If not fixed windows, calculate windows using Pyflex
         else:
             # Windows and staltas saved as dictionary objects by component name
-            num_windows, windows = 0, {}
-            for comp in self.config.component_list:
-                try:
-                    window = self._select_windows(comp)
-                    # Check to see if windows are returned to avoid putting
-                    # empty lists into the window dictionary
-                    if window:
-                        windows[comp] = window
-                    _nwin = len(window)
-                except IndexError:
-                    _nwin = 0
+            self.windows, self._num_windows = select_windows()
 
-                # Count windows and tell User
-                num_windows += _nwin
-                logger.info(f"{_nwin} window(s) for comp {comp}")
-
-            self.windows = windows
-            self._num_windows = num_windows
-
-            # Save to dataset only if new windows are picked
-            if self.ds is not None and (self._num_windows != 0):
-                self.save_windows()
+        # Save to dataset only if new windows are picked
+        if self.ds is not None and (self._num_windows != 0) and not fix_windows:
+            self.save_windows()
 
         # Let the User know the outcomes of Pyflex
         logger.info(f"{self._num_windows} window(s) total found")
 
-    def _select_windows(self, comp):
+    def select_windows(self):
         """
         Custom window selection function to include suppression by amplitude
 
@@ -699,37 +686,51 @@ class Manager:
         :rtype window: pyflex.Window
         :return window: the windows calculated by Pyflex and filtered by amp rat
         """
-        # Run Pyflex to select misfit windows as list of Window objects
-        window = pyflex.select_windows(
-            observed=self.st_obs.select(component=comp),
-            synthetic=self.st_syn.select(component=comp),
-            config=self.config.pyflex_config, event=self.event,
-            station=self.inv)
+        num_windows, windows = 0, {}
+        for comp in self.config.component_list:
+            try:
+                # Run Pyflex to select misfit windows as list of Window objects
+                window = pyflex.select_windows(
+                    observed=self.st_obs.select(component=comp),
+                    synthetic=self.st_syn.select(component=comp),
+                    config=self.config.pyflex_config, event=self.event,
+                    station=self.inv)
 
-        # Suppress windows that contain signals smaller than some
-        # fraction of the peak amplitude contained in the synthetic waveform
-        if window and self.config.window_amplitude_ratio > 0:
-            windows_by_amplitude = []
-            for win_ in window:
-                waveform_peak = abs_max(
-                    self.st_syn.select(component=comp)[0].data
-                )
-                window_peak = abs_max(
-                    self.st_syn.select(
-                        component=comp)[0].data[win_.left:win_.right]
-                )
-                if (abs(window_peak / waveform_peak) >
-                        self.config.window_amplitude_ratio):
-                    windows_by_amplitude.append(win_)
-                else:
-                    logger.info(
-                        "removing window due to global amplitude ratio: "
-                        f"{ abs(window_peak / waveform_peak)} < "
-                        f"{self.config.window_amplitude_ratio}")
-                    continue
-            window = windows_by_amplitude
+                # Suppress windows that contain signals smaller than some
+                # fraction of the peak amplitude contained in the synthetic 
+                if window and self.config.window_amplitude_ratio > 0:
+                    windows_by_amplitude = []
+                    for win_ in window:
+                        waveform_peak = abs_max(
+                            self.st_syn.select(component=comp)[0].data
+                        )
+                        window_peak = abs_max(
+                            self.st_syn.select(
+                                component=comp)[0].data[win_.left:win_.right]
+                        )
+                        if (abs(window_peak / waveform_peak) >
+                                self.config.window_amplitude_ratio):
+                            windows_by_amplitude.append(win_)
+                        else:
+                            logger.info(
+                                "removing window due to global amplitude ratio: "
+                                f"{ abs(window_peak / waveform_peak)} < "
+                                f"{self.config.window_amplitude_ratio}")
+                            continue
+                    window = windows_by_amplitude
+                # Check if amplitude windowing removed windows
+                if window:
+                    windows[comp] = window
 
-        return window
+                _nwin = len(window)
+            except IndexError:
+                _nwin = 0
+
+                # Count windows and tell User
+                num_windows += _nwin
+                logger.info(f"{_nwin} window(s) for comp {comp}")
+
+        return windows, num_windows
 
     def save_windows(self, data_type="MisfitWindows"):
         """
