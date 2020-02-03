@@ -206,7 +206,7 @@ class Pyaflowa:
                             f"\n{config.model_number}{self.step_count}",
                             f"pyflex={config.pyflex_map},",
                             f"pyadjoint={config.adj_src_type},",
-                            f"misfit={mgmt.misfit or 'N/A':.2E}"
+                            f"misfit={mgmt.misfit:.2E}"
                         ])
                         f = mgmt.plot(append_title=tit,
                                       save=os.path.join(ev_paths["figures"],

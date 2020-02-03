@@ -640,7 +640,6 @@ class Manager:
         if fix_windows and not self.ds:
             logger.warning("cannot fix window, no windows in dataset")
             fix_windows = False
-        logger.info(f"running Pyflex w/ map: {self.config.pyflex_map}")
 
         # Get STA/LTA information
         staltas = {}
@@ -664,11 +663,11 @@ class Manager:
                 self.windows, self._num_windows = windows_from_ds(self.ds, net, 
                                                                   sta)
             except AttributeError:
-                self.windows, self._num_windows = select_windows()
+                self.windows, self._num_windows = self.select_windows()
         # If not fixed windows, calculate windows using Pyflex
         else:
             # Windows and staltas saved as dictionary objects by component name
-            self.windows, self._num_windows = select_windows()
+            self.windows, self._num_windows = self.select_windows()
 
         # Save to dataset only if new windows are picked
         if self.ds is not None and (self._num_windows != 0) and not fix_windows:
@@ -686,15 +685,20 @@ class Manager:
         :rtype window: pyflex.Window
         :return window: the windows calculated by Pyflex and filtered by amp rat
         """
+        logger.info(f"running Pyflex w/ map: {self.config.pyflex_map}")
+
         num_windows, windows = 0, {}
         for comp in self.config.component_list:
             try:
-                # Run Pyflex to select misfit windows as list of Window objects
-                window = pyflex.select_windows(
-                    observed=self.st_obs.select(component=comp),
-                    synthetic=self.st_syn.select(component=comp),
-                    config=self.config.pyflex_config, event=self.event,
-                    station=self.inv)
+                # Pyflex throws a TauP warning from ObsPy #2280, ignore that
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore", UserWarning) 
+                    # Run Pyflex to select misfit windows as list of Window obj
+                    window = pyflex.select_windows(
+                        observed=self.st_obs.select(component=comp),
+                        synthetic=self.st_syn.select(component=comp),
+                        config=self.config.pyflex_config, event=self.event,
+                        station=self.inv)
 
                 # Suppress windows that contain signals smaller than some
                 # fraction of the peak amplitude contained in the synthetic 
