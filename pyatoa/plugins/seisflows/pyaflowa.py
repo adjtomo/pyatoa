@@ -27,6 +27,9 @@ from pyatoa.utils.tools.io import (create_stations_adjoint, write_misfit_json,
                                    tile_combine_imgs,
                                    create_srcrcv_vtk_multiple)
 
+# Overwrite the preprocessing function
+from pyatoa.plugins.nz.process import preproc 
+
 
 class Pyaflowa:
     """
@@ -121,14 +124,14 @@ class Pyaflowa:
             event_id = os.path.basename(cwd)
 
         # Process specific internal directories for the processing
-        event = {"stations": os.path.join(cwd, "DATA", "STATIONS"),
-                 "maps": os.path.join(self.int_paths["maps"], event_id),
-                 "figures": os.path.join(self.int_paths["figures"],
-                                         self.model_number, event_id),
-                 }
+        ev_paths = {"stations": os.path.join(cwd, "DATA", "STATIONS"),
+                    "maps": os.path.join(self.int_paths["maps"], event_id),
+                    "figures": os.path.join(self.int_paths["figures"],
+                                            self.model_number, event_id),
+                    }
         
         # Make the process specific event directories
-        for key, item in event.items():
+        for key, item in ev_paths.items():
             if not os.path.exists(item):
                 os.makedirs(item)
 
@@ -152,7 +155,7 @@ class Pyaflowa:
         config.cfgpaths["synthetics"].append(os.path.join(cwd, "traces", "syn"))
         config.cfgpaths["waveforms"].append(os.path.join(cwd, "traces", "obs"))
 
-        return config, event
+        return config, ev_paths
 
     def process(self, cwd, event_id=None):
         """
@@ -164,7 +167,7 @@ class Pyaflowa:
         :type event_id: str
         :param event_id: event identifier tag for file naming etc.
         """
-        config, event = self.setup_process(cwd, event_id)
+        config, ev_paths = self.setup_process(cwd, event_id)
 
         ds_name = os.path.join(self.int_paths["data"],
                                f"{config.event_id}.h5")
@@ -181,7 +184,7 @@ class Pyaflowa:
             mgmt = pyatoa.Manager(config=config, ds=ds)
 
             # Get stations from Specfem STATIONS file in form NET STA LAT LON ..
-            stations = np.loadtxt(event["stations"], usecols=[0, 1, 2, 3],
+            stations = np.loadtxt(ev_paths["stations"], usecols=[0, 1, 2, 3],
                                   dtype=str)
             coords = stations[:, 2:]
 
@@ -196,7 +199,7 @@ class Pyaflowa:
                     # external pathways if possible. Preprocess identically
                     mgmt.gather(station_code=f"{net}.{sta}.*.HH*")
                     mgmt.standardize()
-                    mgmt.preprocess()
+                    mgmt.preprocess(overwrite=preproc)
 
                     # Either no fixed misfit windows or no windows exist yet
                     if not self.par["fix_windows"]:
@@ -223,14 +226,14 @@ class Pyaflowa:
                                 [append_title, f"misfit={mgmt.misfit:.2E}"])
                         f = mgmt.plot(
                             append_title=append_title,
-                            save=os.path.join(event["figures"], f"wav_{sta}"),
+                            save=os.path.join(ev_paths["figures"], f"wav_{sta}"),
                             show=False, return_figure=True
                         )
 
                     # Plot source-receiver maps, don't make a map if no wav data
                     # Don't make the map if the map has already been made
                     if self.par["plot_srcrcv_maps"] and f:
-                        map_fid = os.path.join(event["maps"], f"map_{sta}")
+                        map_fid = os.path.join(ev_paths["maps"], f"map_{sta}")
                         if not os.path.exists(map_fid):
                             mgmt.srcrcvmap(stations=coords, save=map_fid,
                                            show=False)
@@ -247,57 +250,53 @@ class Pyaflowa:
                     continue
 
             # Run finalization procedures for processing
-            self.finalize_process(ds=ds, cwd=cwd, event=event, config=config)
+            self.finalize_process(ds=ds, cwd=cwd, ev_paths=ev_paths, 
+                                  config=config)
 
-    def _export_specfem3d(self, **kwargs):
+    def finalize_process(self, cwd, ds, ev_paths, config):
         """
-        Create necessary input files for the adjoint solver of Specfem3D
-        Place them into the proper directories within Seisflows, so that
-        Seisflows can find these input files
+        After all waveforms have been windowed and measured, run some functions
+        that create output files useful for Specfem, or for the User.
+        
+        :type cwd: str
+        :param cwd: current working directory of solver
+        :type ds: pyasdf.ASDFDataSet
+        :param ds: dataset contianing the waveforms and misfit for this solver
+        :type ev_paths: dict
+        :param ev_paths: dictionary of event/solver specific paths
+        :type config: pyatoa.core.config.Config
+        :param config: Pyatoa config object containing parameters needed for 
+            finalization of workflow
         """
-        ds = kwargs.get("ds", None)
-        cwd = kwargs.get("cwd", None)
-        event = kwargs.get("event", None)
-        config = kwargs.get("config", None)
-
         # Write adjoint sources directly to the Seisflows traces/adj dir
-        print("writing adjoint sources to .sem? files...")
+        print("exporting files to Specfem3D")
+        print("\twriting adjoint sources to .sem? files...")
         write_adj_src_to_ascii(ds, config.model_number,
                                os.path.join(cwd, "traces", "adj"))
 
         # Write the STATIONS_ADJOINT file to the DATA directory of cwd
-        print("creating STATIONS_ADJOINT file...")
+        print("\tcreating STATIONS_ADJOINT file...")
         create_stations_adjoint(ds, config.model_number,
-                                specfem_station_file=event["stations"],
+                                specfem_station_file=ev_paths["stations"],
                                 pathout=os.path.join(cwd, "DATA")
                                 )
 
-    def finalize_process(self, **kwargs):
-        """
-        After all waveforms have been windowed and measured, run some functions
-        that create output files useful for Specfem, or for the User.
-
-        Pass arguments as kwargs to give some flexibility to input parameters
-        """
-        ds = kwargs.get("ds", None)
-        event = kwargs.get("event", None)
-        config = kwargs.get("config", None)
-
-        self._export_specfem3d(**kwargs)
-
-        print("writing stats to ASDF file...")
-        write_stats_to_asdf(ds, config.model_number, self.step_count)
-
-        print("writing event misfit to disk...")
+        print("exporting files to Seisflows")
+        print("\twriting event misfit to disk...")
         write_misfit_stats(ds, config.model_number, self.int_paths["misfits"])
 
-        print("writing misfits.json to disk...")
+        print("writing files for internal use")
+        print("\twriting stats to ASDF file...")
+        write_stats_to_asdf(ds, config.model_number, self.step_count)
+
+
+        print("\twriting misfits.json to disk...")
         write_misfit_json(ds, self.model_number, self.step_count,
                           self.int_paths["misfit_file"])
 
         # Only run this for the first 'step', otherwise we get too many pdfs
         if self.par["combine_imgs"] and (self.step_count == "s00"):
-            print("creating composite pdf...")
+            print("\tcreating composite pdf...")
 
             # Create the name of the pdf to save to
             save_to = os.path.join(self.int_paths["composites"],
@@ -305,8 +304,8 @@ class Pyaflowa:
                                    f"{self.step_count}_wavmap.pdf"
                                    )
             tile_combine_imgs(ds=ds, save_pdf_to=save_to,
-                              wavs_path=event["figures"],
-                              maps_path=event["maps"],
+                              wavs_path=ev_paths["figures"],
+                              maps_path=ev_paths["maps"],
                               purge_wavs=self.par["purge_waveforms"],
                               purge_tiles=self.par["purge_tiles"]
                               )

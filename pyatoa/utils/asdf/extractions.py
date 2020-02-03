@@ -101,6 +101,14 @@ def sum_misfits(ds, model, station=None):
     misfits = []
     adjoint_sources = ds.auxiliary_data.AdjointSources[model]
 
+    # If fixed windows, get the latest windows in the dataset
+    if not hasattr(ds.auxiliary_data.MisfitWindows, model):
+        latest_model = ds.auxiliary_data.MisfitWindows.list()[-1]    
+        windows = ds.auxiliary_data.MisfitWindows[latest_model]
+    else:
+        windows = ds.auxiliary_data.MisfitWindows[model]
+        
+
     # Sum misfits only for a given station
     if station:
         try:
@@ -115,7 +123,7 @@ def sum_misfits(ds, model, station=None):
 
     # Sum misfits for all given adjoint sources
     else:
-        number_windows = len(ds.auxiliary_data.MisfitWindows[model])
+        number_windows = len(windows)
         # collect the total misfit calculated by Pyadjoint
         for adjsrc in adjoint_sources.list():
             misfits.append(adjoint_sources[adjsrc].parameters["misfit_value"])

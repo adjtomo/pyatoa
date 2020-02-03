@@ -510,7 +510,7 @@ class Manager:
 
         self._standardize_flag = True
 
-    def preprocess(self, which="both"):
+    def preprocess(self, which="both", overwrite=None):
         """
         Standard preprocessing of observed and synthetic data in place.
         Called in identical manner for observation and synthetic waveforms.
@@ -521,6 +521,11 @@ class Manager:
         :type which: str
         :param which: "obs", "syn" or "both" to choose which stream to process
             defaults to both
+        :type overwrite: function
+        :param overwrite: If a function is provided, it will overwrite the 
+            standard preprocessing function. All arguments that are given
+            to the standard preprocessing function will be passed as kwargs to
+            the new function. This allows for customized preprocessing
         """
         self._check()
         # Make sure an instrument response is available for removal, or that
@@ -529,6 +534,12 @@ class Manager:
                 and (not self.config.synthetics_only):
             logger.warning("cannot preprocess, no inventory")
             return
+        if overwrite:
+            # Ensure the overwrite call is a function
+            assert(hasattr(overwrite, '__call__')), "overwrite must be function"
+            preproc_fx = overwrite
+        else:
+            preproc_fx = preproc
 
         # If required, rotate based on source receiver lat/lon values
         baz = None
@@ -546,26 +557,26 @@ class Manager:
                 obs_inv = self.inv
                 obs_synthetic_unit = None
             logger.info("preprocessing observation data")
-            self.st_obs = preproc(st_original=self.st_obs, inv=obs_inv,
-                                  synthetic_unit=obs_synthetic_unit,
-                                  back_azimuth=baz,
-                                  unit_output=self.config.unit_output,
-                                  corners=self.config.filter_corners,
-                                  filter_bounds=[self.config.min_period,
-                                                 self.config.max_period],
-                                  )
+            self.st_obs = preproc_fx(st_original=self.st_obs, inv=obs_inv,
+                                     synthetic_unit=obs_synthetic_unit,
+                                     back_azimuth=baz,
+                                     unit_output=self.config.unit_output,
+                                     corners=self.config.filter_corners,
+                                     filter_bounds=[self.config.min_period,
+                                                    self.config.max_period],
+                                     )
 
         if self.st_syn is not None and not self._syn_filter_flag and \
                 which.lower() in ["syn", "both"]:
             logger.info("preprocessing synthetic data")
-            self.st_syn = preproc(st_original=self.st_syn, inv=None,
-                                  synthetic_unit=self.config.synthetic_unit,
-                                  back_azimuth=baz,
-                                  unit_output=self.config.unit_output,
-                                  corners=self.config.filter_corners,
-                                  filter_bounds=[self.config.min_period,
-                                                 self.config.max_period]
-                                  )
+            self.st_syn = preproc_fx(st_original=self.st_syn, inv=None,
+                                     synthetic_unit=self.config.synthetic_unit,
+                                     back_azimuth=baz,
+                                     unit_output=self.config.unit_output,
+                                     corners=self.config.filter_corners,
+                                     filter_bounds=[self.config.min_period,
+                                                    self.config.max_period]
+                                     )
         
         # Check to see if preprocessing failed
         self._check()
