@@ -617,13 +617,14 @@ class Manager:
         except (AttributeError, IndexError):
             logger.info("moment tensor not found for event, cannot convolve")
 
-    def window(self, fix_windows=False, force=False):
+    def window(self, fix_windows=False, force=False, **kwargs):
         """
-        Call Pyflex to calculate best fitting misfit windows given observation
-        and synthetic data. Data must be standardized.
+        The main windowing function. Windows can either be collected from
+        a given pyasdf ASDFDataset, or picked from the waveforms available.
 
-        Save ouputs as dictionaries of window objects, as well as STA/LTAs.
-        If a pyasdf dataset is present, save misfit windows as auxiliary data
+        STA/LTA information is collected and stored regardless of pick method.
+        Windows are stored as dictionaries of pyflex.Window objects.
+        New windows are saved into the pyasdf Dataset if given.
 
         :type fix_windows: bool
         :param fix_windows: do not pick new windows, but load windows from the
@@ -679,11 +680,7 @@ class Manager:
     def select_windows(self):
         """
         Custom window selection function to include suppression by amplitude
-
-        :type comp: str
-        :param comp: component to select waveform data by
-        :rtype window: pyflex.Window
-        :return window: the windows calculated by Pyflex and filtered by amp rat
+        and counting of misfit windows
         """
         logger.info(f"running Pyflex w/ map: {self.config.pyflex_map}")
 
@@ -739,6 +736,10 @@ class Manager:
     def save_windows(self, data_type="MisfitWindows"):
         """
         Save the misfit windows that are calculated by Pyflex into a Dataset
+
+        :type data_type: str
+        :param data_type: sub catagory within auxiliary_data to save the windows
+            defaults to 'MisfitWindows', but allows custom naming by User
         """
         logger.debug("saving misfit windows to PyASDF")
         for comp in self.windows.keys():

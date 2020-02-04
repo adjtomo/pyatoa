@@ -49,16 +49,20 @@ def ds():
     return pyasdf.ASDFDataSet("./test_data/test_empty_dataset.h5")
 
 
-def test_empty():
-    """Ensure that opening an empty Manager doesnt work"""
-    with pytest.raises(TypeError):
-        Manager()
-
-
 def test_init_empty(config):
     """Ensure that opening a Manager doesnt allow workflow"""
     mgmt = Manager(config=config, empty=True)
     assert(mgmt)
+
+
+def test_standardize():
+def test_preprocess():
+def test_preprocess_overwrite():
+def test_window():
+def test_window_fixed():
+
+def test_load():
+def test_write():
 
 
 # def test_
