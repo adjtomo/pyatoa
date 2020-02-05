@@ -3,6 +3,8 @@
 #### General
 - [ ] Proper docs for all functions. methods, classes 
 - [ ] Finish writing tests with PyTest
+- [ ] ipynb in gitignore
+- [ ] remove large data files from test data
 
 #### Manager
 - [ ] Initialize an empty Manager with an empty Config to remove the need to call Config separately
