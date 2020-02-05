@@ -17,6 +17,7 @@
 
 #### Misc.
 - [ ] Move all hardcoded stuff into plugins, e.g. fault_coordinates, geonet_moment_tensor
+- [ ] Move tools and visualize out of utils dir into main dir
 
 #### Visuals
 - [ ] Depth cross section of a Catalog object
