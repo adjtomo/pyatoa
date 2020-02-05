@@ -1,4 +1,4 @@
-## For Version X.Y.Z
+## For Version 0.2.0
 
 #### General
 - [ ] Proper docs for all functions. methods, classes 
