@@ -3,6 +3,7 @@ Test the functionalities of the Pyaflowa Manager class
 """
 import pytest
 import pyasdf
+from IPython import embed
 from pyatoa import Config, Manager
 from obspy import read, read_events, read_inventory
 
@@ -10,13 +11,13 @@ from obspy import read, read_events, read_inventory
 @pytest.fixture
 def obs():
     """Real data stream"""
-    return read("./test_data/test_obs_data _NZ_BFZ_2018p130600.ascii")
+    return read("./test_data/test_obs_data_NZ_BFZ_2018p130600.ascii")
 
 
 @pytest.fixture
 def syn():
     """Synthetic data stream"""
-    return read("./test_data/test_syn_data _NZ_BFZ_2018p130600.ascii")
+    return read("./test_data/test_syn_data_NZ_BFZ_2018p130600.ascii")
 
 
 @pytest.fixture
@@ -52,17 +53,34 @@ def ds():
 def test_init_empty(config):
     """Ensure that opening a Manager doesnt allow workflow"""
     mgmt = Manager(config=config, empty=True)
-    assert(mgmt)
+    assert mgmt
 
 
-def test_standardize():
-def test_preprocess():
-def test_preprocess_overwrite():
-def test_window():
-def test_window_fixed():
+def test_standardize_resample(config, obs, syn):
+    """Ensure that stream standardization resampling works"""
+    mgmt = Manager(config=config, st_obs=obs, st_syn=syn)
 
-def test_load():
-def test_write():
+    # Assert that streams are not standardized
+    for tro, trs in zip(mgmt.st_obs, mgmt.st_syn):
+        assert(tro.stats.sampling_rate != trs.stats.sampling_rate)
+
+    mgmt.standardize()
+    for tro, trs in zip(mgmt.st_obs, mgmt.st_syn):
+        assert(tro.stats.sampling_rate == trs.stats.sampling_rate)
+        pytest.set_trace()
 
 
-# def test_
+def test_standardize_zero_pad(config, obs, syn):
+    """Ensure Zero padding of data works"""
+    mgmt = Manager(config=config, st_obs=obs, st_syn=syn)
+    mgmt.config.zero_pad = 10
+    mgmt.standardize()
+    pytest.set_trace()
+
+# def test_preprocess():
+# def test_preprocess_overwrite():
+# def test_window():
+# def test_window_fixed():
+#
+# def test_load():
+# def test_write():

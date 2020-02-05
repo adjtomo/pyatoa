@@ -237,6 +237,11 @@ class Pyaflowa:
             self.finalize_process(ds=ds, cwd=cwd, ev_paths=ev_paths, 
                                   config=config)
 
+    def plot_waveforms(self):
+        """
+        Plot waveforms with specific title additions and figure id
+        """
+
     def finalize_process(self, cwd, ds, ev_paths, config):
         """
         After all waveforms have been windowed and measured, run some functions

@@ -664,10 +664,10 @@ class Manager:
                 self.windows, self._num_windows = windows_from_ds(self.ds, net, 
                                                                   sta)
             except AttributeError:
+                # If fixed windows fails, default to calculating windows
                 self.select_windows()
-        # If not fixed windows, calculate windows using Pyflex
         else:
-            # Windows and staltas saved as dictionary objects by component name
+            # If not fixed windows, calculate windows using Pyflex
             self.select_windows()
 
     def select_windows(self):
@@ -734,13 +734,9 @@ class Manager:
         # Let the User know the outcomes of Pyflex
         logger.info(f"{self._num_windows} window(s) total found")
 
-    def save_windows(self, data_type="MisfitWindows"):
+    def save_windows(self):
         """
         Save the misfit windows that are calculated by Pyflex into a Dataset
-
-        :type data_type: str
-        :param data_type: sub catagory within auxiliary_data to save the windows
-            defaults to 'MisfitWindows', but allows custom naming by User
         """
         logger.debug("saving misfit windows to PyASDF")
         for comp in self.windows.keys():
@@ -757,7 +753,7 @@ class Manager:
                 with warnings.catch_warnings():
                     warnings.simplefilter("ignore")
                     self.ds.add_auxiliary_data(data=np.array([True]),
-                                               data_type=data_type,
+                                               data_type="MisfitWindows",
                                                parameters=window_dict,
                                                path=tag
                                                )
@@ -831,11 +827,11 @@ class Manager:
 
     def _format_windows(self):
         """
-        In `pyadjoint.calculate_adjoint_source`, the window needs to be a list
-        of lists, with each list containing the [left_window, right_window];
-        each window argument should be given in units of time (seconds)
         Note:
-            This is not in the PyAdjoint docs
+            In `pyadjoint.calculate_adjoint_source`, the window needs to be a
+            list of lists, with each list containing the
+            [left_window, right_window]; each window argument should be given
+            in units of time (seconds). This is not in the PyAdjoint docs
 
         :rtype: dict of list of lists
         :return: dictionary with key related to individual components,
