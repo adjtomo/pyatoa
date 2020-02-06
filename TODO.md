@@ -24,3 +24,4 @@
 #### Visuals
 - [ ] Depth cross section of a Catalog object
 - [ ] Plot output optim only show models, maybe iterations as smaller points, or plot both
+- [ ] Fix: waveform plots not deleted if theyre not included in the composite pdf
