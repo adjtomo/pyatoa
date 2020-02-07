@@ -7,6 +7,7 @@
 - [ ] remove large data files from test data
 
 #### Manager
+- [ ] write `__call__` attribute
 - [ ] Initialize an empty Manager with an empty Config to remove the need to call Config separately
 - [ ] Move window by amplitude in Manager.window() into its own function
 - [ ] Check if convolve_stf properly performs the time shift
@@ -16,6 +17,7 @@
 - [ ] ASDF export all data to directory structure, saving waveforms, inventories, aux data etc into individual 
 - [ ] Generate waveform plots, maps, from an ASDF dataset. As in remove the need to create a Manager just to make 
       waveform plots, if a datset already exists
+- [ ] Processing provenance saved into auxiliary_data?
 
 #### Misc.
 - [ ] Move all hardcoded stuff into plugins, e.g. fault_coordinates, geonet_moment_tensor
@@ -25,3 +27,6 @@
 - [ ] Depth cross section of a Catalog object
 - [ ] Plot output optim only show models, maybe iterations as smaller points, or plot both
 - [ ] Fix: waveform plots not deleted if theyre not included in the composite pdf
+
+#### Pyaflowa:
+- [ ] exit gracefully if no data is gathered for an entire event, currently finalize is throwing uncaught errors
