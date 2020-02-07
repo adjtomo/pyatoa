@@ -81,6 +81,52 @@ def trimstreams(st_a, st_b, force=None):
     return st_a, st_b
 
 
+def match_samples(st_a, st_b, force=None):
+    """
+    Resampling can cause sample number differences which will lead to failure
+    of some preprocessing or processing steps. This function ensures that `npts` 
+    matches between traces by extending one of the traces with zeros. 
+    A small taper is applied to ensure the new values do not cause 
+    discontinuities.
+
+    Note:
+        its assumed that all traces within a stream have the same `npts`
+
+    :type st_a: obspy.stream.Stream
+    :param st_a: one stream to match samples with
+    :type st_b: obspy.stream.Stream
+    :param st_b: one stream to match samples with
+    :type force: str
+    :param force: choose which stream to use as the default npts,
+        defaults to 'a', options: 'a', 'b'
+    :rtype: tuple (obspy.stream.Stream, obspy.stream.Stream)
+    :return: streams that may or may not have adjusted npts, returned in the 
+        same order as provided
+    """
+    # Assign the number of points, copy to avoid editing in place
+    if not force or force == "a":
+        npts = st_a[0].stats.npts
+        st_const = st_a.copy()
+        st_change = st_b.copy()
+    else:
+        npts = st_b[0].stats.npts
+        st_const = st_b.copy()
+        st_change = st_a.copy()
+
+    for tr in st_change:
+        diff = abs(tr.stats.npts - npts)
+        if diff:
+            logger.debug(f"appending {diff} zeros to {tr.get_id()}")
+            tr.data = np.append(tr.data, np.zeros(diff))
+            tr.taper(0.025)
+
+    # Ensure streams are returned in the correct order
+    if not force or force == "a":
+        return st_const, st_change
+    else:
+        return st_change, st_const
+
+
 def is_preprocessed(st):
     """
     Small check to make sure a stream object has not yet been run through

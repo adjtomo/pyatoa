@@ -499,6 +499,12 @@ class Manager:
         self.st_obs, self.st_syn = trimstreams(
             st_a=self.st_obs, st_b=self.st_syn, force=trim_to[standardize_to])
 
+        # Match the number of samples between the streams
+        self.st_obs, self.st_syn = match_npts(st_a=self.st_obs,
+                                              st_b=self.st_syn,
+                                              force=trim_to[standardize_to]
+                                              )
+
         # Retrieve the first timestamp in the .sem? file from Specfem
         if self.event is not None:
             self._time_offset_sec = (self.st_syn[0].stats.starttime -

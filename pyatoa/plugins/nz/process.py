@@ -8,6 +8,7 @@ Used for preprocessing data through filtering and tapering, zero padding etc.
 Also contains tools for synthetic traces such as source time function
 convolutions
 """
+import numpy as np
 from pyatoa import logger
 from pyatoa.utils.tools.process import is_preprocessed, change_syn_units
 
@@ -24,9 +25,12 @@ def scale_beacon_amplitudes(st):
     st_scale = st.copy()
 
     # Amplitude scaling
-    scale_1 = 22.
-    scale_2 = 0.4
-    scale_3 = 57.5
+    # scale_1 = 22.
+    # scale_2 = 0.4
+    # scale_3 = 57.5
+    scale_1 = 100.
+    scale_2 = 2.
+    scale_3 = 250.
     scales = [scale_1, scale_2, scale_3]
 
     # Stations that belong to each scaling group
@@ -120,9 +124,6 @@ def preproc(st_original, inv=None, unit_output="VEL", synthetic_unit=None,
             # Rotate streams if they are not in the ZNE coordinate system
             st.rotate(method="->ZNE", inventory=inv)
 
-            # Beacon data requires amplitude scaling
-            if st[0].stats.network == "XX":
-                st = scale_beacon_amplitudes(st)
 
     # No inventory means synthetic data
     elif not inv:
@@ -147,5 +148,10 @@ def preproc(st_original, inv=None, unit_output="VEL", synthetic_unit=None,
                   freqmax=1/filter_bounds[0], corners=corners, zerophase=True
                   )
         logger.debug(f"filter {filter_bounds[0]}s to {filter_bounds[1]}s")
+
+    # Beacon data requires amplitude scaling, perform after filtering to
+    # avoid boosting the amplitude of noise
+    if st[0].stats.network == "XX" and inv:
+        st = scale_beacon_amplitudes(st)
 
     return st
