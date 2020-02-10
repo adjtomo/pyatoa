@@ -220,7 +220,7 @@ def count_misfit_windows(ds, model, count_by_stations=False):
 
     # Count up windows for each channel
     for window in windows.list():
-        components.append(windows[model][window].parameters['channel_id'])
+        components.append(windows[window].parameters['channel_id'])
 
     counted_windows = {}
     # Count by component
@@ -295,6 +295,55 @@ def histogram_data(ds, model, data_type):
                 continue 
 
     return return_list
+
+
+def retrieve(ds, sta, choice, model=None, component=None):
+    """
+    Convenience function to retrieve certain event information
+
+    :param ds:
+    :param choice:
+    :return:
+    """
+    import numpy as np
+    from obspy.geodetics import gps2dist_azimuth
+
+    # Just ensure that the station name is correctly formatted
+    sta = sta.replace('.', '_')
+
+    # Ensure the choice is avilable
+    choices = ["distance_km", "baz", "total_misfit"]
+    assert(sta.replace('_', '.') in ds.waveforms.list())
+    assert(choice in choices), f"choice must be in {choices}"
+
+    # Retrieve geographic information
+    if choice in ["distance_km", "baz"]:
+        ev_lat = ds.events[0].preferred_origin().latitude
+        ev_lon = ds.events[0].preferred_origin().longitude
+        sta_lat = ds.waveforms[sta].StationXML[0][0].latitude
+        sta_lon = ds.waveforms[sta].StationXML[0][0].longitude
+
+        gcd, _, baz = gps2dist_azimuth(lat1=ev_lat, lon1=ev_lon,
+                                       lat2=sta_lat, lon2=sta_lon)
+
+        if choice == "distance_km":
+            return gcd * 1E-3
+        elif choice == "baz":
+            return baz
+
+    # Retrieve the misfit of the station
+    elif choice == "total_misfit":
+        assert model
+        adjsrcs = ds.auxiliary_data.AdjointSources[model]
+        misfit, count = 0, 0
+        for adjsrc in adjsrcs.list():
+            if sta in adjsrc:
+                misfit += adjsrcs[adjsrc].parameters["misfit_value"]
+                count += 1
+        if count:
+            return misfit / count
+        else:
+            return np.nan
 
 
 def _count_waveforms(ds_waveforms, model):

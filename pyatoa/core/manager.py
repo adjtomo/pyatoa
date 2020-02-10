@@ -775,6 +775,12 @@ class Manager:
         Returns a dictionary of adjoint sources based on component.
         Saves resultant dictionary to a pyasdf dataset if given.
 
+        Note:
+            Pyadjoint returns an unscaled misfit value for an entire set of
+            windows. If one wants to return a "total misfit" value as defined
+            by Tape (2010) Eq. 6, the total summed misfit will need to be
+            scaled by the number of misfit windows chosen in window().
+
         :type force: bool
         :param force: ignore flag checks and run function, useful if e.g.
             external preprocessing is used that doesn't meet flag criteria
