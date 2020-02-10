@@ -32,6 +32,7 @@
 - [ ] Plot output optim only show models, maybe iterations as smaller points, or plot both
 - [ ] Fix: waveform plots not deleted if theyre not included in the composite pdf
 - [ ] VTK plotter
+- [ ] Remove rcParams and explicitely set all plot attributes in calls
 
 #### Pyaflowa:
 - [ ] exit gracefully if no data is gathered for an entire event, currently finalize is throwing uncaught errors
