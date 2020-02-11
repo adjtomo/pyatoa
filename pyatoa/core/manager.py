@@ -27,7 +27,7 @@ from pyatoa.utils.tools.srcrcv import gcd_and_baz, seismogram_length
 from pyatoa.utils.tools.format import create_window_dictionary, channel_codes
 from pyatoa.utils.tools.calculate import abs_max
 from pyatoa.utils.tools.process import preproc, trimstreams, stf_convolve, \
-    zero_pad_stream
+    zero_pad_stream, match_npts
 
 from pyatoa.utils.visuals.mapping import manager_map
 from pyatoa.utils.visuals.waveforms import window_maker

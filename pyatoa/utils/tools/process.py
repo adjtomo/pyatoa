@@ -81,7 +81,7 @@ def trimstreams(st_a, st_b, force=None):
     return st_a, st_b
 
 
-def match_samples(st_a, st_b, force=None):
+def match_npts(st_a, st_b, force=None):
     """
     Resampling can cause sample number differences which will lead to failure
     of some preprocessing or processing steps. This function ensures that `npts` 

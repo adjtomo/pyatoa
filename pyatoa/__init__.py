@@ -1,19 +1,15 @@
 #!/usr/bin/env python
 import logging
 
-# set up logging (copied from pyflex)
+# Set up logging
 logger = logging.getLogger("pyatoa")
-logger.setLevel(logging.WARNING)
-# Prevent propagating to higher loggers.
-logger.propagate = 0
-# Console log handler.
-ch = logging.StreamHandler()
-# Add formatter
+logger.setLevel(logging.WARNING)  # Default level
+logger.propagate = 0  # Prevent propagating to higher loggers
+ch = logging.StreamHandler()  # Console log handler
 FORMAT = "[%(asctime)s] - %(name)s - %(levelname)s: %(message)s"
-formatter = logging.Formatter(FORMAT)
+formatter = logging.Formatter(FORMAT)  # Set format of logging messages
 ch.setFormatter(formatter)
 logger.addHandler(ch)
-
 
 from pyatoa.core.config import Config # NOQA
 from pyatoa.core.manager import Manager # NOQA
