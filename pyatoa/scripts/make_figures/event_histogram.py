@@ -1,4 +1,6 @@
 """
+DEPRECATED in favor of pyatoa.plugins.seisflows.inspector.Inspector
+
 Create a histogram of event depths for a given Catalog read in from an
 event xml file. Colors coordinated with Tape et al. 2010
 """

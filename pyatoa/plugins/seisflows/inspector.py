@@ -106,6 +106,28 @@ class Inspector:
             info[event] = self.srcrcv[event][choice]
         return info
 
+    def window_values(self, model, choice):
+        """
+        Return a list of all time shift values for a given model
+
+        :type model: str
+        :param model: model to query e.g. 'm00'
+        :type choice: str
+        :param choice: key choice for window query
+        :rtype list:
+        :return: list of time shift values for a given model
+        """
+        choices = ["cc_shift_sec", "dlna", "max_cc", "length_s", "weight"]
+        assert(choice in choices), f"choice must be in {choices}"
+
+        ret = []
+        windows = self.sort_windows_by_model()
+        for event in windows[model]:
+            for sta in windows[model][event]:
+                for cha in windows[model][event][sta]:
+                    ret += windows[model][event][sta][cha][choice]
+        return ret
+
     def misfit_values(self, model):
         """
         Return a list of misfit values for a given model
@@ -349,26 +371,24 @@ class Inspector:
 
         return windows
 
-    def plot(self, choice=None, **kwargs):
+    def plot(self, choice, **kwargs):
         """
-        Convenience plot function that calls to functions contained in an
-        external module
+        Convenience plot function that calls to functions contained in the
+        external module `pyatoa.plugins.seisflows.visuals`
 
         :type choice: str
         :param choice: choice of plot to create, see choices
         """
-        choices = ["window_by_distance", "misfit_by_distance",
-                   "misfit_by_path", "window_by_path"]
-        assert(choice in choices)
+        # Set the plotting functions into an easily accesible dictionary
+        choices = {
+            "windows_by_distance": visuals.windows_by_distance,
+            "misfit_by_distance": visuals.misfit_by_distance,
+            "misfit_by_path": visuals.misfit_by_path,
+            "window_by_path": visuals.window_by_path,
+            "event_depths": visuals.event_depths
+            }
 
-        if choice == "window_by_distance":
-            visuals.plot_windows_by_distance(self, **kwargs)
-        elif choice == "misfit_by_distance":
-            visuals.plot_misfit_by_distance(self, **kwargs)
-        elif choice == "misfit_by_path":
-            visuals.plot_misfit_by_path(self, **kwargs)
-        elif choice == "window_by_path":
-            visuals.plot_window_by_path(self, **kwargs)
-        else:
-            return
+        assert(choice in choices)
+        choices[choice](self, **kwargs)
+
 

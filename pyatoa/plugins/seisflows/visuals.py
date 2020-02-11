@@ -8,9 +8,9 @@ from pyatoa.utils.tools.srcrcv import lonlat_utm
 from pyatoa.utils.tools.calculate import normalize_a_to_b
 
 
-def plot_windows_by_distance(insp, model, choice="cc_shift_sec",
-                             show=True, save=False, event_id=None,
-                             sta_code=None, cha_code=None, color_by=None):
+def windows_by_distance(insp, model, choice="cc_shift_sec",
+                        show=True, save=False, event_id=None,
+                        sta_code=None, cha_code=None, color_by=None):
     """
     Make a plot of window attributes versus source-receiver distance
 
@@ -99,8 +99,8 @@ def plot_windows_by_distance(insp, model, choice="cc_shift_sec",
     return f, ax
 
 
-def plot_misfit_by_distance(insp, model, show=True, save=False,
-                            event_id=None, sta_code=None, color_by=None):
+def misfit_by_distance(insp, model, show=True, save=False,
+                       event_id=None, sta_code=None, color_by=None):
     """
     Make a plot of misfit versus source-receiver distance
 
@@ -171,10 +171,10 @@ def plot_misfit_by_distance(insp, model, show=True, save=False,
     return f, ax
 
 
-def plot_misfit_by_path(insp, model, event_id=None, sta_code=None,
-                        threshold=None, hover_on_lines=False,
-                        colormap=plt.cm.Spectral_r, show=True, save=None,
-                        **kwargs):
+def misfit_by_path(insp, model, event_id=None, sta_code=None,
+                   threshold=None, hover_on_lines=False,
+                   colormap=plt.cm.Spectral_r, show=True, save=None,
+                   **kwargs):
     """
     Plot misfit by source-receiver path to try to highlight portions of
     the model that may give rise to larger misfit
@@ -297,10 +297,10 @@ def plot_misfit_by_path(insp, model, event_id=None, sta_code=None,
     return f, ax
 
 
-def plot_window_by_path(insp, model, event_id=None, sta_code=None,
-                        threshold=None, hover_on_lines=False,
-                        colormap=plt.cm.Spectral_r, show=True, save=None,
-                        **kwargs):
+def window_by_path(insp, model, event_id=None, sta_code=None,
+                   threshold=None, hover_on_lines=False,
+                   colormap=plt.cm.Spectral_r, show=True, save=None,
+                   **kwargs):
     """
     Plot misfit by source-receiver path to try to highlight portions of
     the model that may give rise to larger misfit
@@ -426,9 +426,19 @@ def plot_window_by_path(insp, model, event_id=None, sta_code=None,
 def event_depths(insp, xaxis="x", show=True, save=None):
     """
     Create a scatter plot of events at depth
+
+    :type insp: pyatoa.plugins.seisflows.inspector.Inspector
+    :param insp: Inspector object containing the relevant information
+    :type xaxis: str
+    :param xaxis: variable to use as the x-axis on the plot, can either be
+        'x', 'y', 'lat' or 'lon'
+    :type show: bool
+    :param show: show the plot
+    :type save: str
+    :param save: fid to save the figure
     """
     choices = ["x", "y", "lat", "lon"]
-    assert(xaxis in choices)
+    assert(xaxis in choices), f"xaxis must be in {choices}"
 
     # Plot initializations
     f, ax = plt.subplots(figsize=(8, 6))
@@ -469,7 +479,7 @@ def event_depths(insp, xaxis="x", show=True, save=None):
     if depths[0] > 0:
         plt.gca().invert_yaxis()
 
-    # Scatter plotd
+    # Scatter plot
     sc = plt.scatter(x_vals, depths, s=mags, c="None", marker="o",
                      edgecolors="k")
     plt.xlabel(label_dict[xaxis])
@@ -482,6 +492,86 @@ def event_depths(insp, xaxis="x", show=True, save=None):
         plt.savefig(save)
     if show:
         plt.show
+
+
+def misfit_histogram(insp, model, model_comp=None, choice="cc_shift_sec",
+                     binsize=1., show=True, save=None):
+    """
+    Create a histogram of misfit information for either time shift or
+    amplitude differences
+
+    :type insp: pyatoa.plugins.seisflows.inspector.Inspector
+    :param insp: Inspector object containing the relevant information
+    :type model: str
+    :param model: model to choose for misfit
+    :type model_comp: str
+    :param model_comp: model to compare with, will be plotted in front
+    :type choice: str
+    :param choice: choice of 'cc_shift_s' for time shift, or 'dlna' as amplitude
+    :type binsize: float
+    :param binsize: size of the histogram bins
+    :type show: bool
+    :param show: show the plot
+    :type save: str
+    :param save: fid to save the figure
+    """
+    choices = ["misfit", "dlna", "cc_shift_sec", "length_s"]
+    assert(choice in choices), f"choice must be in {choices}"
+    assert(model in insp.models), f"model {model} not in Inspector"
+    if model_comp:
+        assert(model != model_comp), "model_comp must be different"
+
+    label_dict = {"cc_shift_sec": "Time Shift (s)",
+                  "dlna": "dlnA=ln(A_obs/A_syn)",
+                  "misfit": "misfit",
+                  "length_s": "Window Length (s)"}
+
+    # Retrive list of relevant data
+    if choice == "misfit":
+        val = insp.misfit_values(model)
+    else:
+        val = insp.window_values(model, choice)
+
+    # Determine bound for histogram
+    min_value = np.floor(min(val))
+    max_value = np.ceil(max(val))
+    bound = max(abs(min_value), abs(max_value))
+
+    # Make the main histogram
+    f, ax = plt.subplots(figsize=(8, 6))
+    plt.hist(x=val, bins=len(np.arange(-1*bound, bound, binsize)),
+             color="darkorange",  histtype="bar", edgecolor="black",
+             linewidth=2.5, label=model, zorder=10
+             )
+    # If a model is to be compared to the initial model, plot infront,
+    # transparent, with overlying lines
+    if model_comp:
+        val_comp = insp.misfit_values(model_comp)
+        plt.hist(x=val_comp, label=model_comp,
+                 bins=len(np.arange(-1 * bound, bound, binsize)),
+                 histtype="step", edgecolor="deepskyblue", linewidth=2.,
+                 alpha=0.7, zorder=100)
+
+    # dln(A) information only relevant in these bounds
+    if choice == "dlna":
+        plt.xlim([-1.75, 1.75])
+
+    # Finalize plot details
+    plt.xlabel(label_dict[choice])
+    plt.ylabel("Count")
+    plt.title(f"{choice} histogram")
+    plt.tick_params(which='both', direction='in', top=True, right=True)
+    plt.grid(linewidth=1, linestyle=":", which="both", zorder=1)
+    plt.axvline(x=0, ymin=0, ymax=1, linewidth=1.5, c="k", zorder=2, alpha=0.75,
+                linestyle='--')
+    plt.legend()
+
+    if save:
+        plt.savefig(save)
+    if show:
+        plt.show()
+
+    return f, ax
 
 
 def colormap_colorbar(cmap, **kwargs):
@@ -589,3 +679,7 @@ def hover_on_plot(f, ax, obj, values, dissapear=False):
 
     f.canvas.mpl_connect("motion_notify_event", hover)
     return hover
+
+
+if __name__ == "__main__":
+    pass

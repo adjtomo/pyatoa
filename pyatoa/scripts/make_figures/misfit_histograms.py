@@ -1,4 +1,6 @@
 """
+DEPRECATED in favor of pyatoa.plugins.seisflows.inspector.Inspector
+
 Create misfit histograms to understand changes in model parameters.
 
 Histograms available are:
