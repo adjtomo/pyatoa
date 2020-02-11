@@ -15,6 +15,8 @@
 - [ ] Figure out why the Pyflex value Error is being thrown (pyflex.window_selector() line 427 np.abs(noise).max() zero size array)
 - [ ] Change preprocess() function to take a Manager object, that way when the `overwrite` parameter is called, the User knows exactly
       how to write their new preprocess function
+- [ ] Fixed windowing might encounter some problems because the synthetic trace is changing, so the values of max_cc_, cc_shift and dlnA       are not being re-evaluated. Can this be remedied?
+- [ ] Weighting adjoint sources by station proximity?
 
 #### ASDF
 - [ ] ASDF export all data to directory structure, saving waveforms, inventories, aux data etc into individual 
