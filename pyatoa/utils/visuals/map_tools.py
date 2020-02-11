@@ -115,8 +115,8 @@ def event_beachball(m, event, fm_type="focal_mechanism", **kwargs):
                            fm['m_rt'], fm['m_rp'], fm['m_tp']
                            ]
         elif fm_type == "strike_dip_rake":
-            nod_plane = event.focal_mechanisms[0].nodal_plane or \
-                        event.preferred_focal_mechanism().nodal_plane
+            nod_plane = event.focal_mechanisms[0].nodal_planes or \
+                        event.preferred_focal_mechanism().nodal_planes
             # try determine the preferred nodal plane, default to 1
             try:
                 sdr = nod_plane[f"nodal_plane_{nod_plane.preferred_plane}"]
