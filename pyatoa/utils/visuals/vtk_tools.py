@@ -39,13 +39,13 @@ def startup(fid):
     return fig, engine
 
 
-def set_colorscale(lut_mode='RdYlBu', reverse=False, min_max=None,
+def set_colorscale(cmap='RdYlBu', reverse=False, min_max=None,
                    colorbar=True, title=None, nb_labels=None):
     """
     Set the colorscale for the plot and also create a colorbar
 
-    :type lut_mode: str
-    :param lut_mode: colorscale to use, matches names from ParaView
+    :type cmap: str
+    :param cmap: colorscale to use, matches names from ParaView
     :type reverse: bool
     :param reverse: reverse the colorscale
     :type min_max: list
@@ -58,44 +58,50 @@ def set_colorscale(lut_mode='RdYlBu', reverse=False, min_max=None,
     :param nb_labels: number of labels to put on the colorbar
     """
     # Set the colorscale
-    slm = mlab.colorbar(title=title, orientation="horizontal",
-                        label_fmt="%-#3.2e", nb_labels=nb_labels)
-    slm.lut_mode = lut_mode
-    slm.reverse_lut = reverse
+    cbar = mlab.colorbar(title=title, orientation="horizontal",
+                        label_fmt="%-#.2f", nb_labels=nb_labels)
+    cbar.lut_mode = cmap
+    cbar.reverse_lut = reverse
 
     # Bound the colorscale
-    slm.use_default_range = False
+    cbar.use_default_range = False
     if not min_max:
-        val = max(abs(slm.data_range))
+        val = np.ceil(max(abs(cbar.data_range)))
         min_max = [-val, val]
-    slm.data_range = array(min_max)
+    cbar.data_range = array(min_max)
 
     # Create colorbar
-    slm.show_scalar_bar = colorbar
-    slm.show_legend = colorbar
+    cbar.show_scalar_bar = colorbar
+    cbar.show_legend = colorbar
 
     if colorbar:
         # These are for the values
-        slm.label_text_property.bold = False
-        slm.label_text_property.italic = False
-        slm.label_text_property.orientation = 25.  # rotate labels slightly
-        slm.label_text_property.color = (0.0, 0.0, 0.0)  # black font
+        cbar.label_text_property.bold = False
+        cbar.label_text_property.italic = False
+        cbar.label_text_property.orientation = 25.  # rotate labels slightly
+        cbar.label_text_property.color = (0.0, 0.0, 0.0)  # black font
+        cbar.label_text_property.font_size = 5
 
         # These are for the title
-        slm.title_text_property.italic = False
-        slm.title_text_property.bold = False
-        slm.title_text_property.color = (0.0, 0.0, 0.0)  # black font
+        cbar.title_text_property.italic = False
+        cbar.title_text_property.bold = False
+        cbar.title_text_property.color = (0.0, 0.0, 0.0)  # black font
+        cbar.title_text_property.font_size = 5
 
         # Create some uniform look for colorbar
-        slm.scalar_bar.orientation = 'horizontal'  # horizontal scalebar
-        slm.scalar_bar.text_position = 'precede_scalar_bar'  # title below
-        slm.scalar_bar.title_ratio = 0.2  # smaller title size
-        slm.scalar_bar.bar_ratio = 0.25  # size of colorbar
+        cbar.scalar_bar.orientation = 'horizontal'  # horizontal scalebar
+        cbar.scalar_bar.text_position = 'precede_scalar_bar'  # title below
+        cbar.scalar_bar.title_ratio = 0.36  # smaller title size
+        cbar.scalar_bar.bar_ratio = 0.25  # size of colorbar
 
-    return slm
+        # Makes the colorbar interactive and changes its size
+        cbar.scalar_bar_representation.proportional_resize = True
+        cbar.scalar_bar_representation.position = array([0.3, -.005])  # location
+        cbar.scalar_bar_representation.position2 = array([0.4, 0.08])  # size
+    return cbar
 
 
-def set_axes(xlabel="Easting (m)", ylabel="Northing (m)", zlabel="Depth (m)",
+def set_axes(xlabel="E (m)", ylabel="N (m)", zlabel="Z (m)",
              xyz=[True, True, True]):
     """
     Create an axis object to wrap around data
@@ -105,44 +111,79 @@ def set_axes(xlabel="Easting (m)", ylabel="Northing (m)", zlabel="Depth (m)",
                      ylabel=ylabel, zlabel=zlabel, x_axis_visibility=xyz[0],
                      y_axis_visibility=xyz[1], z_axis_visibility=xyz[2])
 
-    # Edit label attributes
-    axes.axes.label_format = '%-#3.2e'
+    # Edit full properties
+    axes.axes.label_format = '%-#3.2E'
     axes.axes.number_of_labels = 5
+    axes.axes.font_factor = .75
+
+    # Edit label attributes
+    axes.label_text_property.color = (0.0, 0.0, 0.0)  # black font
     axes.label_text_property.bold = False
     axes.label_text_property.italic = False
-    axes.label_text_property.orientation = 45.0
+    axes.label_text_property.orientation = 0.0
+    # axes.label_text_property.font_size = 14  # doesnt work
 
     # Edit title attributes
     axes.title_text_property.color = (0.0, 0.0, 0.0)  # black font
     axes.title_text_property.italic = False
     axes.title_text_property.bold = False
-    axes.title_text_property.orientation = 45.0
-    axes.title_text_property.font_size = 45
+    axes.title_text_property.orientation = 0.0
+    # axes.title_text_property.font_size = 14  # doesn't work
+
+    return axes
 
 
-def coastline(coast_fid):
+def coastline(coast_fid, z_value=1000, color=(0., 0., 0.,), ):
     """
-    Plot coastline on top of plot
+    Plot coastline on top of plot. Coastline should be an npy file that is an
+    N x 3 array with the columns representing x, y, z
 
-    :param coast_fid:
-    :return:
+    :type coast_fid: str
+    :param coast_fid: fid for npy file
+    :type color: tuple of floats
+    :param color: tuple representation of color, defaults to black
     """
     coast = np.load(coast_fid)
+    x = coast[:, 0]
+    y = coast[:, 1]
+    z = np.ones(len(x)) * z_value
+
+    p3d = mlab.points3d(x, y, z, color=color, mode="2dcircle",
+                        scale_factor=800.)
+
+    return p3d
+
+def slice(depth_km):
+    """
+    Slice the data at a certain depth, format is depth is positive
+
+    :type depth_km: float
+    :param depth_km: depth value in km
+    :return:
+    """
+
+
 
 @mlab.show
 def plot_topdown(depth_km="surface"):
     """
-    Just plot the surface of the
+    Plot a topdown view of the model, allow specification of
 
     :return:
     """
-    f, engine = startup("diff_vs_nz_tall_north_and_vs_checker.vtk")
-    set_colorscale(title="Difference Vs")
-    set_axes(xyz=[True, True, False])
-    mlab.show()
+    try:
+        f, engine = startup("diff_vs_nz_tall_north_and_vs_checker.vtk")
+        cbar = set_colorscale(title="Difference Vs", cmap="seismic",
+                             reverse=True, nb_labels=3)
+        axes = set_axes(xyz=[True, True, False])
+        p3d = coastline("nz_coast_utm60H_43-173_37-179_xyz.npy")
 
-    set_trace()
-    embed(colors="neutral")
+        scene = engine.scenes[0]
+        scene.scene.z_plus_view()
+    except Exception as e:
+        print(e)
+
+    mlab.show()
 
     # if isinstance(depth_km, float):
     #     sug = SliceUnstructuredGrid()
