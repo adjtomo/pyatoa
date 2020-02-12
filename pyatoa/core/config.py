@@ -144,7 +144,7 @@ class Config:
 
         # Overwrite config parameters from .yaml
         if yaml_fid:
-            self._read_yaml(yaml_fid)
+            kwargs = self._read_yaml(yaml_fid)
 
         self._check(**kwargs)
 
@@ -372,10 +372,15 @@ class Config:
 
     def _read_yaml(self, filename):
         """
-        Read config parameters from a yaml file, parse to attributes
+        Read config parameters from a yaml file, parse to attributes.
+        Any non-standard parameters will be passed through as kwargs.
 
         :type filename: str
         :param filename: filename to save yaml file
+        :rtype: dict
+        :return: key word arguments that do not belong to Pyatoa are passed back
+            as a dictionary object, these are expected to be arguments that are
+            to be used in Pyflex and Pyadjoint configs
         """
         with open(filename, "r") as f:
             attrs = yaml.load(f, Loader=yaml.Loader)
@@ -384,9 +389,15 @@ class Config:
             attr_list = attrs['PYATOA'].items()
         else:
             attr_list = attrs.items()
+        
+        kwargs = {}
         for key, item in attr_list:
             if hasattr(self, key.lower()):
                 setattr(self, key.lower(), item)
+            else:
+                kwargs[key.lower()] = item
+
+        return kwargs
 
     def _read_asdf(self, ds, path):
         """
