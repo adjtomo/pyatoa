@@ -172,7 +172,7 @@ def misfit_by_distance(insp, model, show=True, save=False,
 
 
 def misfit_by_path(insp, model, event_id=None, sta_code=None,
-                   threshold=None, hover_on_lines=False,
+                   threshold=None, hover_on_lines=False, show_all=True,
                    colormap=plt.cm.Spectral_r, show=True, save=None,
                    **kwargs):
     """
@@ -191,6 +191,9 @@ def misfit_by_path(insp, model, event_id=None, sta_code=None,
     :param threshold: normalized misfit value below which, paths will not be
         plotted. Good for looking at only high misfit values. Values must
         be between 0 and 1
+    :type show_all: bool
+    :param show_all: Only relevant is threshold is not None. Show the other
+        stations or events if plotting specific station or event
     :type hover_on_lines: bool
     :param hover_on_lines: for interactive plots, show misfit values when
         hovering over the source-receiver raypath lines. This can get a bit
@@ -214,63 +217,90 @@ def misfit_by_path(insp, model, event_id=None, sta_code=None,
     if threshold:
         assert(0 <= threshold <= 1), "Threshold must be between 0 and 1"
 
-    f, ax = plt.subplots(figsize=(8, 6))
+    # Instantiate plot
+    f, ax = plt.subplots(figsize=(8, 7))
     cmap, norm, cbar = colormap_colorbar(colormap, **kwargs)
 
     # Empty lists to be filled when looping through data
     stations_plotted = []
     event_x, event_y, event_s = [], [], []
     station_x, station_y, station_s = [], [], []
+    msftlist = []
+
+    # Used to count the number of events that a station recorded
+    # or the number of stations that recorded an event
+    coverage = 0
 
     for event in misfits[model]:
+        # Skip event if requested
         if event_id and event != event_id:
             continue
+
         ev_x, ev_y = lonlat_utm(lon_or_x=insp.srcrcv[event]["lon"],
                                 lat_or_y=insp.srcrcv[event]["lat"],
                                 utm_zone=-60, inverse=False
                                 )
+
+        # Append event information to list for plotting
+        # Skip adding stations if thresholding and show all is turned off
         event_s.append(event)
         event_x.append(ev_x)
         event_y.append(ev_y)
 
-        # Plot each station and a connecting line
-        for sta in misfits[model][event]:
-            if sta_code and sta != sta_code:
-                continue
+        # Loop through full station list rather than subset that have misfits
+        coords = insp.coords
+        for sta in insp.stations:
             # Convert station coordinates and append to list
             sta_x, sta_y = lonlat_utm(
-                lon_or_x=insp.srcrcv[event][sta]["lon"],
-                lat_or_y=insp.srcrcv[event][sta]["lat"],
+                lon_or_x=coords[sta]["lon"], lat_or_y=coords[sta]["lat"],
                 utm_zone=-60, inverse=False
             )
             # Ensure we only plot each station once
-            if (sta_x, sta_y) not in stations_plotted:
-                stations_plotted.append((sta_x, sta_y))
+            if sta not in stations_plotted:
+                stations_plotted.append(sta)
                 station_x.append(sta_x)
                 station_y.append(sta_y)
                 station_s.append(sta)
 
-            # Normalize misfit by the largest value, plot srcrcv as line
-            misfit = (misfits[model][event][sta]["msft"] /
-                      max(insp.misfit_values(model))
-                      )
+            # Skip station if requested
+            if sta_code and sta != sta_code:
+                continue
 
-            # Ignore misfit values below a certain threshold
+            # Normalize misfit by the largest value, plot srcrcv as line
+            try:
+                misfit = (misfits[model][event][sta]["msft"] /
+                          max(insp.misfit_values(model))
+                          )
+                msftlist.append(misfit)
+                coverage += 1
+            except KeyError:
+                continue
+
+            # Ignore misfit values below a certain threshold if requested
             if threshold and misfit < threshold:
                 continue
+
             # Change the alpha for aggregate plots to remove visual clutter
+            alpha = misfit
             if sta_code or event_id:
                 alpha = None
-            else:
-                alpha = misfit
 
             # Plot the line between src and rcv colored by misfit
             line, = plt.plot([ev_x, sta_x], [ev_y, sta_y],
                              c=cmap(norm(misfit)), alpha=alpha,
                              zorder=10 + misfit)
+            # Set hover on for the misfit lines, can get messy
             if hover_on_lines:
                 hover_on_plot(f, ax, line, [f"{misfit:.2f}"],
                               dissapear=True)
+
+    # Determine the coverage if a single station or event was chosen
+    if sta_code and not event_id:
+        cov = f"{coverage}/{len(insp.event_ids)} events\n" \
+              f"{1E2*coverage/len(insp.event_ids):.2f}% coverage"
+    elif event_id and not sta_code:
+        cov = f"{coverage}/{len(insp.stations)} stations\n" \
+              f"{1E2*coverage/len(insp.stations):.2f}% coverage\n"
 
     # Plot sources and receivers as scatterplots
     sc_events = plt.scatter(event_x, event_y, marker="o", c="w",
@@ -283,8 +313,18 @@ def misfit_by_path(insp, model, event_id=None, sta_code=None,
     plt.ticklabel_format(style="sci", axis="both", scilimits=(0, 0))
     plt.xlabel("Easting (m)")
     plt.ylabel("Northing (m)")
-    plt.title("Source-Receiver misfit\n"
-              f"model: {model} / event: {event_id} / station: {sta_code}\n")
+    plt.title("Source-Receiver misfit")
+
+    anno = (f"model: {model}\n"
+            f"event: {event_id}\n"
+            f"station: {sta_code}\n"
+            f"min misfit: {np.min(msftlist):.2f}\n"
+            f"max misfit: {np.max(msftlist):.2f}\n"
+            f"mean misfit: {np.mean(msftlist):.2f}\n")
+    if cov:
+        anno += cov
+
+    annotate_txt(ax, anno, **kwargs)
 
     # Make source and receiver markers interactive
     if save:
@@ -679,6 +719,42 @@ def hover_on_plot(f, ax, obj, values, dissapear=False):
 
     f.canvas.mpl_connect("motion_notify_event", hover)
     return hover
+
+
+def annotate_txt(ax, txt, anno_location="lower-right"):
+    """
+    Convenience function to annotate some information
+
+    :type ax: matplot.axes._subplots.AxesSubplot
+    :param ax: axis to annotate onto
+    :type txt: str
+    :param txt: text to annotate
+    :type location: str
+    :param location: location on the figure to annotate
+        available: bottom-right
+    :return:
+    """
+    xmin, xmax = ax.get_xlim()
+    ymin, ymax = ax.get_ylim()
+
+    if anno_location == "lower-right":
+        x = xmin + (xmax - xmin) * 0.675
+        y = ymin + (ymax - ymin) * 0.025
+        multialignment = "right"
+    elif anno_location == "upper-right":
+        x = xmin + (xmax - xmin) * 0.675
+        y = ymin + (ymax - ymin) * 0.745
+        multialignment = "right"
+    elif anno_location == "lower-left":
+        x = xmin + (xmax - xmin) * 0.050
+        y = ymin + (ymax - ymin) * 0.025
+        multialignment = "left"
+    elif anno_location == "upper-left":
+        x = xmin + (xmax - xmin) * 0.050
+        y = ymin + (ymax - ymin) * 0.745
+        multialignment = "left"
+
+    ax.annotate(s=txt, xy=(x, y), multialignment=multialignment, fontsize=10)
 
 
 if __name__ == "__main__":

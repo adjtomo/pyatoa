@@ -50,13 +50,17 @@ class Inspector:
             self.load(tag)
         else:
             for dsfid in glob(os.path.join(path_to_datasets, "*.h5")):
-                with pyasdf.ASDFDataSet(dsfid) as ds:
-                    if windows:
-                        self.get_windows(ds)
-                    if srcrcv:
-                        self.get_srcrcv(ds)
-                    if misfits:
-                        self.get_misfits(ds)
+                try:
+                    with pyasdf.ASDFDataSet(dsfid) as ds:
+                        if windows:
+                            self.get_windows(ds)
+                        if srcrcv:
+                            self.get_srcrcv(ds)
+                        if misfits:
+                            self.get_misfits(ds)
+                except OSError:
+                    print(f"{dsfid} already open")
+                    continue
 
     @property
     def event_ids(self):
@@ -73,6 +77,25 @@ class Inspector:
                 if sta.isupper():
                     stas.append(sta)
         return list(set(stas))
+
+    @property
+    def coords(self):
+        """Return a dict of lat, lon depth for all stations, and events"""
+        assert self.srcrcv
+        coords = {}
+        for event in self.srcrcv:
+            coords[event] = {"lat": self.srcrcv[event]["lat"],
+                             "lon": self.srcrcv[event]["lat"],
+                             "depth_m": self.srcrcv[event]["depth_m"]
+                             }
+            for sta in self.srcrcv[event]:
+                # Station names are uppercase, attributes are lowercase
+                # Ensure no doubles
+                if sta.isupper() and sta not in coords:
+                    coords[sta] = {"lat": self.srcrcv[event][sta]["lat"],
+                                   "lon": self.srcrcv[event][sta]["lon"]
+                                   }
+        return coords
 
     @property
     def models(self):
@@ -388,7 +411,7 @@ class Inspector:
             "event_depths": visuals.event_depths
             }
 
-        assert(choice in choices)
+        assert(choice in choices), f"choice must be in {choices.keys}"
         choices[choice](self, **kwargs)
 
 
