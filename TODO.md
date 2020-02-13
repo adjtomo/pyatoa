@@ -6,12 +6,12 @@
 - [ ] Pyaflowa exit gracefully if no data is gathered for an entire event, currently finalize is throwing uncaught errors
 - [ ] Fix: waveform plots not deleted if theyre not included in the composite pdf
 
-
 #### General
 - [ ] Proper docs for all functions. methods, classes 
 - [ ] Finish writing tests with PyTest
 - [ ] ipynb in gitignore
 - [ ] remove large data files from test data
+- [ ] make model number, step count formatters standard package wide functions
 
 #### Manager
 - [ ] write `__call__` attribute
@@ -43,3 +43,6 @@
 
 #### Pyaflowa:
 - [ ] source receiver json file with event-station information such as lat/lon, dist and BAz, only once for m00s00
+- [ ] ensure end_pad >= PAR.NT * PAR.DT so that observations will be as long as synthetics
+- [ ] sanity check parameters in initialize
+- [ ] if given parameters (i.e. misspelled) are not used, notify the user somehow, maybe in seisflows
