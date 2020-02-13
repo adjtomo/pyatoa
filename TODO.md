@@ -42,7 +42,11 @@
 - [ ] Remove rcParams and explicitely set all plot attributes in calls
 
 #### Pyaflowa:
+- [ ] fix windows within a single iteration
 - [ ] source receiver json file with event-station information such as lat/lon, dist and BAz, only once for m00s00
 - [ ] ensure end_pad >= PAR.NT * PAR.DT so that observations will be as long as synthetics
 - [ ] sanity check parameters in initialize
 - [ ] if given parameters (i.e. misspelled) are not used, notify the user somehow, maybe in seisflows
+- [ ] auxiliary_data.Statistics: store time shift (min, max, time shift components), format misfit with 'e' notation not 'f'
+- [ ] auxiliary_data store windows and adjoint sources by step lengths? Or just store s00 because that is the "initial" step
+
