@@ -295,12 +295,21 @@ def misfit_by_path(insp, model, event_id=None, sta_code=None,
                               dissapear=True)
 
     # Determine the coverage if a single station or event was chosen
+    append_anno = ""
     if sta_code and not event_id:
-        cov = f"{coverage}/{len(insp.event_ids)} events\n" \
-              f"{1E2*coverage/len(insp.event_ids):.2f}% coverage"
+        append_anno += (f"{coverage}/{len(insp.event_ids)} events\n" 
+                        f"{1E2*coverage/len(insp.event_ids):.2f}% coverage")
     elif event_id and not sta_code:
-        cov = f"{coverage}/{len(insp.stations)} stations\n" \
-              f"{1E2*coverage/len(insp.stations):.2f}% coverage\n"
+        append_anno += (f"{coverage}/{len(insp.stations)} stations\n"
+                        f"{1E2*coverage/len(insp.stations):.2f}% coverage\n")
+
+    # Determine min, max and mean misfit for annotation
+    if msftlist:
+        min_misfit = f"{np.min(msftlist):.2f}"
+        max_misfit = f"{np.max(msftlist):.2f}"
+        mean_misfit = f"{np.mean(msftlist):.2f}"
+    else:
+        min_misfit = max_misfit = mean_misfit = "NaN"
 
     # Plot sources and receivers as scatterplots
     sc_events = plt.scatter(event_x, event_y, marker="o", c="w",
@@ -313,16 +322,16 @@ def misfit_by_path(insp, model, event_id=None, sta_code=None,
     plt.ticklabel_format(style="sci", axis="both", scilimits=(0, 0))
     plt.xlabel("Easting (m)")
     plt.ylabel("Northing (m)")
-    plt.title("Source-Receiver misfit")
-
+    plt.title(f"Source-Receiver misfit; N={len(msftlist)}")
+    
     anno = (f"model: {model}\n"
             f"event: {event_id}\n"
             f"station: {sta_code}\n"
-            f"min misfit: {np.min(msftlist):.2f}\n"
-            f"max misfit: {np.max(msftlist):.2f}\n"
-            f"mean misfit: {np.mean(msftlist):.2f}\n")
-    if cov:
-        anno += cov
+            f"min misfit: {min_misfit}\n"
+            f"max misfit: {max_misfit}\n"
+            f"mean misfit: {mean_misfit}\n")
+    if append_anno:
+        anno += append_anno
 
     annotate_txt(ax, anno, **kwargs)
 
@@ -595,7 +604,7 @@ def hover_on_plot(f, ax, obj, values, dissapear=False):
     return hover
 
 
-def annotate_txt(ax, txt, anno_location="lower-right"):
+def annotate_txt(ax, txt, anno_location="lower-right", **kwargs):
     """
     Convenience function to annotate some information
 

@@ -49,18 +49,14 @@ class Inspector:
         if tag is not None:
             self.load(tag)
         else:
-            for dsfid in glob(os.path.join(path_to_datasets, "*.h5")):
-                try:
-                    with pyasdf.ASDFDataSet(dsfid) as ds:
-                        if windows:
-                            self.get_windows(ds)
-                        if srcrcv:
-                            self.get_srcrcv(ds)
-                        if misfits:
-                            self.get_misfits(ds)
-                except OSError:
-                    print(f"{dsfid} already open")
-                    continue
+            dsfids = glob(os.path.join(path_to_datasets, "*.h5"))
+            for i, dsfid in enumerate(dsfids):
+                print(f"{dsfid}, {i}/{len(dsfids)}", end="...") 
+                status = self.append(dsfid, windows, srcrcv, misfits)
+                if status:
+                    print("done")
+                else:
+                    print("error")
 
     @property
     def event_ids(self):
@@ -116,6 +112,33 @@ class Inspector:
     def depths(self):
         """Return a dictionary of event depths"""
         return self.event_info("depth_m")
+
+    def append(self, dsfid, windows=True, srcrcv=True, misfits=True):
+        """
+        Append a new pyasdf.ASDFDataSet file to the current set of internal
+        statistics
+
+        :type dsfid: str
+        :param dsfid: fid of the dataset
+        :type windows: bool
+        :param windows: get window info
+        :type srcrcv: bool
+        :param srcrcv: get srcrcv info
+        :type misfits: bool
+        :param misfits: get misfit info
+        """
+        try:
+            with pyasdf.ASDFDataSet(dsfid) as ds:
+                if windows:
+                    self.get_windows(ds)
+                if srcrcv:
+                    self.get_srcrcv(ds)
+                if misfits:
+                    self.get_misfits(ds)
+                return 1
+        except OSError:
+            print(f"{dsfid} already open")
+            return 0
 
     def event_info(self, choice):
         """
@@ -407,11 +430,10 @@ class Inspector:
             "windows_by_distance": visuals.windows_by_distance,
             "misfit_by_distance": visuals.misfit_by_distance,
             "misfit_by_path": visuals.misfit_by_path,
-            "window_by_path": visuals.window_by_path,
             "event_depths": visuals.event_depths
             }
 
-        assert(choice in choices), f"choice must be in {choices.keys}"
+        assert(choice in choices), f"choice must be in {choices.keys()}"
         choices[choice](self, **kwargs)
 
 
