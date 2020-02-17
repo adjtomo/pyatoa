@@ -808,18 +808,21 @@ class Manager:
         # Run Pyadjoint to retrieve adjoint source objects
         total_misfit, adjoint_sources = 0, {}
         for comp, adj_win in adjoint_windows.items():
-            adj_src = pyadjoint.calculate_adjoint_source(
-                adj_src_type=src_type(self.config.adj_src_type),
-                config=self.config.pyadjoint_config,
-                observed=self.st_obs.select(component=comp)[0],
-                synthetic=self.st_syn.select(component=comp)[0],
-                window=adj_win, plot=False
-                )
+            try:
+                adj_src = pyadjoint.calculate_adjoint_source(
+                    adj_src_type=src_type(self.config.adj_src_type),
+                    config=self.config.pyadjoint_config,
+                    observed=self.st_obs.select(component=comp)[0],
+                    synthetic=self.st_syn.select(component=comp)[0],
+                    window=adj_win, plot=False
+                    )
 
-            # Save adjoint sources in dictionary object. Sum total misfit
-            adjoint_sources[comp] = adj_src
-            logger.info(f"{adj_src.misfit:.3f} misfit for comp {comp}")
-            total_misfit += adj_src.misfit
+                # Save adjoint sources in dictionary object. Sum total misfit
+                adjoint_sources[comp] = adj_src
+                logger.info(f"{adj_src.misfit:.3f} misfit for comp {comp}")
+                total_misfit += adj_src.misfit
+            except IndexError:
+                continue
 
         # Save adjoint source internally for plotting
         self.adj_srcs = adjoint_sources
