@@ -23,6 +23,7 @@
       how to write their new preprocess function
 - [ ] Fixed windowing might encounter some problems because the synthetic trace is changing, so the values of max_cc_, cc_shift and dlnA       are not being re-evaluated. Can this be remedied?
 - [ ] Weighting adjoint sources by station proximity?
+- [ ] ability to turn off saving for pyasdf dataset
 
 #### ASDF
 - [ ] ASDF export all data to directory structure, saving waveforms, inventories, aux data etc into individual 
