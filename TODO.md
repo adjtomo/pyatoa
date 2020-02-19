@@ -41,6 +41,7 @@
 - [ ] Plot output optim only show models, maybe iterations as smaller points, or plot both
 - [ ] VTK plotter
 - [ ] Remove rcParams and explicitely set all plot attributes in calls
+- [ ] Windows extend the height of the waveform plot
 
 #### Pyaflowa:
 - [ ] fix windows within a single iteration
