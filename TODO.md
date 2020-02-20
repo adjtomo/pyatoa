@@ -51,4 +51,5 @@
 - [ ] if given parameters (i.e. misspelled) are not used, notify the user somehow, maybe in seisflows
 - [ ] auxiliary_data.Statistics: store time shift (min, max, time shift components), format misfit with 'e' notation not 'f'
 - [ ] auxiliary_data store windows and adjoint sources by step lengths? Or just store s00 because that is the "initial" step
+- [ ] allow reading data from previously collected hdf5 files from other inversions, to avoid recollecting obs data. would need to sanitize the datasets so that none of the other data gets in the way
 
