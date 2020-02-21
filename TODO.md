@@ -5,6 +5,7 @@
 - [ ] Pyflex value Error is being thrown (pyflex.window_selector() line 427 np.abs(noise).max() zero size array)
 - [ ] Pyaflowa exit gracefully if no data is gathered for an entire event, currently finalize is throwing uncaught errors
 - [ ] Fix: waveform plots not deleted if theyre not included in the composite pdf
+- [ ] Pyaflowa waveform composites aren't made if a thrifty inversion is done because it skips s00
 
 #### General
 - [ ] Proper docs for all functions. methods, classes 
