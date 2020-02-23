@@ -12,13 +12,14 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
   
 from obspy.signal.cross_correlation import correlate, xcorr_max
-from pyatoa import Config, Manager
+from pyatoa import Config, Manager, logger
 from pyatoa.utils.asdf.extractions import windows_from_ds
 from pyatoa.utils.tools.srcrcv import gcd_and_baz, seismogram_length
 
 mpl.rcParams['lines.linewidth'] = 1.5
 
 warnings.simplefilter("ignore")
+logger.setLevel("DEBUG")
 
 
 def setup_plot(nrows, ncols, label_units=False):
@@ -102,7 +103,7 @@ def center_on_peak_energy(st, thresh_value=0.1):
     return start_index, end_index
 
 
-def plot_iterative_waveforms(datasets_path, output_dir, min_period, max_period,
+def plot_iterative_waveforms(dsfid, output_dir, min_period, max_period,
                              event_id="*.h5", select_models=[],
                              select_stations=[], synthetics_only=False,
                              trace_length=[], cross_corr=False,
@@ -110,8 +111,8 @@ def plot_iterative_waveforms(datasets_path, output_dir, min_period, max_period,
     """
     Main function to plot waveforms iterative based on model updates
 
-    :type datasets_path: str
-    :param datasets_path: path to directory containing pyasdf datasets
+    :type dsfid: str
+    :param dsfid: path to dataset
     :type output_dir: str
     :param output_dir: path to save the figure to
     :type min_period: float
@@ -142,7 +143,7 @@ def plot_iterative_waveforms(datasets_path, output_dir, min_period, max_period,
     """
     # Plotting parameters
     dpi = 125
-    figsize = (11.69, 8.27)
+    figsize = (10, 10)
     z = 5
     color_list = ["r", "b", "g"]
     unit_dict = {"DISP": "displacement [m]",
@@ -150,26 +151,26 @@ def plot_iterative_waveforms(datasets_path, output_dir, min_period, max_period,
                  "ACC": "acceleration [m/s^2]"}
 
     # Read in each of the datasets
-    for dataset in glob.glob(os.path.join(datasets_path, event_id)):
-        with pyasdf.ASDFDataSet(dataset) as ds:
-            event_id = ds.events[0].resource_id.id.split('/')[-1]
+    with pyasdf.ASDFDataSet(dsfid) as ds:
+        event_id = ds.events[0].resource_id.id.split('/')[-1]
 
-            # User defined filtering parameters
-            config = Config(
-                event_id=event_id,
-                model_number=0,
-                min_period=min_period,
-                max_period=max_period,
-                filter_corners=4,
-                rotate_to_rtz=False,
-                unit_output="DISP",
-                synthetics_only=synthetics_only
-            )
+        # User defined filtering parameters
+        config = Config(
+            event_id=event_id,
+            model_number=0,
+            min_period=min_period,
+            max_period=max_period,
+            filter_corners=4,
+            rotate_to_rtz=False,
+            unit_output="DISP",
+            synthetics_only=synthetics_only
+        )
 
-            # Loop through the available stations
-            for sta in ds.waveforms.list():
-                if select_stations and (sta not in select_stations):
-                    continue 
+        # Loop through the available stations
+        for sta in ds.waveforms.list():
+            if select_stations and (sta not in select_stations):
+                continue 
+            try:
                 print(sta)
                 mgmt = Manager(config=config, empty=True)
                 mgmt.inv = ds.waveforms[sta].StationXML
@@ -188,7 +189,7 @@ def plot_iterative_waveforms(datasets_path, output_dir, min_period, max_period,
                         mgmt.standardize()
                         mgmt.preprocess()
                         synthetics[syn_tag] = mgmt.st_syn.copy()
-                        windows[syn_tag] = windows_from_ds(
+                        windows[syn_tag], _ = windows_from_ds(
                                                ds, model=syn_tag.split('_')[-1],
                                                net=sta.split('.')[0],
                                                sta=sta.split('.')[1])
@@ -327,38 +328,57 @@ def plot_iterative_waveforms(datasets_path, output_dir, min_period, max_period,
                 
                 plt.close()
 
+            except Exception as e:
+                print(e)
+                continue
+
 
 if __name__ == "__main__":
     try:
         # Set parameters here 
-        datasets_path = "./"
+        datasets_path = "./hdf5"
 
         # Path to save figures to, if None given, figures wil not be saved
         output_dir = "./waveforms"
         
         # If you only want to choose one event in your directory, wildcards okay
-        event_id = "*.h5"
+        event_ids = ["2019p738432.h5", "2016p858279.h5", "2013p142607.h5",
+                     "2019p304574.h5", "2017p059122.h5", "2013p614135.h5", 
+                     "2019p754447.h5", "2016p858279.h5", "2014p715167.h5"]
 
         # If you don't want to plot all models, can add e.g. 'synthetic_m00' 
         select_models = ['synthetic_m00', 'synthetic_m09']
 
         # Pick stations, if left empty, will plot all stations in dataset
-        select_stations = ['NZ.KNZ']
+        select_stations = ["NZ.MKAZ", "NZ.BKZ", "NZ.WEL", "NZ.HIZ", "NZ.KHZ", 
+                           "NZ.WAZ", "NZ.TLZ", "NZ.TSZ",]
 
         # list of two ints, "dynamic" (default) or "center_on_peak"
-        trace_length = [50, 200]
+        trace_length = "dynamic"
 
         # Synthetic only tests need to be treated differently
         synthetics_only = True
+
+        # Period range
+        min_period = 10
+        max_period = 30
 
         # User-defined figure parameters
         label_units = True  # label the units of the traces, otherwise blank
         cross_corr = True  # cross-correlate traces and annotate max correlation
         show = False
 
-        plot_iterative_waveforms(datasets_path, output_dir, event_id,
-                                 select_models, select_stations, 
-                                 synthetics_only, trace_length, cross_corr,
-                                 label_units, show)
+        for event_id in event_ids:
+            for dsfid in glob.glob(os.path.join(datasets_path, event_id)):
+                plot_iterative_waveforms(dsfid=dsfid, output_dir=output_dir, 
+                                         min_period=min_period, 
+                                         max_period=max_period, 
+                                         event_id=event_id, 
+                                         select_models=select_models,
+                                         select_stations=select_stations, 
+                                         synthetics_only=synthetics_only,
+                                         trace_length=trace_length, 
+                                         cross_corr=cross_corr,
+                                         label_units=label_units, show=show)
     except KeyboardInterrupt:
         sys.exit()
