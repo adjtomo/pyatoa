@@ -45,11 +45,10 @@ def parse_json(fid):
 
 if __name__ == "__main__":
     # Set pathanames here
-    basepath = ("/scale_wlg_nobackup/filesets/nobackup/nesi00263/bchow/tomo/"
-                "seisflows/checkerboard/30event_75e1785/")
-    fid_list = [os.path.join(basepath, "cc/pyatoa.io/misfits.json"),
-                os.path.join(basepath, "mtm/pyatoa.io/misfits.json"),
-                os.path.join(basepath, "both/pyatoa.io/misfits.json")
+    basepath = "./"
+    fid_list = [os.path.join(basepath, "30cc/pyatoa.io/misfits.json"),
+                os.path.join(basepath, "30mtm/pyatoa.io/misfits.json"),
+                # os.path.join(basepath, "both/pyatoa.io/misfits.json")
                 ]
 
     # Colors and labels for the various files, must match length fid_list

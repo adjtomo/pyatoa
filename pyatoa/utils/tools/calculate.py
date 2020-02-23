@@ -13,6 +13,7 @@ def abs_max(array):
     :rtype: float
     :return: absolute maximum of array
     """
+    array = np.array(array)
     return max(array.min(), array.max(), key=abs)
 
 
