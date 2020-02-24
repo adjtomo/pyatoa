@@ -22,21 +22,20 @@ def set_pyadjoint_config(min_period, max_period, **kwargs):
                                max_period=max_period
                                )
 
+    # Set these errors False to keep the misfits comparable between different
+    # definitions of the misfit function. These are forced
+    setattr(paconfig, "use_cc_error", False)  # default = True
+    setattr(paconfig, "use_mt_error", False)  # default = True
+
+    # Set based on kwargs
     for key, item in kwargs.items():
         if hasattr(paconfig, key):
             setattr(paconfig, key, item)
-
-    # Hard set a few parameters to make Pyadjoint behave
-    # setattr(paconfig, "ipower_costaper", 8)  # default = 10
 
     # Pure multitaper misfit is 0 min cycle
     # setattr(paconfig, "min_cycle_in_window", 0)  # default = 3
     # setattr(paconfig, "taper_percentage", 0.5)  # default = 0.3
 
-    # Set these errors False to keep the misfits comparable between different
-    # definitions of the misfit function. These are forced
-    setattr(paconfig, "use_cc_error", False)  # default = True
-    setattr(paconfig, "use_mt_error", False)  # default = True
 
     return paconfig
 
@@ -52,9 +51,9 @@ def src_type(choice):
     :rtype: str
     :return: pyadjoint adj_src_type
     """
-    if "cc" in choice:
+    if ("cc" in choice) or ("cross_correlation" in choice):
         adj_src_type = "cc_traveltime_misfit"
-    elif "multitaper" in choice:
+    elif ("multitaper" in choice) or ("mtm" in choice): 
         adj_src_type = "multitaper_misfit"
     else:
         adj_src_type = "waveform"
