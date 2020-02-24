@@ -140,6 +140,8 @@ def window_maker(st_obs, st_syn, config, time_offset_sec=0., windows=None,
                             "left={lft:.1f}s\n"
                             "length={lgt:.1f}s\n"
                             )
+    window_anno_template = ("{ccs:.2f}s\n")
+
 
     # Legend tag for data-synthetic or synthetic-synthetic
     obs_tag = 'OBS'
@@ -177,6 +179,11 @@ def window_maker(st_obs, st_syn, config, time_offset_sec=0., windows=None,
                           np.minimum(length_sec, t[-1])
                           ])
 
+        # Format axes and align with waveforms, before plotting other stuff
+        for AX in [axes[i], twaxes[i]]:
+            format_axis(AX)
+        align_yaxis(axes[i], twaxes[i])
+
         # Bounds for use in setting positions
         xmin, xmax = axes[i].get_xlim()
         ymin, ymax = axes[i].get_ylim()
@@ -205,27 +212,22 @@ def window_maker(st_obs, st_syn, config, time_offset_sec=0., windows=None,
                 # Misfit windows as rectangle; taken from Pyflex
                 tleft = window.left * window.dt + time_offset_sec
                 tright = window.right * window.dt + time_offset_sec
+                # Ensure that the window clears the y-bounds 
                 axes[i].add_patch(Rectangle(
-                    xy=(tleft, ymin), width=tright-tleft, height=ymax-ymin,
-                    color=window_color, alpha=(window.max_cc_value ** 2) * 0.25)
+                    xy=(tleft, ymin*2), width=tright-tleft, 
+                    height=(ymax-ymin)*5, color=window_color, 
+                    alpha=(window.max_cc_value ** 2) * 0.25
+                    )
                 )
                 # Window annotation information: location and text
                 t_anno = (tright - tleft) * 0.025 + tleft
-                y_anno = ymax * 0.2
+                y_anno = window_anno_height * (ymax - ymin) + ymin
+
                 window_anno = window_anno_template.format(
                     mcc=window.max_cc_value,
                     ccs=window.cc_shift * st_obs[0].stats.delta,
                     dln=window.dlnA, lft=tleft, lgt=tright - tleft
                 )
-                # Adjoint source info in window annotation, set height
-                if adj_srcs is not None and plot_adjsrc:
-                    y_anno = window_anno_height * (ymax - ymin) + ymin
-                    if hasattr(adj_srcs[comp], "measurement"):
-                        # Prepend annotation with adjoint source information
-                        window_anno = "type={typ}\nmsft={mft:.1E}\n".format(
-                            typ=adj_srcs[comp].measurement[j]["type"],
-                            mft=adj_srcs[comp].measurement[j]["misfit_dt"]
-                        ) + window_anno
                 # Annotate window information
                 if plot_window_anno:
                     axes[i].annotate(s=window_anno, xy=(t_anno, y_anno),
@@ -303,11 +305,6 @@ def window_maker(st_obs, st_syn, config, time_offset_sec=0., windows=None,
             labels = [l.get_label() for l in lines_for_legend]
             axes[i].legend(lines_for_legend, labels, prop={"size": 9},
                            loc="upper right")
-
-        # Format axes and align
-        for AX in [axes[i], twaxes[i]]:
-            format_axis(AX)
-        align_yaxis(axes[i], twaxes[i])
 
     # TITLE with relevant information
     title = f"{st_obs[0].stats.network}.{st_obs[0].stats.station}"
