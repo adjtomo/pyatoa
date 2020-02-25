@@ -590,14 +590,14 @@ class Artist:
             if model_comp:
                 anno += (f"\n$\mu({model_comp})\pm\sigma({model_comp})$="
                          f"{mu2:.2f}$\pm${std2:.2f}")
-            annotate_txt(ax, anno, "upper-left", fontsize=12, zorder=12) 
+            # annotate_txt(ax, anno, "upper-left", fontsize=12, zorder=12) 
     
         # Finalize plot details
         plt.xlabel(label_dict[choice])
         plt.ylabel("Count")
         if not title:
             title = f"{choice} histogram"
-        plt.title(title)
+        plt.title(anno)
         plt.tick_params(which='both', direction='in', top=True, right=True)
         plt.grid(linewidth=1, linestyle=":", which="both", zorder=1)
         plt.axvline(x=0, ymin=0, ymax=1, linewidth=1.5, c="k", zorder=2, 

@@ -97,7 +97,8 @@ def window_maker(st_obs, st_syn, config, time_offset_sec=0., windows=None,
     # kwargs to control the look of the misfit windows and linecolors
     window_color = kwargs.get("window_color", "orange")
     window_anno_fontsize = kwargs.get("window_anno_fontsize", 8)
-    # window_anno_height is roughly percentage of visible y-axis
+
+    # NOTE: window_anno_height is roughly percentage of visible y-axis
     window_anno_height = kwargs.get("window_anno_height", 0.5)  
     window_anno_rotation = kwargs.get("window_anno_rotation", 0)
     window_anno_fontcolor = kwargs.get("window_anno_fontcolor", "k")
@@ -140,8 +141,6 @@ def window_maker(st_obs, st_syn, config, time_offset_sec=0., windows=None,
                             "left={lft:.1f}s\n"
                             "length={lgt:.1f}s\n"
                             )
-    window_anno_template = ("{ccs:.2f}s\n")
-
 
     # Legend tag for data-synthetic or synthetic-synthetic
     obs_tag = 'OBS'
@@ -178,11 +177,6 @@ def window_maker(st_obs, st_syn, config, time_offset_sec=0., windows=None,
         axes[i].set_xlim([np.maximum(time_offset_sec, -10),
                           np.minimum(length_sec, t[-1])
                           ])
-
-        # Format axes and align with waveforms, before plotting other stuff
-        for AX in [axes[i], twaxes[i]]:
-            format_axis(AX)
-        align_yaxis(axes[i], twaxes[i])
 
         # Bounds for use in setting positions
         xmin, xmax = axes[i].get_xlim()
@@ -305,6 +299,11 @@ def window_maker(st_obs, st_syn, config, time_offset_sec=0., windows=None,
             labels = [l.get_label() for l in lines_for_legend]
             axes[i].legend(lines_for_legend, labels, prop={"size": 9},
                            loc="upper right")
+
+        # Format axes and align with waveforms, before plotting other stuff
+        for AX in [axes[i], twaxes[i]]:
+            format_axis(AX)
+        align_yaxis(axes[i], twaxes[i])
 
     # TITLE with relevant information
     title = f"{st_obs[0].stats.network}.{st_obs[0].stats.station}"
