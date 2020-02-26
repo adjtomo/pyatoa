@@ -22,14 +22,15 @@ def set_pyadjoint_config(min_period, max_period, **kwargs):
                                max_period=max_period
                                )
 
+    # Hard set these errors False to keep the misfits comparable between
+    # different definitions of the misfit function
+    setattr(paconfig, "use_cc_error", True)  # default = True
+    setattr(paconfig, "use_mt_error", False)  # default = True
+
     for key, item in kwargs.items():
         if hasattr(paconfig, key):
             setattr(paconfig, key, item)
 
-    # Hard set these errors False to keep the misfits comparable between
-    # different definitions of the misfit function
-    setattr(paconfig, "use_cc_error", False)  # default = True
-    setattr(paconfig, "use_mt_error", False)  # default = True
 
     return paconfig
 
