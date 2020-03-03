@@ -13,6 +13,7 @@
 - [ ] ipynb in gitignore
 - [ ] remove large data files from test data
 - [ ] make model number, step count formatters standard package wide functions
+- [ ] check unused kwargs in the config in the case of typos
 
 #### Manager
 - [ ] write `__call__` attribute
