@@ -33,6 +33,7 @@
       waveform plots, if a datset already exists
 - [ ] Processing provenance saved into auxiliary_data?
 - [ ] Replace station lat lon getters with ASDFDataSet.get_all_coordinates()
+- [ ] Retain step count information for MisfitWindows and AdjointSources
 
 #### Misc.
 - [ ] Move all hardcoded stuff into plugins, e.g. fault_coordinates, geonet_moment_tensor
