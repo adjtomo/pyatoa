@@ -13,6 +13,7 @@
 - [ ] ipynb in gitignore
 - [ ] remove large data files from test data
 - [ ] make model number, step count formatters standard package wide functions
+- [ ] check unused kwargs in the config in the case of typos
 
 #### Manager
 - [ ] write `__call__` attribute
@@ -32,6 +33,7 @@
       waveform plots, if a datset already exists
 - [ ] Processing provenance saved into auxiliary_data?
 - [ ] Replace station lat lon getters with ASDFDataSet.get_all_coordinates()
+- [ ] Retain step count information for MisfitWindows and AdjointSources
 
 #### Misc.
 - [ ] Move all hardcoded stuff into plugins, e.g. fault_coordinates, geonet_moment_tensor
@@ -42,7 +44,7 @@
 - [ ] Plot output optim only show models, maybe iterations as smaller points, or plot both
 - [ ] VTK plotter
 - [ ] Remove rcParams and explicitely set all plot attributes in calls
-- [ ] Windows extend the height of the waveform plot
+- [x] Windows extend the height of the waveform plot
 
 #### Pyaflowa:
 - [ ] fix windows within a single iteration
@@ -53,4 +55,6 @@
 - [ ] auxiliary_data.Statistics: store time shift (min, max, time shift components), format misfit with 'e' notation not 'f'
 - [ ] auxiliary_data store windows and adjoint sources by step lengths? Or just store s00 because that is the "initial" step
 - [ ] allow reading data from previously collected hdf5 files from other inversions, to avoid recollecting obs data. would need to sanitize the datasets so that none of the other data gets in the way
+- [ ] make rcvs.vtk for all receivers
+- [ ] make srcs_w_depth.vtk, and perhaps with depth as planar slices
 
