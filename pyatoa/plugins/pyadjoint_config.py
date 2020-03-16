@@ -9,7 +9,8 @@ from pyadjoint import Config as pyadjointConfig
 def set_pyadjoint_config(min_period, max_period, **kwargs):
     """
     Set the Pyadjoint config based on Pyatoa config parameter.
-    Kwargs can be fed to the Pyadjoint Config object
+    Kwargs can be fed to the Pyadjoint Config object.
+    Return unnused kwargs.
 
     :type min_period: float
     :param min_period: min period of the data
@@ -22,11 +23,14 @@ def set_pyadjoint_config(min_period, max_period, **kwargs):
                                max_period=max_period
                                )
 
+    unused_kwargs = []
     for key, item in kwargs.items():
         if hasattr(paconfig, key):
             setattr(paconfig, key, item)
+        else:
+            unused_kwargs.append(key)
 
-    return paconfig
+    return paconfig, unused_kwargs
 
 
 def src_type(choice):

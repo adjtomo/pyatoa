@@ -157,6 +157,10 @@ class Config:
             str_out += f"\t{key+':':<25}{item}\n"
         return str_out
 
+    def __repr__(self):
+        """Simple call string representation"""
+        return self.__str__()
+
     def _check(self, **kwargs):
         """
         A check to make sure that the configuration parameters are set properly
@@ -206,17 +210,15 @@ class Config:
                 "window amplitude ratio should be < 1"
 
         # Set Pyflex confict through wrapper function
-        self.pyflex_config = set_pyflex_config(choice=self.pyflex_map,
-                                               min_period=self.min_period,
-                                               max_period=self.max_period,
-                                               **kwargs
-                                               )
+        self.pyflex_config, unused_kwargs_pf = set_pyflex_config(
+            choice=self.pyflex_map, min_period=self.min_period,
+            max_period=self.max_period, **kwargs
+        )
 
         # Set Pyadjoint Config
-        self.pyadjoint_config = set_pyadjoint_config(min_period=self.min_period,
-                                                     max_period=self.max_period,
-                                                     **kwargs
-                                                     )
+        self.pyadjoint_config, unused_kwargs_pa = set_pyadjoint_config(
+            min_period=self.min_period, max_period=self.max_period, **kwargs
+        )
 
     def write(self, write_to, fmt=None):
         """

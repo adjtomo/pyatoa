@@ -18,6 +18,7 @@ from os.path import basename
 from obspy.signal.filter import envelope
 
 from pyatoa import logger
+from pyatoa.core.config import Config
 from pyatoa.core.gatherer import Gatherer
 from pyatoa.plugins.pyadjoint_config import src_type
 
@@ -40,7 +41,7 @@ class Manager:
     Workflow management function that internally calls on all other objects
     within the package in order to gather, process and analyze waveform data.
     """
-    def __init__(self, config, ds=None, empty=True, station_code=None,
+    def __init__(self, config=None, ds=None, empty=True, station_code=None,
                  event=None, st_obs=None, st_syn=None, inv=None, windows=None,
                  staltas=None, adj_srcs=None):
         """
@@ -76,7 +77,10 @@ class Manager:
 
         """
         # Main workflow requirements
-        self.config = config
+        if config:
+            self.config = config
+        else:
+            self.config = Config()
         self.ds = ds
         self.gatherer = None
         self.station_code = station_code
@@ -135,6 +139,9 @@ class Manager:
                 f"\tmisfit windows (windows):     {self._num_windows}\n"
                 f"\tmisfit (adj_srcs):            {self._misfit:.2E}\n"
                 )
+
+    def __repr__(self):
+        return self.__str__()
     
     @property
     def st(self):

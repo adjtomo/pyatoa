@@ -71,11 +71,14 @@ def set_pyflex_config(min_period, max_period, choice=None, **kwargs):
 
     # Kwargs can also be passed from the pyatoa.Config object to avoid having to
     # define pre-set values. Kwargs will override preset values
+    unused_kwargs = []
     for key, item in kwargs.items():
         if hasattr(pfconfig, key):
             setattr(pfconfig, key, item)
+        else:
+            unused_kwargs.append(key)
 
-    return pfconfig
+    return pfconfig, unused_kwargs
 
 
 def set_pyflex_station_event(inv, event):
