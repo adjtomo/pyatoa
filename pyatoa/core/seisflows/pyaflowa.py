@@ -275,7 +275,7 @@ class Pyaflowa:
                           self.int_paths["misfit_file"])
 
         # Only run this for the first 'step', otherwise we get too many pdfs
-        if self.par["combine_imgs"] and (self.step_count == "s00"):
+        if self.par["combine_imgs"]:
             print("\tcreating composite pdf...")
 
             # Create the name of the pdf to save to

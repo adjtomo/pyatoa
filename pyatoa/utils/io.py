@@ -319,7 +319,7 @@ def create_srcrcv_vtk_single(ds, model, pathout, event_separate=False,
     :param event_depth: if True, uses the real event depth, if False, places
         event at 5km above the surface
     """
-    from pyatoa.utils.tools.srcrcv import lonlat_utm
+    from pyatoa.utils.srcrcv import lonlat_utm
 
     # Check that this can be run, if dataset contains adjoint sources
     if not bool(ds.auxiliary_data.AdjointSources):
@@ -407,7 +407,7 @@ def create_srcrcv_vtk_multiple(pathin, pathout, model, utm_zone=-60,
         event at 5km above the surface
     """
     import pyasdf
-    from pyatoa.utils.tools.srcrcv import lonlat_utm
+    from pyatoa.utils.srcrcv import lonlat_utm
 
     vtk_header = ("# vtk DataFile Version 2.0\n"
                   "Source and Receiver VTK file from Pyatoa\n"
@@ -649,8 +649,8 @@ def tile_combine_imgs(ds, wavs_path, maps_path, save_pdf_to,
     :return:
     """
     # Intra-function imports because this is usually only called once in a while
-    from pyatoa.utils.visuals.plot_tools import tile_imgs, imgs_to_pdf
-    from pyatoa.utils.tools.srcrcv import sort_by_backazimuth
+    from pyatoa.visuals.plot_tools import tile_imgs, imgs_to_pdf
+    from pyatoa.utils.srcrcv import sort_by_backazimuth
 
     # Set the template filenames to look for/ use
     wav_fid = "wav_{sta}.png"
@@ -676,12 +676,14 @@ def tile_combine_imgs(ds, wavs_path, maps_path, save_pdf_to,
         if os.path.exists(map_name) and os.path.exists(wav_name):
             tile_imgs(fids=[map_name, wav_name], fid_out=tile_name)
             tile_names.append(tile_name)
-            # remove old images to save space
-            if purge_wavs:
-                os.remove(wav_name)
         else:
             raise FileNotFoundError(
                 f"Either {wav_name} or {map_name} doesn't exist when it should")
+
+    # remove old waveform images
+    if purge_wavs:
+        for f in files:
+            os.remove(f)
 
     # combine the tiles into a single .pdf
     # sort stations by backazimuth for easier visualization
