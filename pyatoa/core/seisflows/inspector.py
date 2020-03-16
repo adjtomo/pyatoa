@@ -11,10 +11,10 @@ from glob import glob
 from obspy import UTCDateTime
 from obspy.geodetics import gps2dist_azimuth
 
-from pyatoa.utils.tools.calculate import abs_max
-from pyatoa.utils.tools.srcrcv import eventid, lonlat_utm
+from pyatoa.utils.calculate import abs_max
+from pyatoa.utils.srcrcv import eventid, lonlat_utm
 from pyatoa.utils.asdf.extractions import count_misfit_windows
-from pyatoa.plugins.seisflows.artist import Artist
+from pyatoa.core.seisflows.artist import Artist
 
 
 class Inspector(Artist):

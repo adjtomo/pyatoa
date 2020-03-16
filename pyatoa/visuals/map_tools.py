@@ -17,8 +17,8 @@ from mpl_toolkits.basemap import Basemap
 from obspy.imaging.beachball import beach
 from scipy.interpolate import griddata
 
-from pyatoa.utils.tools.srcrcv import gcd_and_baz
-from pyatoa.utils.tools.calculate import myround
+from pyatoa.utils.srcrcv import gcd_and_baz
+from pyatoa.utils.calculate import myround
 
 
 def legend():

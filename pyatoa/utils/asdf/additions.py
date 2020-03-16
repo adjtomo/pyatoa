@@ -32,7 +32,7 @@ def write_stats_to_asdf(ds, model, step):
 
 def write_adj_src_to_asdf(adj_src, ds, tag, time_offset):
     """
-    NOTE: Stolen and modified from Pyadjoint source code:
+    NOTE: Borrowed and modified from Pyadjoint source code:
           pyadjoint.adjoint_source.write_to_asdf()
 
     Writes the adjoint source to an ASDF file.

@@ -12,7 +12,7 @@ from pyatoa.utils.gather.internal_fetcher import Fetcher
 from pyatoa.utils.gather.external_getter import Getter
 from pyatoa.utils.gather.grab_auxiliaries import grab_geonet_moment_tensor,\
     grab_gcmt_moment_tensor
-from pyatoa.utils.tools.srcrcv import generate_focal_mechanism
+from pyatoa.utils.srcrcv import generate_focal_mechanism
 
 
 class Gatherer:

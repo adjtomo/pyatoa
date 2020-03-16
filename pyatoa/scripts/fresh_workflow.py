@@ -12,8 +12,7 @@ import logging
 import traceback
 import numpy as np
 from pyatoa.utils.asdf.deletions import clean_ds
-from pyatoa.utils.tools.io import create_stations_adjoint, \
-    write_adj_src_to_ascii
+from pyatoa.utils.io import create_stations_adjoint, write_adj_src_to_ascii
 
 # User defined event id(s) and location of STATION file from Specfem3D
 event_ids = [""]

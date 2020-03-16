@@ -4,7 +4,7 @@ Functions used to create standard statistical plots for the Inspector
 import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
-from pyatoa.utils.tools.calculate import normalize_a_to_b
+from pyatoa.utils.calculate import normalize_a_to_b
 
 
 class Artist:

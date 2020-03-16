@@ -12,9 +12,8 @@ import matplotlib.pyplot as plt
 
 from matplotlib.patches import Rectangle
 
-from pyatoa.utils.tools.calculate import normalize_a_to_b, abs_max
-from pyatoa.utils.visuals.plot_tools import align_yaxis, pretty_grids, \
-    format_axis
+from pyatoa.utils.calculate import normalize_a_to_b, abs_max
+from pyatoa.visuals.plot_tools import align_yaxis, pretty_grids, format_axis
 
 
 def setup_plot(number_of, twax=True):

@@ -10,7 +10,7 @@ convolutions
 """
 import numpy as np
 from pyatoa import logger
-from pyatoa.utils.tools.process import is_preprocessed, change_syn_units
+from pyatoa.utils.process import is_preprocessed, change_syn_units
 
 
 def scale_beacon_amplitudes(st):

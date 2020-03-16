@@ -23,14 +23,14 @@ from pyatoa.plugins.pyadjoint_config import src_type
 
 from pyatoa.utils.asdf.additions import write_adj_src_to_asdf
 from pyatoa.utils.asdf.extractions import windows_from_ds
-from pyatoa.utils.tools.srcrcv import gcd_and_baz, seismogram_length
-from pyatoa.utils.tools.format import create_window_dictionary, channel_codes
-from pyatoa.utils.tools.calculate import abs_max
-from pyatoa.utils.tools.process import preproc, trimstreams, stf_convolve, \
-    zero_pad_stream, match_npts
+from pyatoa.utils.srcrcv import gcd_and_baz, seismogram_length
+from pyatoa.utils.format import create_window_dictionary, channel_codes
+from pyatoa.utils.calculate import abs_max
+from pyatoa.utils.process import (preproc, trimstreams, stf_convolve,
+                                  zero_pad_stream, match_npts)
 
-from pyatoa.utils.visuals.mapping import manager_map
-from pyatoa.utils.visuals.waveforms import window_maker
+from pyatoa.visuals.mapping import manager_map
+from pyatoa.visuals.waveforms import window_maker
 
 
 class Manager:

@@ -19,16 +19,16 @@ import numpy as np
 
 from pyatoa.utils.asdf.deletions import clean_ds
 from pyatoa.utils.asdf.additions import write_stats_to_asdf
-from pyatoa.utils.visuals.statistics import plot_output_optim
-from pyatoa.utils.visuals.mapping import event_misfit_map
-from pyatoa.utils.visuals.plot_tools import imgs_to_pdf
-from pyatoa.utils.tools.io import (create_stations_adjoint, write_misfit_json,
-                                   write_adj_src_to_ascii, write_misfit_stats,
-                                   tile_combine_imgs,
-                                   create_srcrcv_vtk_multiple)
+from pyatoa.visuals.statistics import plot_output_optim
+from pyatoa.visuals.mapping import event_misfit_map
+from pyatoa.visuals.plot_tools import imgs_to_pdf
+from pyatoa.utils.io import (create_stations_adjoint, write_misfit_json,
+                             write_adj_src_to_ascii, write_misfit_stats,
+                             tile_combine_imgs,
+                             create_srcrcv_vtk_multiple)
 
 # Overwrite the preprocessing function
-from pyatoa.plugins.nz.process import preproc 
+from pyatoa.plugins.new_zealand.process import preproc
 
 
 class Pyaflowa:

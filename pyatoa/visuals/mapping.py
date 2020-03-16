@@ -4,12 +4,14 @@ Mapping functionality with Basemap
 """
 import matplotlib.pyplot as plt
 from numpy import ndarray
-from pyatoa.utils.tools.srcrcv import gcd_and_baz
+from pyatoa.utils.srcrcv import gcd_and_baz
 from pyatoa.utils.asdf.extractions import count_misfit_windows, sum_misfits
-from pyatoa.utils.visuals import map_plugins
-from pyatoa.utils.visuals.map_tools import initiate_basemap, plot_stations,\
-    plot_stations_simple, event_beachball, interpolate_and_contour, \
-    connect_source_receiver, annotate_srcrcv_information
+from pyatoa.plugins.new_zealand import map_plugins
+from pyatoa.visuals.map_tools import (initiate_basemap, plot_stations,
+                                      plot_stations_simple, event_beachball,
+                                      interpolate_and_contour,
+                                      connect_source_receiver,
+                                      annotate_srcrcv_information)
 
 
 def default_kwargs(**kwargs):
