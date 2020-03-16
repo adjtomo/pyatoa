@@ -268,9 +268,6 @@ class Pyaflowa:
         write_misfit_stats(ds, config.model_number, self.int_paths["misfits"])
 
         print("writing files for internal use")
-        print("\twriting stats to ASDF file...")
-        write_stats_to_asdf(ds, config.model_number, self.step_count)
-
         print("\twriting misfits.json to disk...")
         write_misfit_json(ds, self.model_number, self.step_count,
                           self.int_paths["misfit_file"])
