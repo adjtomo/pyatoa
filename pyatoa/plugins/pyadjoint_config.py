@@ -21,21 +21,10 @@ def set_pyadjoint_config(min_period, max_period, **kwargs):
     paconfig = pyadjointConfig(min_period=min_period,
                                max_period=max_period
                                )
-
-    # Set these errors False to keep the misfits comparable between different
-    # definitions of the misfit function. These are forced
-    setattr(paconfig, "use_cc_error", False)  # default = True
-    setattr(paconfig, "use_mt_error", False)  # default = True
-
-    # Set based on kwargs
+    # Set based on kwargs fed in from Pyatoa Config
     for key, item in kwargs.items():
         if hasattr(paconfig, key):
             setattr(paconfig, key, item)
-
-    # Pure multitaper misfit is 0 min cycle
-    # setattr(paconfig, "min_cycle_in_window", 0)  # default = 3
-    # setattr(paconfig, "taper_percentage", 0.5)  # default = 0.3
-
 
     return paconfig
 
