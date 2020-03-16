@@ -7,6 +7,7 @@ Fed into the processor class for workflow management, and also used for
 information sharing between objects and functions.
 """
 import yaml
+import warnings
 from pyatoa.plugins.pyflex_config import set_pyflex_config
 from pyatoa.plugins.pyadjoint_config import set_pyadjoint_config
 
@@ -219,6 +220,11 @@ class Config:
         self.pyadjoint_config, unused_kwargs_pa = set_pyadjoint_config(
             min_period=self.min_period, max_period=self.max_period, **kwargs
         )
+        for kwarg in unused_kwargs_pf:
+            if kwarg in unused_kwargs_pa:
+                warnings.warn(f"'{kwarg}' is not a keyword argument in Pyatoa, "
+                              f"Pyflex or Pyadjoint. Is this is a typo?",
+                              UserWarning)
 
     def write(self, write_to, fmt=None):
         """
