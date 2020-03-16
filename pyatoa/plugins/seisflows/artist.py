@@ -711,15 +711,23 @@ class Artist:
 
         plt.show()
 
-    def convergence(self, choice="iter", show=True, save=None):
+    def convergence(self, choice="iter", linewidth=2., markersize=8., c="k",
+                    show=True, save=None):
         """
         Plot the convergence rate over the course of an inversion
 
-        :return:
+        :type choice: str
+        :param choice: choice between plotting "step" lengths or "iter" ations
+        :type linewidth: float
+        :param linewidth: line width for the connecting lines
+        :type markersize: float
+        :param markersize: marker size of the points
+        :type show: bool
+        :param show: show the plot after making it
+        :type save: str
+        :param save: file id to save the figure to
         """
-        linewidth=2.
-        markersize=8.
-
+        # Set up the values to plot
         misfits = self.sum_misfits()
         windows = self.cum_win_len()
         models = list(misfits.keys())
@@ -727,21 +735,22 @@ class Artist:
         misfits = list(misfits.values())
         windows = list(windows.values())
 
-        f, ax1 = plt.subplots(figsize=(8,6))
+        f, ax1 = plt.subplots(figsize=(8, 6))
         ax2 = ax1.twinx()
-        ax1.plot(xvalues, misfits, 'o-', c="crimson", linewidth=linewidth,
+        ax1.plot(xvalues, misfits, 'o-', c=c, linewidth=linewidth,
                  markersize=markersize)
-        ax2.plot(xvalues, windows, 'v--', c="yellowgreen", linewidth=linewidth,
+        ax2.plot(xvalues, windows, 'v--', c=c, linewidth=linewidth,
                  markersize=markersize)
+
         ax1.set_xlabel("Model Number")
         ax1.set_ylabel("Total Normalized Misfiti (solid)")
         ax2.set_ylabel("Cumulative Window Length [s] (dashed)", rotation=270, 
                        labelpad=15.)
-        ax2.ticklabel_format(style="sci", axis="y", scilimits=(0,0))
+        ax2.ticklabel_format(style="sci", axis="y", scilimits=(0, 0))
         ax1.grid(True, alpha=0.5, linestyle='--', linewidth=1.)
 
         # Change the labels to the model numbers
-        labels = [item.get_text() for item in ax.get_xticklabels()]
+        labels = [item.get_text() for item in ax1.get_xticklabels()]
         for i, model in enumerate(models):
             labels[i] = model
         ax1.set_xticklabels(labels)

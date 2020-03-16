@@ -1,13 +1,14 @@
 """
 A class to analyze the outputs of a Seisflows inversion by
-looking at misfit information en masse and producing text files
-and images related to analysis of data
+looking at misfit information en masse and producing dictionary objects that
+can quickly be queried by built-in functions to look at stats and figures to
+understand the progress of an inversion
 """
 import os
 import json
 import pyasdf
-import numpy as np
 from glob import glob
+from obspy import UTCDateTime
 from obspy.geodetics import gps2dist_azimuth
 
 from pyatoa.utils.tools.calculate import abs_max
@@ -100,7 +101,7 @@ class Inspector(Artist):
     def get_event_ids_stations(self):
         """
         One-time retrieve lists of station names and event ids, based on the 
-        fact that stations are separated by a '.'
+        fact that stations are separated by a '.' and events are not
         """
         event_ids, stations = [], []
         for key in self.srcrcv.keys():
@@ -154,14 +155,33 @@ class Inspector(Artist):
         return info
 
     def event_stats(self, model, choice="cc_shift_sec", sta_code=None,
-                    event_id=None):
+                    event_id=None, print_choice=abs_max):
         """
-        Return the number of measurements per event or station
+        Return lists of stats for a given model, event and station optional.
+        Useful for looking at, e.g. maximum time shift for a given model, and
+        knowing which event that corresponds to:
 
-        :param model:
-        :param sta_code:
-        :param event_id:
-        :return:
+        Prints the following return
+            > {event_id}    {number_of_measurements}    {print_choice(value)}
+
+        Returns a tuple of three lists: (event_ids, num_measurements, values)
+
+        :type model: str
+        :param model: model to query, e.g. 'm00'
+        :type choice: str
+        :param choice: choice of number of measurement to return, available
+            choices are: dlna, length_s, max_cc, rel_end, rel_start, weight
+            These are defined in get_windows()
+        :type sta_code: str
+        :param sta_code: if not None, will only query for a given station code
+        :type event_id: str
+        :param event_id: if not None, will only query for a given event id
+        :type print_choice: function
+        :param print_choice: the choice of function to query the list of misfit
+            values for a single event. Can be, e.g. abs_max, max, min, np.mean
+        :rtype: tuple of lists
+        :return: event ids, number of measurements and list of values for each
+            misfit window
         """
         events, msftval, nwins = [], [], []
 
@@ -188,7 +208,7 @@ class Inspector(Artist):
         nwins, events, msftval = zip(*zipped)
 
         for eid, nwin, msft in zip(events, nwins, msftval):
-            print(f"{eid:>13}{nwin:>5d}{abs_max(msft):6.2f}")
+            print(f"{eid:>13}{nwin:>5d}{print_choice(msft):6.2f}")
 
         return events, nwins, msftval
 
@@ -318,8 +338,9 @@ class Inspector(Artist):
     def get_windows(self, ds):
         """
         Get Window information from auxiliary_data.MisfitWindows
-        
-        :return: 
+
+        :type ds: pyasdf.ASDFDataSet
+        :param ds: dataset to query for misfit
         """
         eid = eventid(ds.events[0])
     
@@ -411,37 +432,16 @@ class Inspector(Artist):
             print("not found")
             pass
 
-    def _load(self, tag):
-        """
-        !!! DEPRECATED in favor of load(), kept to convert old files !!!
-
-        Load previously saved attributes to avoid re-processing data
-
-        :type tag: str
-        :param tag: tag to look for json files
-        """
-        def read(self, suffix):  # NOQA
-            """
-            Convenience function to read in saved files
-
-            :type suffix: str
-            :param suffix: suffix of file name
-            """
-            print(f"reading {suffix} file", end="... ")
-            try:
-                with open(f"{tag}_{suffix}.json", "r") as f:
-                    setattr(self, suffix, json.load(f))
-                    print("found")
-            except FileNotFoundError:
-                print("not found")
-                pass
-
-        for s in ["srcrcv", "misfits", "windows"]:
-            read(self, s)
-
     def sort_by_window(self, model, choice="cc_shift_sec"):
         """
         Sort the Inspector by the largest time shift
+
+        :type model: str
+        :param model: model to query, e.g. 'm00'
+        :type choice: str
+        :param choice: choice of number of measurement to return, available
+            choices are: dlna, length_s, max_cc, rel_end, rel_start, weight
+            these are defined in get_windows()
         """
         values, info = [], []
 
@@ -566,12 +566,30 @@ class Inspector(Artist):
 
         return cmsft
 
-    def exclude_events(self, lat_min, lat_max, lon_min, lon_max):
+    def exclude_events(self, coords=[], depth_min=None, depth_max=None,
+                       mag_min=None, mag_max=None, starttime=None,
+                       endtime=None):
         """
         Go through misfits and windows and remove events that fall outside
         a certain bounding box. This is useful for looking at certain regions
-        of the map. Makes edits to arrays in place so data should be saved 
-        beforehand.
+        of the map.
+
+        Makes edits to arrays in place so data should be saved beforehand.
+
+        :type coords: list of floats
+        :param coords: [lat_min, lat_max, lon_min, lon_max]
+        :type depth_min: float
+        :param depth_min: minimum depth of event in km
+        :type depth_max: float
+        :param depth_max: maximum depth of event in km
+        :type mag_min: float
+        :param mag_min: minimum magnitude
+        :type mag_max: float
+        :param mag_max: maximum magnitude
+        :type starttime: obspy.UTCDateTime()
+        :param starttime: minimum origintime of event
+        :type endtime: obspy.UTCDateTime()
+        :param endtime: maximum origintime of event
         """
         # Determine list of events that fall outside box
         events_outside = []
@@ -579,12 +597,35 @@ class Inspector(Artist):
             # Skip over receivers
             if "." in event:
                 continue
-            elif (self.srcrcv[event]["lat"] < lat_min) or \
-                 (self.srcrcv[event]["lat"] > lat_max) or \
-                 (self.srcrcv[event]["lon"] < lon_min) or \
-                 (self.srcrcv[event]["lon"] > lon_max):
-                 events_outside.append(event) 
-        # Go through the misfits
+            # Skip events that fall outside the bouding box
+            elif coords and \
+                    (self.srcrcv[event]["lat"] < coords[0]) or \
+                    (self.srcrcv[event]["lat"] > coords[1]) or \
+                    (self.srcrcv[event]["lon"] < coords[2]) or \
+                    (self.srcrcv[event]["lon"] > coords[3]):
+                events_outside.append(event)
+            # Skip events that are outside the given depth bounds
+            elif depth_min or depth_max:
+                source_depth = self.srcrcv[event]["depth_m"] * 1E-3
+                if depth_min and source_depth < depth_min:
+                    events_outside.append(event)
+                elif depth_max and source_depth > depth_max:
+                    events_outside.append(event)
+            # Skip events that are outside the given magnitude bounds
+            elif mag_min or mag_max:
+                if mag_min and self.srcrcv[event]["mag"] < mag_min:
+                    events_outside.append(event)
+                elif mag_max and self.srcrcv[event]["mag"] > mag_max:
+                    events_outside.append(event)
+            # Skip events that are outside the given times
+            elif starttime or endtime:
+                source_time = UTCDateTime(self.srcrcv[event]["time"])
+                if starttime and source_time < starttime:
+                    events_outside.append(event)
+                elif endtime and source_time < endtime:
+                    events_outside.append(event)
+
+        # Go through the misfits and remove in place
         print(f"excluding {len(events_outside)} events")
         for event in events_outside:
             del self.misfits[event]
