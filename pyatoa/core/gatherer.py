@@ -169,7 +169,13 @@ class Gatherer:
             st_obs = self.fetcher.obs_waveform_fetch(station_code)
         except FileNotFoundError:
             logger.debug("internal obs data unavailable, searching external")
-            st_obs = self.getter.waveform_get(station_code)
+            try:
+                st_obs = self.getter.waveform_get(station_code)
+            # Catch all FDSN Exceptions
+            except obspy.clients.fdsn.header.FDSNException:
+                logger.warning("external obs data unavailable, no observed "
+                               "stream can be returned")
+                st_obs = None
             if self.ds is not None:
                 self.ds.add_waveforms(waveform=st_obs,
                                       tag=self.config.observed_tag)
