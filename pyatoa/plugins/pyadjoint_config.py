@@ -21,7 +21,7 @@ def set_pyadjoint_config(min_period, max_period, **kwargs):
     paconfig = pyadjointConfig(min_period=min_period,
                                max_period=max_period
                                )
-    # Set based on kwargs fed in from Pyatoa Config
+
     for key, item in kwargs.items():
         if hasattr(paconfig, key):
             setattr(paconfig, key, item)
@@ -40,9 +40,9 @@ def src_type(choice):
     :rtype: str
     :return: pyadjoint adj_src_type
     """
-    if ("cc" in choice) or ("cross_correlation" in choice):
+    if "cc" in choice:
         adj_src_type = "cc_traveltime_misfit"
-    elif ("multitaper" in choice) or ("mtm" in choice): 
+    elif "mt" in choice:
         adj_src_type = "multitaper_misfit"
     else:
         adj_src_type = "waveform"
