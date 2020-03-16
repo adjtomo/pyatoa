@@ -237,11 +237,6 @@ class Pyaflowa:
             self.finalize_process(ds=ds, cwd=cwd, ev_paths=ev_paths, 
                                   config=config)
 
-    def plot_waveforms(self):
-        """
-        Plot waveforms with specific title additions and figure id
-        """
-
     def finalize_process(self, cwd, ds, ev_paths, config):
         """
         After all waveforms have been windowed and measured, run some functions
@@ -283,7 +278,7 @@ class Pyaflowa:
                           self.int_paths["misfit_file"])
 
         # Only run this for the first 'step', otherwise we get too many pdfs
-        if self.par["combine_imgs"] and (self.step_count == "s00"):
+        if self.par["combine_imgs"]:
             print("\tcreating composite pdf...")
 
             # Create the name of the pdf to save to

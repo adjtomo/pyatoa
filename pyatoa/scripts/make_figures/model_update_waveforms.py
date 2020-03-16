@@ -342,19 +342,21 @@ if __name__ == "__main__":
         output_dir = "./waveforms"
         
         # If you only want to choose one event in your directory, wildcards okay
-        event_ids = ["2019p738432.h5", "2016p858279.h5", "2013p142607.h5",
-                     "2019p304574.h5", "2017p059122.h5", "2013p614135.h5", 
-                     "2019p754447.h5", "2016p858279.h5", "2014p715167.h5"]
+        # event_ids = ["2019p738432.h5", "2016p858279.h5", "2013p142607.h5",
+        #              "2019p304574.h5", "2017p059122.h5", "2013p614135.h5", 
+        #              "2019p754447.h5", "2016p858279.h5", "2014p715167.h5"]
+        event_ids = ["2019p304574.h5"]
 
         # If you don't want to plot all models, can add e.g. 'synthetic_m00' 
-        select_models = ['synthetic_m00', 'synthetic_m09']
+        select_models = []
 
         # Pick stations, if left empty, will plot all stations in dataset
-        select_stations = ["NZ.MKAZ", "NZ.BKZ", "NZ.WEL", "NZ.HIZ", "NZ.KHZ", 
-                           "NZ.WAZ", "NZ.TLZ", "NZ.TSZ",]
+        # select_stations = ["NZ.MKAZ", "NZ.BKZ", "NZ.WEL", "NZ.HIZ", "NZ.KHZ", 
+        #                    "NZ.WAZ", "NZ.TLZ", "NZ.TSZ",]
+        select_stations = ["NZ.KNZ"]
 
         # list of two ints, "dynamic" (default) or "center_on_peak"
-        trace_length = "dynamic"
+        trace_length = [75, 200]
 
         # Synthetic only tests need to be treated differently
         synthetics_only = True
@@ -364,9 +366,9 @@ if __name__ == "__main__":
         max_period = 30
 
         # User-defined figure parameters
-        label_units = True  # label the units of the traces, otherwise blank
+        label_units = False  # label the units of the traces, otherwise blank
         cross_corr = True  # cross-correlate traces and annotate max correlation
-        show = False
+        show = True
 
         for event_id in event_ids:
             for dsfid in glob.glob(os.path.join(datasets_path, event_id)):
