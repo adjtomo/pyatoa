@@ -453,3 +453,15 @@ def mt_transform(mt, method):
     else:
         print("Invalid transformation method, xyz2rtp or rtp2xyz")
         return None
+
+
+def moment_tensor_to_moment_magnitude(moment_tensor):
+    """
+    Convet sesmic moment tensor to seismic moment magnitude
+    """
+    from numpy import sqrt
+    moment = sum([_**2 for _ in moment_tensor])
+    moment = sqrt(moment)
+    moment /= sqrt(2)
+
+    return moment

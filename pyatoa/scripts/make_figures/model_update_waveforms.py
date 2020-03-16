@@ -16,12 +16,14 @@ from pyatoa import Config, Manager
 from pyatoa.utils.asdf.extractions import windows_from_ds
 from pyatoa.utils.tools.srcrcv import gcd_and_baz, seismogram_length
 
-mpl.rcParams['lines.linewidth'] = 1.5
+mpl.rcParams['lines.linewidth'] = 1.8
+mpl.rcParams['axes.linewidth'] = 2.
+mpl.rcParams['font.size'] = 14
 
 warnings.simplefilter("ignore")
 
 
-def setup_plot(nrows, ncols, label_units=False):
+def setup_plot(nrows, ncols, label_y_units=False, label_x_units=None):
     """
     Dynamically set up plots according to number_of given
     Returns a list of lists of axes objects
@@ -61,13 +63,17 @@ def setup_plot(nrows, ncols, label_units=False):
             components.append(ax)
         axes.append(components)
 
-    # remove x-tick labels except for last axis
+    # remove x-tick labels except for last axis, middle row
     for row in axes[:-1]:
         for col in row:
             plt.setp(col.get_xticklabels(), visible=False)
+    if label_x_units:
+        for i, col in enumerate(axes[-1]):
+            if i not in label_x_units:
+                plt.setp(col.get_xticklabels(), visible=False)
 
     # remove y-tick labels except for first axis
-    if label_units:
+    if label_y_units:
         for i, row in enumerate(axes):
             for j, col in enumerate(row):
                 if j != 0: 
@@ -103,10 +109,12 @@ def center_on_peak_energy(st, thresh_value=0.1):
 
 
 def plot_iterative_waveforms(datasets_path, output_dir, min_period, max_period,
-                             event_id="*.h5", select_models=[],
+                             event_id="*.h5", select_models=[], 
+                             components=["Z", "N", "E"], figsize=(11.69, 8.27),
                              select_stations=[], synthetics_only=False,
-                             trace_length=[], cross_corr=False,
-                             label_units=False, show=True):
+                             trace_length=[], cross_corr=False, 
+                             time_shift=False, label_y_units=False, 
+                             label_x_units=None, show=True):
     """
     Main function to plot waveforms iterative based on model updates
 
@@ -142,12 +150,17 @@ def plot_iterative_waveforms(datasets_path, output_dir, min_period, max_period,
     """
     # Plotting parameters
     dpi = 125
-    figsize = (11.69, 8.27)
     z = 5
-    color_list = ["r", "b", "g"]
+    comp_colors = ["r", "b", "g"]
+    window_colors = ["orange", "yellow", "lawngreen", "cyan",]
     unit_dict = {"DISP": "displacement [m]",
                  "VEL": "velocity [m/s]",
                  "ACC": "acceleration [m/s^2]"}
+
+    # Set up a dictionary to collect peak amplitude information
+    max_amp = {}
+    for comp in components:
+        max_amp[comp] = 0
 
     # Read in each of the datasets
     for dataset in glob.glob(os.path.join(datasets_path, event_id)):
@@ -161,6 +174,7 @@ def plot_iterative_waveforms(datasets_path, output_dir, min_period, max_period,
                 min_period=min_period,
                 max_period=max_period,
                 filter_corners=4,
+                component_list=components,
                 rotate_to_rtz=False,
                 unit_output="DISP",
                 synthetics_only=synthetics_only
@@ -188,7 +202,7 @@ def plot_iterative_waveforms(datasets_path, output_dir, min_period, max_period,
                         mgmt.standardize()
                         mgmt.preprocess()
                         synthetics[syn_tag] = mgmt.st_syn.copy()
-                        windows[syn_tag] = windows_from_ds(
+                        windows[syn_tag], _ = windows_from_ds(
                                                ds, model=syn_tag.split('_')[-1],
                                                net=sta.split('.')[0],
                                                sta=sta.split('.')[1])
@@ -204,11 +218,13 @@ def plot_iterative_waveforms(datasets_path, output_dir, min_period, max_period,
                 )
 
                 # Instantiate plotting instances
-                f = plt.figure()
+                f = plt.figure(figsize=figsize)
                 axes = setup_plot(nrows=len(synthetics.keys()), 
-                                  ncols=len(st_obs), label_units=label_units
+                                  ncols=len(components), 
+                                  label_y_units=label_y_units,
+                                  label_x_units=label_x_units
                                   )
-                middle_column = len(st_obs) // 2
+                middle_column = len(components) // 2
 
                 # Create time axis based on data statistics
                 t = st_obs[0].times(
@@ -230,53 +246,84 @@ def plot_iterative_waveforms(datasets_path, output_dir, min_period, max_period,
                     # this is the model number e.g. "m00"
                     else:
                         ylab += syn_key.split('_')[-1]
-                    if label_units:
+                    if label_y_units:
                         ylab += f"\n{unit_dict[config.unit_output]}"
                 
                     # Plot each component in a different column
                     for col, comp in enumerate(config.component_list):
                         obs = st_obs.select(component=comp)
                         syn = synthetics[syn_key].select(component=comp)
-                        syn_init = synthetic_init.select(component=comp)
 
                         # Plot waveform
                         a1, = axes[row][col].plot(t, obs[0].data, 'k', zorder=z,
                                                   label="True")
                         a2, = axes[row][col].plot(t, syn[0].data, 
-                                                  color_list[col], zorder=z,
+                                                  comp_colors[col], zorder=z,
                                                   label="Syn")
 
-                        # min and max are now set based on waveform plots
+                        # Use the max amplitude to set the ylimits
+                        max_amp_ = max([abs(obs.max()[0]),abs(syn.max()[0])])
+                        if max_amp_ > max_amp[comp]:
+                            max_amp[comp] = max_amp_
+                            ylim = max_amp[comp] + 0.1 * max_amp[comp]
+                            axes[row][col].set_ylim([-1 * ylim, ylim])
+
+                        # Min and max are now set based on waveform plots
                         xmin, xmax = axes[row][col].get_xlim()
                         ymin, ymax = axes[row][col].get_ylim()
 
-                        # Plot windows
-                        window_list = windows[syn_tag][comp]
-                        for win in window_list:
-                            tleft = win.left * win.dt + mgmt.time_offset_sec
-                            tright = win.right * win.dt + mgmt.time_offset_sec
+                        # Plot windows, if no windows move on
+                        try:
+                            window_list = windows[syn_key][comp]
+                            for i, win in enumerate(window_list):
+                                tleft = (win.left * win.dt + 
+                                                mgmt.time_offset_sec)
+                                tright = (win.right * win.dt + 
+                                                mgmt.time_offset_sec)
 
-                            axes[row][col].add_patch(mpl.patches.Rectangle(
-                                          xy=(tleft, ymin), width=tright-tleft, 
-                                          height=ymax-ymin, color='orange',
-                                          alpha=(win.max_cc_value **2) / 4)
-                                                    )
+                                axes[row][col].add_patch(
+                                        mpl.patches.Rectangle(
+                                              xy=(tleft, -1 * max_amp[comp]), 
+                                              width=tright-tleft, 
+                                              height=2.5*max_amp[comp], 
+                                              color=window_colors[i],
+                                              edgecolor="k",
+                                              alpha=(win.max_cc_value **2) / 4)
+                                                        )
+                                # Annotate time shift information for each win
+                                if time_shift:
+                                    anno_y = .75 * (ymax - ymin) + ymin
+                                    axes[row][col].annotate(
+                                            f"{win.cc_shift*win.dt:.2f}s",
+                                            xy=(tleft, anno_y), fontsize=8,
+                                            zorder=z+5)
+                        except KeyError:
+                            pass
 
                         # cross-correlate obs and syn for a sense of misfit
                         if cross_corr:
                             cc = correlate(obs[0].data, syn[0].data, 
-                                           shift=len(obs[0].data), domain="freq")
+                                           shift=len(obs[0].data), 
+                                           domain="freq")
                             f_shift, corr = xcorr_max(cc)
                             axes[row][col].annotate(f"cc:{corr:.2f}", xy=(1,0),
-                                                    xycoords='axes fraction',
-                                                    horizontalalignment='right',
-                                                    verticalalignment='bottom')
+                                                    xycoords="axes fraction",
+                                                    horizontalalignment="right",
+                                                    verticalalignment="bottom",
+                                                    weight="bold")
 
                         if row == 0:
                             # determine how long the traces should be
                             # hardcode the trace length based on user params
                             if isinstance(trace_length, list):
-                                axes[row][col].set_xlim(trace_length)
+                                if len(trace_length) == 2:
+                                    axes[row][col].set_xlim(trace_length)
+                                else:
+                                    start, end, step = trace_length
+                                    axes[row][col].set_xticks(
+                                            np.arange(start, end, step)
+                                            )
+                                    axes[row][col].set_xlim(trace_length[:2])
                             # center trace on the peak energy
                             elif trace_length == "center_on_peak":
                                 st_idx, end_idx = center_on_peak_energy(
@@ -295,15 +342,19 @@ def plot_iterative_waveforms(datasets_path, output_dir, min_period, max_period,
                                      np.minimum(length_sec, t[-1])
                                      ])
 
-                            # Set titles for the first row
+                            # Set title for the first row
                             if col == middle_column:
-                                title = (f"{st_obs[0].stats.network}."
-                                         f"{st_obs[0].stats.station} "
-                                         f"{event_id}\n")
-                                title += comp
-                            else:
-                                title = comp
-                            axes[row][col].set_title(title)
+                                axes[row][col].set_title(
+                                        f"{st_obs[0].stats.network}."
+                                        f"{st_obs[0].stats.station} "
+                                        f"{event_id}")
+
+                            # Annotate component to the top corner
+                            axes[row][col].annotate(f"{comp[-1]}", xy=(1,0),
+                                                    xycoords="axes fraction",
+                                                    horizontalalignment="right",
+                                                    verticalalignment="bottom")
+
                     
                     # y-label after all the processing has occurred
                     axes[row][0].set_ylabel(ylab)
@@ -318,7 +369,7 @@ def plot_iterative_waveforms(datasets_path, output_dir, min_period, max_period,
 
                     final_model = synthetic_keys[-1].split('_')[-1]
                     fid_out = os.path.join(
-                        output_dir, f"{event_id}_{sta}_{final_model}_mtm.png")
+                        output_dir, f"{event_id}_{sta}_{final_model}.png")
                     plt.savefig(fid_out, figsize=figsize, dpi=dpi)
 
                 # Show the plot
@@ -330,35 +381,59 @@ def plot_iterative_waveforms(datasets_path, output_dir, min_period, max_period,
 
 if __name__ == "__main__":
     try:
+        # Choose
+        i = 2
+
         # Set parameters here 
-        datasets_path = "./"
+        datasets_path = "./data"
 
         # Path to save figures to, if None given, figures wil not be saved
         output_dir = "./waveforms"
         
         # If you only want to choose one event in your directory, wildcards okay
-        event_id = "*.h5"
+        event_ids = ["2017p059122.h5", "2013p142607.h5", "2019p304574.h5",
+                     "2019p738432.h5"]  
+        event_id = event_ids[i]
 
         # If you don't want to plot all models, can add e.g. 'synthetic_m00' 
-        select_models = ['synthetic_m00', 'synthetic_m09']
+        select_models = []
 
         # Pick stations, if left empty, will plot all stations in dataset
-        select_stations = ['NZ.KNZ']
+        select_stations_list = [['NZ.WAZ'], ['NZ.WEL'], ['NZ.KNZ'], ['NZ.MKAZ']]
+        select_stations = select_stations_list[i]
 
-        # list of two ints, "dynamic" (default) or "center_on_peak"
-        trace_length = [50, 200]
+        # list of two ints, list of three ints, "dynamic" (default) or 
+        # "center_on_peak"
+        trace_lengths = [[55, 200], [40, 250], [40, 160], [45, 170]]
+        trace_length = trace_lengths[i]
 
         # Synthetic only tests need to be treated differently
+        min_period = 10
+        max_period = 30
         synthetics_only = True
 
         # User-defined figure parameters
-        label_units = True  # label the units of the traces, otherwise blank
-        cross_corr = True  # cross-correlate traces and annotate max correlation
-        show = False
+        figsize = (7, 10)
+        label_y_units = False  # label the units of the traces, otherwise blank
+        label_x_units = None    # index of column to label x units, otherwise all
+        cross_corr = False  # cross-correlate traces and annotate max correlation
+        time_shift = True  # put time shift somewhere in the plot
+        components = ["Z", "N", "E"]
+        show = True
 
-        plot_iterative_waveforms(datasets_path, output_dir, event_id,
-                                 select_models, select_stations, 
-                                 synthetics_only, trace_length, cross_corr,
-                                 label_units, show)
+
+        plot_iterative_waveforms(datasets_path=datasets_path, 
+                                 output_dir=output_dir, 
+                                 min_period=min_period, max_period=max_period,
+                                 event_id=event_id, select_models=select_models, 
+                                 components=components,
+                                 select_stations=select_stations, 
+                                 synthetics_only=synthetics_only,
+                                 trace_length=trace_length, 
+                                 cross_corr=cross_corr, 
+                                 time_shift=time_shift, 
+                                 figsize=figsize,
+                                 label_y_units=label_y_units, 
+                                 label_x_units=label_x_units, show=show)
     except KeyboardInterrupt:
         sys.exit()

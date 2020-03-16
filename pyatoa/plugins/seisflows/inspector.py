@@ -38,15 +38,15 @@ class Inspector(Artist):
         :param misfits: collect misfit information
         :type srcrcv: bool
         :param srcrcv: collect coordinate information
-        :type path_to_datasets: str
-        :param path_to_datasets: path to the ASDFDataSets that were outputted
+        :type path: str
+        :param path: path to the ASDFDataSets that were outputted
             by Pyaflowa in the Seisflows workflow
         """
         # If no tag given, create dictionaries based on datasets
         self.srcrcv = {}
         self.misfits = {}
         self.windows = {}
-        self.utm = utm
+        self._utm = utm
         self._stations = None
         self._event_ids = None
 
@@ -147,7 +147,10 @@ class Inspector(Artist):
         """
         info = {}
         for event in self.srcrcv.keys():
-            info[event] = self.srcrcv[event][choice]
+            try:
+                info[event] = self.srcrcv[event][choice]
+            except KeyError:
+                continue
         return info
 
     def event_stats(self, model, choice="cc_shift_sec", sta_code=None,
@@ -244,7 +247,7 @@ class Inspector(Artist):
         ev_x, ev_y = lonlat_utm(
             lon_or_x=ds.events[0].preferred_origin().longitude,
             lat_or_y=ds.events[0].preferred_origin().latitude,
-            utm_zone=self.utm, inverse=False
+            utm_zone=self._utm, inverse=False
         )
 
         self.srcrcv[eid] = {"lat": ds.events[0].preferred_origin().latitude,
@@ -262,7 +265,7 @@ class Inspector(Artist):
             if sta not in self.srcrcv:
                 sta_x, sta_y = lonlat_utm(lon_or_x=sta_info["longitude"],
                                           lat_or_y=sta_info["latitude"],
-                                          utm_zone=self.utm, inverse=False
+                                          utm_zone=self._utm, inverse=False
                                           )
                 self.srcrcv[sta] = {"lat": sta_info["latitude"],
                                     "lon": sta_info["longitude"],
@@ -367,21 +370,51 @@ class Inspector(Artist):
         :type tag: str
         :param tag: unique naming tag for saving json files
         """
-        def write(self, suffix):  # NOQA
-            """
-            Convenience function to save internal attributes
-            """
-            obj = getattr(self, suffix)
-            if obj:
-                with open(f"{tag}_{suffix}.json", "w") as f:
-                    print(f"writing {suffix}")
-                    json.dump(obj, f, indent=4, sort_keys=True)
+        variables = [_ for _ in vars(self).keys() if '_' not in _]
+        # Save all components into a single dictionary
+        save_dict = {}
+        for v in variables:
+            if hasattr(self, v):
+                save_dict[v] = getattr(self, v)
 
-        for s in ["srcrcv", "misfits", "windows"]:
-            write(self, s)
+        # Save all outputs
+        with open(f"{tag}.json", "w") as f:
+            print("writing file")
+            json.dump(save_dict, f, indent=4, sort_keys=True)
+
+    def write(self, tag):
+        """
+        Same as save, but I kept writing .write() so I figured i'd just have it
+
+        :type tag: str
+        :param tag: unique naming tag for saving json files
+        """
+        self.save(self, tag)
 
     def load(self, tag):
         """
+        Load previously saved attributes to avoid re-processing data
+
+        :type tag: str
+        :param tag: tag to look for json files
+        """
+        variables = [_ for _ in vars(self).keys() if '_' not in _]
+
+        print(f"reading file", end="... ")
+        try:
+            with open(f"{tag}.json", "r") as f:
+                loaded_variables = json.load(f)
+                print("found")
+                for v in variables:
+                    setattr(self, v, loaded_variables[v])
+        except FileNotFoundError:
+            print("not found")
+            pass
+
+    def _load(self, tag):
+        """
+        !!! DEPRECATED in favor of load(), kept to convert old files !!!
+
         Load previously saved attributes to avoid re-processing data
 
         :type tag: str
@@ -492,6 +525,73 @@ class Inspector(Artist):
                 windows[model][event] = self.windows[event][model]
 
         return windows
+
+    def cum_win_len(self):
+        """
+        Find the cumulative length of misfit windows for a given model.
+        This is hopefully a more useful proxy than number of measurements
+        because Pyflex sometimes joins windows which makes number of windows
+        a difficult variable to use
+        """
+        windows = self.sort_windows_by_model()
+        cumulative_window_length = {key: 0 for key in windows}
+        for model in windows:
+            for event in windows[model]:
+                for sta in windows[model][event]:
+                    for cha in windows[model][event][sta]:
+                        for length in (
+                                windows[model][event][sta][cha]["length_s"]):
+                            cumulative_window_length[model] += length
+
+        return cumulative_window_length
+
+    def sum_misfits(self):
+        """
+        Sum the total misfit for a given model based on the individual
+        misfits for each misfit window
+        """
+        misfits = self.sort_misfits_by_model()
+
+        cmsft = {key: 0 for key in misfits}
+        for model in misfits:
+            total_misfit = 0
+            for e, event in enumerate(misfits[model]):
+                ev_msft = 0
+                for sta in misfits[model][event]:
+                    # already scaled like (Tape 2010 eq. 6) by get_misfit()
+                    ev_msft += misfits[model][event][sta]["msft"]
+                total_misfit += ev_msft
+            # Divide by the number of sources (Tape 2010 eq. 7)
+            cmsft[model] = total_misfit / (e + 1)
+
+        return cmsft
+
+    def exclude_events(self, lat_min, lat_max, lon_min, lon_max):
+        """
+        Go through misfits and windows and remove events that fall outside
+        a certain bounding box. This is useful for looking at certain regions
+        of the map. Makes edits to arrays in place so data should be saved 
+        beforehand.
+        """
+        # Determine list of events that fall outside box
+        events_outside = []
+        for event in self.srcrcv.keys():
+            # Skip over receivers
+            if "." in event:
+                continue
+            elif (self.srcrcv[event]["lat"] < lat_min) or \
+                 (self.srcrcv[event]["lat"] > lat_max) or \
+                 (self.srcrcv[event]["lon"] < lon_min) or \
+                 (self.srcrcv[event]["lon"] > lon_max):
+                 events_outside.append(event) 
+        # Go through the misfits
+        print(f"excluding {len(events_outside)} events")
+        for event in events_outside:
+            del self.misfits[event]
+            del self.windows[event]
+            del self.srcrcv[event]
+
+
 
 
 

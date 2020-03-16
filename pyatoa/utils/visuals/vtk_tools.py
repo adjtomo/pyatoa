@@ -6,6 +6,7 @@ tools allows for quick, standard looking plots of vtk files for easy
 visualization of kernels, models, etc.
 """
 import os
+import logging
 import numpy as np
 from numpy import array
 from mayavi import mlab
@@ -13,11 +14,23 @@ from mayavi.modules.surface import Surface
 from mayavi.modules.scalar_cut_plane import ScalarCutPlane
 from mayavi.modules.slice_unstructured_grid import SliceUnstructuredGrid
 
+from pyatoa.utils.tools.calculate import myround
+
 from ipdb import set_trace
 from IPython import embed
 
+# Set the logger as a globally accessible variable
+logger = logging.getLogger("vtk_plotter")
+logger.setLevel("info".upper())  # Default level
+logger.propagate = 0  # Prevent propagating to higher loggers
+ch = logging.StreamHandler()  # Console log handler
+FORMAT = "%(message)s"
+formatter = logging.Formatter(FORMAT)  # Set format of logging messages
+ch.setFormatter(formatter)
+logger.addHandler(ch)
 
-def startup(fid):
+
+def startup(fid, figsize=None):
     """
     Open a VTK file and return the engine that is visualizing it
 
@@ -30,8 +43,9 @@ def startup(fid):
     :rtype vtk_file_reader: mayavi.sources.vtk_file_reader.VTKFileReader
     :return vtk_file_reader: the opened vtk file
     """
+    logger.debug(f"Reading {fid} and creating figure size {figsize}")
     # Instantiate mlab
-    fig = mlab.figure()
+    fig = mlab.figure(size=figsize)
     engine = mlab.get_engine()
     engine.scenes[0].scene.background = (1.0, 1.0, 1.0)  # background to white
     vtk_file_reader = engine.open(fid)
@@ -39,8 +53,10 @@ def startup(fid):
     return fig, engine, vtk_file_reader
 
 
-def set_colorscale(cmap='RdYlBu', reverse=False, min_max=None,
-                   colorbar=True, title=None, nb_labels=None, num_col=20):
+def set_colorscale(cmap='RdYlBu', reverse=False, default_range=False,
+                   min_max=None,  colorbar=True, title=None, nb_labels=None,
+                   orientation="horizontal", num_col=20, round_to=0,
+                   **kwargs):
     """
     Set the colorscale for the plot and also create a colorbar
 
@@ -61,16 +77,34 @@ def set_colorscale(cmap='RdYlBu', reverse=False, min_max=None,
     cbar = mlab.colorbar(title=title, orientation="horizontal",
                          label_fmt="%-#.2f", nb_labels=nb_labels)
     cbar.lut_mode = cmap
+    logger.debug(f"Creating colorbar with colormap {cmap}")
     cbar.reverse_lut = reverse
+    if reverse:
+        logger.debug(f"Reversing colorscale")
     cbar.number_of_colors = num_col
     cbar.number_of_labels = num_col // 2 + 1
 
     # Bound the colorscale
-    cbar.use_default_range = False
-    if not min_max:
-        val = np.ceil(max(abs(cbar.data_range)))
-        min_max = [-val, val]
-    cbar.data_range = array(min_max)
+    logger.info(f"Data bounds are set to {cbar.data_range}")
+    if default_range:
+        # Round the default min and max bounds of the dataset for cleaner values
+        if round_to:
+            min_max = cbar.data_range
+            cbar.data_range = array(
+                [myround(min_max[0], base=round_to, choice="down"),
+                 myround(min_max[1], base=round_to, choice="up")]
+            )
+        # Use the straight up min and max bounds of the dataset
+        else:
+            cbar.use_default_range = default_range
+    # If not using the default range
+    else:
+        if not min_max:
+            # If no min_max values, set the absolute max value as the +/- bounds
+            val = np.ceil(max(abs(cbar.data_range)))
+            min_max = [-val, val]
+        cbar.data_range = array(min_max)
+    logger.info(f"Data bounds have been set to to {cbar.data_range}")
 
     # Create colorbar
     cbar.show_scalar_bar = colorbar
@@ -90,25 +124,39 @@ def set_colorscale(cmap='RdYlBu', reverse=False, min_max=None,
         cbar.title_text_property.color = (0.0, 0.0, 0.0)  # black font
         cbar.title_text_property.font_size = 5
 
-        # Create some uniform look for colorbar
-        cbar.scalar_bar.orientation = 'horizontal'  # horizontal scalebar
-        cbar.scalar_bar.text_position = 'precede_scalar_bar'  # title below
-        cbar.scalar_bar.title_ratio = 0.36  # smaller title size
-        cbar.scalar_bar.bar_ratio = 0.325  # thickness of colorbar
+        cbar.scalar_bar.orientation = orientation
 
-        # Makes the colorbar interactive and changes its size
-        cbar.scalar_bar_representation.proportional_resize = True
-        cbar.scalar_bar_representation.position = array([0.33, .0005])  # location
-        cbar.scalar_bar_representation.position2 = array([0.33, 0.062])  # size
+        # Horizontal scalebar sits at the bottom
+        if orientation == "horizontal":
+            # Create some uniform look for colorbar
+            cbar.scalar_bar.text_position = 'precede_scalar_bar'  # title below
+            cbar.scalar_bar.title_ratio = 0.36  # smaller title size
+            cbar.scalar_bar.bar_ratio = 0.325  # thickness of colorbar
+
+            # Makes the colorbar interactive and changes its size
+            cbar.scalar_bar_representation.proportional_resize = True
+            cbar.scalar_bar_representation.position = array([0.33, .0005])  # location
+            cbar.scalar_bar_representation.position2 = array([0.33, 0.062])  # size
+
+        # Vertical scalebar sits to the right of the figure
+        elif orientation == "vertical":
+            cbar.scalar_bar.title_ratio = 0.36  # smaller title size
+            cbar.scalar_bar.bar_ratio = 0.325  # thickness of colorbar
+            cbar.scalar_bar_representation.position = array([0.8, 0.1])
+            cbar.scalar_bar_representation.position2 = array([0.125, .8])
+
     return cbar
 
 
 def set_axes(xlabel="E (m)", ylabel="N (m)", zlabel="Z (m)",
-             xyz=[True, True, True]):
+             xyz=[True, True, True], **kwargs):
     """
     Create an axis object to wrap around data
     :return:
     """
+    # Font size as a factor
+    font_factor = kwargs.get("font_factor", 1.)
+
     axes = mlab.axes(color=(0., 0., 0.,), line_width=3., xlabel=xlabel,
                      ylabel=ylabel, zlabel=zlabel, x_axis_visibility=xyz[0],
                      y_axis_visibility=xyz[1], z_axis_visibility=xyz[2])
@@ -116,7 +164,7 @@ def set_axes(xlabel="E (m)", ylabel="N (m)", zlabel="Z (m)",
     # Edit full properties
     axes.axes.label_format = '%-#3.2E'
     axes.axes.number_of_labels = 5
-    axes.axes.font_factor = .75
+    axes.axes.font_factor = font_factor
 
     # Edit label attributes
     axes.label_text_property.color = (0.0, 0.0, 0.0)  # black font
@@ -158,7 +206,7 @@ def coastline(coast_fid, z_value=1000, color=(0., 0., 0.,), ):
     return p3d
 
 
-def show_surface(engine, vtk_file_reader, view="top-down"):
+def show_surface(engine, vtk_file_reader):
     """
     Show the surface of the vtk file from the top down
 
@@ -189,7 +237,6 @@ def cut_plane(engine, vtk_file_reader, depth_m):
     cut.implicit_plane.normal = array([0, 0, 1])
     cut.implicit_plane.widget.enabled = False
 
-
     # cut.implicit_plane.widget.normal_to_z_axis = True
     # cut.implicit_plane.widget.origin[-1] = depth_m
     # cut.implicit_plane.plane.origin[-1] = depth_m
@@ -201,55 +248,77 @@ def cut_plane(engine, vtk_file_reader, depth_m):
 
 
 @mlab.show
-def plot_topdown(depth_km="surface"):
+def plot_model_surface(vtkfr, engine, fid, coastline_fid, save=False, show=True,
+                       **kwargs):
     """
-    Plot a topdown view of the model, allow specification of
-
-    :return:
+    Plot a topdown view of the model, with the projection at the surface
     """
-    try:
-        fid = "diff_vp_nz_tall_north_and_vp_cc.vtk"
-        assert(os.path.exists(fid))
+    # Put the coastline at some height above the topography
+    if coastline_fid:
+        p3d = coastline(coastline_fid, 1000)
 
-        # Initiate the engine and reader
-        f, engine, vtkfr = startup(fid)
+    # Plot the VTK file
+    show_surface(engine, vtkfr)
 
-        # Plot the coastline
-        if depth_km == "surface":
-            z_value = 1000
-        else:
-            depth_m = -1 * abs(depth_km) * 1E3
-            z_value = depth_m
-        p3d = coastline("nz_coast_utm60H_43-173_37-179_xyz.npy", z_value)
+    # Set the camera with top down view
+    scene = engine.scenes[0]
+    scene.scene.z_plus_view()
 
-        # Plot the VTK file
-        if depth_km == "surface":
-            show_surface(engine, vtkfr, "top-down")
-        else:
-            cut = cut_plane(engine, vtkfr, depth_m)
+    # Colorbar and axes
+    set_colorscale(**kwargs)
+    set_axes(xyz=[True, True, False], **kwargs)
 
-        scene = engine.scenes[0]
-        scene.scene.z_plus_view()
-        cbar = set_colorscale(title="Difference Vs", nb_labels=3)
-        # axes = set_axes(xyz=[True, True, False])
+    if save:
+        mlab.savefig(save.format(tag="surface"))
 
-        cut.implicit_plane.origin[-1] = depth_m
+    if show:
+        mlab.show()
 
 
-    except Exception as e:
-        print(e)
-
-    mlab.show()
-
-    # if isinstance(depth_km, float):
-    #     sug = SliceUnstructuredGrid()
-    #     engine.add_filter(sug, module_manager)
-    #     sug.implicit_plane.plane.normal = array([0., 0., -1.])
-    #     sug.implicit_plane.plane.origin = array([4.02390000e+05,
-    #                                              5.59551500e+06,
-    #                                              -1 * depth_km * 1E3])
+# def plot_model_cuts(fid, depth_list=[2, 5, 10, 15, 20, 25, 30, 50])
+#     # Initiate the engine and reader
+#     f, engine, vtkfr = startup(fid)
+#     for depth in depth_list:
+#         depth_m = -1 * abs(depth_km) * 1E3
+#         z_value = depth_m
+#     p3d = coastline("nz_coast_utm60H_43-173_37-179_xyz.npy", z_value)
+#
+#     cut = cut_plane(engine, vtkfr, depth_m)
 
 
 if __name__ == "__main__":
-    plot_topdown(depth_km="surface")
+    """                         Set your parameters below                    """
+    # ID's for files to plot
+    fid = "vs_nz_tall_north.vtk"
+    coast = "nz_coast_utm60H_43-173_37-179_xyz.npy"
+
+    # Figure parameters
+    show = True
+    save_fid = "vs_nz_tall_north_{tag}.png"
+    figsize = (1000, 1000)
+
+    # Axes parameters
+    font_factor = 1.1
+
+    # Colormap parameters
+    colormap = "jet"
+    reverse = True
+    cbar_title = "Vs (m/s)"
+    cbar_orientation = "vertical"
+    number_of_colors = 35
+    default_range = False
+    round_to = 50  # only if default_range == True
+    min_max = [1200, 3500]  # only if default_range == False, []
+
+    """                         Set your parameters above                    """
+
+    # Initiate the engine and reader
+    fig, engine, vtkfr = startup(fid, figsize)
+
+    plot_model_surface(vtkfr, engine, fid=fid, coastline_fid=coast,
+                       cmap=colormap, reverse=reverse, title=cbar_title,
+                       num_col=number_of_colors, min_max=min_max,
+                       default_range=default_range,
+                       font_factor=font_factor, orientation=cbar_orientation,
+                       round_to=round_to, save=save_fid, show=show)
 

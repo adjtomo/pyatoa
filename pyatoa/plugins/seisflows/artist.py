@@ -228,8 +228,9 @@ class Artist:
         return f, ax
 
     def plot_paths(self, model, choice, event_id=None, sta_code=None,
-                   threshold=None, hover_on_lines=False,
-                   colormap=plt.cm.Spectral_r, normalize_to_model=False,
+                   threshold=None, hover_on_lines=False, annotate=True,
+                   colormap=plt.cm.Spectral_r, color="k",
+                   normalize_to_model=False,
                    show=True, save=None, **kwargs):
         """
         Plot misfit by source-receiver path to try to highlight portions of
@@ -359,7 +360,7 @@ class Artist:
                     c = cmap(norm(m))
             # If no colormap is given, just plot source receiver coverage
             else:
-                c = "k"
+                c = color
                 alpha = 0.05
             line, = plt.plot(x, y, c=c, alpha=alpha, zorder=10 + m)
             if hover_on_lines:
@@ -416,8 +417,9 @@ class Artist:
                 f"mean: {mean_misfit}\n")
         if append_anno:
             anno += append_anno
-    
-        annotate_txt(ax, anno, **kwargs)
+
+        if annotate:
+            annotate_txt(ax, anno, **kwargs)
     
         # Make source and receiver markers interactive
         if save:
@@ -610,6 +612,146 @@ class Artist:
             plt.show()
     
         return f, ax
+
+    def plot_windows(self, model, event_id=None, sta_choice=None,
+                     component=None, color_by_comp=False,
+                     velocities=[2, 4, 7], alpha=0.2):
+        """
+        Show lengths of windows chosen based on source-receiver distance, akin
+        to Tape's Thesis or to the LASIF plots. These are useful for showing
+        which phases are chosen, and window choosing behavior as distance
+        increases and (probably) misfit increases.
+
+        :type model: str
+        :param model: model to analyze
+        :type component: str
+        :param component: choose a specific component to analyze
+        :type color_by_comp: bool
+        :param color_by_comp: individually color each component
+        :type velocities: list of floats
+        :param velocities: for lines showing given wavespeeds for comparison
+            against certain seismic phases, if none, no lines plotted
+        :return:
+        """
+        windows = self.sort_windows_by_model()[model]
+        comp_dict = {'Z': 'r', 'N': 'g', 'R': 'g', 'E': 'b', 'T': 'b'}
+        if component:
+            assert(component.upper() in comp_dict), \
+                f"component not in {comp_dict.keys()}"
+
+        starts, ends, dists, labels, colors = [], [], [], [], []
+        for event in windows:
+            if event_id and event != event_id:
+                continue
+            for sta in windows[event]:
+                if sta_choice and sta != sta_choice:
+                    continue
+                distance = self.srcrcv[event][sta]["dist_km"]
+                for cha in windows[event][sta]:
+                    comp = cha[-1]
+                    if component and component != comp:
+                        continue
+                    for i, (start, end) in enumerate(zip(
+                            windows[event][sta][cha]["rel_start"],
+                            windows[event][sta][cha]["rel_end"])):
+                        starts.append(start)
+                        ends.append(end)
+                        dists.append(distance)
+                        colors.append(comp_dict[comp.upper()])
+                        labels.append(f"{event}, {sta}, {cha}, {i}")
+
+        f, ax = plt.subplots(figsize=(8, 6))
+        if not color_by_comp:
+            colors = "k"
+        
+        # Plot the lines that represent the windows
+        # Set alpha by the length of window, short windows darker
+        alphas = 1/(np.array(ends) - np.array(starts))
+        alphas = normalize_a_to_b(alphas, 0.2, .5)
+        linewidths = normalize_a_to_b(alphas, 0.2, .9)
+        for i in range(len(dists)):
+            l = ax.hlines(y=dists[i], xmin=starts[i], xmax=ends[i], 
+                          colors=colors, alpha=alphas[i], 
+                          linewidth=linewidths[i])
+            ax.hlines(y=dists[i], xmin=0, xmax=300, colors="k", alpha=0.1,
+                      linewidth=0.1)
+
+        # Define lines starting from the start of the data, slopes related to
+        # certain wavespeeds (km/s)
+        if velocities:
+            def wavespeed_line(x, v):
+                """Slope of the line of a given wavespeed"""
+                return v * x - (v * min(x))
+
+            def trailing_edge(y):
+                """Slope of the line of the trailing edge of the plot"""
+                m = (max(dists) - min(dists)) / (max(ends) - min(ends))
+                return (y - min(dists)) / m + min(ends)
+
+            x_vals = np.linspace(0, 300, 100)
+            for vel in velocities:
+                # Conditions for stopping the line plotting
+                for i, (x_, y_) in enumerate(
+                        zip(x_vals, wavespeed_line(x_vals, vel))):
+                    if y_ >= max(dists):
+                        break
+                    elif x_ > trailing_edge(y_):
+                        break
+                plt.plot(x_vals[:i], wavespeed_line(x_vals[:i], vel),
+                         linewidth=1.25, label=f"{vel}km/s", alpha=0.75)
+
+        plt.title(f"{len(dists)} misfit windows")
+        plt.xlabel("Time [s]")
+        plt.ylabel("Distance [km]")
+        if velocities:
+            plt.legend(fontsize=8)
+        plt.grid(linestyle='--', linewidth=.5, alpha=.5)
+        plt.xlim([min(starts)-10, max(ends)+10])
+        plt.ylim([min(dists)-10, max(dists)+10])
+
+        plt.show()
+
+    def convergence(self, choice="iter", show=True, save=None):
+        """
+        Plot the convergence rate over the course of an inversion
+
+        :return:
+        """
+        linewidth=2.
+        markersize=8.
+
+        misfits = self.sum_misfits()
+        windows = self.cum_win_len()
+        models = list(misfits.keys())
+        xvalues = np.arange(0, 10, 1)
+        misfits = list(misfits.values())
+        windows = list(windows.values())
+
+        f, ax1 = plt.subplots(figsize=(8,6))
+        ax2 = ax1.twinx()
+        ax1.plot(xvalues, misfits, 'o-', c="crimson", linewidth=linewidth,
+                 markersize=markersize)
+        ax2.plot(xvalues, windows, 'v--', c="yellowgreen", linewidth=linewidth,
+                 markersize=markersize)
+        ax1.set_xlabel("Model Number")
+        ax1.set_ylabel("Total Normalized Misfiti (solid)")
+        ax2.set_ylabel("Cumulative Window Length [s] (dashed)", rotation=270, 
+                       labelpad=15.)
+        ax2.ticklabel_format(style="sci", axis="y", scilimits=(0,0))
+        ax1.grid(True, alpha=0.5, linestyle='--', linewidth=1.)
+
+        # Change the labels to the model numbers
+        labels = [item.get_text() for item in ax.get_xticklabels()]
+        for i, model in enumerate(models):
+            labels[i] = model
+        ax1.set_xticklabels(labels)
+
+        if save:
+            plt.savefig(save)
+        if show:
+            plt.show()
+
+        plt.close()
 
 
 def colormap_colorbar(cmap, **kwargs):
