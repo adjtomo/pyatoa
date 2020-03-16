@@ -184,11 +184,11 @@ def misfit_stats(ds, model, include_lists=False):
             "syn_waveforms": syn_n,
             "obs_waveforms": obs_n,
             "adjoint_sources": ds_adjsrc.list(),
-            "misfits" : misfits,
+            "misfits": misfits,
             "cc_shift_in_seconds": cc_shift_secs,
             "misfit_windows": ds_windows.list(),
             "max_cc_values": max_cc_values
-                }
+        }
         for item in lists.keys():
             stats[item] = lists[item]
 

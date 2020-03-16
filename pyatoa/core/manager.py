@@ -652,7 +652,7 @@ class Manager:
             logger.warning("cannot window, waveforms not standardized")
             return
         if fix_windows and not self.ds:
-            logger.warning("cannot fix window, no windows in dataset")
+            logger.warning("cannot fix window, no dataset")
             fix_windows = False
 
         # Get STA/LTA information
@@ -677,7 +677,8 @@ class Manager:
                 self.windows, self._num_windows = windows_from_ds(self.ds, net, 
                                                                   sta)
             except AttributeError:
-                # If fixed windows fails, default to calculating windows
+                # If fixed windows fails, e.g. no windwos for given model/step
+                # default to calculating windows
                 self.select_windows()
         else:
             # If not fixed windows, calculate windows using Pyflex
@@ -754,10 +755,19 @@ class Manager:
         logger.debug("saving misfit windows to PyASDF")
         for comp in self.windows.keys():
             for i, window in enumerate(self.windows[comp]):
-                tag = (f"{self.config.model_number or 'Default'}/"
-                       f"{self.st_obs[0].stats.network}_"
-                       f"{self.st_obs[0].stats.station}_{comp}_{i}"
-                       )
+                # Figure out how to tag the data in the dataset
+                if self.config.model_number and self.config.step_count:
+                    # model/step/window_tag
+                    path = "/".join([f"{self.config.model_number}"
+                                     f"{self.config.step_count}"])
+                elif self.config.model_number:
+                    # model/window_tag
+                    path = self.config.model_number
+                else:
+                    path = "Default"
+                # net_sta_comp_n
+                window_tag = (f"{self.st_obs[0].stats.network}_"
+                              f"{self.st_obs[0].stats.station}_{comp}_{i}")
 
                 # ASDF auxiliary_data subgroups don't play nice with nested
                 # dictionaries, which the window parameters are. Format them
@@ -768,7 +778,7 @@ class Manager:
                     self.ds.add_auxiliary_data(data=np.array([True]),
                                                data_type="MisfitWindows",
                                                parameters=window_dict,
-                                               path=tag
+                                               path=f"{path}/{window_tag}"
                                                )
 
     def measure(self, force=False):
@@ -886,16 +896,28 @@ class Manager:
             logger.debug(f"saving adjoint sources {key} to PyASDF")
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")
+                # Figure out how to tag the data in the dataset
+                if self.config.model_number and self.config.step_count:
+                    # model/step/window_tag
+                    path = "/".join([f"{self.config.model_number}"
+                                     f"{self.config.step_count}"]
+                                    )
+                elif self.config.model_number:
+                    # model/window_tag
+                    path = self.config.model_number
+                else:
+                    path = "Default"
+
                 # The tag hardcodes an X as the second channel index
                 # to signify that these are synthetic waveforms
                 # This is required by Specfem3D
-                tag = "{mod}/{net}_{sta}_{ban}X{cmp}".format(
-                    mod=self.config.model_number or "Default",
+                adj_src_tag = "{net}_{sta}_{ban}X{cmp}".format(
                     net=adj_src.network, sta=adj_src.station,
                     ban=channel_codes(self.st_syn[0].stats.delta),
                     cmp=adj_src.component[-1]
                 )
-                write_adj_src_to_asdf(adj_src=adj_src, ds=self.ds, tag=tag,
+                write_adj_src_to_asdf(adj_src=adj_src, ds=self.ds,
+                                      tag=f"{path}/{adj_src_tag}",
                                       time_offset=self._time_offset_sec)
 
     def plot(self, append_title='', length_sec=None,

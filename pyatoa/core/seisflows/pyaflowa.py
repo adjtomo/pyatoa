@@ -76,6 +76,7 @@ class Pyaflowa:
         # Set some attributes that will be set/used during the workflow
         self.iteration = 0
         self.step = 0
+        self.fix_windows = self.par["fix_windows"]
         self.synthetics_only = bool(par["CASE"].lower() == "synthetic")
         
     @property
@@ -174,7 +175,7 @@ class Pyaflowa:
         with pyasdf.ASDFDataSet(ds_name) as ds:
             # Make sure the ASDFDataSet doesn't already contain auxiliary_data
             clean_ds(ds=ds, model=self.model_number, step=self.step_count,
-                     fix_windows=self.par["fix_windows"])
+                     fix_windows=self.fix_windows)
 
             # Write the Config to auxiliary_data for provenance
             config.write(write_to=ds)
@@ -194,7 +195,7 @@ class Pyaflowa:
                     mgmt.gather(station_code=f"{net}.{sta}.*.HH*")
                     mgmt.standardize()
                     mgmt.preprocess(overwrite=preproc)
-                    mgmt.window(fix_windows=self.par["fix_windows"])
+                    mgmt.window(fix_windows=self.fix_windows)
                     mgmt.measure()
 
                     # Plot waveforms with misfit windows and adjoint sources

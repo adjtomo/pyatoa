@@ -16,13 +16,13 @@ class Config:
     """
     Configuration class that controls functionalities inside Pyatoa
     """
-    def __init__(self, yaml_fid=None, model_number=None, event_id=None,
-                 min_period=10, max_period=30, filter_corners=4,
+    def __init__(self, yaml_fid=None, model_number=None, step_count=None,
+                 event_id=None, min_period=10, max_period=30, filter_corners=4,
                  client="GEONET", rotate_to_rtz=False, unit_output='DISP',
                  pyflex_map='default', component_list=None,
                  adj_src_type='cc_traveltime_misfit', start_pad=20, end_pad=500,
                  zero_pad=0, synthetic_unit="DISP", observed_tag='observed',
-                 synthetic_tag='synthetic_{model_num}', synthetics_only=False,
+                 synthetic_tag='synthetic_{m}{s}', synthetics_only=False,
                  window_amplitude_ratio=0., map_corners=None, cfgpaths=None,
                  **kwargs):
         """
@@ -105,6 +105,21 @@ class Config:
         else:
             self.model_number = None
 
+        if step_count is not None:
+            # Format the step count to the way Pyatoa expects it
+            if isinstance(step_count, str):
+                # If e.g. model_number = "0"
+                if not step_count[0] == "s":
+                    self.step_count = f"s{step_count:0>2}"
+                # If e.g. step_count = "s00"
+                else:
+                    self.step_count = step_count
+            # If e.g. step_count = 0
+            elif isinstance(step_count, int):
+                self.step_count = f"m{step_count:0>2}"
+        else:
+            self.step_count = None
+
         self.event_id = event_id
         self.min_period = float(min_period)
         self.max_period = float(max_period)
@@ -114,9 +129,12 @@ class Config:
         self.unit_output = unit_output.upper()
         self.synthetic_unit = synthetic_unit.upper()
         self.observed_tag = observed_tag
-        if model_number:
-            self.synthetic_tag = synthetic_tag.format(
-                model_num=self.model_number)
+        # Tag synthetics based on model number and step count if given
+        if model_number and step_count:
+            self.synthetic_tag = synthetic_tag.format(m=self.model_number,
+                                                      s=self.step_count)
+        elif model_number:
+            self.synthetic_tag = synthetic_tag.format(m=self.model_number, s="")
         else:
             self.synthetic_tag = "synthetic"
         self.pyflex_map = pyflex_map
