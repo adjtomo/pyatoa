@@ -6,7 +6,6 @@ The Seisflows plugin class that allows easy scripting of Pyatoa
 functionality into a Seisflows workflow. Pre-written functionalities simplify
 calls made in Seisflows to Pyatoa, to reduce clutter inside the workflow
 """
-import sys
 import os
 import glob
 import pyasdf
@@ -20,8 +19,6 @@ import numpy as np
 from pyatoa.utils.asdf.deletions import clean_ds
 from pyatoa.utils.asdf.additions import write_stats_to_asdf
 from pyatoa.visuals.statistics import plot_output_optim
-from pyatoa.visuals.mapping import event_misfit_map
-from pyatoa.visuals.plot_tools import imgs_to_pdf
 from pyatoa.utils.io import (create_stations_adjoint, write_misfit_json,
                              write_adj_src_to_ascii, write_misfit_stats,
                              tile_combine_imgs,
@@ -167,11 +164,13 @@ class Pyaflowa:
         :type event_id: str
         :param event_id: event identifier tag for file naming etc.
         """
+        # Run the setup and standardize some names
         config, ev_paths = self.setup_process(cwd, event_id)
-
         ds_name = os.path.join(self.int_paths["data"],
                                f"{config.event_id}.h5")
-        errors = 0
+
+        # Count number of successful processes
+        successes = 0
         with pyasdf.ASDFDataSet(ds_name) as ds:
             # Make sure the ASDFDataSet doesn't already contain auxiliary_data
             clean_ds(ds=ds, model=self.model_number, step=self.step_count,
@@ -182,8 +181,7 @@ class Pyaflowa:
             mgmt = pyatoa.Manager(config=config, ds=ds)
 
             # Get stations from Specfem STATIONS file in form NET STA LAT LON ..
-            stations = np.loadtxt(ev_paths["stations"],
-                                  usecols=[0, 1, 2, 3],
+            stations = np.loadtxt(ev_paths["stations"], usecols=[0, 1, 2, 3],
                                   dtype=str)
             coords = stations[:, 2:]
 
@@ -208,11 +206,11 @@ class Pyaflowa:
                             f"pyadjoint={config.adj_src_type},",
                             f"misfit={mgmt.misfit:.2E}"
                         ])
-                        f = mgmt.plot(append_title=tit,
-                                      save=os.path.join(ev_paths["figures"],
-                                                        f"wav_{sta}"),
-                                      show=False, return_figure=True
-                                      )
+                        mgmt.plot(append_title=tit,
+                                  save=os.path.join(
+                                      ev_paths["figures"], f"wav_{sta}"),
+                                  show=False, return_figure=False
+                                  )
 
                         # Plot source-receiver maps of waveforms were plotted
                         if self.par["plot_srcrcv_maps"]:
@@ -222,25 +220,19 @@ class Pyaflowa:
                                 mgmt.srcrcvmap(stations=coords, save=map_fid,
                                                show=False)
                     print("\n")
+                    successes += 1
                 # Traceback ensures more detailed error tracking
                 except Exception:
                     traceback.print_exc()
                     print("\n")
-                    errors += 1
-                    # If errors for more than half of stations, somethings wrong
-                    if errors >= len(stations) // 2:
-                        print("Pyaflowa workflow error")
-                        sys.exit(-1)
                     continue
 
-            # Run finalization procedures for processing
-            self.finalize_process(ds=ds, cwd=cwd, ev_paths=ev_paths, 
-                                  config=config)
-
-    def plot_waveforms(self):
-        """
-        Plot waveforms with specific title additions and figure id
-        """
+            # Run finalization procedures for processing if gathered waveforms
+            if successes:
+                self.finalize_process(ds=ds, cwd=cwd, ev_paths=ev_paths,
+                                      config=config)
+            else:
+                print("Pyaflowa processed no data, skipping finalize")
 
     def finalize_process(self, cwd, ds, ev_paths, config):
         """
@@ -325,47 +317,4 @@ class Pyaflowa:
                 shutil.copy(src, os.path.join(self.int_paths["snapshots"],
                                               os.path.basename(src))
                             )
-
-        # Create misfit maps for each event with contour overlay showing misfit
-        if self.par["plot_misfit_maps"] and (self.step_count == "s00"):
-            name_template = "{eid}_{m}_{s}_misfit_map.png"
-            file_ids = []
-            # Loop through each available dataset to create misfit map
-            datasets = glob.glob(os.path.join(self.int_paths["data"], "*.h5"))
-            for dataset in datasets:
-                with pyasdf.ASDFDataSet(dataset) as ds:
-                    event_id = os.path.basename(ds.filename).split('.')[0]
-
-                    # Save figures into event directories
-                    event_figures = os.path.join(self.int_paths["figures"],
-                                                 self.model_number, event_id
-                                                 )
-                    # Save the fid based on event id, model number, step count
-                    fidout = os.path.join(
-                        event_figures, name_template.format(eid=event_id,
-                                                            m=self.model_number,
-                                                            s=self.step_count)
-                    )
-                    file_ids.append(fidout)
-
-                    # Use the average misfit to normalize the misfit map
-                    stats = ds.auxiliary_data.Statistics[self.model_number][
-                        self.step_count].parameters
-                    average_misfit = stats['average_misfit']
-
-                    event_misfit_map(map_corners=self.par["map_corners"],
-                                     ds=ds, model=self.model_number,
-                                     step=self.step_count,
-                                     normalize=average_misfit,
-                                     annotate_station_info='simple',
-                                     contour_overlay=True, filled_contours=True,
-                                     show=False, save=fidout
-                                     )
-
-            # Combine all the misfit maps into a single pdf
-            save_to = os.path.join(
-                self.int_paths["composites"],
-                f"{self.model_number}_{self.step_count}_misfitmaps.pdf"
-            )
-            imgs_to_pdf(fids=file_ids, fid_out=save_to)
 
