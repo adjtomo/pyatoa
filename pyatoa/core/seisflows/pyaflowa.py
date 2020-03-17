@@ -20,7 +20,8 @@ from pyatoa.utils.asdf.deletions import clean_ds
 from pyatoa.visuals.statistics import plot_output_optim
 from pyatoa.utils.io import (create_stations_adjoint, write_misfit_json,
                              write_adj_src_to_ascii, write_misfit_stats,
-                             tile_combine_imgs, srcrcv_vtk_from_specfem
+                             tile_combine_imgs, src_vtk_from_specfem,
+                             rcv_vtk_from_specfem
                              )
 
 # Overwrite the preprocessing function
@@ -310,9 +311,10 @@ class Pyaflowa:
 
         # Generate .vtk files for given source and receivers for model 0
         if self.par["create_srcrcv_vtk"] and self.iteration == 0:
-            srcrcv_vtk_from_specfem(path_to_data=self.ext_paths["SPECFEM_DATA"],
-                                    path_out=self.int_paths["vtks"],
-                                    )
+            src_vtk_from_specfem(path_to_data=self.ext_paths["SPECFEM_DATA"],
+                                 path_out=self.int_paths["vtks"])
+            rcv_vtk_from_specfem(path_to_data=self.ext_paths["SPECFEM_DATA"],
+                                 path_out=self.int_paths["vtks"])
 
         # Create copies of .h5 files at the end of each iteration, because .h5
         # files are easy to corrupt so it's good to have a backup

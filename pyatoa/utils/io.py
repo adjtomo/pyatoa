@@ -290,7 +290,7 @@ def write_misfit_stats(ds, model, pathout="./", fidout=None):
     np.savetxt(fidout, [misfit], '%11.6e')
 
 
-def rcv_vtk_from_specfem(path_to_data, path_out, utm_zone=-60, z=3E3):
+def rcv_vtk_from_specfem(path_to_data, path_out="./", utm_zone=-60, z=3E3):
     """
     Creates source and receiver VTK files based on the STATIONS and
     CMTSOLUTIONS from a Specfem3D DATA directory.
@@ -308,13 +308,11 @@ def rcv_vtk_from_specfem(path_to_data, path_out, utm_zone=-60, z=3E3):
 
     # Templates for filling
     vtk_line = "{x:18.6E}{y:18.6E}{z:18.6E}\n"
-    vtk_header = """
-    # vtk DataFile Version 2.0
-    Source and Receiver VTK file from Pyatoa
-    ASCII
-    DATASET POLYDATA
-    POINTS\t{} float\n
-    """
+    vtk_header = ("# vtk DataFile Version 2.0\n" 
+                  "Source and Receiver VTK file from Pyatoa\n"
+                  "ASCII\n"
+                  "DATASET POLYDATA\n"
+                  "POINTS\t{} float\n")
 
     stations = np.loadtxt(os.path.join(path_to_data, "STATIONS"),
                           usecols=[2, 3], dtype=str)
@@ -327,9 +325,10 @@ def rcv_vtk_from_specfem(path_to_data, path_out, utm_zone=-60, z=3E3):
             rx, ry = lonlat_utm(lon_or_x=lon, lat_or_y=lat, utm_zone=utm_zone,
                                 inverse=False)
             f.write(vtk_line.format(x=rx, y=ry, z=z))
+        f.write("\n")
 
 
-def src_vtk_from_specfem(path_to_data, path_out, utm_zone=-60, cx=None,
+def src_vtk_from_specfem(path_to_data, path_out="./", utm_zone=-60, cx=None,
                          cy=None, cz=False):
     """
     Creates source and receiver VTK files based on the STATIONS and
@@ -370,27 +369,26 @@ def src_vtk_from_specfem(path_to_data, path_out, utm_zone=-60, cx=None,
 
     # Templates for filling
     vtk_line = "{x:18.6E}{y:18.6E}{z:18.6E}\n"
-    vtk_header = """
-    # vtk DataFile Version 2.0
-    Source and Receiver VTK file from Pyatoa
-    ASCII
-    DATASET POLYDATA
-    POINTS\t{} float\n
-    """
+    vtk_header = ("# vtk DataFile Version 2.0\n" 
+                  "Source and Receiver VTK file from Pyatoa\n"
+                  "ASCII\n"
+                  "DATASET POLYDATA\n"
+                  "POINTS\t{} float\n")
 
     # Gather all the sources
     sources = glob.glob(os.path.join(path_to_data, "CMTSOLUTION*"))
 
     # Open files that need to be written
+    f_std = open(os.path.join(path_out, "srcs.vtk"), "w")
     f_xslice = f_yslice = f_zslice = None
-    f_std = open(os.path.join(path_out, "srcs.vtk"))
     # Constant X-value means a slice parallel to the Y-Axis, a bit confusing
     if cx:
-        f_yslice = open(os.path.join(path_out, "srcs_yslice_{cx}.vtk"))
+        f_yslice = open(os.path.join(path_out, f"srcs_yslice_{cx}.vtk"), "w")
     if cy:
-        f_xslice = open(os.path.join(path_out, "srcs_xslice_{cy}.vtk"))
+        f_xslice = open(os.path.join(path_out, f"srcs_xslice_{cy}.vtk"), "w")
     if cz:
-        f_zslice = open(os.path.join(path_out, "srcs_zslice_{cz}.vtk"))
+        f_zslice = open(os.path.join(path_out, f"srcs_zslice_{abs(cz)}.vtk"),
+                        "w")
 
     # Write in the headers, use a try-except to write all even if None
     for f in [f_std, f_xslice, f_yslice, f_zslice]:
@@ -406,7 +404,7 @@ def src_vtk_from_specfem(path_to_data, path_out, utm_zone=-60, cx=None,
                             utm_zone=utm_zone, inverse=False)
         sz = src["depth"] * -1E3
         # Write data to all files using try-except
-        f.std.write(vtk_line.format(x=sx, y=sy, z=sz))
+        f_std.write(vtk_line.format(x=sx, y=sy, z=sz))
         if cy:
             f_xslice.write(vtk_line.format(x=sx, y=cy, z=sz))
         if cx:
@@ -417,6 +415,7 @@ def src_vtk_from_specfem(path_to_data, path_out, utm_zone=-60, cx=None,
     # Close all the files
     for f in [f_std, f_xslice, f_yslice, f_zslice]:
         try:
+            f.write("\n")
             f.close()
         except AttributeError:
             continue
