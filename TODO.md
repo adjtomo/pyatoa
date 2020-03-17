@@ -1,15 +1,15 @@
 ## For Version 0.2.0
 
 #### Bugs
-- [X] FDSNException in gatherer.gather_observed( Uknown Error (timeout))
-      Added catch for FDSNException in gather_observed() and return st_obs=None
+- [X] FDSNException in gatherer.gather_observed( Uknown Error (timeout)) <\br>
+      *Added catch for FDSNException in gather_observed() and return st_obs=None*
 - [ ] Pyflex value Error is being thrown (pyflex.window_selector() line 427 np.abs(noise).max() zero size array)
-- [X] Pyaflowa exit gracefully if no data is gathered for an entire event, currently finalize is throwing uncaught errors
-      Pyaflowa counts successful processes, if none, finalize is skipped
-- [X] Fix: waveform plots not deleted if theyre not included in the composite pdf
-      Moved purge outside loop and set it to delete all files inside the dir with the correct tag
-- [X] Pyaflowa waveform composites aren't made if a thrifty inversion is done because it skips s00
-      removed the step count requirement in the if statement
+- [X] Pyaflowa exit gracefully if no data is gathered for an entire event, currently finalize is throwing uncaught errors <\br>
+      *Pyaflowa counts successful processes, if none, finalize is skipped*
+- [X] Fix: waveform plots not deleted if theyre not included in the composite pdf <\br>
+      *Moved purge outside loop and set it to delete all files inside the dir with the correct tag*
+- [X] Pyaflowa waveform composites aren't made if a thrifty inversion is done because it skips s00  <\br>
+      *removed the step count requirement in the if statement*
 
 #### General
 - [ ] Proper docs for all functions. methods, classes 
@@ -17,8 +17,8 @@
 - [X] ipynb in gitignore
 - [ ] remove large data files from test data
 - [ ] make model number, step count formatters standard package wide functions
-- [X] check unused kwargs in the config in the case of typos
-      Added a check call at the end of check() that puts up a user warning if unnused kwargs fall through
+- [X] check unused kwargs in the config in the case of typos  <\br>
+      *Added a check call at the end of check() that puts up a user warning if unnused kwargs fall through*
 - [ ] include __repr__ for all classes
 
 #### Config
@@ -48,8 +48,8 @@
 - [X] Move tools and visualize out of utils dir into main dir
 
 #### Visuals
-- [X] Depth cross section of a Catalog object
-      In pyaflowa artist 
+- [X] Depth cross section of a Catalog object <\br>
+      *In pyaflowa artist *
 - [ ] Plot output optim only show models, maybe iterations as smaller points, or plot both
 - [ ] VTK plotter
 - [ ] Remove rcParams and explicitely set all plot attributes in calls
@@ -62,10 +62,10 @@
 - [ ] sanity check parameters in initialize
 - [ ] if given parameters (i.e. misspelled) are not used, notify the user somehow, maybe in seisflows
 - [ ] auxiliary_data.Statistics: store time shift (min, max, time shift components), format misfit with 'e' notation not 'f'
-- [X] auxiliary_data store windows and adjoint sources by step lengths? Or just store s00 because that is the "initial" step
-      Waveforms, misfit windows and adjoint sources are now stored by model and step count in Manager
+- [X] auxiliary_data store windows and adjoint sources by step lengths? Or just store s00 because that is the "initial" step <\br>
+      *Waveforms, misfit windows and adjoint sources are now stored by model and step count in Manager*
 - [ ] allow reading data from previously collected hdf5 files from other inversions, to avoid recollecting obs data. would need to sanitize the datasets so that none of the other data gets in the way
 - [X] make rcvs.vtk for all receivers
-- [X] make srcs_w_depth.vtk, and perhaps with depth as planar slices
-      New src_vtk_from_specfem() function that takes constant x y or z values to make planar slices
+- [X] make srcs_w_depth.vtk, and perhaps with depth as planar slices <\br>
+      *New src_vtk_from_specfem() function that takes constant x y or z values to make planar slices*
 
