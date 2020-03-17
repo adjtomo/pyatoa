@@ -365,14 +365,23 @@ class Config:
         attrs["cfgpaths_synthetics"] = self.cfgpaths["synthetics"]
         attrs["cfgpaths_responses"] = self.cfgpaths["responses"]
 
-        # remove the Config objects because pyASDF doesn't recognize them
+        # remove the Config objects because pyASDF won't recognize dicts or obj.
+        # these will be reinstated when read back in
         del attrs["pyflex_config"]
         del attrs["pyadjoint_config"]
         del attrs["cfgpaths"]
 
+        # Figure out how to tag the data in the dataset
+        if self.model_number and self.step_count:
+            # model/step/window_tag
+            path = f"{self.model_number}/{self.step_count}"
+        elif self.model_number:
+            path = self.model_number
+        else:
+            path = "default"
+
         ds.add_auxiliary_data(data_type="Configs", data=array([True]),
-                              path=self.model_number or "default",
-                              parameters=attrs
+                              path=path, parameters=attrs
                               )
 
     def _write_ascii(self, filename):

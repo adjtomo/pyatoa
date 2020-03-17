@@ -764,7 +764,7 @@ class Manager:
                     # model/window_tag
                     path = self.config.model_number
                 else:
-                    path = "Default"
+                    path = "default"
                 # net_sta_comp_n
                 window_tag = (f"{self.st_obs[0].stats.network}_"
                               f"{self.st_obs[0].stats.station}_{comp}_{i}")
@@ -906,7 +906,7 @@ class Manager:
                     # model/window_tag
                     path = self.config.model_number
                 else:
-                    path = "Default"
+                    path = "default"
 
                 # The tag hardcodes an X as the second channel index
                 # to signify that these are synthetic waveforms

@@ -17,12 +17,11 @@ import traceback
 import numpy as np
 
 from pyatoa.utils.asdf.deletions import clean_ds
-from pyatoa.utils.asdf.additions import write_stats_to_asdf
 from pyatoa.visuals.statistics import plot_output_optim
 from pyatoa.utils.io import (create_stations_adjoint, write_misfit_json,
                              write_adj_src_to_ascii, write_misfit_stats,
-                             tile_combine_imgs,
-                             create_srcrcv_vtk_multiple)
+                             tile_combine_imgs, srcrcv_vtk_from_specfem
+                             )
 
 # Overwrite the preprocessing function
 from pyatoa.plugins.new_zealand.process import preproc
@@ -128,7 +127,7 @@ class Pyaflowa:
                                             self.model_number, event_id),
                     }
         
-        # Make the process specific event directories
+        # Create the process specific event directories
         for key, item in ev_paths.items():
             if not os.path.exists(item):
                 os.makedirs(item)
@@ -171,17 +170,15 @@ class Pyaflowa:
                                f"{config.event_id}.h5")
 
         # Count number of successful processes
-        successes = 0
+        processed = 0
         with pyasdf.ASDFDataSet(ds_name) as ds:
             # Make sure the ASDFDataSet doesn't already contain auxiliary_data
+            # for the model_number/step_count
             clean_ds(ds=ds, model=self.model_number, step=self.step_count,
                      fix_windows=self.fix_windows)
 
-            # Write the Config to auxiliary_data for provenance
-            config.write(write_to=ds)
+            # Set up the manager and get station information
             mgmt = pyatoa.Manager(config=config, ds=ds)
-
-            # Get stations from Specfem STATIONS file in form NET STA LAT LON ..
             stations = np.loadtxt(ev_paths["stations"], usecols=[0, 1, 2, 3],
                                   dtype=str)
             coords = stations[:, 2:]
@@ -221,7 +218,17 @@ class Pyaflowa:
                                 mgmt.srcrcvmap(stations=coords, save=map_fid,
                                                show=False)
                     print("\n")
-                    successes += 1
+                    # Just once, grab the processing stats from the Streams and
+                    # append them to the Config object and save. A sort of
+                    # hacky way to retain processing information from old runs.
+                    if processed == 0:
+                        setattr(config, "obs_processing",
+                                mgmt.st_syn[0].stats.processing)
+                        setattr(config, "syn_processing",
+                                mgmt.st_obs[0].stats.processing)
+                        config.write(write_to=ds)
+
+                    processed += 1
                 # Traceback ensures more detailed error tracking
                 except Exception:
                     traceback.print_exc()
@@ -229,11 +236,12 @@ class Pyaflowa:
                     continue
 
             # Run finalization procedures for processing if gathered waveforms
-            if successes:
+            if processed:
+                print(f"Pyaflowa processed {processed} stations")
                 self.finalize_process(ds=ds, cwd=cwd, ev_paths=ev_paths,
                                       config=config)
             else:
-                print("Pyaflowa processed no data, skipping finalize")
+                print("Pyaflowa processed 0 stations, skipping finalize")
 
     def finalize_process(self, cwd, ds, ev_paths, config):
         """
@@ -300,12 +308,11 @@ class Pyaflowa:
                                             "output_optim.png")
                           )
 
-        # Generate .vtk files for given source and receivers
-        if self.par["create_srcrcv_vtk"]:
-            create_srcrcv_vtk_multiple(pathin=self.int_paths["data"],
-                                       pathout=self.int_paths["vtks"],
-                                       model=self.model_number
-                                       )
+        # Generate .vtk files for given source and receivers for model 0
+        if self.par["create_srcrcv_vtk"] and self.iteration == 0:
+            srcrcv_vtk_from_specfem(path_to_data=self.ext_paths["SPECFEM_DATA"],
+                                    path_out=self.int_paths["vtks"],
+                                    )
 
         # Create copies of .h5 files at the end of each iteration, because .h5
         # files are easy to corrupt so it's good to have a backup

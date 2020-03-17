@@ -136,6 +136,8 @@ def sum_misfits(ds, model, station=None):
 
 def misfit_stats(ds, model, include_lists=False):
     """
+    !!! DEPRECATED in favor of using the Inspector class !!!
+
     Extract misfit statistics from a dataset for a given model.
     Return information as a dictionary object for easy access.    
     Used primarily to write misfit stats into ASDF Dataset auxiliary data.
@@ -150,6 +152,10 @@ def misfit_stats(ds, model, include_lists=False):
     :rtype stats: dict
     :return stats: a dictionary of statistics values 
     """
+    from warnings import warn
+    warn("Deprecated in favor of pyatoa.core.seisflows.Inspector",
+         DeprecationWarning)
+
     # collect relevant information
     ds_adjsrc = ds.auxiliary_data.AdjointSources[model]
     if not hasattr(ds.auxiliary_data.MisfitWindows, model):

@@ -289,212 +289,137 @@ def write_misfit_stats(ds, model, pathout="./", fidout=None):
     # save in the same format as seisflows 
     np.savetxt(fidout, [misfit], '%11.6e')
 
-           
-def create_srcrcv_vtk_single(ds, model, pathout, event_separate=False,
-                             utm_zone=-60, event_depth=False):
-    """
-    It's useful to visualize source receiver locations in Paraview, alongside
-    sensitivity kernels. VTK files are produced by Specfem, however this sr.vtk
-    file contains all receivers, and a source at depth which is sometimes
-    confusing for top down visualization.
 
-    NOTE:
-    -This function will create source_receiver vtk files using the .h5 files
-    with only those receiver that were used in the misfit analysis, and only
-    an epicentral source location.
-    -Gives the option to create an event vtk file separate to receivers, for
-    more flexibility in the visualization.
-    
-    :type ds: pyasdf.ASDFDataSet
-    :param ds: pyasdf dataset outputted by pyatoa
-    :type model: str
-    :param model: model number, e.g. 'm00'
-    :type pathout: str
-    :param pathout: output path to save vtk file
-    :type event_separate: str
-    :param event_separate: if event vtk file to be made separately
+def rcv_vtk_from_specfem(path_to_data, path_out, utm_zone=-60, z=3E3):
+    """
+    Creates source and receiver VTK files based on the STATIONS and
+    CMTSOLUTIONS from a Specfem3D DATA directory.
+
+    :type path_to_data: str
+    :param path_to_data: path to specfem3D/DATA directory
+    :type path_out: str
+    :param path_out: path to save the fiels to
     :type utm_zone: int
-    :param utm_zone: the utm zone of the mesh, 60 for NZ
-    :type event_depth: bool
-    :param event_depth: if True, uses the real event depth, if False, places
-        event at 5km above the surface
+    :param utm_zone: utm zone for converting lat lon coordinates
+    :type z: float
+    :param z: elevation to put stations at
     """
     from pyatoa.utils.srcrcv import lonlat_utm
 
-    # Check that this can be run, if dataset contains adjoint sources
-    if not bool(ds.auxiliary_data.AdjointSources):
-        return
-
-    # Some information that is used a few times
-    vtk_header = ("# vtk DataFile Version 2.0\n"
-                  "Source and Receiver VTK file from Pyatoa\n"
-                  "ASCII\n"
-                  "DATASET POLYDATA\n"
-                  )
-
-    # Get receiver location information in lat-lon,
-    event_id = os.path.basename(ds.filename).split(".")[0]
-    sta_x, sta_y, sta_elv, sta_ids = [], [], [], []
-
-    for adjsrc in ds.auxiliary_data.AdjointSources[model].list():
-        sta = ds.auxiliary_data.AdjointSources[model][adjsrc]
-
-        # make sure no repeat stations
-        if sta.parameters["station_id"] in sta_ids:
-            continue
-
-        # Convert lat lon to UTM
-        x, y = lonlat_utm(lon_or_x=sta.parameters["longitude"],
-                          lat_or_y=sta.parameters["latitude"],
-                          utm_zone=utm_zone, inverse=False)
-        sta_x.append(x)
-        sta_y.append(y)
-        sta_elv.append(sta.parameters["elevation_in_m"])
-        sta_ids.append(sta.parameters["station_id"])
-
-    # Get event location information in UTM
-    ev_x, ev_y = lonlat_utm(lon_or_x=ds.events[0].preferred_origin().longitude,
-                            lat_or_y=ds.events[0].preferred_origin().latitude,
-                            utm_zone=utm_zone, inverse=False
-                            )
-    # Depth in units of meters
-    if event_depth:
-        ev_z = ds.events[0].preferred_origin().depth
-    else:
-        # set event epicentral depth to 5km to keep it above topography
-        ev_z = 5E3
-
-    # Write header for VTK file and then print values for source receivers
-    fid_out = os.path.join(pathout, f"{event_id}_{model}.vtk")
-    with open(fid_out, "w") as f:
-        f.write(vtk_header)
-        # num points equal to number of stations plus 1 event
-        f.write(f"POINTS\t{len(sta_x)+1} float\n")
-        f.write(f"{ev_x:18.6E}{ev_y:18.6E}{ev_z:18.6E}\n")
-        for x, y, e in zip(sta_x, sta_y, sta_elv):
-            f.write(f"{x:18.6E}{y:18.6E}{e:18.6E}\n")
-
-    # Make a separate VTK file for the source
-    if event_separate:
-        event_fid_out = os.path.join(pathout, f"{event_id}_{model}_event.vtk")
-        with open(event_fid_out, "w") as f:
-            f.write(vtk_header)
-            f.write("POINTS\t1 float\n")
-            f.write(f"{ev_x:18.6E}{ev_y:18.6E}{ev_z:18.6E}\n")
-
-
-def create_srcrcv_vtk_multiple(pathin, pathout, model, utm_zone=-60,
-                               event_depth=False):
+    # Templates for filling
+    vtk_line = "{x:18.6E}{y:18.6E}{z:18.6E}\n"
+    vtk_header = """
+    # vtk DataFile Version 2.0
+    Source and Receiver VTK file from Pyatoa
+    ASCII
+    DATASET POLYDATA
+    POINTS\t{} float\n
     """
-    Same as create_srcrcv_vtk_single, except instead of taking an asdf
-    dataset input, takes a path, reads in datasets and creates one
-    large vtk file containing all stations and all events.
 
-    -Useful for visualizations of misfit kernels and gradients.
-    -Automatically creates a separate event vtk file.
+    stations = np.loadtxt(os.path.join(path_to_data, "STATIONS"),
+                          usecols=[2, 3], dtype=str)
+    lats = stations[:, 0]
+    lons = stations[:, 1]
 
-    :type pathin: str
-    :param pathin: path containing .h5 files, will loop through all
-        available h5 files in the folder
-    :type model: str
-    :param model: model number, e.g. 'm00'
-    :type pathout: str
-    :param pathout: output path to save vtk file
+    with open(os.path.join(path_out, "rcvs.vtk"), "w") as f:
+        f.write(vtk_header.format(len(stations)))
+        for lat, lon in zip(lats, lons):
+            rx, ry = lonlat_utm(lon_or_x=lon, lat_or_y=lat, utm_zone=utm_zone,
+                                inverse=False)
+            f.write(vtk_line.format(x=rx, y=ry, z=z))
+
+
+def src_vtk_from_specfem(path_to_data, path_out, utm_zone=-60, cx=None,
+                         cy=None, cz=False):
+    """
+    Creates source and receiver VTK files based on the STATIONS and
+    CMTSOLUTIONS from a Specfem3D DATA directory.
+
+    :type path_to_data: str
+    :param path_to_data: path to specfem3D/DATA directory
+    :type path_out: str
+    :param path_out: path to save the fiels to
     :type utm_zone: int
-    :param utm_zone: the utm zone of the mesh, 60 for NZ
-    :type event_depth: bool
-    :param event_depth: if True, uses the real event depth, if False, places
-        event at 5km above the surface
+    :param utm_zone: utm zone for converting lat lon coordinates
+    :type cx: float
+    :param cx: Constant X-value for creating an Y-slice, should be in units of
+        meters, in the UTM coordinate system
+    :type cy: float
+    :param cy: Constant Y-value for creating an X-slice, should be in units of
+        meters, in the UTM coordinate system
+    :type cz: float
+    :param cz: Constant Z-value for creating a Z-slice, should be in units of
+        meters with positve z-axis so negative Z-values are deeper
     """
-    import pyasdf
     from pyatoa.utils.srcrcv import lonlat_utm
 
-    vtk_header = ("# vtk DataFile Version 2.0\n"
-                  "Source and Receiver VTK file from Pyatoa\n"
-                  "ASCII\n"
-                  "DATASET POLYDATA\n"
-                  "POINTS\t{} float\n"
-                  )
-    vtk_line = "{X:18.6E}{Y:18.6E}{E:18.6E}\n"
+    def read_cmtsolution(path):
+        """utility function to read cmtsolution file into dictionary object"""
+        dict_out = {}
+        cmt = np.loadtxt(path, skiprows=1, dtype="str", delimiter=":")
+        for arr in cmt:
+            # Replace spaces with underscores in the key
+            key, value = arr[0].replace(" ", "_"), arr[1].strip()
+            # Most values will be float except event name
+            try:
+                value = float(value)
+            except ValueError:
+                pass
+            dict_out[key] = value
+        return dict_out
 
-    # Loop through available datasets
-    datasets = glob.glob(os.path.join(pathin, '*.h5'))
-    if not datasets:
-        return
+    # Templates for filling
+    vtk_line = "{x:18.6E}{y:18.6E}{z:18.6E}\n"
+    vtk_header = """
+    # vtk DataFile Version 2.0
+    Source and Receiver VTK file from Pyatoa
+    ASCII
+    DATASET POLYDATA
+    POINTS\t{} float\n
+    """
 
-    event_ids, sta_ids = [], []
-    ev_x, ev_y, ev_z, sta_x, sta_y, sta_elv = [], [], [], [], [], []
-    for fid in datasets:
-        with pyasdf.ASDFDataSet(fid) as ds:
-            # Check if dataset contains adjoint sources
-            if not bool(ds.auxiliary_data.AdjointSources):
-                continue
-            
-            # Loop through stations with adjoint sources
-            if hasattr(ds.auxiliary_data.AdjointSources, model):
-                for adjsrc in ds.auxiliary_data.AdjointSources[model].list():
-                    sta = ds.auxiliary_data.AdjointSources[model][adjsrc]
+    # Gather all the sources
+    sources = glob.glob(os.path.join(path_to_data, "CMTSOLUTION*"))
 
-                    # make sure no repeat stations
-                    if sta.parameters["station_id"] in sta_ids:
-                        continue
+    # Open files that need to be written
+    f_xslice = f_yslice = f_zslice = None
+    f_std = open(os.path.join(path_out, "srcs.vtk"))
+    # Constant X-value means a slice parallel to the Y-Axis, a bit confusing
+    if cx:
+        f_yslice = open(os.path.join(path_out, "srcs_yslice_{cx}.vtk"))
+    if cy:
+        f_xslice = open(os.path.join(path_out, "srcs_xslice_{cy}.vtk"))
+    if cz:
+        f_zslice = open(os.path.join(path_out, "srcs_zslice_{cz}.vtk"))
 
-                    # Convert lat lon to UTM
-                    sx, sy = lonlat_utm(lon_or_x=sta.parameters["longitude"],
-                                        lat_or_y=sta.parameters["latitude"],
-                                        utm_zone=utm_zone, inverse=False
-                                        )
-                    sta_x.append(sx)
-                    sta_y.append(sy)
-                    sta_elv.append(sta.parameters["elevation_in_m"])
-                    sta_ids.append(sta.parameters["station_id"])
-            else:
-                continue
-
-            # Get event location information in UTM
-            event_id = os.path.basename(ds.filename).split(".")[0]
-            ex, ey = lonlat_utm(
-                lon_or_x=ds.events[0].preferred_origin().longitude,
-                lat_or_y=ds.events[0].preferred_origin().latitude,
-                utm_zone=utm_zone, inverse=False
-            )
-            # Depth in units of meters
-            if event_depth:
-                ez = ds.events[0].preferred_origin().depth
-            else:
-                # set event epicentral depth to 5km to keep it above topography
-                ez = 5E3
-
-            event_ids.append(event_id)
-            ev_x.append(ex)
-            ev_y.append(ey)
-            ev_z.append(ez)
-
-    # Write header for VTK file and then print values for source receivers
-    fid_out = os.path.join(pathout, f"rcvs_{model}.vtk")
-    with open(fid_out, "w") as f:
-        f.write(vtk_header.format(len(sta_x)))
-        # Loop through stations and write them to vtk file
-        for sx, sy, se in zip(sta_x, sta_y, sta_elv):
-            f.write(vtk_line.format(X=sx, Y=sy, E=se))
-
-    # Make a separate VTK file for all events so they can be formatted different
-    event_fid_out = os.path.join(pathout, "srcs.vtk")
-    if not os.path.exists(event_fid_out):
-        with open(event_fid_out, "w") as f:
-            f.write(vtk_header.format(len(ev_x)))
-            for ex, ey, ez in zip(ev_x, ev_y, ev_z):
-                f.write(vtk_line.format(X=ex, Y=ey, E=ez))
-
-    # Make a separate VTK file for each event.
-    # This only needs to be run once so just skip over if the files exist
-    for event_id, ex, ey, ez in zip(event_ids, ev_x, ev_y, ev_z):
-        event_fid_out = os.path.join(pathout, f"{event_id}.vtk")
-        if os.path.exists(event_fid_out):
+    # Write in the headers, use a try-except to write all even if None
+    for f in [f_std, f_xslice, f_yslice, f_zslice]:
+        try:
+            f.write(vtk_header.format(len(sources)))
+        except AttributeError:
             continue
-        with open(event_fid_out, "w") as f:
-            f.write(vtk_header.format(1))
-            f.write(vtk_line.format(X=ex, Y=ey, E=ez))
+
+    # Create VTK file for Sources, assuming CMTSOLUTION format
+    for source in sources:
+        src = read_cmtsolution(source)
+        sx, sy = lonlat_utm(lon_or_x=src["longitude"], lat_or_y=src["latitude"],
+                            utm_zone=utm_zone, inverse=False)
+        sz = src["depth"] * -1E3
+        # Write data to all files using try-except
+        f.std.write(vtk_line.format(x=sx, y=sy, z=sz))
+        if cy:
+            f_xslice.write(vtk_line.format(x=sx, y=cy, z=sz))
+        if cx:
+            f_yslice.write(vtk_line.format(x=cx, y=sy, z=sz))
+        if cz:
+            f_zslice.write(vtk_line.format(x=sx, y=sy, z=cz))
+
+    # Close all the files
+    for f in [f_std, f_xslice, f_yslice, f_zslice]:
+        try:
+            f.close()
+        except AttributeError:
+            continue
 
 
 def create_stations_adjoint(ds, model, specfem_station_file, pathout=None):
@@ -710,3 +635,217 @@ def tile_combine_imgs(ds, wavs_path, maps_path, save_pdf_to,
     if purge_tiles:
         for tile in tile_names:
             os.remove(tile)
+
+
+def srcrcv_vtk_from_dataset(pathin, pathout, model, utm_zone=-60,
+                            event_depth=False):
+    """
+    !!! Deprecated in favor of srcrcv_vtk_from_specfem !!!
+
+    Same as create_srcrcv_vtk_single, except instead of taking an asdf
+    dataset input, takes a path, reads in datasets and creates one
+    large vtk file containing all stations and all events.
+
+    -Useful for visualizations of misfit kernels and gradients.
+    -Automatically creates a separate event vtk file.
+
+    :type pathin: str
+    :param pathin: path containing .h5 files, will loop through all
+        available h5 files in the folder
+    :type model: str
+    :param model: model number, e.g. 'm00'
+    :type pathout: str
+    :param pathout: output path to save vtk file
+    :type utm_zone: int
+    :param utm_zone: the utm zone of the mesh, 60 for NZ
+    :type event_depth: bool
+    :param event_depth: if True, uses the real event depth, if False, places
+        event at 5km above the surface
+    """
+    import pyasdf
+    from pyatoa.utils.srcrcv import lonlat_utm
+
+    vtk_header = ("# vtk DataFile Version 2.0\n"
+                  "Source and Receiver VTK file from Pyatoa\n"
+                  "ASCII\n"
+                  "DATASET POLYDATA\n"
+                  "POINTS\t{} float\n"
+                  )
+    vtk_line = "{X:18.6E}{Y:18.6E}{E:18.6E}\n"
+
+    # Loop through available datasets
+    datasets = glob.glob(os.path.join(pathin, '*.h5'))
+    if not datasets:
+        return
+
+    event_ids, sta_ids = [], []
+    ev_x, ev_y, ev_z, sta_x, sta_y, sta_elv = [], [], [], [], [], []
+    for fid in datasets:
+        with pyasdf.ASDFDataSet(fid) as ds:
+            # Check if dataset contains adjoint sources
+            if not bool(ds.auxiliary_data.AdjointSources):
+                continue
+
+            # Loop through stations with adjoint sources
+            if hasattr(ds.auxiliary_data.AdjointSources, model):
+                for adjsrc in ds.auxiliary_data.AdjointSources[model].list():
+                    sta = ds.auxiliary_data.AdjointSources[model][adjsrc]
+
+                    # make sure no repeat stations
+                    if sta.parameters["station_id"] in sta_ids:
+                        continue
+
+                    # Convert lat lon to UTM
+                    sx, sy = lonlat_utm(lon_or_x=sta.parameters["longitude"],
+                                        lat_or_y=sta.parameters["latitude"],
+                                        utm_zone=utm_zone, inverse=False
+                                        )
+                    sta_x.append(sx)
+                    sta_y.append(sy)
+                    sta_elv.append(sta.parameters["elevation_in_m"])
+                    sta_ids.append(sta.parameters["station_id"])
+            else:
+                continue
+
+            # Get event location information in UTM
+            event_id = os.path.basename(ds.filename).split(".")[0]
+            ex, ey = lonlat_utm(
+                lon_or_x=ds.events[0].preferred_origin().longitude,
+                lat_or_y=ds.events[0].preferred_origin().latitude,
+                utm_zone=utm_zone, inverse=False
+            )
+            # Depth in units of meters
+            if event_depth:
+                ez = ds.events[0].preferred_origin().depth
+            else:
+                # set event epicentral depth to 5km to keep it above topography
+                ez = 5E3
+
+            event_ids.append(event_id)
+            ev_x.append(ex)
+            ev_y.append(ey)
+            ev_z.append(ez)
+
+    # Write header for VTK file and then print values for source receivers
+    fid_out = os.path.join(pathout, f"rcvs_{model}.vtk")
+    with open(fid_out, "w") as f:
+        f.write(vtk_header.format(len(sta_x)))
+        # Loop through stations and write them to vtk file
+        for sx, sy, se in zip(sta_x, sta_y, sta_elv):
+            f.write(vtk_line.format(X=sx, Y=sy, E=se))
+
+    # Make a separate VTK file for all events so they can be formatted different
+    event_fid_out = os.path.join(pathout, "srcs.vtk")
+    if not os.path.exists(event_fid_out):
+        with open(event_fid_out, "w") as f:
+            f.write(vtk_header.format(len(ev_x)))
+            for ex, ey, ez in zip(ev_x, ev_y, ev_z):
+                f.write(vtk_line.format(X=ex, Y=ey, E=ez))
+
+    # Make a separate VTK file for each event.
+    # This only needs to be run once so just skip over if the files exist
+    for event_id, ex, ey, ez in zip(event_ids, ev_x, ev_y, ev_z):
+        event_fid_out = os.path.join(pathout, f"{event_id}.vtk")
+        if os.path.exists(event_fid_out):
+            continue
+        with open(event_fid_out, "w") as f:
+            f.write(vtk_header.format(1))
+            f.write(vtk_line.format(X=ex, Y=ey, E=ez))
+
+
+def create_srcrcv_vtk_single(ds, model, pathout, event_separate=False,
+                             utm_zone=-60, event_depth=False):
+    """
+    !!! Deprectated, I don't really use this !!!
+
+    It's useful to visualize source receiver locations in Paraview, alongside
+    sensitivity kernels. VTK files are produced by Specfem, however this sr.vtk
+    file contains all receivers, and a source at depth which is sometimes
+    confusing for top down visualization.
+
+    NOTE:
+    -This function will create source_receiver vtk files using the .h5 files
+    with only those receiver that were used in the misfit analysis, and only
+    an epicentral source location.
+    -Gives the option to create an event vtk file separate to receivers, for
+    more flexibility in the visualization.
+
+    :type ds: pyasdf.ASDFDataSet
+    :param ds: pyasdf dataset outputted by pyatoa
+    :type model: str
+    :param model: model number, e.g. 'm00'
+    :type pathout: str
+    :param pathout: output path to save vtk file
+    :type event_separate: str
+    :param event_separate: if event vtk file to be made separately
+    :type utm_zone: int
+    :param utm_zone: the utm zone of the mesh, 60 for NZ
+    :type event_depth: bool
+    :param event_depth: if True, uses the real event depth, if False, places
+        event at 5km above the surface
+    """
+    from warnings import warn
+    warn("Deprecated", DeprecationWarning)
+
+    from pyatoa.utils.srcrcv import lonlat_utm
+
+    # Check that this can be run, if dataset contains adjoint sources
+    if not bool(ds.auxiliary_data.AdjointSources):
+        return
+
+    # Some information that is used a few times
+    vtk_header = ("# vtk DataFile Version 2.0\n"
+                  "Source and Receiver VTK file from Pyatoa\n"
+                  "ASCII\n"
+                  "DATASET POLYDATA\n"
+                  )
+
+    # Get receiver location information in lat-lon,
+    event_id = os.path.basename(ds.filename).split(".")[0]
+    sta_x, sta_y, sta_elv, sta_ids = [], [], [], []
+
+    for adjsrc in ds.auxiliary_data.AdjointSources[model].list():
+        sta = ds.auxiliary_data.AdjointSources[model][adjsrc]
+
+        # make sure no repeat stations
+        if sta.parameters["station_id"] in sta_ids:
+            continue
+
+        # Convert lat lon to UTM
+        x, y = lonlat_utm(lon_or_x=sta.parameters["longitude"],
+                          lat_or_y=sta.parameters["latitude"],
+                          utm_zone=utm_zone, inverse=False)
+        sta_x.append(x)
+        sta_y.append(y)
+        sta_elv.append(sta.parameters["elevation_in_m"])
+        sta_ids.append(sta.parameters["station_id"])
+
+    # Get event location information in UTM
+    ev_x, ev_y = lonlat_utm(lon_or_x=ds.events[0].preferred_origin().longitude,
+                            lat_or_y=ds.events[0].preferred_origin().latitude,
+                            utm_zone=utm_zone, inverse=False
+                            )
+    # Depth in units of meters
+    if event_depth:
+        ev_z = ds.events[0].preferred_origin().depth
+    else:
+        # set event epicentral depth to 5km to keep it above topography
+        ev_z = 5E3
+
+    # Write header for VTK file and then print values for source receivers
+    fid_out = os.path.join(pathout, f"{event_id}_{model}.vtk")
+    with open(fid_out, "w") as f:
+        f.write(vtk_header)
+        # num points equal to number of stations plus 1 event
+        f.write(f"POINTS\t{len(sta_x)+1} float\n")
+        f.write(f"{ev_x:18.6E}{ev_y:18.6E}{ev_z:18.6E}\n")
+        for x, y, e in zip(sta_x, sta_y, sta_elv):
+            f.write(f"{x:18.6E}{y:18.6E}{e:18.6E}\n")
+
+    # Make a separate VTK file for the source
+    if event_separate:
+        event_fid_out = os.path.join(pathout, f"{event_id}_{model}_event.vtk")
+        with open(event_fid_out, "w") as f:
+            f.write(vtk_header)
+            f.write("POINTS\t1 float\n")
+            f.write(f"{ev_x:18.6E}{ev_y:18.6E}{ev_z:18.6E}\n")
