@@ -28,6 +28,14 @@ from pyatoa.utils.io import (create_stations_adjoint, write_misfit_json,
 # Overwrite the preprocessing function
 from pyatoa.plugins.new_zealand.process import preproc
 
+# A list of key word arguments that are accepted by Pyaflowa but are only
+# listed in Seisflows' parameters.yaml file. Listed here so that Pyatoa
+# knows that these arguments are acceptable.
+pyaflowa_kwargs = ["set_logging", "window_amp_ratio", "fix_windows", "snapshot",
+                   "write_misfit_json", "create_srcrcv_vtk", "plot_waveforms",
+                   "plot_srcrcv_maps", "combine_imgs", "purge_waveform_figures",
+                   "purge_tile_figures"]
+
 
 class Pyaflowa:
     """
@@ -145,16 +153,15 @@ class Pyaflowa:
                 elif level == "debug":
                     logger.setLevel(logging.DEBUG)
 
-        # Read in the Pyatoa Config object and set attributes based on workflow
-        config = pyatoa.Config(yaml_fid=self.config_file)
-        setattr(config, "event_id", event_id)
-        setattr(config, "model_number", self.model_number)
-        setattr(config, "synthetic_tag", f"synthetic_{self.model_number}")
-        setattr(config, "synthetics_only", self.synthetics_only)
-
-        # Make sure Pyatoa knows to look in the Seisflows directories for data
-        config.cfgpaths["synthetics"].append(os.path.join(cwd, "traces", "syn"))
-        config.cfgpaths["waveforms"].append(os.path.join(cwd, "traces", "obs"))
+        # Read in the Pyatoa Config object from the .yaml file, with
+        # additional parameter set by the individual process
+        config = pyatoa.Config(
+            yaml_fid=self.config_file, event_id=event_id,
+            model_number=self.model_number, step_count=self.step_count,
+            synthetics_only=self.synthetics_only,
+            cfgpaths={"synthetics": os.path.join(cwd, "traces", "syn"),
+                      "waveforms": os.path.join(cwd, "traces", "obs")}
+        )
 
         return config, ev_paths
 
@@ -327,18 +334,3 @@ class Pyaflowa:
                                               os.path.basename(src))
                             )
 
-
-def arguments():
-    """
-    A list of key word arguments that are accepted by Pyaflowa but are only
-    listed in Seisflows' parameters.yaml file. Listed here so that Pyatoa
-    knows that these arguments are acceptable.
-
-    :rtype: list
-    :return: list of key word arguments
-    """
-    keywords = ["set_logging", "window_amp_ratio", "fix_windows", "snapshot",
-                "write_misfit_json", "create_srcrcv_vtk", "plot_waveforms",
-                "plot_srcrcv_maps", "combine_imgs", "purge_waveform_figures",
-                "purge_tile_figures"]
-    return keywords

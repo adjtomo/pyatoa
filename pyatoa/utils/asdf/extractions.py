@@ -265,7 +265,7 @@ def histogram_data(ds, model, data_type):
     :param data_type: chosen data type to return histogram data for, available:
         'cc_shift_in_samples', 'cc_shift_in_seconds', 
     """
-    from pyatoa.utils.tools.calculate import amplitude_anomaly
+    from pyatoa.utils.calculate import amplitude_anomaly
 
     data_types = ['cc_shift_in_samples', 'cc_shift_in_seconds', 'amplitude']
     if data_type not in data_types:
@@ -428,14 +428,5 @@ def _window_info(ds_windows):
     return cc_shift_secs, max_cc_values
     
 
-def _count_by_station(ds, model):
-    """
-    TO DO: write a function that returns lists corresponding to each station 
-    that count: number of misfit windows, number of adjoint sources
-    """
-    number_windows, number_adjsrcs = [],[]
-    stations = ds.waveforms.list()
-    
-    raise NotImplementedError
 
 

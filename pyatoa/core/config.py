@@ -2,12 +2,16 @@
 """
 Configuration object for Pyatoa.
 
-The config class is the main interaction object between the User and workflow.
-Fed into the processor class for workflow management, and also used for
-information sharing between objects and functions.
+The Config class is the main interaction object between the User and workflow.
+Fed into the Manager class for workflow management, and also used for
+information sharing between objects and functions. Has the ability to read from
+and write to external files in various formats, or can be called directly
+through scripts or interactive shells.
 """
 import yaml
-import warnings
+from pyatoa import logger
+from pyatoa.utils.format import model, step
+from pyatoa.core.seisflows.pyaflowa import pyaflowa_kwargs
 from pyatoa.plugins.pyflex_config import set_pyflex_config
 from pyatoa.plugins.pyadjoint_config import set_pyadjoint_config
 
@@ -90,35 +94,9 @@ class Config:
             Waveforms must be saved in a specific directory structure with a
             specific naming scheme
         """
-        if model_number is not None:
-            # Format the model number to the way Pyatoa expects it
-            if isinstance(model_number, str):
-                # If e.g. model_number = "0"
-                if not model_number[0] == "m":
-                    self.model_number = f"m{model_number:0>2}"
-                # If e.g. model_number = "m00"
-                else:
-                    self.model_number = model_number
-            # If e.g. model_number = 0
-            elif isinstance(model_number, int):
-                self.model_number = f"m{model_number:0>2}"
-        else:
-            self.model_number = None
-
-        if step_count is not None:
-            # Format the step count to the way Pyatoa expects it
-            if isinstance(step_count, str):
-                # If e.g. model_number = "0"
-                if not step_count[0] == "s":
-                    self.step_count = f"s{step_count:0>2}"
-                # If e.g. step_count = "s00"
-                else:
-                    self.step_count = step_count
-            # If e.g. step_count = 0
-            elif isinstance(step_count, int):
-                self.step_count = f"m{step_count:0>2}"
-        else:
-            self.step_count = None
+        # Format the model number and step count to Pyatoa standard
+        self.model_number = model(model_number)
+        self.step_count = step(step_count)
 
         self.event_id = event_id
         self.min_period = float(min_period)
@@ -129,14 +107,11 @@ class Config:
         self.unit_output = unit_output.upper()
         self.synthetic_unit = synthetic_unit.upper()
         self.observed_tag = observed_tag
+
         # Tag synthetics based on model number and step count if given
-        if model_number and step_count:
-            self.synthetic_tag = synthetic_tag.format(m=self.model_number,
-                                                      s=self.step_count)
-        elif model_number:
-            self.synthetic_tag = synthetic_tag.format(m=self.model_number, s="")
-        else:
-            self.synthetic_tag = "synthetic"
+        self.synthetic_tag = synthetic_tag.format(
+            m=self.model_number or "default", s=self.step_count or "")
+
         self.pyflex_map = pyflex_map
         self.adj_src_type = adj_src_type
         self.map_corners = map_corners
@@ -147,8 +122,11 @@ class Config:
         self.end_pad = int(end_pad)
         self.component_list = component_list or ['Z', 'N', 'E']
 
-        # Make sure User provided paths are list objects as they will be looped
-        # on during the workflow
+        # These are filled in with actual Config objects by _check()
+        self.pyflex_config = None
+        self.pyadjoint_config = None
+
+        # Make sure User provided paths are list objects
         if cfgpaths:
             for key in cfgpaths:
                 if not isinstance(cfgpaths[key], list):
@@ -157,14 +135,11 @@ class Config:
         else:
             self.cfgpaths = {"waveforms": [], "synthetics": [], "responses": []}
 
-        # Run internal functions to check the Config object
-        self.pyflex_config = None
-        self.pyadjoint_config = None
-
-        # Overwrite config parameters from .yaml
+        # Overwrite config parameters from .yaml if given
         if yaml_fid:
             kwargs = self._read_yaml(yaml_fid)
 
+        # Run internal sanity checks
         self._check(**kwargs)
 
     def __str__(self):
@@ -177,19 +152,19 @@ class Config:
         return str_out
 
     def __repr__(self):
-        """Simple call string representation"""
+        """Simply call string representation"""
         return self.__str__()
 
     def _check(self, **kwargs):
         """
-        A check to make sure that the configuration parameters are set properly
-        to avoid any problems throughout the workflow.
+        A series of sanity checks to make sure that the configuration parameters
+        are set properly to avoid any problems throughout the workflow.
         """
         # Check period range is acceptable
-        assert(self.min_period < self.max_period)
+        assert(self.min_period < self.max_period), \
+            "min_period must be less than max_period"
 
         # Check that the map corners is a dict and contains proper keys
-        # else, set to default map corners for New Zealand North Island
         if self.map_corners is not None:
             assert(isinstance(self.map_corners, dict)), \
                 "map_corners must be a dictionary object"
@@ -200,7 +175,7 @@ class Config:
         else:
             self.map_corners = None
 
-        # Check if unit output properly set
+        # Check if unit output properly set, dictated by ObsPy units
         acceptable_units = ['DISP', 'VEL', 'ACC']
         assert(self.unit_output in acceptable_units), \
             f"unit_output should be in {acceptable_units}"
@@ -208,7 +183,7 @@ class Config:
         assert(self.synthetic_unit in acceptable_units), \
             f"synthetic_unit should be in {acceptable_units}"
 
-        # Check that paths are in the proper format
+        # Check that paths are in the proper format, dictated by Pyatoa
         required_keys = ['synthetics', 'waveforms', 'responses']
         assert(isinstance(self.cfgpaths, dict)), "paths should be a dict"
         for key in self.cfgpaths.keys():
@@ -221,6 +196,7 @@ class Config:
 
         # Rotate component list if necessary
         if self.rotate_to_rtz:
+            logger.debug("Components changed ZNE -> ZRT")
             self.component_list = ['Z', 'R', 'T']
 
         # Check that the amplitude ratio is a reasonable number
@@ -238,11 +214,12 @@ class Config:
         self.pyadjoint_config, unused_kwargs_pa = set_pyadjoint_config(
             min_period=self.min_period, max_period=self.max_period, **kwargs
         )
+
+        # Check for unnused kwargs
         for kwarg in unused_kwargs_pf:
-            if kwarg in unused_kwargs_pa:
-                warnings.warn(f"'{kwarg}' is not a keyword argument in Pyatoa, "
-                              f"Pyflex or Pyadjoint. Is this is a typo?",
-                              UserWarning)
+            if kwarg in unused_kwargs_pa and kwarg not in pyaflowa_kwargs:
+                logger.warn(f"'{kwarg}' is not a keyword argument in Pyatoa, "
+                            f"Pyflex or Pyadjoint. Is this is a typo?")
 
     def write(self, write_to, fmt=None):
         """
@@ -265,12 +242,12 @@ class Config:
                 elif ("txt" or "ascii") in write_to:
                     fmt = "ascii"
                 else:
-                    print(f"format must be given in {acceptable_formats}")
+                    logger.warn(f"format must be given in {acceptable_formats}")
                     return
             elif isinstance(write_to, ASDFDataSet):
                 fmt = "asdf"
             else:
-                print(f"format must be given in {acceptable_formats}")
+                logger.warn(f"format must be given in {acceptable_formats}")
                 return
 
         if fmt.lower() == "ascii":
@@ -303,12 +280,12 @@ class Config:
                 elif ("txt" or "ascii") in read_from:
                     fmt = "ascii"
                 else:
-                    print(f"format must be given in {acceptable_formats}")
+                    logger.warn(f"format must be given in {acceptable_formats}")
                     return
             elif isinstance(read_from, ASDFDataSet):
                 fmt = "asdf"
             else:
-                print(f"format must be given in {acceptable_formats}")
+                logger.warn(f"format must be given in {acceptable_formats}")
                 return
 
         if fmt.lower() == "yaml":
@@ -344,10 +321,10 @@ class Config:
         from copy import deepcopy
 
         # Add/standardize some variables before passing to dataset
-        # Copy to ensure that we aren't editing the Config parameters
+        # deep copy to ensure that we aren't editing the Config parameters
         attrs = vars(deepcopy(self))
 
-        # Auxiliary data doesn't like Nonetype objects
+        # Auxiliary data doesn't like NoneType objects
         for key, item in attrs.items():
             if item is None:
                 attrs[key] = ''
@@ -365,8 +342,8 @@ class Config:
         attrs["cfgpaths_synthetics"] = self.cfgpaths["synthetics"]
         attrs["cfgpaths_responses"] = self.cfgpaths["responses"]
 
-        # remove the Config objects because pyASDF won't recognize dicts or obj.
-        # these will be reinstated when read back in
+        # remove Config objects because pyASDF won't recognize dicts or objects
+        # these will be reinstated by _check() if/when read back in
         del attrs["pyflex_config"]
         del attrs["pyadjoint_config"]
         del attrs["cfgpaths"]
@@ -428,6 +405,10 @@ class Config:
         kwargs = {}
         for key, item in attr_list:
             if hasattr(self, key.lower()):
+                # Special case: ensure cfgpaths don't overwrite, but append
+                if key == "cfgpaths":
+                    for cfgkey, cfgitem in self.cfgpaths.items():
+                        item[cfgkey] += cfgitem
                 setattr(self, key.lower(), item)
             else:
                 kwargs[key.lower()] = item
