@@ -244,6 +244,7 @@ class Pyaflowa:
             else:
                 print("Pyaflowa processed 0 stations, skipping finalize")
 
+
     def finalize_process(self, cwd, ds, ev_paths, config):
         """
         After all waveforms have been windowed and measured, run some functions
