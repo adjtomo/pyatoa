@@ -151,91 +151,102 @@ def is_preprocessed(st):
     return False
 
 
-def preproc(st_original, inv=None, unit_output="VEL", synthetic_unit=None,
-            back_azimuth=None, filter_bounds=(10, 30), water_level=60,
+def preproc(mgmt, synthetics_only, choice, baz=None, water_level=60,
             corners=4, taper_percentage=0.05):
     """
-    Preprocess waveform data. Because synthetics can be in any unit,
-    requires user to specify what units they are.
+    Preprocess waveform data from a Manager class given a few extra processing
+    parameters.
 
-    :type st_original: obspy.stream.Stream
-    :param st_original: stream object to process
-    :type inv: obspy.core.inventory.Inventory or None
-    :param inv: inventory containing relevant network and stations
-    :type unit_output: str
-    :param unit_output: output of response removal, available:
-        'DISP', 'VEL', 'ACC'
-    :type synthetic_unit: str
-    :param synthetic_unit: units of synthetic traces, same available as unit
-    :type back_azimuth: float
-    :param back_azimuth: back azimuth in degrees
-    :type filter_bounds: list or tuple of float
-    :param filter_bounds: (min period, max_period), units of Seconds
+    :type mgmt: pyatoa.core.manager.Manager
+    :param mgmt: Manager class that should contain a Config object as well as
+        waveform data and inventory
+    :type synthetics_only: bool
+    :param synthetics_only: different processing is required if observed data
+        is also 'synthetic'
+    :type choice: str
+    :param choice: option to preprocess observed, synthetic or both
+        available: 'obs', 'syn'
+    :type baz: float
+    :param baz: backazimuth for rotating streams into ZRT
     :type water_level: int
     :param water_level: water level for response removal
     :type corners: int
     :param corners: value of the filter corners, i.e. steepness of filter edge
     :type taper_percentage: float
     :param taper_percentage: amount to taper ends of waveform
-    :rtype st: obspy.stream.Stream
-    :return st: preprocessed stream object
     """
     # Copy the stream to avoid editing in place
-    st = st_original.copy()
+    if choice == "syn":
+        st = mgmt.st_syn.copy()
+    elif choice == "obs":
+        st = mgmt.st_obs.copy()
     if is_preprocessed(st):
         return st
 
-    # Standard preprocessing
+    # Standard preprocessing before specific preprocessing
     st.detrend("linear")
     st.detrend("demean")
     st.taper(max_percentage=taper_percentage)
 
-    # If inventory is given, assume working with observation data
-    if inv:
-        # Occasionally, inventory issues arise, as ValueErrors due to 
+    # Observed specific data preprocessing includes response and rotating to ZNE
+    if choice == "obs" and not synthetics_only:
+        # Occasionally, inventory issues arise, as ValueErrors due to
         # station availability, e.g. NZ.COVZ. Try/except to catch these.
         try:
-            st.attach_response(inv)
-            st.remove_response(output=unit_output,
+            st.attach_response(mgmt.inv)
+            st.remove_response(output=mgmt.config.unit_output,
                                water_level=water_level,
                                plot=False)
         except ValueError:
             logger.debug(f"Error removing response from {st[0].get_id()}")
             return None
-    
-        logger.debug("remove response, units of {}".format(unit_output))
+        logger.debug("remove response, units of {}".format(
+            mgmt.config.unit_output)
+        )
 
         # Clean up streams after response removal
         st.detrend("linear")
         st.detrend("demean")
         st.taper(max_percentage=taper_percentage)
 
-        # Rotate streams if they are not in the ZNE coordinate system
-        st.rotate(method="->ZNE", inventory=inv)
-
-    # No inventory means synthetic data
-    elif not inv:
-        if unit_output != synthetic_unit:
+        # Rotate streams if they are not in the ZNE coordinate system, e.g. Z12
+        st.rotate(method="->ZNE", inventory=mgmt.inv)
+    # Synthetic specific data processing includes changing units
+    else:
+        if mgmt.config.unit_output != mgmt.config.synthetic_unit:
             logger.debug("unit output and synthetic output do not match, "
                          "adjusting")
-            st = change_syn_units(st, current=unit_output,
-                                  desired=synthetic_unit)
+            st = change_syn_units(st, current=mgmt.config.unit_output,
+                                  desired=mgmt.config.synthetic_unit)
             st.detrend("linear")
             st.detrend("demean")
+            st.taper(max_percentage=taper_percentage)
 
-        st.taper(max_percentage=taper_percentage)
-    
     # Rotate the given stream from standard NEZ to RTZ
-    if back_azimuth:
-        st.rotate(method="NE->RT", back_azimuth=back_azimuth)
-        logger.debug(f"rotating NE->RT by {back_azimuth} degrees")
+    if baz:
+        st.rotate(method="NE->RT", back_azimuth=baz)
+        logger.debug(f"rotating NE->RT by {baz} degrees")
 
     # Filter data using ObsPy Butterworth filters. Zerophase avoids phase shift
-    if filter_bounds is not None:
-        st.filter('bandpass', freqmin=1/filter_bounds[1],
-                  freqmax=1/filter_bounds[0], corners=corners, zerophase=True
+    # Bandpass filter
+    if mgmt.config.min_period and mgmt.config.max_period:
+        st.filter("bandpass",
+                  freqmin=1/mgmt.config.max_period,
+                  freqmax=1/mgmt.config.min_period, corners=corners,
+                  zerophase=True
                   )
-        logger.debug(f"filter {filter_bounds[0]}s to {filter_bounds[1]}s")
+        logger.debug(
+            f"bandpass {mgmt.config.min_period}-{mgmt.config.max_period}s")
+    # Highpass if only minimum period given
+    elif mgmt.config.min_period:
+        st.filter("highpass", freq=mgmt.config.min_period, corners=corners,
+                  zerophase=True)
+        logger.debug(f"highpass {mgmt.config.min_period}s")
+    # Highpass if only minimum period given
+    elif mgmt.config.max_period:
+        st.filter("lowpass", freq=mgmt.config.max_period, corners=corners,
+                  zerophase=True)
+        logger.debug(f"lowpass {mgmt.config.max_period}s")
 
     return st
 
