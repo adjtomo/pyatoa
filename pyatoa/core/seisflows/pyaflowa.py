@@ -91,6 +91,26 @@ class Pyaflowa:
         self.fix_windows = self.par["fix_windows"]
         self.synthetics_only = bool(par["CASE"].lower() == "synthetic")
 
+    def __str__(self):
+        """
+        String representation, only really used in Seisflows debug mode so
+        not very pretty, but should have some useful information
+        """
+        # An ugly way to format the first two lines the same as the rest
+        str_out = "\n".join([
+            "PYAFLOWA", "\t{:<25}{}".format("model_number:", self.model_number),
+            "\t{:<25}{}".format("step_count:", self.step_count), ""]
+        )
+        for key, item in vars(self).items():
+            if isinstance(item, dict):
+                continue
+            str_out += f"\t{key+':':<25}{item}\n"
+        return str_out
+
+    def __repr__(self):
+        """Simple point to __str__()"""
+        return self.__str__()
+
     @property
     def model_number(self):
         """
