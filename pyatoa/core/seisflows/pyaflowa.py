@@ -7,15 +7,17 @@ functionality into a Seisflows workflow. Pre-written functionalities simplify
 calls made in Seisflows to Pyatoa, to reduce clutter inside the workflow
 """
 import os
+# cheeky shorthand for cleaner calls
+from os.path import join as oj
 import glob
 import pyasdf
 import pyatoa
 import shutil
 import logging
-import warnings
 import traceback
 import numpy as np
 
+from pyatoa import logger
 from pyatoa.utils.format import model, step
 from pyatoa.utils.asdf.deletions import clean_ds
 from pyatoa.visuals.statistics import plot_output_optim
@@ -64,18 +66,17 @@ class Pyaflowa:
         pyatoa_io = self.ext_paths["PYATOA_IO"]
 
         # Tag the external files that will need to be used throughout
-        self.config_file = os.path.join(self.ext_paths["WORKDIR"],
-                                        "parameters.yaml")
-        self.misfit_file = os.path.join(pyatoa_io, "misfits.json")
+        self.config_file = oj(self.ext_paths["WORKDIR"], "parameters.yaml")
+        self.misfit_file = oj(pyatoa_io, "misfits.json")
 
         # Distribute internal paths
-        self.data_dir = os.path.join(pyatoa_io, "data")
-        self.misfits_dir = os.path.join(pyatoa_io, "data", "misfits")
-        self.snapshots_dir = os.path.join(pyatoa_io, "data", "snapshot")
-        self.figures_dir = os.path.join(pyatoa_io, "figures")
-        self.maps_dir = os.path.join(pyatoa_io, "figures", "maps")
-        self.vtks_dir = os.path.join(pyatoa_io, "figures", "vtks")
-        self.composites_dir = os.path.join(pyatoa_io, "figures", "composites")
+        self.data_dir = oj(pyatoa_io, "data")
+        self.misfits_dir = oj(pyatoa_io, "data", "misfits")
+        self.snapshots_dir = oj(pyatoa_io, "data", "snapshot")
+        self.figures_dir = oj(pyatoa_io, "figures")
+        self.maps_dir = oj(pyatoa_io, "figures", "maps")
+        self.vtks_dir = oj(pyatoa_io, "figures", "vtks")
+        self.composites_dir = oj(pyatoa_io, "figures", "composites")
 
         # Create Pyatoa directory structure
         for fid in [self.figures_dir, self.data_dir, self.misfits_dir,
@@ -114,7 +115,7 @@ class Pyaflowa:
         """
         for key in list(kwargs.keys()):
             if not hasattr(self, key):
-                warnings.warn(f"Pyaflowa has no attribute '{key}', ignoring")
+                logger.warn(f"Pyaflowa has no attribute '{key}', ignoring")
                 del kwargs[key]
         self.__dict__.update(kwargs)
 
@@ -133,10 +134,10 @@ class Pyaflowa:
             event_id = os.path.basename(cwd)
 
         # Process specific internal directories for the processing
-        ev_paths = {"stations": os.path.join(cwd, "DATA", "STATIONS"),
-                    "maps": os.path.join(self.maps_dir, event_id),
-                    "figures": os.path.join(self.figures_dir, self.model_number,
-                                            event_id),
+        ev_paths = {"stations": oj(cwd, "DATA", "STATIONS"),
+                    "maps": oj(self.maps_dir, event_id),
+                    "figures": oj(self.figures_dir, self.model_number,
+                                  event_id),
                     }
 
         # Create the process specific event directories
@@ -144,14 +145,14 @@ class Pyaflowa:
             if not os.path.exists(item):
                 os.makedirs(item)
 
-        # Set logging output for Pyflex and Pyatoa, less output using 'info'
+        # Set logging output level for all packages
         for log, level in self.par["set_logging"].items():
             if level:
-                logger = logging.getLogger(log)
+                logger_ = logging.getLogger(log)
                 if level == "info":
-                    logger.setLevel(logging.INFO)
+                    logger_.setLevel(logging.INFO)
                 elif level == "debug":
-                    logger.setLevel(logging.DEBUG)
+                    logger_.setLevel(logging.DEBUG)
 
         # Read in the Pyatoa Config object from the .yaml file, with
         # additional parameter set by the individual process
@@ -159,8 +160,8 @@ class Pyaflowa:
             yaml_fid=self.config_file, event_id=event_id,
             model_number=self.model_number, step_count=self.step_count,
             synthetics_only=self.synthetics_only,
-            cfgpaths={"synthetics": os.path.join(cwd, "traces", "syn"),
-                      "waveforms": os.path.join(cwd, "traces", "obs")}
+            cfgpaths={"synthetics": oj(cwd, "traces", "syn"),
+                      "waveforms": oj(cwd, "traces", "obs")}
         )
 
         return config, ev_paths
@@ -177,7 +178,7 @@ class Pyaflowa:
         """
         # Run the setup and standardize some names
         config, ev_paths = self.setup_process(cwd, event_id)
-        ds_name = os.path.join(self.data, f"{config.event_id}.h5")
+        ds_name = oj(self.data, f"{config.event_id}.h5")
 
         # Count number of successful processes
         processed = 0
@@ -196,7 +197,7 @@ class Pyaflowa:
             # Loop through stations and invoke Pyatoa workflow
             for station in stations:
                 sta, net = station[:2]
-                print(f"{net}.{sta}")
+                logger.info(f"{net}.{sta}")
                 try:
                     mgmt.reset()
                     mgmt.gather(station_code=f"{net}.{sta}.*.HH*")
@@ -215,19 +216,17 @@ class Pyaflowa:
                             f"misfit={mgmt.misfit:.2E}"
                         ])
                         mgmt.plot(append_title=tit,
-                                  save=os.path.join(
-                                      ev_paths["figures"], f"wav_{sta}"),
+                                  save=oj(ev_paths["figures"], f"wav_{sta}"),
                                   show=False, return_figure=False
                                   )
 
-                        # Plot source-receiver maps of waveforms were plotted
-                        if self.par["plot_srcrcv_maps"]:
-                            map_fid = os.path.join(ev_paths["maps"],
-                                                   f"map_{sta}")
-                            if not os.path.exists(map_fid):
-                                mgmt.srcrcvmap(stations=coords, save=map_fid,
-                                               show=False)
-                    print("\n")
+                    # Only plot maps once since they won't change
+                    if self.par["plot_srcrcv_maps"] and \
+                            self.model_number == "m00" and \
+                            self.step_count == "s00":
+                        mgmt.srcrcvmap(stations=coords, show=False,
+                                       save=oj(ev_paths["maps"], f"map_{sta}"))
+
                     # Just once, grab the processing stats from the Streams and
                     # append them to the Config object and save. A sort of
                     # hacky way to retain processing information from old runs.
@@ -239,19 +238,18 @@ class Pyaflowa:
                         config.write(write_to=ds)
 
                     processed += 1
-                # Traceback ensures more detailed error tracking
+                # Use traceback ensures more detailed error tracking
                 except Exception:
-                    traceback.print_exc()
-                    print("\n")
+                    logger.debug(traceback.print_exc())
                     continue
 
-            # Run finalization procedures for processing if gathered waveforms
+            # Run finalization procedures for processing iff gathered waveforms
             if processed:
-                print(f"Pyaflowa processed {processed} stations")
+                logger.info(f"Pyaflowa processed {processed} stations")
                 self.finalize_process(ds=ds, cwd=cwd, ev_paths=ev_paths,
                                       config=config)
             else:
-                print("Pyaflowa processed 0 stations, skipping finalize")
+                logger.info("Pyaflowa processed 0 stations, skipping finalize")
 
     def finalize_process(self, cwd, ds, ev_paths, config):
         """
@@ -269,36 +267,36 @@ class Pyaflowa:
             finalization of workflow
         """
         # Write adjoint sources directly to the Seisflows traces/adj dir
-        print("exporting files to Specfem3D")
-        print("\twriting adjoint sources to .sem? files...")
+        logger.info("exporting files to Specfem3D")
+        logger.info("\twriting adjoint sources to .sem? files...")
         write_adj_src_to_ascii(ds, config.model_number,
-                               os.path.join(cwd, "traces", "adj"))
+                               oj(cwd, "traces", "adj"))
 
         # Write the STATIONS_ADJOINT file to the DATA directory of cwd
-        print("\tcreating STATIONS_ADJOINT file...")
+        logger.info("\tcreating STATIONS_ADJOINT file...")
         create_stations_adjoint(ds, config.model_number,
                                 specfem_station_file=ev_paths["stations"],
-                                pathout=os.path.join(cwd, "DATA")
+                                pathout=oj(cwd, "DATA")
                                 )
 
-        print("exporting files to Seisflows")
-        print("\twriting event misfit to disk...")
-        write_misfit_stats(ds, config.model_number, self.int_paths["misfits"])
+        logger.info("exporting files to Seisflows")
+        logger.info("\twriting event misfit to disk...")
+        write_misfit_stats(ds, config.model_number, self.misfits_dir)
 
-        print("writing files for internal use")
-        print("\twriting misfits.json to disk...")
+        logger.info("writing files for internal use")
+        logger.info("\twriting misfits.json to disk...")
         write_misfit_json(ds, self.model_number, self.step_count,
-                          self.int_paths["misfit_file"])
+                          self.misfit_file)
 
         # Only run this for the first 'step', otherwise we get too many pdfs
         if self.par["combine_imgs"]:
-            print("\tcreating composite pdf...")
+            logger.info("\tcreating composite pdf...")
 
-            # Create the name of the pdf to save to
-            save_to = os.path.join(self.int_paths["composites"],
-                                   f"{config.event_id}_{config.model_number}_"
-                                   f"{self.step_count}_wavmap.pdf"
-                                   )
+            # path/to/eventid_modelnumber_stepcount_wavmap.png
+            save_to = oj(self.composites_dir,
+                         f"{config.event_id}_{config.model_number}"
+                         f"{self.step_count}_wavmap.pdf"
+                         )
             tile_combine_imgs(ds=ds, save_pdf_to=save_to,
                               wavs_path=ev_paths["figures"],
                               maps_path=ev_paths["maps"],
@@ -309,28 +307,26 @@ class Pyaflowa:
     def finalize(self):
         """
         At the end of an iteration, clean up working directory and create final
-        objects if requested by the User
+        objects if requested by the User. This includes statistical plots
+        VTK files for model visualizations, and backups of the data.
         """
         # Plot the output.optim file outputted by Seisflows
-        plot_output_optim(path_to_optim=os.path.join(self.ext_paths["WORKDIR"],
-                                                     "output.optim"),
-                          save=os.path.join(self.int_paths["figures"],
-                                            "output_optim.png")
+        plot_output_optim(path_to_optim=oj(self.ext_paths["WORKDIR"],
+                                           "output.optim"),
+                          save=oj(self.figures_dir, "output_optim.png")
                           )
 
         # Generate .vtk files for given source and receivers for model 0
         if self.par["create_srcrcv_vtk"] and self.iteration == 0:
             src_vtk_from_specfem(path_to_data=self.ext_paths["SPECFEM_DATA"],
-                                 path_out=self.int_paths["vtks"])
+                                 path_out=self.vtks_dir)
             rcv_vtk_from_specfem(path_to_data=self.ext_paths["SPECFEM_DATA"],
-                                 path_out=self.int_paths["vtks"])
+                                 path_out=self.vtks_dir)
 
         # Create copies of .h5 files at the end of each iteration, because .h5
         # files are easy to corrupt so it's good to have a backup
         if self.par["snapshot"]:
-            srcs = glob.glob(os.path.join(self.int_paths["data"], "*.h5"))
+            srcs = glob.glob(oj(self.data_dir, "*.h5"))
             for src in srcs:
-                shutil.copy(src, os.path.join(self.int_paths["snapshots"],
-                                              os.path.basename(src))
-                            )
+                shutil.copy(src, oj(self.snapshots_dir, os.path.basename(src)))
 
