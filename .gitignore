@@ -5,12 +5,12 @@
 pyatoa/visuals/fault_coordinates/hikurangi_trench.npz
 pyatoa/plugins/seisflows/sfconfig.json
 pyatoa/docs/.ipynb_checkpoints/*	
+pyatoa/docs/*ipynb
 pyatoa/old_tests
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
-*.ipynb
 
 # IDE specific
 .idea/
