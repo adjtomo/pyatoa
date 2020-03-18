@@ -1,9 +1,70 @@
 """
 Pyatoa relies on data structure being ordered and consistent throughout all the
-various bits of data required. Functions here will aid in reshaping data
+various bits of data required, as well as a few standardized string formatters
+to keep everything playing nice. Functions here will aid in reshaping data
 into the correct formats.
 """
 import os
+
+
+def model(iteration):
+    """
+    The model number is based on the current iteration and should be formatted
+    with a leading 'm' character and two digits. Inputs can be strings or
+    integers. Assuming model numbers won't go above 99.
+
+    :type iteration: str or int
+    :param iteration: input model number, e.g. 0, '0', 'm0', 'm00'
+    :rtype: str
+    :return: formatted model number, e.g. 'm00', or None if no matching format
+    """
+    if isinstance(iteration, str):
+        # If e.g. model_number = "0"
+        if not iteration[0] == "m":
+            model_number = f"m{iteration:0>2}"
+        # If e.g. model_number = "m00"
+        else:
+            model_number = iteration
+    # If e.g. model_number = 0
+    elif isinstance(iteration, int):
+        model_number = f"m{iteration:0>2}"
+    else:
+        model_number = None
+
+    return model_number
+
+
+def step(count):
+    """
+    Same as for model number but step count is formatted with a leading 's'
+
+    :type count: str or int
+    :param count: input model number, e.g. 0, '0', 's0', 's00'
+    :rtype: str
+    :return: formatted model number, e.g. 's00', or None if no matching format
+    """
+    if isinstance(count, str):
+        if not count[0] == "s":
+            step_count = f"s{count:0>2}"
+        else:
+            step_count = count
+    elif isinstance(count, int):
+        step_count = f"s{count:0>2}"
+    else:
+        step_count = None
+
+    return step_count
+
+
+def event_id(event):
+    """
+    Formalize the defition of Event ID in Pyatoa
+
+    :type event: obspy.core.event.Event
+    :param event: event object
+    :return:
+    """
+    return event.resource_id.id.split('/')[-1]
 
 
 def channel_codes(dt):

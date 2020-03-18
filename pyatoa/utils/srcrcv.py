@@ -3,17 +3,6 @@ Functions used in determining source receiver information
 """
 
 
-def eventid(event):
-    """
-    Formalize the defition of Event ID in Pyatoa
-
-    :type event: obspy.core.event.Event
-    :param event: event object
-    :return:
-    """
-    return event.resource_id.id.split('/')[-1]
-
-
 def merge_inventories(inv_a, inv_b):
     """
     Adding inventories together duplicates network and station codes, which is
