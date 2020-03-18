@@ -16,6 +16,7 @@ import warnings
 import traceback
 import numpy as np
 
+from pyatoa.utils.format import model, step
 from pyatoa.utils.asdf.deletions import clean_ds
 from pyatoa.visuals.statistics import plot_output_optim
 from pyatoa.utils.io import (create_stations_adjoint, write_misfit_json,
@@ -54,44 +55,46 @@ class Pyaflowa:
         assert("PYATOA_IO" in self.ext_paths.keys())
         pyatoa_io = self.ext_paths["PYATOA_IO"]
 
-        self.int_paths = {
-            "config_file": os.path.join(self.ext_paths["WORKDIR"],
-                                        "parameters.yaml"),
-            "misfit_file": os.path.join(pyatoa_io, "misfits.json"),
-            "figures": os.path.join(pyatoa_io, "figures"),
-            "data": os.path.join(pyatoa_io, "data"),
-            "misfits": os.path.join(pyatoa_io, "data", "misfits"),
-            "maps": os.path.join(pyatoa_io, "figures", "maps"),
-            "vtks": os.path.join(pyatoa_io, "figures", "vtks"),
-            "composites": os.path.join(pyatoa_io, "figures", "composites"),
-            "snapshots": os.path.join(pyatoa_io, "data", "snapshot"),
-            }
+        # Tag the external files that will need to be used throughout
+        self.config_file = os.path.join(self.ext_paths["WORKDIR"],
+                                        "parameters.yaml")
+        self.misfit_file = os.path.join(pyatoa_io, "misfits.json")
+
+        # Distribute internal paths
+        self.data_dir = os.path.join(pyatoa_io, "data")
+        self.misfits_dir = os.path.join(pyatoa_io, "data", "misfits")
+        self.snapshots_dir = os.path.join(pyatoa_io, "data", "snapshot")
+        self.figures_dir = os.path.join(pyatoa_io, "figures")
+        self.maps_dir = os.path.join(pyatoa_io, "figures", "maps")
+        self.vtks_dir = os.path.join(pyatoa_io, "figures", "vtks")
+        self.composites_dir = os.path.join(pyatoa_io, "figures", "composites")
 
         # Create Pyatoa directory structure
-        for key, item in self.int_paths.items():
-            if "file" not in key:
-                if not os.path.exists(item):
-                    os.makedirs(item)
+        for fid in [self.figures_dir, self.data_dir, self.misfits_dir,
+                    self.maps_dir, self.vtks_dir, self.composites_dir,
+                    self.snapshots_dir]:
+            if not os.path.exists(fid):
+                os.makedirs(fid)
 
         # Set some attributes that will be set/used during the workflow
         self.iteration = 0
         self.step = 0
         self.fix_windows = self.par["fix_windows"]
         self.synthetics_only = bool(par["CASE"].lower() == "synthetic")
-        
+
     @property
     def model_number(self):
         """
         The model number is based on the current iteration
         """
-        return f"m{max(self.iteration - 1, 0):0>2}"
+        return model(max(self.iteration - 1, 0))
 
     @property
     def step_count(self):
         """
         Step count based on
         """
-        return f"s{self.step:0>2}"
+        return step(self.step)
 
     def set(self, **kwargs):
         """
@@ -123,11 +126,11 @@ class Pyaflowa:
 
         # Process specific internal directories for the processing
         ev_paths = {"stations": os.path.join(cwd, "DATA", "STATIONS"),
-                    "maps": os.path.join(self.int_paths["maps"], event_id),
-                    "figures": os.path.join(self.int_paths["figures"],
-                                            self.model_number, event_id),
+                    "maps": os.path.join(self.maps_dir, event_id),
+                    "figures": os.path.join(self.figures_dir, self.model_number,
+                                            event_id),
                     }
-        
+
         # Create the process specific event directories
         for key, item in ev_paths.items():
             if not os.path.exists(item):
@@ -143,7 +146,7 @@ class Pyaflowa:
                     logger.setLevel(logging.DEBUG)
 
         # Read in the Pyatoa Config object and set attributes based on workflow
-        config = pyatoa.Config(yaml_fid=self.int_paths["config_file"])
+        config = pyatoa.Config(yaml_fid=self.config_file)
         setattr(config, "event_id", event_id)
         setattr(config, "model_number", self.model_number)
         setattr(config, "synthetic_tag", f"synthetic_{self.model_number}")
@@ -167,8 +170,7 @@ class Pyaflowa:
         """
         # Run the setup and standardize some names
         config, ev_paths = self.setup_process(cwd, event_id)
-        ds_name = os.path.join(self.int_paths["data"],
-                               f"{config.event_id}.h5")
+        ds_name = os.path.join(self.data, f"{config.event_id}.h5")
 
         # Count number of successful processes
         processed = 0
@@ -244,12 +246,11 @@ class Pyaflowa:
             else:
                 print("Pyaflowa processed 0 stations, skipping finalize")
 
-
     def finalize_process(self, cwd, ds, ev_paths, config):
         """
         After all waveforms have been windowed and measured, run some functions
         that create output files useful for Specfem, or for the User.
-        
+
         :type cwd: str
         :param cwd: current working directory of solver
         :type ds: pyasdf.ASDFDataSet
@@ -257,7 +258,7 @@ class Pyaflowa:
         :type ev_paths: dict
         :param ev_paths: dictionary of event/solver specific paths
         :type config: pyatoa.core.config.Config
-        :param config: Pyatoa config object containing parameters needed for 
+        :param config: Pyatoa config object containing parameters needed for
             finalization of workflow
         """
         # Write adjoint sources directly to the Seisflows traces/adj dir
@@ -294,8 +295,8 @@ class Pyaflowa:
             tile_combine_imgs(ds=ds, save_pdf_to=save_to,
                               wavs_path=ev_paths["figures"],
                               maps_path=ev_paths["maps"],
-                              purge_wavs=self.par["purge_waveforms"],
-                              purge_tiles=self.par["purge_tiles"]
+                              purge_wavs=self.par["purge_waveform_figures"],
+                              purge_tiles=self.par["purge_tile_figures"]
                               )
 
     def finalize(self):
@@ -326,3 +327,18 @@ class Pyaflowa:
                                               os.path.basename(src))
                             )
 
+
+def arguments():
+    """
+    A list of key word arguments that are accepted by Pyaflowa but are only
+    listed in Seisflows' parameters.yaml file. Listed here so that Pyatoa
+    knows that these arguments are acceptable.
+
+    :rtype: list
+    :return: list of key word arguments
+    """
+    keywords = ["set_logging", "window_amp_ratio", "fix_windows", "snapshot",
+                "write_misfit_json", "create_srcrcv_vtk", "plot_waveforms",
+                "plot_srcrcv_maps", "combine_imgs", "purge_waveform_figures",
+                "purge_tile_figures"]
+    return keywords
