@@ -70,8 +70,12 @@ class Gatherer:
                 self.event = self.getter.event_get()
                 if append_focal_mechanism:
                     self.append_focal_mechanism()
-                self.ds.add_quakeml(self.event)
-                logger.debug("event got from external, added to pyasdf dataset")
+                if self.config.save_to_ds:
+                    self.ds.add_quakeml(self.event)
+                    logger.debug(
+                        "event got from external, added to pyasdf dataset")
+                else:
+                    logger.debug("event not saved")
         # Else, query FDSN for event information
         else:
             self.event = self.getter.event_get()
@@ -148,8 +152,10 @@ class Gatherer:
             logger.debug(
                 "internal station information not found, searching ext.")
             inv = self.getter.station_get(station_code)
-            if self.ds is not None:
+            if self.ds is not None and self.config.save_to_ds:
                 self.ds.add_stationxml(inv)
+            else:
+                logger.debug("station information is not being saved")
             return inv
 
     def gather_observed(self, station_code):
@@ -176,9 +182,11 @@ class Gatherer:
                 logger.warning("external obs data unavailable, no observed "
                                "stream can be returned")
                 st_obs = None
-            if self.ds is not None:
+            if self.ds is not None and self.config.save_to_ds:
                 self.ds.add_waveforms(waveform=st_obs,
                                       tag=self.config.observed_tag)
+            else:
+                logger.debug("observed waveforms are not being saved")
 
         return st_obs
 

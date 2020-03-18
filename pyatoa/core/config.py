@@ -28,7 +28,7 @@ class Config:
                  zero_pad=0, synthetic_unit="DISP", observed_tag='observed',
                  synthetic_tag='synthetic_{m}{s}', synthetics_only=False,
                  window_amplitude_ratio=0., map_corners=None, cfgpaths=None,
-                 **kwargs):
+                 save_to_ds=True, **kwargs):
         """
         Allows the user to control the parameters of the workflow, including:
         setting the Config objects for Pyflex and Pyadjoint, and the paths for
@@ -93,6 +93,11 @@ class Config:
             paths for the same set of data, without needing to change config.
             Waveforms must be saved in a specific directory structure with a
             specific naming scheme
+        :type save_to_ds: bool
+        :param save_to_ds: allow toggling saving to the dataset when new data
+            is gathered/collected. This is useful, e.g. if a dataset that
+            contains data is passed to the Manager, but you don't want to
+            overwrite the data inside while you do some temporary processing.
         """
         # Format the model number and step count to Pyatoa standard
         self.model_number = model(model_number)
@@ -121,6 +126,7 @@ class Config:
         self.start_pad = int(start_pad)
         self.end_pad = int(end_pad)
         self.component_list = component_list or ['Z', 'N', 'E']
+        self.save_to_ds = save_to_ds
 
         # These are filled in with actual Config objects by _check()
         self.pyflex_config = None

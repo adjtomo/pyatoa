@@ -22,11 +22,11 @@ from pyatoa.core.config import Config
 from pyatoa.core.gatherer import Gatherer
 from pyatoa.plugins.pyadjoint_config import src_type
 
+from pyatoa.utils.window import window_by_amplitude
 from pyatoa.utils.asdf.additions import write_adj_src_to_asdf
 from pyatoa.utils.asdf.extractions import windows_from_ds
 from pyatoa.utils.srcrcv import gcd_and_baz, seismogram_length
 from pyatoa.utils.format import create_window_dictionary, channel_codes
-from pyatoa.utils.calculate import abs_max
 from pyatoa.utils.process import (preproc, trimstreams, stf_convolve,
                                   zero_pad_stream, match_npts)
 
@@ -630,7 +630,7 @@ class Manager:
         except (AttributeError, IndexError):
             logger.info("moment tensor not found for event, cannot convolve")
 
-    def window(self, fix_windows=False, force=False, **kwargs):
+    def window(self, fix_windows=False, force=False):
         """
         The main windowing function. Windows can either be collected from
         a given pyasdf ASDFDataset, or picked from the waveforms available.
@@ -704,36 +704,16 @@ class Manager:
                         config=self.config.pyflex_config, event=self.event,
                         station=self.inv)
 
-                # Suppress windows that contain signals smaller than some
-                # fraction of the peak amplitude contained in the synthetic 
-                if window and self.config.window_amplitude_ratio > 0:
-                    windows_by_amplitude = []
-                    for win_ in window:
-                        waveform_peak = abs_max(
-                            self.st_syn.select(component=comp)[0].data
-                        )
-                        window_peak = abs_max(
-                            self.st_syn.select(
-                                component=comp)[0].data[win_.left:win_.right]
-                        )
-                        if (abs(window_peak / waveform_peak) >
-                                self.config.window_amplitude_ratio):
-                            windows_by_amplitude.append(win_)
-                        else:
-                            logger.info(
-                                "removing window due to global amplitude ratio: "
-                                f"{ abs(window_peak / waveform_peak)} < "
-                                f"{self.config.window_amplitude_ratio}")
-                            continue
-                    window = windows_by_amplitude
+                # Suppress windows that contain low-amplitude signals
+                if self.config.window_amplitude_ratio > 0:
+                    window = window_by_amplitude(self, window, comp)
+
                 # Check if amplitude windowing removed windows
                 if window:
                     windows[comp] = window
-
                 _nwin = len(window)
             except IndexError:
                 _nwin = 0
-
             # Count windows and tell User
             nwin += _nwin
             logger.info(f"{_nwin} window(s) for comp {comp}")
@@ -742,8 +722,10 @@ class Manager:
         self._num_windows = nwin
 
         # Save to dataset only if new windows are picked
-        if self.ds is not None and (nwin != 0):
+        if self.ds is not None and (nwin != 0) and self.config.save_to_ds:
             self.save_windows()
+        else:
+            logger.debug("windows are not being saved")
 
         # Let the User know the outcomes of Pyflex
         logger.info(f"{self._num_windows} window(s) total found")
@@ -845,8 +827,10 @@ class Manager:
         self.adj_srcs = adjoint_sources
 
         # Save adjoint source to dataset
-        if self.ds:
+        if self.ds and self.config.save_to_ds:
             self.save_adj_srcs()
+        else:
+            logger.debug("adjoint sources are not being saved")
         
         # Save total misfit, calculated a la Tape (2010) Eq. 6
         if self._num_windows:
