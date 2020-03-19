@@ -11,6 +11,8 @@ from pyflex import Config as pyflexConfig
 # Some preset Pyflex Configuration parameters based on previous work,
 # current work or literature.
 presets = {
+    # Empty preset to just use the default Pyflex values
+    "default": {},
     # example configuration from the Pyflex website, different from default
     "example": {
         "stalta_waterlevel": 0.08,

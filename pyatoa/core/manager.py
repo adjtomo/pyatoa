@@ -20,7 +20,6 @@ from obspy.signal.filter import envelope
 from pyatoa import logger
 from pyatoa.core.config import Config
 from pyatoa.core.gatherer import Gatherer
-from pyatoa.plugins.pyadjoint_config import src_type
 
 from pyatoa.utils.window import window_by_amplitude
 from pyatoa.utils.asdf.additions import write_adj_src_to_asdf
@@ -788,7 +787,7 @@ class Manager:
         for comp, adj_win in adjoint_windows.items():
             try:
                 adj_src = pyadjoint.calculate_adjoint_source(
-                    adj_src_type=src_type(self.config.adj_src_type),
+                    adj_src_type=self.config.adj_src_type,
                     config=self.config.pyadjoint_config,
                     observed=self.st_obs.select(component=comp)[0],
                     synthetic=self.st_syn.select(component=comp)[0],

@@ -37,7 +37,10 @@ def src_type(choice):
     """
     Pyadjoint requires that a standard adjoint source type is given in the
     calculate_adjoint_source() function. This function acts as simple dictionary
-    input to provide the correct input for that function
+    input to provide the correct input for that function. Allows for various
+    spellings and variations of the same name.
+
+    Throws ValueError if choice isn't in the provided lists.
 
     :type choice: str
     :param choice: pyatoa.Config.adj_src_type
@@ -51,13 +54,15 @@ def src_type(choice):
     elif choice in ["wav", "wave", "waveform"]:
         adj_src_type = "waveform"
     else:
-        raise ValueError(f"{choice} does not match availble adjoint source "
+        raise ValueError(f"'{choice}' does not match available adjoint source "
                          f"types, must be 'cc', 'mt', or 'wav'")
     return adj_src_type
 
 
 def set_pyadjoint_config_devel(choice, min_period, max_period):
     """
+    !!! Deprecated as Pyatoa no longer uses the devel version of Pyadjoint !!!
+
     Set the Pyadjoint config based on Pyatoa config parameter
 
     For available adjoint source types, see:

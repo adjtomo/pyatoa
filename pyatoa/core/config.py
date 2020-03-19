@@ -13,7 +13,7 @@ from pyatoa import logger
 from pyatoa.utils.format import model, step
 from pyatoa.core.seisflows.pyaflowa import pyaflowa_kwargs
 from pyatoa.plugins.pyflex_config import set_pyflex_config
-from pyatoa.plugins.pyadjoint_config import set_pyadjoint_config
+from pyatoa.plugins.pyadjoint_config import set_pyadjoint_config, src_type
 
 
 class Config:
@@ -118,7 +118,7 @@ class Config:
             m=self.model_number or "default", s=self.step_count or "")
 
         self.pyflex_preset = pyflex_preset
-        self.adj_src_type = adj_src_type
+        self.adj_src_type = src_type(adj_src_type)
         self.map_corners = map_corners
         self.synthetics_only = synthetics_only
         self.window_amplitude_ratio = window_amplitude_ratio
