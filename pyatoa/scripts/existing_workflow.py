@@ -40,13 +40,13 @@ config = pyatoa.Config(
     rotate_to_rtz=False,
     synthetics_only=synthetics_only,
     unit_output="DISP",
-    pyflex_map="hikurangi",
+    pyflex_preset="hikurangi",
     adj_src_type="cc_traveltime_misfit",
     cfgpaths={"waveforms": [], "synthetics": './', "responses": []}
 )
 
 # additional text to add to title of waveform plots
-append_title = "\npyflex={}; pyadjoint={} ".format(config.pyflex_map,
+append_title = "\npyflex={}; pyadjoint={} ".format(config.pyflex_preset,
                                                    config.adj_src_type)
 
 # initiate pyasdf dataset where all data will be saved

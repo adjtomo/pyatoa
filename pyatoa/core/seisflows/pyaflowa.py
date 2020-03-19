@@ -259,7 +259,7 @@ class Pyaflowa:
                         # Format some strings to append to the waveform title
                         tit = " ".join([
                             f"\n{config.model_number}{self.step_count}",
-                            f"pyflex={config.pyflex_map},",
+                            f"pyflex={config.pyflex_preset},",
                             f"pyadjoint={config.adj_src_type},",
                             f"misfit={mgmt.misfit:.2E}"
                         ])

@@ -165,7 +165,9 @@ def set_pyflex_config(min_period, max_period, choice=None, **kwargs):
             for key, item in preset.items():
                 setattr(pfconfig, key, item)
         else:
-            raise KeyError(f"{choice} does not match any available presets")
+            raise KeyError(f"'{choice}' does not match any available presets "
+                           f"for Pyflex. "
+                           f"Presets include {list(presets.keys())}")
     # Allow dictionary object to be passed in as a preset
     elif isinstance(choice, dict):
         for key, item in choice.items():

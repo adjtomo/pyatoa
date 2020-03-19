@@ -22,11 +22,11 @@ class Config:
     """
     def __init__(self, yaml_fid=None, model_number=None, step_count=None,
                  event_id=None, min_period=10, max_period=30, filter_corners=4,
-                 client="GEONET", rotate_to_rtz=False, unit_output='DISP',
-                 pyflex_map='default', component_list=None,
-                 adj_src_type='cc_traveltime_misfit', start_pad=20, end_pad=500,
-                 zero_pad=0, synthetic_unit="DISP", observed_tag='observed',
-                 synthetic_tag='synthetic_{m}{s}', synthetics_only=False,
+                 client="GEONET", rotate_to_rtz=False, unit_output="DISP",
+                 pyflex_preset="default", component_list=None,
+                 adj_src_type="cc_traveltime_misfit", start_pad=20, end_pad=500,
+                 zero_pad=0, synthetic_unit="DISP", observed_tag="observed",
+                 synthetic_tag="synthetic_{m}{s}", synthetics_only=False,
                  window_amplitude_ratio=0., map_corners=None, cfgpaths=None,
                  save_to_ds=True, **kwargs):
         """
@@ -57,8 +57,8 @@ class Config:
         :type unit_output: str
         :param unit_output: units of stream, to be fed into preprocessor for
             instrument response removal. Available: 'DISP', 'VEL', 'ACC'
-        :type pyflex_map: str
-        :param pyflex_map: name to map to pyflex preset config
+        :type pyflex_preset: str
+        :param pyflex_preset: name to map to pyflex preset config
         :type adj_src_type: str
         :param adj_src_type: method of misfit quantification for Pyadjoint
         :type start_pad: int
@@ -117,7 +117,7 @@ class Config:
         self.synthetic_tag = synthetic_tag.format(
             m=self.model_number or "default", s=self.step_count or "")
 
-        self.pyflex_map = pyflex_map
+        self.pyflex_preset = pyflex_preset
         self.adj_src_type = adj_src_type
         self.map_corners = map_corners
         self.synthetics_only = synthetics_only
@@ -212,7 +212,7 @@ class Config:
 
         # Set Pyflex confict through wrapper function
         self.pyflex_config, unused_kwargs_pf = set_pyflex_config(
-            choice=self.pyflex_map, min_period=self.min_period,
+            choice=self.pyflex_preset, min_period=self.min_period,
             max_period=self.max_period, **kwargs
         )
 

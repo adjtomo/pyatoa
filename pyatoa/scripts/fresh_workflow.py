@@ -43,13 +43,13 @@ for event_id in event_ids:
         rotate_to_rtz=False,
         synthetics_only=synthetics_only,
         unit_output="DISP",
-        pyflex_map="default",
+        pyflex_preset="default",
         adj_src_type="cc_traveltime_misfit",
         cfgpaths={"waveforms": [], "synthetics": './', "responses": []}
     )
 
     # additional text to add to title of waveform plots
-    append_title = "pyflex={}; pyadjoint={} ".format(config.pyflex_map,
+    append_title = "pyflex={}; pyadjoint={} ".format(config.pyflex_preset,
                                                      config.adj_src_type)
 
     # initiate pyasdf dataset where all data will be saved
