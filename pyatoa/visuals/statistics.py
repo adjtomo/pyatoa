@@ -1,20 +1,10 @@
 """
 Plots of statistical information for use in misfit analysis
 """
-import sys
-import os
-import glob
-import pyasdf
-import warnings
 import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 from matplotlib import cm
-
-from obspy.signal.cross_correlation import correlate, xcorr_max
-from pyatoa import Config, Manager, logger
-from pyatoa.utils.asdf.extractions import windows_from_ds
-from pyatoa.utils.srcrcv import gcd_and_baz, seismogram_length
 
 mpl.rcParams['font.size'] = 12
 mpl.rcParams['lines.linewidth'] = 1.25

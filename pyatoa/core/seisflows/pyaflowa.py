@@ -19,7 +19,7 @@ import traceback
 import numpy as np
 
 from pyatoa import logger
-from pyatoa.utils.format import model, step
+from pyatoa.utils.form import model, step
 from pyatoa.utils.asdf.deletions import clean_ds
 from pyatoa.visuals.statistics import plot_output_optim
 from pyatoa.utils.io import (create_stations_adjoint, write_misfit_json,

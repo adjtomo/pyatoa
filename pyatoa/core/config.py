@@ -10,7 +10,7 @@ through scripts or interactive shells.
 """
 import yaml
 from pyatoa import logger
-from pyatoa.utils.format import model, step
+from pyatoa.utils.form import model, step
 from pyatoa.core.seisflows.pyaflowa import pyaflowa_kwargs
 from pyatoa.plugins.pyflex_config import set_pyflex_config
 from pyatoa.plugins.pyadjoint_config import set_pyadjoint_config, src_type

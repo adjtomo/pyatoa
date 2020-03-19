@@ -21,7 +21,7 @@ from glob import glob
 from obspy import UTCDateTime
 from obspy.geodetics import gps2dist_azimuth
 
-from pyatoa.utils.format import event_id
+from pyatoa.utils.form import event_id
 from pyatoa.utils.calculate import abs_max
 from pyatoa.utils.srcrcv import lonlat_utm
 from pyatoa.utils.asdf.extractions import count_misfit_windows
