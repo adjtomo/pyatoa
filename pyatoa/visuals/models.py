@@ -1,13 +1,10 @@
 """
-UNDER DEVELOPMENT
-
 Tools to use the Python package mayavi to interact with .vtk files.
 These were created because I was tired of spending all my time fine tuning
 plots in Paraview, only to remake them all over again. Hopefull this set of
 tools allows for quick, standard looking plots of vtk files for easy
 visualization of kernels, models, etc.
 """
-import os
 import logging
 import numpy as np
 from numpy import array

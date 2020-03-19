@@ -4,7 +4,7 @@ Pyaflowa
 
 The Seisflows plugin class that allows easy scripting of Pyatoa
 functionality into a Seisflows workflow. Pre-written functionalities simplify
-calls made in Seisflows to Pyatoa, to reduce clutter inside the workflow
+calls made in Seisflows to Pyatoa, to reduce clutter inside the workflow.
 """
 import os
 # cheeky shorthand for cleaner calls
