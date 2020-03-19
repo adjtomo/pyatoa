@@ -68,12 +68,11 @@ class Inspector(Artist):
         elif path is not None:
             dsfids = glob(os.path.join(path, "*.h5"))
             for i, dsfid in enumerate(dsfids):
-                print(f"{dsfid}, {i}/{len(dsfids)}", end="...") 
+                print(f"{os.path.basename(dsfid):<25} {i:0>2}/{len(dsfids)}", 
+                      end="...") 
                 status = self.append(dsfid, windows, srcrcv, misfits)
                 if status:
                     print("done")
-                else:
-                    print("error")
 
     def __str__(self):
         """
@@ -170,7 +169,10 @@ class Inspector(Artist):
                     self.get_misfits(ds)
                 return 1
         except OSError:
-            print(f"{dsfid} already open")
+            print(f"error: already open")
+            return 0
+        except KeyError as e:
+            print(f"error: {e}")
             return 0
 
     def event_info(self, choice):
@@ -446,14 +448,14 @@ class Inspector(Artist):
             print("writing file")
             json.dump(save_dict, f, indent=4, sort_keys=True)
 
-    def write(self, tag):
+    def write(self, tag, path="./"):
         """
         Same as save(), but I kept writing .write() so I figured i'd have it
 
         :type tag: str
         :param tag: unique naming tag for saving json files
         """
-        self.save(self, tag)
+        self.save(tag, path)
 
     def load(self, tag, path="./"):
         """
