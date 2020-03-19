@@ -222,10 +222,13 @@ class Config:
         )
 
         # Check for unnused kwargs
+        unused_kwargs = []
         for kwarg in unused_kwargs_pf:
             if kwarg in unused_kwargs_pa and kwarg not in pyaflowa_kwargs:
-                logger.warn(f"'{kwarg}' is not a keyword argument in Pyatoa, "
-                            f"Pyflex or Pyadjoint. Is this is a typo?")
+                unused_kwargs.append(kwarg)
+        if unused_kwargs:
+            raise ValueError(f"{unused_kwargs} are not keyword arguments in "
+                             f"Pyatoa, Pyflex or Pyadjoint.")
 
     def write(self, write_to, fmt=None):
         """
@@ -248,12 +251,13 @@ class Config:
                 elif ("txt" or "ascii") in write_to:
                     fmt = "ascii"
                 else:
-                    logger.warn(f"format must be given in {acceptable_formats}")
+                    logger.warning(
+                        f"format must be given in {acceptable_formats}")
                     return
             elif isinstance(write_to, ASDFDataSet):
                 fmt = "asdf"
             else:
-                logger.warn(f"format must be given in {acceptable_formats}")
+                logger.warning(f"format must be given in {acceptable_formats}")
                 return
 
         if fmt.lower() == "ascii":
@@ -286,12 +290,13 @@ class Config:
                 elif ("txt" or "ascii") in read_from:
                     fmt = "ascii"
                 else:
-                    logger.warn(f"format must be given in {acceptable_formats}")
+                    logger.warning(
+                        f"format must be given in {acceptable_formats}")
                     return
             elif isinstance(read_from, ASDFDataSet):
                 fmt = "asdf"
             else:
-                logger.warn(f"format must be given in {acceptable_formats}")
+                logger.warning(f"format must be given in {acceptable_formats}")
                 return
 
         if fmt.lower() == "yaml":

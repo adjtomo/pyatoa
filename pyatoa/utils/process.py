@@ -151,8 +151,8 @@ def is_preprocessed(st):
     return False
 
 
-def preproc(mgmt, synthetics_only, choice, baz=None, water_level=60,
-            corners=4, taper_percentage=0.05):
+def preproc(mgmt, choice, baz=None, water_level=60, corners=4,
+            taper_percentage=0.05):
     """
     Preprocess waveform data from a Manager class given a few extra processing
     parameters.
@@ -160,9 +160,6 @@ def preproc(mgmt, synthetics_only, choice, baz=None, water_level=60,
     :type mgmt: pyatoa.core.manager.Manager
     :param mgmt: Manager class that should contain a Config object as well as
         waveform data and inventory
-    :type synthetics_only: bool
-    :param synthetics_only: different processing is required if observed data
-        is also 'synthetic'
     :type choice: str
     :param choice: option to preprocess observed, synthetic or both
         available: 'obs', 'syn'
@@ -189,7 +186,7 @@ def preproc(mgmt, synthetics_only, choice, baz=None, water_level=60,
     st.taper(max_percentage=taper_percentage)
 
     # Observed specific data preprocessing includes response and rotating to ZNE
-    if choice == "obs" and not synthetics_only:
+    if choice == "obs" and not mgmt.config.synthetics_only:
         # Occasionally, inventory issues arise, as ValueErrors due to
         # station availability, e.g. NZ.COVZ. Try/except to catch these.
         try:

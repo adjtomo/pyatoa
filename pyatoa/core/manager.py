@@ -562,35 +562,14 @@ class Manager:
         # Preprocess observation and synthetic data the same
         if self.st_obs is not None and not self._obs_filter_flag and \
                 which.lower() in ["obs", "both"]:
-            # Determine if different preprocessing required for syn-syn case
-            if self.config.synthetics_only:
-                obs_inv = None
-                obs_synthetic_unit = self.config.synthetic_unit
-            else:
-                obs_inv = self.inv
-                obs_synthetic_unit = None
             logger.info("preprocessing observation data")
-            self.st_obs = preproc_fx(st_original=self.st_obs, inv=obs_inv,
-                                     synthetic_unit=obs_synthetic_unit,
-                                     back_azimuth=baz,
-                                     unit_output=self.config.unit_output,
-                                     corners=self.config.filter_corners,
-                                     filter_bounds=[self.config.min_period,
-                                                    self.config.max_period],
-                                     )
+            self.st_obs = preproc_fx(self, choice="obs", baz=baz)
 
         if self.st_syn is not None and not self._syn_filter_flag and \
                 which.lower() in ["syn", "both"]:
             logger.info("preprocessing synthetic data")
-            self.st_syn = preproc_fx(st_original=self.st_syn, inv=None,
-                                     synthetic_unit=self.config.synthetic_unit,
-                                     back_azimuth=baz,
-                                     unit_output=self.config.unit_output,
-                                     corners=self.config.filter_corners,
-                                     filter_bounds=[self.config.min_period,
-                                                    self.config.max_period]
-                                     )
-        
+            self.st_syn = preproc_fx(self, choice="syn", baz=baz)
+
         # Check to see if preprocessing failed
         self._check()
         if not self._obs_filter_flag or not self._syn_filter_flag:

@@ -9,6 +9,7 @@ calls made in Seisflows to Pyatoa, to reduce clutter inside the workflow
 import os
 # cheeky shorthand for cleaner calls
 from os.path import join as oj
+import sys
 import glob
 import pyasdf
 import pyatoa
@@ -57,9 +58,10 @@ class Pyaflowa:
         :param paths: a dictionary of the Seisflows paths contained in the
             `PATH` variable. should be passed here as vars(PATH)
         """
-        # Ensure that necessary inputs are accessible by the class
-        self.ext_paths = paths
+        # Ensure that the inputs are accessible by the class
         self.par = par["PYATOA"]
+        self.ext_paths = paths
+        self.ext_par = par
 
         # Distribute internal hardcoded path structure
         assert("PYATOA_IO" in self.ext_paths.keys())
@@ -91,6 +93,8 @@ class Pyaflowa:
         self.fix_windows = self.par["fix_windows"]
         self.synthetics_only = bool(par["CASE"].lower() == "synthetic")
 
+        self._check()
+
     def __str__(self):
         """
         String representation, only really used in Seisflows debug mode so
@@ -114,7 +118,8 @@ class Pyaflowa:
     @property
     def model_number(self):
         """
-        The model number is based on the current iteration
+        The model number is based on the current iteration, which starts at 1
+        so model number, starting from 0, lags behind by 1
         """
         return model(max(self.iteration - 1, 0))
 
@@ -124,6 +129,29 @@ class Pyaflowa:
         Step count based on
         """
         return step(self.step)
+
+    def _check(self):
+        """
+        Perform some sanity checks upon initialization. If they fail, hard exit
+        so that Seisflows crashes, that way things don't crash after jobs have
+        been submitted etc.
+        """
+        # Ensure that the gathered seismogram length is greater than the
+        # length of synthetics
+        if (self.ext_par.DT * self.ext_par.NT <=
+                self.par['start_pad'] + self.par['end_pad']):
+            logger.warning("length of gathered observed waveforms will be less "
+                           "than the length of synthetics... exiting")
+            sys.exit(-1)
+
+        # Try to feed the parameter file into Config to see if it throws
+        # any ValueErrors from incorrect arguments
+        try:
+            pyatoa.Config(yaml_fid=self.config_file)
+        except ValueError as e:
+            logger.warning(e)
+            logger.warning("Config encountered unexpected arguments... exiting")
+            sys.exit(-1)
 
     def set(self, **kwargs):
         """
@@ -135,7 +163,7 @@ class Pyaflowa:
         """
         for key in list(kwargs.keys()):
             if not hasattr(self, key):
-                logger.warn(f"Pyaflowa has no attribute '{key}', ignoring")
+                logger.warning(f"Pyaflowa has no attribute '{key}', ignoring")
                 del kwargs[key]
         self.__dict__.update(kwargs)
 

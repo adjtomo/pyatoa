@@ -1,5 +1,6 @@
+#!/usr/bin/env python3
 """
-Functions used to create standard statistical plots for the Inspector
+Functions used to create standard statistical plots for the Inspector class
 """
 import numpy as np
 import matplotlib as mpl
@@ -9,12 +10,15 @@ from pyatoa.utils.calculate import normalize_a_to_b
 
 class Artist:
     """
-    A class of methods for plotting statistics from an Inspector
+    A class of methods for plotting statistics from an Inspector.
+    Should not be called on its own, these functions will be inherited by
+    the Inspector class automatically.
     """
     def map(self, sta_codes=None, event_ids=None, show=True, save=False,
             **kwargs):
         """
-        Plot source and receiver locations
+        Plot source and receiver locations with map view. Optional arguments
+        for only plotting certain stations or events.
 
         :type sta_codes: list
         :param sta_codes: unique stations to plot
@@ -72,7 +76,8 @@ class Artist:
                             show=True, save=False, event_id=None,
                             sta_code=None, cha_code=None, color_by=None):
         """
-        Make a plot of window attributes versus source-receiver distance
+        Make a scatterplot of window attributes versus source-receiver distance.
+        Useful for looking at, e.g. if misfit increases with increasing distance
 
         :type model: str
         :param model: model to query, e.g. "m00"
@@ -161,7 +166,7 @@ class Artist:
     def misfit_by_distance(self, model, show=True, save=False,
                            event_id=None, sta_code=None, color_by=None):
         """
-        Make a plot of misfit versus source-receiver distance
+        Make a scatterplot of misfit versus source-receiver distance.
 
         :type model: str
         :param model: model to query, e.g. "m00"
@@ -254,6 +259,8 @@ class Artist:
             messy with a lot of lines
         :type colormap: matplotlib.colors.ListedColormap
         :param colormap: colormap for coloring lines
+        :type color: str
+        :param color: line colors
         :type normalize_to_model: bool
         :param normalize_to_model: normalize the misfit value to the entire
             model. Only relevant is event_id or sta_code is specified. Defaults
@@ -433,7 +440,8 @@ class Artist:
     
     def event_depths(self, xaxis="x", show=True, save=None):
         """
-        Create a scatter plot of events at depth
+        Create a scatter plot of events at depth. Compresses all events onto a
+        single slice, optional choice of showing the x-axis or the y-axis
 
         :type xaxis: str
         :param xaxis: variable to use as the x-axis on the plot, can either be
@@ -502,7 +510,10 @@ class Artist:
                          anno=True):
         """
         Create a histogram of misfit information for either time shift or
-        amplitude differences
+        amplitude differences. Option to compare against different models,
+        and to look at different choices.
+
+        Choices are: "misfit", "dlna", "cc_shift_sec", "length_s"
 
         :type model: str
         :param model: model to choose for misfit
@@ -711,10 +722,11 @@ class Artist:
 
         plt.show()
 
-    def convergence(self, choice="iter", linewidth=2., markersize=8., c="k",
-                    show=True, save=None):
+    def convergence(self, linewidth=2., markersize=8., c="k", show=True,
+                    save=None):
         """
-        Plot the convergence rate over the course of an inversion
+        Plot the convergence rate over the course of an inversion.
+        Scatter plot of total misfit against model number.
 
         :type choice: str
         :param choice: choice between plotting "step" lengths or "iter" ations
