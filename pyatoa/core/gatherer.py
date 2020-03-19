@@ -204,8 +204,10 @@ class Gatherer:
         :rtype: obspy.core.stream.Stream
         :return: stream object containing relevant waveforms
         """
-        st_syn = self.fetcher.syn_waveform_fetch(station_code)
-
-        return st_syn
+        try:
+            st_syn = self.fetcher.syn_waveform_fetch(station_code)
+            return st_syn
+        except FileNotFoundError:
+            return None
 
 

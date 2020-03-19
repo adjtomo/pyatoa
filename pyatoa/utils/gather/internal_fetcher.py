@@ -277,7 +277,9 @@ class Fetcher:
                         )
                 return st
         else:
-            logger.info(
+            # This needs to be a warn because there are no more checks for 
+            # synthetic data after this
+            logger.warn(
                 f"no synthetic waveforms for {station_code} found for event"
             )
             raise FileNotFoundError()
