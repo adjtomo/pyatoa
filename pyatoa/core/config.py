@@ -22,7 +22,7 @@ class Config:
     """
     def __init__(self, yaml_fid=None, model_number=None, step_count=None,
                  event_id=None, min_period=10, max_period=30, filter_corners=4,
-                 client="GEONET", rotate_to_rtz=False, unit_output="DISP",
+                 client="IRIS", rotate_to_rtz=False, unit_output="DISP",
                  pyflex_preset="default", component_list=None,
                  adj_src_type="cc_traveltime_misfit", start_pad=20, end_pad=500,
                  zero_pad=0, synthetic_unit="DISP", observed_tag="observed",
