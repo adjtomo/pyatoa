@@ -3,7 +3,8 @@
 Mid level data gathering class that calls on the internal fetcher and the
 external getter to grab event, station and waveform information.
 
-Directly called by the processor class in the main Pyatoa workflow
+Directly called by the Manager class in the main Pyatoa workflow, shouldn't
+need to be called by the User.
 """
 import obspy
 
