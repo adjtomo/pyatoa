@@ -27,7 +27,7 @@
 - [X] check unused kwargs in the config in the case of typos  
       *Added a check call at the end of check() that puts up a user warning if unnused kwargs fall through*
 - [X] include __repr__ for all classes
-     *config, manager, pyaflowa... todo: inspector
+     *config, manager, pyaflowa... todo: inspector  
 
 #### Config
 - [ ] Include UTM projection into config and propogate into scripts
@@ -36,9 +36,9 @@
 - [X] Initialize an empty Manager with an empty Config to remove the need to call Config separately
 - [X] Move window by amplitude in Manager.window() into its own function  
      *moved into pyatoa.utils.window and import by Manager*
-- [ ] Check if convolve_stf properly performs the time shift
-~~- [ ] Option to save processed streams in the dataset  ~~
-     *decided to just allow saving preprocessing attributes to config in pyaflowa, don't think this is super important*
+- [ ] Check if convolve_stf properly performs the time shift  
+~~- [ ] Option to save processed streams in the dataset~~  
+     *decided to just allow saving preprocessing attributes to config in pyaflowa, don't think this is super important*  
 - [X] Change preprocess() function to take a Manager object, that way when the `overwrite` parameter is called, the User knows exactly
       how to write their new preprocess function  
       *standard preproc() fuction now takes manager as an input, which shortens the call in Manager class*
@@ -60,7 +60,7 @@
 - [X] Depth cross section of a Catalog object  
       *In pyaflowa artist *
 ~~- [ ] Plot output optim only show models, maybe iterations as smaller points, or plot both~~  
-     *this is okay, Inspector can make more detailed plots if we want, just want a quick visualization**
+     *this is okay, Inspector can make more detailed plots if we want, just want a quick visualization**  
 - [X] VTK plotter  
      *VTK plotter using mayavi has been started, but needs fine tuning, and implementation into the greater workflow*
 ~~- [ ] Remove rcParams and explicitely set all plot attributes in calls~~  
@@ -74,12 +74,12 @@
 - [X] sanity check parameters in initialize, e.g. ensure end_pad >= PAR.NT * PAR.DT so that observations will be as long as synthetics  
      *Pyaflowa now has a _check() function that checks the parameters passed in from Seisflows*
 - [ ] if given parameters (i.e. misspelled) are not used, notify the user somehow, maybe in seisflows
-~~- [ ] auxiliary_data.Statistics: store time shift (min, max, time shift components), format misfit with 'e' notation not 'f'~~  
-     *Got rid of Statistics as I never really used it, would prefer to use the Inspector class as that has a cleaner approach to collecting stats data*
-- [X] auxiliary_data store windows and adjoint sources by step lengths? Or just store s00 because that is the "initial" step <\br>
+~~- [ ] auxiliary_data.Statistics: store time shift (min, max, time shift components), format misfit with 'e' notation not 'f'~~   
+     *Got rid of Statistics as I never really used it, would prefer to use the Inspector class as that has a cleaner approach to  collecting stats data*  
+- [X] auxiliary_data store windows and adjoint sources by step lengths? Or just store s00 because that is the "initial" step  
       *Waveforms, misfit windows and adjoint sources are now stored by model and step count in Manager*
 ~~- [ ] allow reading data from previously collected hdf5 files from other inversions, to avoid recollecting obs data. would need to sanitize the datasets so that none of the other data gets in the way~~  
-     *this doesn't need to be done in Pyaflowa, can probably be turned into a script or a function in Pyatoa?*
+     *this doesn't need to be done in Pyaflowa, can probably be turned into a script or a function in Pyatoa?*  
 - [X] make rcvs.vtk for all receivers
 - [X] make srcs_w_depth.vtk, and perhaps with depth as planar slices  
       *New src_vtk_from_specfem() function that takes constant x y or z values to make planar slices*
