@@ -44,12 +44,15 @@ def src_type(choice):
     :rtype: str
     :return: pyadjoint adj_src_type
     """
-    if "cc" in choice:
+    if choice in ["cc", "cc_traveltime_misfit", "cross_correlation"]:
         adj_src_type = "cc_traveltime_misfit"
-    elif "mt" in choice:
+    elif choice in ["mt", "mtm", "multitaper_misfit"]:
         adj_src_type = "multitaper_misfit"
-    else:
+    elif choice in ["wav", "wave", "waveform"]:
         adj_src_type = "waveform"
+    else:
+        raise ValueError(f"{choice} does not match availble adjoint source "
+                         f"types, must be 'cc', 'mt', or 'wav'")
     return adj_src_type
 
 
@@ -74,6 +77,9 @@ def set_pyadjoint_config_devel(choice, min_period, max_period):
     :rtype cfgout: pyadjoint.Config*
     :return cfgout: properly set pyadjoint configuration object
     """
+    import warnings
+    warnings.warn("Pyadjoint's devel version is no longer supported in Pyatoa",
+                  DeprecationWarning)
     import pyadjoint
 
     if "waveform" in choice:
