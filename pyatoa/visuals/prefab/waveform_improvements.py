@@ -1,6 +1,9 @@
+#!/usr/bin/env python3
 """
 Create waveform plots that show the changes in synthetic waveforms with
-progressive model updates. Each individual model gets its on row in the plot
+progressive model updates. Each individual model gets its on row in the plot,
+with optional choices for choosing events, stations, and models.
+Works using PyASDF datasets formatted by a Pyatoa workflow.
 """
 import sys
 import os
@@ -32,6 +35,10 @@ def setup_plot(nrows, ncols, label_units=False):
     :param nrows: number of rows in the gridspec
     :type ncols: int
     :param ncols: number of columns in the gridspec
+    :type label_units: bool
+    :param label_units: label the y-axis units and tick marks. can get messy
+        if there are multiple models plotted together, so usually best to leave
+        it off.
     :rtype axes: matplotlib axes
     :return axes: axis objects
     """
@@ -88,6 +95,12 @@ def center_on_peak_energy(st, thresh_value=0.1):
     An attempt to determine the extent of a peak energy in a seismogram so that
     plots do not show unnecessary tails, otherwise for small plots, a lot of 
     information gets lost
+
+    :type st: obspy.core.stream.Stream
+    :param st: stream to check
+    :type thresh_value: float
+    :param thresh_value: threshold value to exclude data with, between 0 and 1
+        as a percentage of the max value in the trace.
     """
     # Set the starting indices at values that will get easily overwritten
     start_index = len(st[0].data)
@@ -238,7 +251,6 @@ def plot_iterative_waveforms(dsfid, output_dir, min_period, max_period,
                     for col, comp in enumerate(config.component_list):
                         obs = st_obs.select(component=comp)
                         syn = synthetics[syn_key].select(component=comp)
-                        syn_init = synthetic_init.select(component=comp)
 
                         # Plot waveform
                         a1, = axes[row][col].plot(t, obs[0].data, 'k', zorder=z,
@@ -342,21 +354,16 @@ if __name__ == "__main__":
         output_dir = "./waveforms"
         
         # If you only want to choose one event in your directory, wildcards okay
-        # event_ids = ["2019p738432.h5", "2016p858279.h5", "2013p142607.h5",
-        #              "2019p304574.h5", "2017p059122.h5", "2013p614135.h5", 
-        #              "2019p754447.h5", "2016p858279.h5", "2014p715167.h5"]
-        event_ids = ["2019p304574.h5"]
+        event_ids = ["*.h5"]
 
         # If you don't want to plot all models, can add e.g. 'synthetic_m00' 
         select_models = []
 
         # Pick stations, if left empty, will plot all stations in dataset
-        # select_stations = ["NZ.MKAZ", "NZ.BKZ", "NZ.WEL", "NZ.HIZ", "NZ.KHZ", 
-        #                    "NZ.WAZ", "NZ.TLZ", "NZ.TSZ",]
-        select_stations = ["NZ.KNZ"]
+        select_stations = []
 
         # list of two ints, "dynamic" (default) or "center_on_peak"
-        trace_length = [75, 200]
+        trace_length = "center_on_peak"
 
         # Synthetic only tests need to be treated differently
         synthetics_only = True
@@ -368,7 +375,7 @@ if __name__ == "__main__":
         # User-defined figure parameters
         label_units = False  # label the units of the traces, otherwise blank
         cross_corr = True  # cross-correlate traces and annotate max correlation
-        show = True
+        show = True  # show the figure after plotting
 
         for event_id in event_ids:
             for dsfid in glob.glob(os.path.join(datasets_path, event_id)):

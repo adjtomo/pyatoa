@@ -1,10 +1,20 @@
 """
 Plots of statistical information for use in misfit analysis
 """
+import sys
+import os
+import glob
+import pyasdf
+import warnings
 import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 from matplotlib import cm
+
+from obspy.signal.cross_correlation import correlate, xcorr_max
+from pyatoa import Config, Manager, logger
+from pyatoa.utils.asdf.extractions import windows_from_ds
+from pyatoa.utils.srcrcv import gcd_and_baz, seismogram_length
 
 mpl.rcParams['font.size'] = 12
 mpl.rcParams['lines.linewidth'] = 1.25
@@ -119,9 +129,15 @@ def plot_misfit_histogram(path_to_datasets, choice, show=False, save=False):
     """
     Make histograms of misfit values for model m_a, can compare with model m_b
 
-    :param misfit_values: dict
-    :param binsize:
-    :return:
+    :type path_to_datasets: str
+    :param path_to_datasets: path to the pyasdf datasets
+    :type choice: str
+    :param choice: choice for misfit value, available
+        "cc_shift_in_seconds", "amplitude", "both"
+    :type show: bool
+    :param show: show the plot after making it
+    :type save: str
+    :param save: fid to save the figure
     """
     import os
     import pyasdf
@@ -203,6 +219,7 @@ def plot_misfit_histogram(path_to_datasets, choice, show=False, save=False):
             plt.savefig(save)
         if show:
             plt.show()
-        plt.close() 
+        plt.close()
+
 
 

@@ -1,8 +1,9 @@
+#!/usr/bin/env python3
 """
-Simple scatterplot to show misfit convergence based on the misfits.json
-output that is created during a Seisflows run
+Reads, parses and plots the misfits.json file outputted by a Seisflows/Pyatoa
+workflow, in order to show convergence behavior. Allows comparisons of multiple
+inversions. This functionality is also provided in the Inspector class.
 """
-import os
 import json
 import numpy as np
 import matplotlib as mpl
@@ -23,6 +24,9 @@ def parse_json(fid, choice="models", value="windows"):
     :type choice: str
     :param choice: 'models' to only collect information for each model update
                    'steps' to collect information about each step
+    :type value: str
+    :param value: choice of value to plot from the json file
+        "windows" or ,"adj_srcs"
     """
     misfits = json.load(open(fid))
 
@@ -67,22 +71,24 @@ def parse_json(fid, choice="models", value="windows"):
 
 
 if __name__ == "__main__":
-    # Set pathanames here
-    choice = "models"
-    plot_windows = True
-    basepath = "./"
+    # vv SET PARAMETERS HERE vv
+    # Figure parameters
+    choice = "models"  # 'models' or 'iter'
+    plot_windows = True  # plot number of misfit windows alongside
+    basepath = "./"  # if common base location
+    figure_size = (8, 6)
+    title = ""  # Figure title
+    fid_out = "convergence.png"  # name of the output file
+    show = True  # show the figure
 
-    fid_list = [os.path.join(basepath, "30mtm/pyatoa.io/misfits.json"),
-                os.path.join(basepath, "30cc/pyatoa.io/misfits.json"),
-                # os.path.join(basepath, "both/pyatoa.io/misfits.json")
-                ]
-
-    # Colors and labels for the various files, must match length fid_list
+    # Choice of files to plot, lists must have the same lengths
+    fid_list = ["path/to/misfits.json_1", "path/to/misfits.json_2"]
     color_list = ["red", "black"]
-    label_list = ["mt", "cc"]
+    label_list = ["label_1", "label_2"]
+    # ^^ SET PARAMETERS HERE ^^
 
-    # set up plots
-    f, ax1 = plt.subplots(figsize=(8,6))
+    # Set up plots
+    f, ax1 = plt.subplots(figsize=figure_size)
     if plot_windows:
         ax2 = ax1.twinx()
     else:
@@ -105,23 +111,20 @@ if __name__ == "__main__":
 
     # Finalize plotting attributes
     ax1.legend(loc="center right")
-    # plt.title("Convergence")
-    ax1.set_xticks(models)
+    if title:
+        plt.title(title)
     if choice == "models":
         ax1.set_xlabel('Model Number')
     elif choice == "steps":
         ax1.set_xlabel('Step Count')
-
+    ax1.set_xticks(models)
     ax1.set_ylabel('total normalized misfit (solid)')
     if ax2:
         ax2.set_ylabel('number of measurements (dashed)', rotation=270, 
                        labelpad=15.)
     ax1.grid(True, alpha=0.5, linestyle='--', linewidth=1.)
-    
-    plt.savefig('convergence.png') 
-    # plt.show()
 
-
-# from IPython import embed
-# import ipdb;ipdb.set_trace()
-# embed(colors="neutral")
+    if fid_out:
+        plt.savefig(fid_out)
+    if show:
+        plt.show()

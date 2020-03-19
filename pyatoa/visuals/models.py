@@ -1,10 +1,10 @@
 """
 Tools to use the Python package mayavi to interact with .vtk files.
-These were created because I was tired of spending all my time fine tuning
-plots in Paraview, only to remake them all over again. Hopefull this set of
-tools allows for quick, standard looking plots of vtk files for easy
-visualization of kernels, models, etc.
+Allows for creation of standardized looking plots of .vtk files for viewing
+models and model slices etc.
 """
+import os
+import sys
 import logging
 import numpy as np
 from numpy import array
@@ -15,8 +15,6 @@ from mayavi.modules.slice_unstructured_grid import SliceUnstructuredGrid
 
 from pyatoa.utils.calculate import myround
 
-from ipdb import set_trace
-from IPython import embed
 
 # Set the logger as a globally accessible variable
 logger = logging.getLogger("vtk_plotter")
@@ -247,17 +245,28 @@ def cut_plane(engine, vtk_file_reader, depth_m):
 
 
 @mlab.show
-def plot_model_surface(vtkfr, engine, fid, coastline_fid, save=False, show=True,
-                       **kwargs):
+def plot_model_topdown(vtkfr, engine, coastline_fid, depth_km=None,
+                       save=False, show=True, **kwargs):
     """
     Plot a topdown view of the model, with the projection at the surface
     """
-    # Put the coastline at some height above the topography
-    if coastline_fid:
-        p3d = coastline(coastline_fid, 1000)
+    # If slice at depth, get some information ready
+    coastline_z = 1000
+    if depth_km:
+        depth_m = -1 * abs(depth_km) * 1E3
+        coastline_z = depth_m
 
-    # Plot the VTK file
-    show_surface(engine, vtkfr)
+    # Put the coastline at some height above the topography, or at depth
+    if coastline_fid:
+        coastline(coastline_fid, coastline_z)
+
+    # Plot at depth or at the surface
+    if depth_km:
+        cut_plane(engine, vtkfr, depth_m)
+        tag = f"depth_{depth_km}km"
+    else:
+        show_surface(engine, vtkfr)
+        tag = "surface"
 
     # Set the camera with top down view
     scene = engine.scenes[0]
@@ -268,27 +277,53 @@ def plot_model_surface(vtkfr, engine, fid, coastline_fid, save=False, show=True,
     set_axes(xyz=[True, True, False], **kwargs)
 
     if save:
-        mlab.savefig(save.format(tag="surface"))
+        mlab.savefig(save.format(tag=tag))
 
     if show:
         mlab.show()
 
 
-# def plot_model_cuts(fid, depth_list=[2, 5, 10, 15, 20, 25, 30, 50])
-#     # Initiate the engine and reader
-#     f, engine, vtkfr = startup(fid)
-#     for depth in depth_list:
-#         depth_m = -1 * abs(depth_km) * 1E3
-#         z_value = depth_m
-#     p3d = coastline("nz_coast_utm60H_43-173_37-179_xyz.npy", z_value)
+# def make_all(fid, save_fid, coast_fid=None, show=True, figsize=(1000, 1000),
+#              font_factor=1.1, colormap="jet", reverse=True,
+#              cbar_title="Vs (m/s)", cbar_orientation="vertical",
+#              number_of_colors=45, default_range=False, round_to=50,
+#              min_max=[1200, 3500]):
+#     """
 #
-#     cut = cut_plane(engine, vtkfr, depth_m)
+#     :param fid:
+#     :param save_fid:
+#     :param coast_fid:
+#     :param show:
+#     :param figsize:
+#     :param font_factor:
+#     :param colormap:
+#     :param reverse:
+#     :param cbar_title:
+#     :param cbar_orientation:
+#     :param number_of_colors:
+#     :param default_range:
+#     :param round_to:
+#     :param min_max:
+#     :return:
+#     """
+#     if not os.path.exists(fid):
+#         sys.exit(-1)
+#
+#     # Initiate the engine and reader
+#     fig, engine, vtkfr = startup(fid, figsize)
+#
+#     # Plot surface projection
+#     plot_model_surface(vtkfr, engine, fid=fid, coastline_fid=coast,
+#                        cmap=colormap, reverse=reverse, title=cbar_title,
+#                        num_col=number_of_colors, min_max=min_max,
+#                        default_range=default_range,
+#                        font_factor=font_factor, orientation=cbar_orientation,
+#                        round_to=round_to, save=save_fid, show=show)
 
-
-if __name__ == "__main__":
+def trial_main():
     """                         Set your parameters below                    """
     # ID's for files to plot
-    fid = "vs_nz_tall_north.vtk"
+    fid = "vs_init.vtk"
     coast = "nz_coast_utm60H_43-173_37-179_xyz.npy"
 
     # Figure parameters
@@ -310,14 +345,19 @@ if __name__ == "__main__":
     min_max = [1200, 3500]  # only if default_range == False, []
 
     """                         Set your parameters above                    """
+    if not os.path.exists(fid):
+        sys.exit(-1)
 
     # Initiate the engine and reader
     fig, engine, vtkfr = startup(fid, figsize)
 
-    plot_model_surface(vtkfr, engine, fid=fid, coastline_fid=coast,
-                       cmap=colormap, reverse=reverse, title=cbar_title,
-                       num_col=number_of_colors, min_max=min_max,
-                       default_range=default_range,
+    plot_model_topdown(vtkfr, engine, fid=fid, coastline_fid=coast,
+                       depth_km=-5., cmap=colormap, reverse=reverse,
+                       title=cbar_title, num_col=number_of_colors,
+                       min_max=min_max, default_range=default_range,
                        font_factor=font_factor, orientation=cbar_orientation,
                        round_to=round_to, save=save_fid, show=show)
 
+
+if __name__ == "__main__":
+    trial_main()
