@@ -6,7 +6,7 @@ import os
 import glob
 import pyasdf
 from pyatoa.core.config import Config
-from pyatoa.utils.visuals.mapping import event_misfit_map
+from pyatoa.visuals.maps import event_misfit_map
 
 cfg = Config()
 

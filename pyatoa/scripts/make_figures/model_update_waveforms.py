@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 from obspy.signal.cross_correlation import correlate, xcorr_max
 from pyatoa import Config, Manager, logger
 from pyatoa.utils.asdf.extractions import windows_from_ds
-from pyatoa.utils.tools.srcrcv import gcd_and_baz, seismogram_length
+from pyatoa.utils.srcrcv import gcd_and_baz, seismogram_length
 
 mpl.rcParams['lines.linewidth'] = 1.5
 

@@ -12,7 +12,7 @@ import pyasdf
 import numpy as np
 import matplotlib.pyplot as plt
 from pyatoa.utils.asdf.extractions import sum_misfits
-from pyatoa.utils.visuals.map_tools import initiate_basemap, \
+from pyatoa.visuals.map_tools import initiate_basemap, \
     interpolate_and_contour
 
 

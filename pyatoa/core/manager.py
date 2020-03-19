@@ -29,7 +29,7 @@ from pyatoa.utils.format import create_window_dictionary, channel_codes
 from pyatoa.utils.process import (preproc, trimstreams, stf_convolve,
                                   zero_pad_stream, match_npts)
 
-from pyatoa.visuals.mapping import manager_map
+from pyatoa.visuals.maps import manager_map
 from pyatoa.visuals.waveforms import window_maker
 
 
