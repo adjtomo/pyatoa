@@ -81,7 +81,7 @@ class Inspector(Artist):
         # Get a list of internal public methods
         method_list = [func for func in dir(self)
                        if callable(getattr(self, func))
-                       and not func.startswith("__")]
+                       and not func.startswith("_")]
         # Get a list of internal public variables
         variable_list = [var for var in vars(self).keys()
                          if not var.startswith("_")]

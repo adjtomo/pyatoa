@@ -37,7 +37,7 @@ from pyatoa.plugins.new_zealand.process import preproc
 pyaflowa_kwargs = ["set_logging", "window_amp_ratio", "fix_windows", "snapshot",
                    "write_misfit_json", "create_srcrcv_vtk", "plot_waveforms",
                    "plot_srcrcv_maps", "combine_imgs", "purge_waveform_figures",
-                   "purge_tile_figures"]
+                   "purge_tile_figures", "inspect"]
 
 
 class Pyaflowa:
@@ -78,6 +78,7 @@ class Pyaflowa:
         self.figures_dir = oj(pyatoa_io, "figures")
         self.maps_dir = oj(pyatoa_io, "figures", "maps")
         self.vtks_dir = oj(pyatoa_io, "figures", "vtks")
+        self.stats_dir = oj(pyatoa_io, "figures", "stats")
         self.composites_dir = oj(pyatoa_io, "figures", "composites")
 
         # Create Pyatoa directory structure
@@ -358,6 +359,13 @@ class Pyaflowa:
         objects if requested by the User. This includes statistical plots
         VTK files for model visualizations, and backups of the data.
         """
+        # Create copies of .h5 files at the end of each iteration, because .h5
+        # can be corrupted during crashes so it's good to have a backup
+        if self.par["snapshot"]:
+            srcs = glob.glob(oj(self.data_dir, "*.h5"))
+            for src in srcs:
+                shutil.copy(src, oj(self.snapshots_dir, os.path.basename(src)))
+
         # Plot the output.optim file outputted by Seisflows
         plot_output_optim(path_to_optim=oj(self.ext_paths["WORKDIR"],
                                            "output.optim"),
@@ -371,10 +379,18 @@ class Pyaflowa:
             rcv_vtk_from_specfem(path_to_data=self.ext_paths["SPECFEM_DATA"],
                                  path_out=self.vtks_dir)
 
-        # Create copies of .h5 files at the end of each iteration, because .h5
-        # files are easy to corrupt so it's good to have a backup
-        if self.par["snapshot"]:
-            srcs = glob.glob(oj(self.data_dir, "*.h5"))
-            for src in srcs:
-                shutil.copy(src, oj(self.snapshots_dir, os.path.basename(src)))
+        # Run the Inspector class to analyze the misfit behavior of inversion
+        if self.par["inspect"]:
+            insp = pyatoa.Inspector(path=self.data_dir)
+            insp.save(tag=f"{self.ext_par.TITLE}", path=self.data_dir)
+
+            # Create a misfit histogram for the initial and final model
+            for choice in ["cc_shift_sec", "dlna"]:
+                insp.misfit_histogram(model=insp.models[0], choice=choice,
+                                      model_comp=insp.models[-1], show=False,
+                                      save=oj(
+                                          self.stats_dir,
+                                          f"misfithisto_{insp.models[-1]}.png")
+                                      )
+
 

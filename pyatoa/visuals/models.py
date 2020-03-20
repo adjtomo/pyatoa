@@ -11,7 +11,6 @@ from numpy import array
 from mayavi import mlab
 from mayavi.modules.surface import Surface
 from mayavi.modules.scalar_cut_plane import ScalarCutPlane
-from mayavi.modules.slice_unstructured_grid import SliceUnstructuredGrid
 
 from pyatoa.utils.calculate import myround
 
@@ -25,6 +24,15 @@ FORMAT = "%(message)s"
 formatter = logging.Formatter(FORMAT)  # Set format of logging messages
 ch.setFormatter(formatter)
 logger.addHandler(ch)
+
+
+# Mayavi takes colors in RGB color space with values from 0 to 1,
+# give a quick lookup table for common colors based on Python naming conventions
+colors = {"k": (0., 0., 0.), "w": (1., 1., 1.), "r": (1., 0., 0.),
+          "b": (0., 0., 1.), "g": (0., 1., 0.), "y": (1., 1., 0.),
+          "o": (1., .5, 0.), "c": (0., 1., 1.),
+          "gray": (.5, .5, .5)
+          }
 
 
 def startup(fid, figsize=None):
@@ -79,7 +87,7 @@ def set_colorscale(cmap='RdYlBu', reverse=False, default_range=False,
     if reverse:
         logger.debug(f"Reversing colorscale")
     cbar.number_of_colors = num_col
-    cbar.number_of_labels = num_col // 2 + 1
+    cbar.number_of_labels = 5
 
     # Bound the colorscale
     logger.info(f"Data bounds are set to {cbar.data_range}")
@@ -154,13 +162,21 @@ def set_axes(xlabel="E (m)", ylabel="N (m)", zlabel="Z (m)",
     # Font size as a factor
     font_factor = kwargs.get("font_factor", 1.)
 
+    # Remove labels if axis is turned off
+    if not xyz[0]:
+        xlabel = ""
+    if not xyz[1]:
+        ylabel = ""
+    if not xyz[2]:
+        zlabel = ""
+
     axes = mlab.axes(color=(0., 0., 0.,), line_width=3., xlabel=xlabel,
                      ylabel=ylabel, zlabel=zlabel, x_axis_visibility=xyz[0],
                      y_axis_visibility=xyz[1], z_axis_visibility=xyz[2])
 
     # Edit full properties
     axes.axes.label_format = '%-#3.2E'
-    axes.axes.number_of_labels = 5
+    axes.axes.number_of_labels = 4
     axes.axes.font_factor = font_factor
 
     # Edit label attributes
@@ -230,18 +246,24 @@ def cut_plane(engine, vtk_file_reader, depth_m):
     engine.add_filter(cut, vtk_file_reader)
 
     # Set some attributes of the cut plane
-    cut.implicit_plane.origin[-1] = depth_m
+    origin = cut.implicit_plane.origin
+    cut.implicit_plane.origin = array([origin[0], origin[1], depth_m])
     cut.implicit_plane.normal = array([0, 0, 1])
+
     cut.implicit_plane.widget.enabled = False
 
-    # cut.implicit_plane.widget.normal_to_z_axis = True
-    # cut.implicit_plane.widget.origin[-1] = depth_m
-    # cut.implicit_plane.plane.origin[-1] = depth_m
-
-    # set_trace()
-    # embed(colors="neutral")
-
     return cut
+
+
+def annotate_text(s, x=0.225, y=0.825, c="k", width=0.3):
+    """
+    Annotate text onto the axis. Font size doesnt work, use width to control
+    size
+    :return:
+    """
+    text = mlab.text(x, y, s, width=width, color=colors[c])
+
+    return text
 
 
 @mlab.show
@@ -263,7 +285,7 @@ def plot_model_topdown(vtkfr, engine, coastline_fid, depth_km=None,
     # Plot at depth or at the surface
     if depth_km:
         cut_plane(engine, vtkfr, depth_m)
-        tag = f"depth_{depth_km}km"
+        tag = f"depth_{int(abs(depth_km))}km"
     else:
         show_surface(engine, vtkfr)
         tag = "surface"
@@ -276,6 +298,8 @@ def plot_model_topdown(vtkfr, engine, coastline_fid, depth_km=None,
     set_colorscale(**kwargs)
     set_axes(xyz=[True, True, False], **kwargs)
 
+    # Annotate some text to describe whats plotted
+    annotate_text(s=f"{tag.replace('_', ' ')}", c="w", width=0.2)
     if save:
         mlab.savefig(save.format(tag=tag))
 
@@ -283,45 +307,12 @@ def plot_model_topdown(vtkfr, engine, coastline_fid, depth_km=None,
         mlab.show()
 
 
-# def make_all(fid, save_fid, coast_fid=None, show=True, figsize=(1000, 1000),
-#              font_factor=1.1, colormap="jet", reverse=True,
-#              cbar_title="Vs (m/s)", cbar_orientation="vertical",
-#              number_of_colors=45, default_range=False, round_to=50,
-#              min_max=[1200, 3500]):
-#     """
-#
-#     :param fid:
-#     :param save_fid:
-#     :param coast_fid:
-#     :param show:
-#     :param figsize:
-#     :param font_factor:
-#     :param colormap:
-#     :param reverse:
-#     :param cbar_title:
-#     :param cbar_orientation:
-#     :param number_of_colors:
-#     :param default_range:
-#     :param round_to:
-#     :param min_max:
-#     :return:
-#     """
-#     if not os.path.exists(fid):
-#         sys.exit(-1)
-#
-#     # Initiate the engine and reader
-#     fig, engine, vtkfr = startup(fid, figsize)
-#
-#     # Plot surface projection
-#     plot_model_surface(vtkfr, engine, fid=fid, coastline_fid=coast,
-#                        cmap=colormap, reverse=reverse, title=cbar_title,
-#                        num_col=number_of_colors, min_max=min_max,
-#                        default_range=default_range,
-#                        font_factor=font_factor, orientation=cbar_orientation,
-#                        round_to=round_to, save=save_fid, show=show)
-
 def trial_main():
-    """                         Set your parameters below                    """
+    """
+    Trial function for making models
+    :return:
+    """
+    depth_km = None
     # ID's for files to plot
     fid = "vs_init.vtk"
     coast = "nz_coast_utm60H_43-173_37-179_xyz.npy"
@@ -344,7 +335,6 @@ def trial_main():
     round_to = 50  # only if default_range == True
     min_max = [1200, 3500]  # only if default_range == False, []
 
-    """                         Set your parameters above                    """
     if not os.path.exists(fid):
         sys.exit(-1)
 
@@ -352,7 +342,7 @@ def trial_main():
     fig, engine, vtkfr = startup(fid, figsize)
 
     plot_model_topdown(vtkfr, engine, fid=fid, coastline_fid=coast,
-                       depth_km=-5., cmap=colormap, reverse=reverse,
+                       depth_km=depth_km, cmap=colormap, reverse=reverse,
                        title=cbar_title, num_col=number_of_colors,
                        min_max=min_max, default_range=default_range,
                        font_factor=font_factor, orientation=cbar_orientation,
