@@ -6,6 +6,7 @@ models and model slices etc.
 import os
 import sys
 import logging
+import traceback
 import numpy as np
 from numpy import array
 from mayavi import mlab
@@ -41,6 +42,8 @@ def startup(fid, figsize=None):
 
     :type fid: str
     :param fid: file id of the .vtk file
+    :type figsize: tuple
+    :param figsize: figure size
     :rtype fig: mlab.figure
     :return fig: figure object from mlab
     :rtype engine: mayavi.core.engine.Engine
@@ -231,24 +234,40 @@ def show_surface(engine, vtk_file_reader):
     engine.add_filter(surface, vtk_file_reader)
 
 
-def cut_plane(engine, vtk_file_reader, depth_m):
+def cut_plane(engine, vtk_file_reader, choice, axes, slice_at=None, ratio=None):
     """
-    Slice the data at a certain depth, format is depth is positive
+    Slice the data at a certain depth, or for a given depth cross section,
+    dependent on choice. Format of depth is positive
 
     :type engine: mayavi.core.engine.Engine
     :param engine: engine that is visualizing the vtk file'
     :type vtk_file_reader: mayavi.sources.vtk_file_reader.VTKFileReader
     :param vtk_file_reader: the opened vtk file
-    :type depth_m: float
-    :param depth_m: depth value in m
+    :type choice: str
+    :param choice: choice of axis to slice along, 'X', 'Y' or 'Z'
+    :type slice_at: float
+    :param slice_at: depth or distance value in meters to slice at
+    :type ratio: float
+    :param ratio: ratio of the axis bounds to slice at, from 0 to 1
     """
+    assert(slice_at or ratio)
     cut = ScalarCutPlane()
     engine.add_filter(cut, vtk_file_reader)
 
+
+    import ipdb;ipdb.set_trace()
+
     # Set some attributes of the cut plane
     origin = cut.implicit_plane.origin
-    cut.implicit_plane.origin = array([origin[0], origin[1], depth_m])
-    cut.implicit_plane.normal = array([0, 0, 1])
+    if choice == "X":
+        cut.implicit_plane.origin = array([origin[0], origin[1], origin[2]])
+        cut.implicit_plane.normal = array([1, 0, 0])
+    elif choice == "Y":
+        cut.implicit_plane.origin = array([origin[0], origin[1], origin[2]])
+        cut.implicit_plane.normal = array([0, 1, 0])
+    elif choice == "Z":
+        cut.implicit_plane.origin = array([origin[0], origin[1], slice_at])
+        cut.implicit_plane.normal = array([0, 0, 1])
 
     cut.implicit_plane.widget.enabled = False
 
@@ -261,9 +280,7 @@ def annotate_text(s, x=0.225, y=0.825, c="k", width=0.3):
     size
     :return:
     """
-    text = mlab.text(x, y, s, width=width, color=colors[c])
-
-    return text
+    return mlab.text(x, y, s, width=width, color=colors[c])
 
 
 @mlab.show
@@ -284,7 +301,7 @@ def plot_model_topdown(vtkfr, engine, coastline_fid, depth_km=None,
 
     # Plot at depth or at the surface
     if depth_km:
-        cut_plane(engine, vtkfr, depth_m)
+        cut_plane(engine, vtkfr, choice="Z", slice_at=depth_m)
         tag = f"depth_{int(abs(depth_km))}km"
     else:
         show_surface(engine, vtkfr)
@@ -302,24 +319,74 @@ def plot_model_topdown(vtkfr, engine, coastline_fid, depth_km=None,
     annotate_text(s=f"{tag.replace('_', ' ')}", c="w", width=0.2)
     if save:
         mlab.savefig(save.format(tag=tag))
-
     if show:
         mlab.show()
 
 
-def trial_main():
+@mlab.show
+def plot_depth_cross_section(vtkfr, engine, choice, slice_at,
+                             depth_bounds=(0, 1), save=False, show=True,
+                             **kwargs):
     """
-    Trial function for making models
-    :return:
+    Plot a depth cross-section of the model, with the Y-axis plotting depth
+
+    If choice is X, the slice is parallel to Y-axis for a constant value of X
+    same for choice of Y
+
+    :type vtkfr:
+    :param vtkfr: VTK file reader
+    :type engine:
+    :param engine:
+    :type choice:
+    :param choice:
+    :type ratio:
+    :param ratio:
+    :type save:
+    :param save:
+    :type show:
+    :param show:
     """
-    depth_km = None
+    if choice == "X":
+        axes = set_axes(xyz=[False, True, True], **kwargs)
+    elif choice == "Y":
+        axes = set_axes(xyz=[True, False, True], **kwargs)
+
+    cut_plane(engine, vtkfr, choice=choice, slice_at=slice_at, axes=axes)
+
+    mlab.show()
+    # Set the camera with top down view
+    scene = engine.scenes[0]
+    if choice == "X":
+        scene.scene.x_plus_view()
+    elif choice == "Y":
+        scene.scene.camera.view_up = [0, 0, 1]
+
+    # Colorbar and axes
+    set_colorscale(**kwargs)
+
+    tag = f"{choice.lower}_"
+
+    # Annotate some text to describe whats plotted
+    annotate_text(s=f"{tag.replace('_', ' ')}", c="w", width=0.2)
+    if save:
+        mlab.savefig(save.format(tag=tag))
+    if show:
+        mlab.show()
+
+
+def main_top_down():
+    """
+    Main function to visualize model from the surface down to a given depth
+    """
     # ID's for files to plot
     fid = "vs_init.vtk"
     coast = "nz_coast_utm60H_43-173_37-179_xyz.npy"
+    save_fid = "vs_topdown_{tag}.png"
+    assert(os.path.exists(fid)), f"{fid} does not exit"
 
     # Figure parameters
+    depths = [None, 5, 10, 15, 25, 50]
     show = True
-    save_fid = "vs_nz_tall_north_{tag}.png"
     figsize = (1000, 1000)
 
     # Axes parameters
@@ -330,24 +397,80 @@ def trial_main():
     reverse = True
     cbar_title = "Vs (m/s)"
     cbar_orientation = "vertical"
+    number_of_colors = 51
+    default_range = True
+    round_to = 50  # only if default_range == True
+    min_max = [1200, 3500]  # only if default_range == False, []
+
+    # Plot for a given set of depths
+    for depth in depths:
+        fig, engine, vtkfr = startup(fid, figsize)
+        plot_model_topdown(vtkfr, engine, fid=fid, coastline_fid=coast,
+                           depth_km=depth, cmap=colormap, reverse=reverse,
+                           title=cbar_title, num_col=number_of_colors,
+                           min_max=min_max, default_range=default_range,
+                           font_factor=font_factor,
+                           orientation=cbar_orientation,
+                           round_to=round_to, save=save_fid, show=show)
+
+
+def main_cross_section():
+    """
+    Plot depth cross sections of the model parallel to X and Y axes
+    """
+    # ID's for files to plot
+    fid = "vs_init.vtk"
+    save_fid = "vs_crosssec_{tag}.png"
+    assert(os.path.exists(fid)), f"{fid} does not exit"
+
+    # Figure parameters
+    xvalues = []
+    yvalues = [0.5]
+    zvalues = (0, 1)  # percentage of the dept
+    show = True
+    figsize = (1000, 1000)
+
+    # Axes parameters
+    font_factor = 1.1
+
+    # Colormap parameters
+    colormap = "jet"
+    reverse = True
+    cbar_title = "Vs (m/s)"
+    cbar_orientation = "horizontal"
     number_of_colors = 35
     default_range = False
     round_to = 50  # only if default_range == True
     min_max = [1200, 3500]  # only if default_range == False, []
 
-    if not os.path.exists(fid):
-        sys.exit(-1)
-
     # Initiate the engine and reader
     fig, engine, vtkfr = startup(fid, figsize)
+    for xval in xvalues:
+        plot_depth_cross_section(vtkfr, engine, fid=fid, choice="X",
+                                 slice_at=xval, depth_bounds=zvalues,
+                                 cmap=colormap, reverse=reverse,
+                                 title=cbar_title, num_col=number_of_colors,
+                                 min_max=min_max, default_range=default_range,
+                                 font_factor=font_factor,
+                                 orientation=cbar_orientation,
+                                 round_to=round_to, save=save_fid, show=show)
 
-    plot_model_topdown(vtkfr, engine, fid=fid, coastline_fid=coast,
-                       depth_km=depth_km, cmap=colormap, reverse=reverse,
-                       title=cbar_title, num_col=number_of_colors,
-                       min_max=min_max, default_range=default_range,
-                       font_factor=font_factor, orientation=cbar_orientation,
-                       round_to=round_to, save=save_fid, show=show)
+    for yval in yvalues:
+        plot_depth_cross_section(vtkfr, engine, fid=fid, choice="Y",
+                                 slice_at=yval,
+                                 cmap=colormap, reverse=reverse,
+                                 title=cbar_title, num_col=number_of_colors,
+                                 min_max=min_max, default_range=default_range,
+                                 font_factor=font_factor,
+                                 orientation=cbar_orientation,
+                                 round_to=round_to, save=save_fid, show=show)
 
 
 if __name__ == "__main__":
-    trial_main()
+    try:
+        # main_top_down()
+        main_cross_section()
+    except Exception as e:
+        traceback.print_exc()
+        sys.exit(-1)
+
