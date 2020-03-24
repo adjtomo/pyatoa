@@ -45,6 +45,7 @@
 - [X] Ability to turn off saving for pyasdf dataset  
      *added a 'save_to_ds' bool parameter to the config object that toggles saving for waveforms, metadata, windows, adj_srcs
 - [ ] Enforce zero padding front and back of waveforms for short source-receiver distance, as windowing ignores these because the stalta starts too early.
+- [ ] Manager.load() take model number from Config if available
 
 #### ASDF
 - [ ] Generate waveform plots, maps, from an ASDF dataset. As in remove the need to create a Manager just to make 
