@@ -31,6 +31,7 @@
 
 #### Config
 - [ ] Include UTM projection into config and propogate into scripts
+- [ ] Change 'model_number' to model
 
 #### Manager
 - [X] Initialize an empty Manager with an empty Config to remove the need to call Config separately
@@ -46,6 +47,7 @@
      *added a 'save_to_ds' bool parameter to the config object that toggles saving for waveforms, metadata, windows, adj_srcs
 - [ ] Enforce zero padding front and back of waveforms for short source-receiver distance, as windowing ignores these because the stalta starts too early.
 - [ ] Manager.load() take model number from Config if available
+- [ ] Log statement stating fid when saving figures
 
 #### ASDF
 - [ ] Generate waveform plots, maps, from an ASDF dataset. As in remove the need to create a Manager just to make 
@@ -68,6 +70,7 @@
 - [ ] ~~Remove rcParams and explicitely set all plot attributes in calls~~   
      *let sleeping dogs lie for now, hopefully this is okay but maybe change in future if it causes problems*  
 - [x] Windows extend the height of the waveform plot
+- [ ] Plot c_0 * stalta_waterlevel for water level rejection
 
 #### Pyaflowa:
 - [X] fix windows within a single iteration  
