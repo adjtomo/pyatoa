@@ -65,8 +65,19 @@ def set_pyflex_config(min_period, max_period, choice=None, **kwargs):
         setattr(pfconfig, "c_3b", 2.0)
         setattr(pfconfig, "c_4a", 2.5)
         setattr(pfconfig, "c_4b", 12.0)
-    elif choice == "CUSTOM_CHOICE_1":
-        # SET ATTRIBUTES FOR CUSTOM PYFLEX CONFIGS HERE
+    # Relaxed parameters for 6-30s waveforms which will have higher misfit
+    elif choice == "hikurangi_6-30s":
+        setattr(pfconfig, "stalta_waterlevel", 0.12)
+        setattr(pfconfig, "tshift_acceptance_level", 8.0)  # based on sign flip
+        setattr(pfconfig, "dlna_acceptance_level", 1.5)
+        setattr(pfconfig, "cc_acceptance_level", 0.7)
+        setattr(pfconfig, "s2n_limit", 3.)
+        setattr(pfconfig, "c_0", 0.7)
+        setattr(pfconfig, "c_1", 2.0)  # min win len = c_1 * min_period
+        setattr(pfconfig, "c_3a", 3.0)
+        setattr(pfconfig, "c_3b", 2.0)
+        setattr(pfconfig, "c_4a", 2.5)
+        setattr(pfconfig, "c_4b", 12.0)
         pass
 
     # Kwargs can also be passed from the pyatoa.Config object to avoid having to
