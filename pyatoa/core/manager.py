@@ -21,7 +21,7 @@ from pyatoa import logger
 from pyatoa.core.config import Config
 from pyatoa.core.gatherer import Gatherer
 
-from pyatoa.utils.window import window_by_amplitude
+from pyatoa.utils.weights import window_by_amplitude
 from pyatoa.utils.asdf.additions import write_adj_src_to_asdf
 from pyatoa.utils.asdf.extractions import windows_from_ds
 from pyatoa.utils.srcrcv import gcd_and_baz, seismogram_length
@@ -42,7 +42,7 @@ class Manager:
     """
     def __init__(self, config=None, ds=None, empty=True, station_code=None,
                  event=None, st_obs=None, st_syn=None, inv=None, windows=None,
-                 staltas=None, adj_srcs=None):
+                 staltas=None, adj_srcs=None, gcd=None, baz=None):
         """
         If no pyasdf dataset is given in the initiation of the Manager, all
         data fetching will happen via given pathways in the config file,
@@ -73,7 +73,10 @@ class Manager:
             dictionary based on component naming
         :type adj_srcs: dict of pyadjoint.AdjointSource objects
         :param adj_srcs: adjoint source waveforms stored in dictionaries
-
+        :type gcd: float
+        :param gcd: great circle distance between source and receiver in km
+        :type baz: float
+        :param baz: Backazimuth between source and receiver in units of degrees
         """
         # Main workflow requirements
         if config:
@@ -94,6 +97,8 @@ class Manager:
         else:
             self.st_syn = None
         # Data produced by the workflow
+        self.gcd = gcd
+        self.baz = baz
         self.windows = windows
         self.staltas = staltas
         self.adj_srcs = adj_srcs
@@ -323,6 +328,8 @@ class Manager:
         self.windows = None
         self.staltas = None
         self.adj_srcs = None
+        self.gcd = 0
+        self.baz = 0
         self._num_windows = 0
         self._len_obs = 0
         self._len_syn = 0
@@ -556,18 +563,19 @@ class Manager:
         # If required, rotate based on source receiver lat/lon values
         baz = None
         if self.config.rotate_to_rtz:
-            _, baz = gcd_and_baz(event=self.event, sta=self.inv[0][0])
+            self.gcd, self.baz = gcd_and_baz(event=self.event,
+                                             sta=self.inv[0][0])
 
         # Preprocess observation and synthetic data the same
         if self.st_obs is not None and not self._obs_filter_flag and \
                 which.lower() in ["obs", "both"]:
             logger.info("preprocessing observation data")
-            self.st_obs = preproc_fx(self, choice="obs", baz=baz)
+            self.st_obs = preproc_fx(self, choice="obs")
 
         if self.st_syn is not None and not self._syn_filter_flag and \
                 which.lower() in ["syn", "both"]:
             logger.info("preprocessing synthetic data")
-            self.st_syn = preproc_fx(self, choice="syn", baz=baz)
+            self.st_syn = preproc_fx(self, choice="syn")
 
         # Check to see if preprocessing failed
         self._check()
@@ -667,7 +675,7 @@ class Manager:
         Custom window selection function to include suppression by amplitude
         and counting of misfit windows
         """
-        logger.info(f"running Pyflex w/ map: {self.config.pyflex_map}")
+        logger.info(f"running Pyflex w/ map: {self.config.pyflex_preset}")
 
         nwin, windows = 0, {}
         for comp in self.config.component_list:

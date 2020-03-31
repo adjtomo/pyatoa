@@ -56,8 +56,7 @@ def scale_beacon_amplitudes(st):
             return st_scale
 
 
-def preproc(mgmt, choice, baz=None, water_level=60, corners=4,
-            taper_percentage=0.05):
+def preproc(mgmt, choice, water_level=60, corners=4, taper_percentage=0.05):
     """
     Preprocess waveform data with differences in preprocessing for
     certain temporary network data
@@ -68,8 +67,6 @@ def preproc(mgmt, choice, baz=None, water_level=60, corners=4,
     :type choice: str
     :param choice: option to preprocess observed, synthetic or both
         available: 'obs', 'syn'
-    :type baz: float
-    :param baz: backazimuth for rotating streams into ZRT
     :type water_level: int
     :param water_level: water level for response removal
     :type corners: int
@@ -127,7 +124,7 @@ def preproc(mgmt, choice, baz=None, water_level=60, corners=4,
             st.taper(max_percentage=taper_percentage)
 
     # Rotate the given stream from standard NEZ to RTZ
-    if baz:
+    if mgmt.baz:
         st.rotate(method="NE->RT", back_azimuth=baz)
         logger.debug(f"rotating NE->RT by {baz} degrees")
 

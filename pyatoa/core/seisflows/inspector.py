@@ -61,6 +61,7 @@ class Inspector(Artist):
         self._utm = utm
         self._stations = None
         self._event_ids = None
+        self._str = None
 
         # If a tag is given, load rather than reading from datasets
         if tag is not None:
@@ -73,10 +74,10 @@ class Inspector(Artist):
                 status = self.append(dsfid, windows, srcrcv, misfits)
                 if status:
                     print("done")
-
-    def __str__(self):
+    
+    def _get_str(self):
         """
-        Return a list of all variables and functions available for quick ref
+        Get the string representation once and save as internal attribute
         """
         # Get a list of internal public methods
         method_list = [func for func in dir(self)
@@ -90,8 +91,22 @@ class Inspector(Artist):
             str_out += f"\t{var}\n"
         str_out += "METHODS:\n"
         for meth in method_list:
-            str_out += f"\t{meth}\n"
-        return str_out
+            if meth in self.__class__.__dict__.keys():
+                str_out += f"\t{meth}\n"
+        str_out += "PLOTTING:\n"
+        for meth in method_list:
+            if meth not in self.__class__.__dict__.keys():
+                str_out += f"\t{meth}\n"
+
+        self._str = str_out
+
+    def __str__(self, flush=False):
+        """
+        Return a list of all variables and functions available for quick ref
+        """
+        if not self._str or flush:
+            self._get_str()
+        return self._str
 
     def __repr__(self):
         """simple point to str"""
@@ -695,6 +710,9 @@ class Inspector(Artist):
             del self.misfits[event]
             del self.windows[event]
             del self.srcrcv[event]
+
+        # Regather event id list
+        self._get_event_ids_stations()
 
 
 

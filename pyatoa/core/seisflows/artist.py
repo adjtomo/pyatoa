@@ -507,7 +507,8 @@ class Artist:
     
     def misfit_histogram(self, model, model_comp=None, choice="cc_shift_sec",
                          binsize=1., show=True, save=None, title=None, 
-                         anno=True):
+                         anno=True, xlim=None, color="darkorange", 
+                         color_comp="deepskyblue"):
         """
         Create a histogram of misfit information for either time shift or
         amplitude differences. Option to compare against different models,
@@ -528,6 +529,12 @@ class Artist:
         :param show: show the plot
         :type save: str
         :param save: fid to save the figure
+        :type xlim: list of floats
+        :param xlim: (xmin, xmax), if not given, will set based on defaults
+        :type color: str
+        :param color: color of the main histogram
+        :type color_comp: str
+        :param color_comp: if comparison histogram, color of the histogram
         """
         def get_stats(n, bins):
             """get stats from a histogram"""
@@ -573,7 +580,7 @@ class Artist:
         f, ax = plt.subplots(figsize=(8, 6))
         n, bins, patches = plt.hist(
                  x=val, bins=len(np.arange(-1*bound, bound, binsize)),
-                 color="darkorange",  histtype="bar", edgecolor="black",
+                 color=color,  histtype="bar", edgecolor="black",
                  linewidth=2.5, label=f"{model}; N={len(val)}", zorder=10
                  )
         mu1, var1, std1 = get_stats(n, bins)
@@ -589,20 +596,23 @@ class Artist:
                      alpha=.8, zorder=9)
             plt.hist(x=val_comp,
                      bins=len(np.arange(-1 * bound_comp, bound_comp, binsize)),
-                     histtype="step", edgecolor="deepskyblue", linewidth=2.,
+                     histtype="step", edgecolor=color_comp, linewidth=2.,
                      alpha=0.7, zorder=11)
             mu2, var2, std2 = get_stats(n, bins)
     
-        # dln(A) information only relevant in these bounds
-        if choice == "dlna":
-            plt.xlim([-1.75, 1.75])
+        # Set xlimits of the plot
+        if xlim:
+            plt.xlim(xlim)
+        else:
+            if choice == "dlna":
+                plt.xlim([-1.75, 1.75])
 
         # Annotate stats information
         if anno:
-            anno = f"$\mu({model})\pm\sigma({model})$={mu1:.2f}$\pm${std1:.2f}"
+            anno = f"$\mu({model})\pm\sigma({model})$={mu1:.1f}$\pm${std1:.1f}"
             if model_comp:
                 anno += (f"\n$\mu({model_comp})\pm\sigma({model_comp})$="
-                         f"{mu2:.2f}$\pm${std2:.2f}")
+                         f"{mu2:.1f}$\pm${std2:.1f}")
             # annotate_txt(ax, anno, "upper-left", fontsize=12, zorder=12) 
     
         # Finalize plot details
@@ -812,7 +822,7 @@ def colormap_colorbar(cmap, **kwargs):
     return cmap, norm, cbar
 
 
-def hover_on_plot(f, ax, obj, values, dissapear=False, **kwargs):
+def hover_on_plot(f, ax, obj, values, dissapear=True, **kwargs):
     """
     Allow for hover on a plot for custom annotated information
 

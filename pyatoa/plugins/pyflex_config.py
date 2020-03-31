@@ -4,6 +4,23 @@ the functions here will set them properly and return the necessary parameters
 
 For variable descriptions see:
     https://krischer.github.io/pyflex/_modules/pyflex/config.html
+
++ Descriptions of a few commonly used parameters that are not self explanatory
+    :stalta_waterlevel (float): reject windows where sta/lta waveform dips below
+        this threshold value. between 0 and 1
+Water level rejection
+    :c_0: reject if window.stalta.min() < c_0 * stalta_waterlevel
+    :c_1: min_acceptable_window_length = c_1 * T_min
+Prominence rejection
+    :c_2: reject if window.stalta.min() < c_2 * window.stalta.max()
+Separation height in phase separation
+    :c_3a: d_stlta > c_3a * d_stalta_center * f_time  
+        where d_stalta = current max height above min
+        and   d_stalta_center = central max height above min
+        and   f_time = time decay function
+Emergent start/stops and coda wave curtailing
+    :c_4a: time_decay_left = T_min * c_4a / dt
+    :c_4b: time_decay_right: T_min * c_4b / dt
 """
 from pyflex import Config as pyflexConfig
 
@@ -40,13 +57,28 @@ presets = {
         "c_4b": 12.0
     },
     # From the New Zealand group doing local studies of North Island, 10-30s
-    "hikurangi_10-30s": {
-        "stalta_waterlevel": 0.18,
+    "nznorth_10-30s": {
+        "stalta_waterlevel": 0.12, 
         "tshift_acceptance_level": 8.0,  # based on sign-flip
         "dlna_acceptance_level": 1.5,
         "cc_acceptance_level": 0.7,
         "s2n_limit": 3.,
-        "max_time_before_first_arrival": 0.,  # minimum starting before P-wave
+        "max_time_before_first_arrival": 10.,
+        "c_0": 0.7,
+        "c_1": 2.5, 
+        "c_3a": 3.0,
+        "c_3b": 2.0,
+        "c_4a": 2.5,
+        "c_4b": 12.0
+    },
+    # North Island, 10-30s
+    "nznorth_6-30s": {
+        "stalta_waterlevel": 0.12,
+        "tshift_acceptance_level": 8.0,  # based on sign-flip
+        "dlna_acceptance_level": 1.5,
+        "cc_acceptance_level": 0.7,
+        "s2n_limit": 3.,
+        "max_time_before_first_arrival": 10.,  # minimum starting before P-wave
         "c_0": 0.7,
         "c_1": 2.5,  # min_win_len = c_1 * min_period
         "c_3a": 3.0,

@@ -1,6 +1,7 @@
 """
 Functions used in determining source receiver information
 """
+from obspy.geodetics import gps2dist_azimuth
 
 
 def merge_inventories(inv_a, inv_b):
@@ -70,7 +71,7 @@ def seismogram_length(distance_km, slow_wavespeed_km_s=2, binsize=50,
     :rtype: int
     :return: expected seismogram length
     """
-    from pyatoa.utils.tools.calculate import myround
+    from pyatoa.utils.calculate import myround
 
     # determine based on slowest wavespeed travelling from source to receiver
     rough_length_s = distance_km / slow_wavespeed_km_s
@@ -173,7 +174,6 @@ def gcd_and_baz(event, sta):
     :rtype baz: float
     :return baz: backazimuth in degrees
     """
-    from obspy.geodetics import gps2dist_azimuth
     gcdist, _, baz = gps2dist_azimuth(lat1=event.preferred_origin().latitude,
                                       lon1=event.preferred_origin().longitude,
                                       lat2=sta.latitude,
