@@ -1,5 +1,5 @@
 """
-Static helper functions to create objects in a Mayavi pipeline
+Static helper functions to create model visualization objects in Mayavi pipeline
 """
 import logging
 import numpy as np
@@ -57,18 +57,22 @@ def colorscale(orientation, **kwargs):
     Utiltiy function to set the colorscale for the plot and also create a
     colorbar
 
-    :type cmap: str
-    :param cmap: colorscale to use, matches names from ParaView
-    :type reverse: bool
-    :param reverse: reverse the colorscale
-    :type min_max: list
-    :param min_max: min and max values for color scale as [min, max]
-    :type colorbar: bool
-    :param colorbar: create and show a colorbar
-    :type title: str
-    :param title: colorbar title
-    :type nb_labels: int
-    :param nb_labels: number of labels to put on the colorbar
+    :type orientation: str
+    :param orientation: 'vertical' or 'horizontal'
+
+    Keyword arguments:
+        :type cmap: str
+        :param cmap: colorscale to use, matches names from ParaView
+        :type reverse: bool
+        :param reverse: reverse the colorscale
+        :type min_max: list
+        :param min_max: min and max values for color scale as [min, max]
+        :type colorbar: bool
+        :param colorbar: create and show a colorbar
+        :type title: str
+        :param title: colorbar title
+        :type nb_labels: int
+        :param nb_labels: number of labels to put on the colorbar
     """
     cmap = kwargs.get("cmap", "RdYlBu")
     reverse = kwargs.get("reverse", True)
@@ -158,7 +162,15 @@ def set_axes(xlabel="E (m)", ylabel="N (m)", zlabel="Z (m)",
              xyz=[True, True, True], **kwargs):
     """
     Utility function to create an axis object that wraps around data
-    :return:
+
+    :type xlabel: str
+    :param xlabel: label for the X-axis
+    :type ylabel: str
+    :param ylabel: label for the Y-axis
+    :type zlabel: str
+    :param zlabel: label for the Z-axis
+    :type xyz: list of bool
+    :param xyz: visibility for the x, y, and z axes in a list
     """
     # Font size as a factor
     font_factor = kwargs.get("font_factor", 1.)
@@ -232,18 +244,18 @@ def srcrcv(fid, x_value=None, y_value=None, z_value=None, color="w",
      ‘2dtriangle’ or ‘2dvertex’ or ‘arrow’ or ‘axes’ or ‘cone’ or ‘cube’ or
      ‘cylinder’ or ‘point’ or ‘sphere’.
 
-    :type fid:
-    :param fid:
-    :type x_value:
-    :param x_value:
-    :type y_value:
-    :param y_value:
-    :type z_value:
-    :param z_value:
-    :type color:
-    :param color:
-    :type marker:
-    :param marker:
+    :type fid: str
+    :param fid: file id of the source or receiver .vtk files
+    :type x_value: float
+    :param x_value: if plotting on a plane, collapses axis to a single value
+    :type y_value: float
+    :param y_value: if plotting on a plane, collapses axis to a single value
+    :type z_value: float
+    :param z_value: if plotting on a plane, collapses axis to a single value
+    :type color: str
+    :param color: color of the points
+    :type marker: str
+    :param marker: marker to use for the points
     """
     coords = np.loadtxt(fid, skiprows=5)
     x = coords[:, 0]
@@ -267,9 +279,18 @@ def srcrcv(fid, x_value=None, y_value=None, z_value=None, color="w",
 
 def annotate(s, x=0.225, y=0.825, c="k", width=0.3):
     """
-    Annotate text onto the axis. Font size doesnt work, use width to control
-    size
-    :return:
+    Annotate text onto the axis. Font size doesnt work, width to control size
+
+    :type s: str
+    :param s: string to annotate
+    :type x: float
+    :param x: part of the X-axis to plot from [0, 1]
+    :type y: float
+    :param y: part of the Y-axis to plot from [0, 1]
+    :type c: str
+    :param c: color of the text
+    :type width: float
+    :param width: size of the font
     """
     return mlab.text(x, y, s, width=width, color=colors[c])
 

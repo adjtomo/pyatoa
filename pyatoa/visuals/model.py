@@ -1,7 +1,8 @@
 """
-Tools to use the Python package mayavi to interact with .vtk files.
-Allows for creation of standardized looking plots of .vtk files for viewing
-models and model slices etc.
+A class used to plot model visualizations of .vtk files in an automatable
+fashion, using the Mayavi library. Standard figure templates include horizontal
+and vertical cross sections which show depth slices of the model.
+Repeatedly used auxiliary functionality contained in model_tools
 """
 import os
 from numpy import array
@@ -16,15 +17,21 @@ from pyatoa.visuals.model_tools import (logger, get_coordinates, set_axes,
 
 class Model:
     """
-    A class to plot models from .vtk files in an automated fashion
+    A Class to automatically visualize slices of a model saved in .vtk
     """
     def __init__(self, fid, srcs=None, rcvs=None, coast=None,
-                 figsize=(1000, 1000),):
+                 figsize=(1000, 1000)):
         """
-        :param fid:
-        :param srcs:
-        :param rcvs:
-        :param coast:
+        :type fid: str
+        :param fid: the file id of the .vtk file to be plotted
+        :type srcs: str
+        :param srcs: (optional) .vtk file id for sources to be plotted
+        :type rcvs: str
+        :param rcvs: (optiona) .vtk file id for receivers to be plotted
+        :type coast: str
+        :param coast: (optional) .npy file id for a coastline to be plotted
+        :type figsize: tuple of float
+        :param figsize: figure size
         """
         self.coords = get_coordinates(fid)
 
@@ -41,7 +48,9 @@ class Model:
 
     def startup(self):
         """
-        Open a VTK file and return the engine that is visualizing it
+        Open a VTK file and return the engine that is visualizing it.
+        Whenever the figure is shown, startup needs to be called again,
+        similar to how showing a matplotlib figure will destroy the instance.
         """
         if self.fig and self.engine and self.vtkfr:
             return
@@ -52,13 +61,6 @@ class Model:
         self.engine = mlab.get_engine()
         self.engine.scenes[0].scene.background = colors["w"]
         self.vtkfr = self.engine.open(self.fid)
-
-    def show_surface(self):
-        """
-        Show the surface of the vtk file from the top down
-        """
-        surface = Surface()
-        self.engine.add_filter(surface, self.vtkfr)
 
     def cut_plane(self, choice, slice_at=None, ratio=None):
         """
@@ -97,6 +99,16 @@ class Model:
                            **kwargs):
         """
         Plot a topdown view of the model, with the projection at the surface
+
+        kwargs are passed to colorscale()
+
+        :type depth_km: float or None
+        :param depth_km: depth to show the model at in units of km, if None is
+            given, will plot a surface projection
+        :type save: bool
+        :param save: save the figure with a unique generic identifier
+        :type show: bool
+        :param show: show the figure after making it
         """
         coastline_z = self.coords[:, 2].max()
         if depth_km:
@@ -115,12 +127,14 @@ class Model:
             srcrcv(self.srcs, color="g", z_value=coastline_z,
                    marker="2dcircle")
 
-        # Plot the model at the surface or at some depth
+        # Plot the model at the given height
         if depth_km:
+            # Show a slice (plane) at a given depth
             self.cut_plane(choice="Z", slice_at=depth_m)
             tag = f"depth_{int(abs(depth_km))}km"
         else:
-            self.show_surface()
+            # Show a surface projection
+            self.engine.add_filter(Surface(), self.vtkfr)
             tag = "surface"
 
         # Set the camera with top down view
@@ -139,26 +153,30 @@ class Model:
             mlab.show()
 
     @mlab.show
-    def plot_depth_cross_section(self, choice, slice_at, axes=True, save=False,
-                                 show=True, **kwargs):
+    def plot_depth_cross_section(self, choice, slice_at, show_axis=True,
+                                 show=True, save=False, **kwargs):
         """
         Plot a depth cross-section of the model, with the Y-axis plotting depth
 
-        If choice is X, the slice is parallel to Y-axis for a constant value of X
-        same for choice of Y
+        If choice is X, the slice is parallel to Y-axis for a constant value of
+        X same for choice of Y
 
-        :type choice:
-        :param choice:
-        :type ratio:
-        :param ratio:
-        :type save:
-        :param save:
-        :type show:
-        :param show:
+        kwargs passed to colorscale()
+
+        :type choice: str
+        :param choice: choice of axis to slice along, 'X', 'Y' or 'Z'
+        :type slice_at: float
+        :param slice_at: depth or distance value in meters to slice at
+        :type show_axis: bool
+        :param show_axis: show the axis of the plot
+        :type save: bool
+        :param save: save the figure with a unique generic identifier
+        :type show: bool
+        :param show: show the figure after making it
         """
         # Generate axes for the data, Z values are now on the Y-axis so
         # visibility toggling needs to reflect that
-        if axes:
+        if show_axis:
             if choice == "X":
                 set_axes(xyz=[True, True, False], **kwargs)
             elif choice == "Y":
@@ -203,6 +221,13 @@ class Model:
     def top_down(self, depths=[None, 5, 10, 15, 25, 50], show=True, save=False):
         """
         Main function to visualize model from the surface down to a given depth
+
+        :type depths: list of float
+        :param depths: iterable list of depths to show the model at
+        :type save: bool
+        :param save: save the figure with a unique generic identifier
+        :type show: bool
+        :param show: show the figure after making it
         """
         # Figure parameters
         save_fid = None
@@ -233,10 +258,19 @@ class Model:
                                     num_clabels=number_of_labels,
                                     round_to=round_to, save=save_fid, show=show)
 
-    def depth_slice(self, xvalues=[0.5], yvalues=[0.5], show=True,
-                      save=False):
+    def depth_slice(self, x_values=[0.5], y_values=[0.5], show=True,
+                    save=False):
         """
         Plot depth cross sections of the model parallel to X and Y axes
+
+        :type x_values: list of float
+        :param x_values: iterable list of X values to slice the model at
+        :type y_values: list of int or None
+        :param y_values: iterable list of Y values to slice the model at
+        :type save: bool
+        :param save: save the figure with a unique generic identifier
+        :type show: bool
+        :param show: show the figure after making it
         """
         # ID's for files to plot
         save_fid_x, save_fid_y = None, None
@@ -258,7 +292,7 @@ class Model:
         min_max = [-.25, .25]
 
         # Initiate the engine and reader
-        for xval in xvalues:
+        for xval in y_values:
             self.startup()
             self.plot_depth_cross_section(choice="X", slice_at=xval,
                                           font_factor=font_factor,
@@ -271,7 +305,7 @@ class Model:
                                           show=show
                                           )
 
-        for yval in yvalues:
+        for yval in x_values:
             self.startup()
             self.plot_depth_cross_section(choice="Y", slice_at=yval,
                                           font_factor=font_factor,
