@@ -110,11 +110,17 @@ def read_stations(path_to_stations):
     Convert a Specfem3D STATIONS file into an ObsPy Inventory object.
 
     Specfem3D STATION files contain no channel or location information, so
-    the inventory can only go down to the station level
+    the inventory can only go down to the station level.
 
     Note:
         This assumes a row structure for the station file is
         STA, NET, LAT [deg], LON [deg], ELEVATION [m], BURIAL [m]
+
+    :type path_to_stations: str
+    :param path_to_stations: the path to the STATIONS file that is associated
+        with the Specfem3D DATA directory
+    :rtype: obspy.core.inventory.Inventory
+    :return: a station-level Inventory object
     """
     stations = np.loadtxt(path_to_stations, dtype="str")
 
@@ -148,14 +154,16 @@ def read_cmtsolution(path_to_cmtsolution):
     """
     Convert a Specfem3D CMTSOLUTION file into an ObsPy Event object
 
-    The values in the CMTSOLUTION are expected to be:
-        event_name, time_shift, half_duration, latitude, longitude, depth
-        Mrr, Mtt, Mpp, Mrt, Mrp, Mtp
+    The values in the CMTSOLUTION are expected to be (in order):
+     event_name, time_shift, half_duration, latitude, longitude, depth,
+     Mrr, Mtt, Mpp, Mrt, Mrp, Mtp
 
     The header should have the format:
      pde, year, month, day, hour, minute, second, lat, lon, depth, mb, ms, name
 
-    :param path_to_cmtsolution:
+    :type path_to_cmtsolution: str
+    :param path_to_cmtsolution: path to the CMTSOLUTION file associated with
+        a Specfem3D DATA directory
     :return:
     """
     raise NotImplementedError
