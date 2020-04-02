@@ -158,6 +158,8 @@ def read_cmtsolution(path_to_cmtsolution):
     :param path_to_cmtsolution:
     :return:
     """
+    raise NotImplementedError
+
     header = np.genfromtxt(path_to_cmtsolution, dtype="str", max_rows=1)
     cmtsolution = np.genfromtxt(path_to_cmtsolution, dtype="str", skip_header=1,
                                 delimiter=":")
