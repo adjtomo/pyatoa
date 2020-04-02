@@ -9,7 +9,7 @@ import pyasdf
 import pyatoa
 import logging
 import traceback
-from pyatoa.utils.io import create_stations_adjoint, write_adj_src_to_ascii
+from pyatoa.utils.write import create_stations_adjoint, write_adj_src_to_ascii
 
 # User defines HDF5 filename
 ds_fid = glob.glob(os.path.join(os.getcwd(), '*.h5'))[0]

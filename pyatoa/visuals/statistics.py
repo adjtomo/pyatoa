@@ -29,7 +29,7 @@ def plot_output_optim(path_to_optim, show=False, save=''):
     :type save: str
     :param save: output filename to save the figure
     """
-    from pyatoa.utils.io import parse_output_optim
+    from pyatoa.utils.write import parse_output_optim
 
     # read in the values of the file
     iterations, steplens, misfits = parse_output_optim(path_to_optim)

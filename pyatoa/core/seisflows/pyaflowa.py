@@ -22,11 +22,11 @@ from pyatoa import logger
 from pyatoa.utils.form import model, step
 from pyatoa.utils.asdf.deletions import clean_ds
 from pyatoa.visuals.statistics import plot_output_optim
-from pyatoa.utils.io import (create_stations_adjoint, write_misfit_json,
-                             write_adj_src_to_ascii, write_misfit_stats,
-                             tile_combine_imgs, src_vtk_from_specfem,
-                             rcv_vtk_from_specfem
-                             )
+from pyatoa.utils.write import (create_stations_adjoint, write_misfit_json,
+                                write_adj_src_to_ascii, write_misfit_stats,
+                                tile_combine_imgs, src_vtk_from_specfem,
+                                rcv_vtk_from_specfem
+                                )
 
 # Overwrite the preprocessing function
 from pyatoa.plugins.new_zealand.process import preproc

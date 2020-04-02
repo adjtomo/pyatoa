@@ -14,7 +14,7 @@ from obspy import Stream, read, read_inventory
 
 from pyatoa import logger
 from pyatoa.utils.calculate import overlapping_days
-from pyatoa.utils.io import read_ascii
+from pyatoa.utils.read import read_ascii
 from pyatoa.utils.srcrcv import merge_inventories
 
 

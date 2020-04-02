@@ -58,7 +58,7 @@ presets = {
     },
     # From the New Zealand group doing local studies of North Island, 10-30s
     "nznorth_10-30s": {
-        "stalta_waterlevel": 0.12, 
+        "stalta_waterlevel": 0.15, 
         "tshift_acceptance_level": 8.0,  # based on sign-flip
         "dlna_acceptance_level": 1.5,
         "cc_acceptance_level": 0.7,

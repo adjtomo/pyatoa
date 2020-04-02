@@ -25,7 +25,7 @@ from pyatoa.utils.form import event_id
 from pyatoa.utils.calculate import abs_max
 from pyatoa.utils.srcrcv import lonlat_utm
 from pyatoa.utils.asdf.extractions import count_misfit_windows
-from pyatoa.core.seisflows.artist import Artist
+from pyatoa.visuals.artist import Artist
 
 
 class Inspector(Artist):

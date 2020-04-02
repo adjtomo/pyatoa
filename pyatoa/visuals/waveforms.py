@@ -60,6 +60,12 @@ def window_maker(st_obs, st_syn, config, time_offset_sec=0., windows=None,
     Plot streams and windows. assumes you have N observation traces and
     N synthetic traces for a 2N length stream object
 
+    Note:
+        The unit of adjoint source is based on Eq. 57 of Tromp et al. 2005, 
+        which is a traveltime adjoint source, and includes the units of the 
+        volumentric delta function since it's assumed this is  happening in a 
+        3D volume. 
+
     :type st_obs: obspy.stream.Stream
     :param st_obs: observation stream object to plot
     :type st_syn: obspy.stream.Stream
@@ -131,16 +137,14 @@ def window_maker(st_obs, st_syn, config, time_offset_sec=0., windows=None,
                  "VEL": "velocity [m/s]",
                  "ACC": "acceleration [m/s^2]",
                  "none": ""}
-    adj_dict = {"DISP": "[m^-1]",
-                "VEL": "[m^-1 s]",
-                "ACC": "[m^-s s^-2]"}
-    window_anno_template = "{ccs:.1f}s"
-    # window_anno_template = ("max_cc={mcc:.2f}\n"
-    #                         "cc_shift={ccs:.2f}s\n"
-    #                         "dlnA={dln:.3f}\n"
-    #                         "left={lft:.1f}s\n"
-    #                         "length={lgt:.1f}s\n"
-    #                         )
+    adj_unit = "m$^{-4}$ s"
+    # window_anno_template = "{ccs:.1f}s"
+    window_anno_template = ("max_cc={mcc:.2f}\n"
+                            "cc_shift={ccs:.2f}s\n"
+                            "dlnA={dln:.3f}\n"
+                            "left={lft:.1f}s\n"
+                            "length={lgt:.1f}s\n"
+                            )
 
     # Legend tag for data-synthetic or synthetic-synthetic
     obs_tag = 'OBS'
@@ -252,7 +256,7 @@ def window_maker(st_obs, st_syn, config, time_offset_sec=0., windows=None,
                 b1, = twaxes[i].plot(
                     t, adj_src.adjoint_source[::-1], adj_src_color, alpha=0.55,
                     linestyle='-.', zorder=z-1,
-                    label="Adjoint Source, Misfit={:.2E}".format(adj_src.misfit)
+                    label=f"Adjoint Source ($\chi$={adj_src.misfit:.2f})"
                 )
                 lines_for_legend += [b1]
 
@@ -268,7 +272,9 @@ def window_maker(st_obs, st_syn, config, time_offset_sec=0., windows=None,
                 stalta = staltas[comp]
                 waterlevel = stalta_wl
             # STA/LTA, waterlevel and annotate the waterlevel 
-            twaxes[i].plot(t, stalta, stalta_color, alpha=0.4, zorder=z - 1)
+            b2, = twaxes[i].plot(t, stalta, stalta_color, alpha=0.4, 
+                                 zorder=z - 1, label=f"STA/LTA")
+            lines_for_legend += [b2]
             if plot_waterlevel:
                 twaxes[i].axhline(y=waterlevel, xmin=t[0], xmax=t[-1],
                                   alpha=0.4, zorder=z - 2, linewidth=1.5, 
@@ -285,11 +291,12 @@ def window_maker(st_obs, st_syn, config, time_offset_sec=0., windows=None,
 
         # Middle trace requires additional y-label information
         if i == middle_trace and plot_stalta:
+            _label = ""
             if staltas is not None:
-                _label = "sta/lta"
+                # _label += "sta/lta"
                 if adj_srcs is not None and plot_adjsrc:
-                    _label += f"\nadjoint source {adj_dict[config.unit_output]}"
-                twaxes[i].set_ylabel(_label, rotation=270, labelpad=27.5)
+                    _label += f"\nadjoint source [{adj_unit}]"
+                twaxes[i].set_ylabel(_label, rotation=270, labelpad=42.5) #  27.5)
             # middle trace contains units for all traces, overwrite comp var.
             comp = f"{unit_dict[config.unit_output]}\n{comp}"
         axes[i].set_ylabel(comp)
@@ -297,7 +304,7 @@ def window_maker(st_obs, st_syn, config, time_offset_sec=0., windows=None,
         # LEGEND
         if legend:
             labels = [l.get_label() for l in lines_for_legend]
-            axes[i].legend(lines_for_legend, labels, prop={"size": 9},
+            axes[i].legend(lines_for_legend, labels, prop={"size": 12},
                            loc="upper right")
 
         # Format axes and align with waveforms, before plotting other stuff

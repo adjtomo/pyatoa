@@ -507,8 +507,9 @@ class Artist:
     
     def misfit_histogram(self, model, model_comp=None, choice="cc_shift_sec",
                          binsize=1., show=True, save=None, title=None, 
-                         anno=True, xlim=None, color="darkorange", 
-                         color_comp="deepskyblue"):
+                         anno=None, xlim=None, color="darkorange", 
+                         color_comp="deepskyblue", fontsize=12, figsize=(8,6),
+                         legend=True, label_range=False, step=2):
         """
         Create a histogram of misfit information for either time shift or
         amplitude differences. Option to compare against different models,
@@ -567,7 +568,7 @@ class Artist:
             # assert(model != model_comp), "model_comp must be different"
     
         label_dict = {"cc_shift_sec": "Time Shift (s)",
-                      "dlna": "dlnA=ln(A_obs/A_syn)",
+                      "dlna": "$\Delta\ln$(A)",
                       "misfit": "misfit",
                       "length_s": "Window Length (s)"}
    
@@ -575,31 +576,33 @@ class Artist:
         val, bound = retrieve_val(model)
         if model_comp:
             val_comp, bound_comp = retrieve_val(model_comp)
+            bound = max(bound, bound_comp)
             
-        # Make the main histogram
-        f, ax = plt.subplots(figsize=(8, 6))
-        n, bins, patches = plt.hist(
-                 x=val, bins=len(np.arange(-1*bound, bound, binsize)),
-                 color=color,  histtype="bar", edgecolor="black",
-                 linewidth=2.5, label=f"{model}; N={len(val)}", zorder=10
-                 )
-        mu1, var1, std1 = get_stats(n, bins)
+        # Plot the histogram, side by side if comparing two models
+        f, ax = plt.subplots(figsize=figsize)
+        if not model_comp:
+            # No comparison model, plot single histogram
+            n, bins, patches = plt.hist(
+                     x=val, bins=len(np.arange(-1*bound, bound, binsize)),
+                     color=color,  histtype="bar", 
+                     edgecolor="black", linewidth=2.5, 
+                     label=f"{model}; N={len(val)}", zorder=10,
+                     )
+            mu1, var1, std1 = get_stats(n, bins)
+        else:
+            # Compare models side by side
+            n, bins, patches = plt.hist(
+                     x=[val, val_comp], 
+                     bins=len(np.arange(-1*bound, bound, binsize)),
+                     color=[color, color_comp],  histtype="bar", 
+                     edgecolor="black", linewidth=2.5, 
+                     label=[f"{model}; N={len(val)}", 
+                            f"{model_comp}; N={len(val_comp)}"], 
+                     zorder=10,
+                     )
+            mu1, var1, std1 = get_stats(n[0], bins)
+            mu2, var2, std2 = get_stats(n[1], bins)
 
-        # If a model is to be compared to the initial model, plot infront,
-        # transparent, with overlying lines, and behind as full
-        if model_comp:
-            n, bins, pathces = plt.hist(
-                     x=val_comp, 
-                     label=f"{model_comp}; N={len(val_comp)}",
-                     bins=len(np.arange(-1 * bound_comp, bound_comp, binsize)),
-                     histtype="bar", edgecolor="black", linewidth=2.,
-                     alpha=.8, zorder=9)
-            plt.hist(x=val_comp,
-                     bins=len(np.arange(-1 * bound_comp, bound_comp, binsize)),
-                     histtype="step", edgecolor=color_comp, linewidth=2.,
-                     alpha=0.7, zorder=11)
-            mu2, var2, std2 = get_stats(n, bins)
-    
         # Set xlimits of the plot
         if xlim:
             plt.xlim(xlim)
@@ -607,26 +610,30 @@ class Artist:
             if choice == "dlna":
                 plt.xlim([-1.75, 1.75])
 
-        # Annotate stats information
+        # Stats annotationg for the title
         if anno:
             anno = f"$\mu({model})\pm\sigma({model})$={mu1:.1f}$\pm${std1:.1f}"
             if model_comp:
                 anno += (f"\n$\mu({model_comp})\pm\sigma({model_comp})$="
                          f"{mu2:.1f}$\pm${std2:.1f}")
-            # annotate_txt(ax, anno, "upper-left", fontsize=12, zorder=12) 
-    
+
         # Finalize plot details
-        plt.xlabel(label_dict[choice])
-        plt.ylabel("Count")
+        plt.xlabel(label_dict[choice], fontsize=fontsize)
+        plt.ylabel("Count", fontsize=fontsize)
         if not title:
             title = f"{choice} histogram"
-        plt.title(anno)
-        plt.tick_params(which='both', direction='in', top=True, right=True)
-        plt.grid(linewidth=1, linestyle=":", which="both", zorder=1)
-        plt.axvline(x=0, ymin=0, ymax=1, linewidth=1.5, c="k", zorder=2, 
-                    alpha=0.75, linestyle='--')
-        plt.legend()
-    
+        plt.title(anno, fontsize=fontsize)
+        plt.tick_params(which='both', direction='in', top=True, right=True,
+                        labelsize=fontsize, width=2.)
+        if label_range:
+            plt.xticks(np.arange(-1*label_range, label_range+.1, step=step))
+        plt.axvline(x=0, ymin=0, ymax=1, linewidth=2., c="k", zorder=2, 
+                    alpha=0.75, linestyle=':')
+        if legend:
+            plt.legend(fontsize=fontsize/1.25)
+
+        plt.tight_layout() 
+
         if save:
             plt.savefig(save)
         if show:

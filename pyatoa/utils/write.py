@@ -1,7 +1,5 @@
 """
-For reading and writing files. Some functions to read the outputs of Specfem,
-others to write output files for Specfem, or for any external files required
-for codes that interact with Pyatoa.
+For writing various output files used by Pyatoa, Specfem and Seisflows
 """
 import os
 import glob
@@ -9,103 +7,6 @@ import json
 import time
 import random
 import numpy as np
-from obspy import Stream, Trace, UTCDateTime
-
-
-def read_fortran_binary(path):
-    """
-    Convert a Specfem3D fortran .bin file into a NumPy array,
-    Copied verbatim from Seisflows/plugins/solver_io/fortran_binary.py/_read()
-
-    :type path: str
-    :param path: path to fortran .bin file
-    :rtype: np.array
-    :return: fortran binary data as a numpy array
-    """
-    nbytes = os.path.getsize(path)
-    with open(path, "rb") as f:
-        f.seek(0)
-        n = np.fromfile(f, dtype="int32", count=1)[0]
-        if n == nbytes - 8:
-            f.seek(4)
-            data = np.fromfile(f, dtype="float32")
-            return data[:-1]
-        else:
-            f.seek(0)
-            data = np.fromfile(f, dtype="float32")
-            return data
-
-
-def read_ascii(path, origintime=None, location=''):
-    """
-    Specfem3D outputs seismograms to ASCII (.sem?) files
-
-    Pyatoa expects seismograms as Obspy Stream objects.
-    This convenience function converts the .sem? files into Stream objects
-    with the correct header information.
-
-    Works with Specfem3D git version 6895e2f7
-
-    Note: if origintime is None, the default start time is 1970-01-01T00:00:00,
-          this is fine for quick-looking the data but it is recommended that an
-          actual starttime is given.
-
-    :type path: str
-    :param path: path of the given ascii file
-    :type origintime: obspy.UTCDateTime
-    :param origintime: UTCDatetime object for the origintime of the event
-    :type location: str
-    :param location: location value for a given station/component
-    :rtype st: obspy.Stream.stream
-    :return st: stream containing header and data info taken from ascii file
-    """
-    # This was tested up to version 6895e2f7
-    try:
-        times = np.loadtxt(fname=path, usecols=0)
-        data = np.loadtxt(fname=path, usecols=1)
-
-    # At some point in 2018, the Specfem developers changed how the ascii files
-    # were formatted from two columns to comma separated values, and repeat
-    # values represented as 2*value_float where value_float represents the data
-    # value as a float
-    except ValueError:
-        times, data = [], []
-        with open(path, 'r') as f:
-            lines = f.readlines()
-        for line in lines:
-            try:
-                time_, data_ = line.strip().split(',')
-            except ValueError:
-                if "*" in line:
-                    time_ = data_ = line.split('*')[-1]
-                else:
-                    raise ValueError
-            times.append(float(time_))
-            data.append(float(data_))
-
-        times = np.array(times)
-        data = np.array(data)
-
-    if origintime is None:
-        print("No origintime given, setting to default 1970-01-01T00:00:00")
-        origintime = UTCDateTime("1970-01-01T00:00:00")
-
-    # We assume that dt is constant after 3 decimal points
-    delta = round(times[1] - times[0], 3)
-
-    # Honor that Specfem doesn't start exactly on 0
-    origintime += times[0]
-
-    # Write out the header information
-    net, sta, cha, fmt = os.path.basename(path).split('.')
-    stats = {"network": net, "station": sta, "location": location,
-             "channel": cha, "starttime": origintime, "npts": len(data),
-             "delta": delta, "mseed": {"dataquality": 'D'},
-             "time_offset": times[0], "format": fmt
-             }
-    st = Stream([Trace(data=data, header=stats)])
-
-    return st
 
 
 def parse_output_optim(path_to_optim):
