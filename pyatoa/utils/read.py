@@ -8,9 +8,10 @@ import numpy as np
 from obspy import Stream, Trace, UTCDateTime, Inventory
 from obspy.core.inventory.network import Network
 from obspy.core.inventory.station import Station
-from obspy.core.event.event import Event
+from obspy.core.event import CreationInfo, Event, Catalog, EventDescription
 from obspy.core.event.origin import Origin
-from obspy.core.event.source import MomentTensor
+from obspy.core.event.magnitude import Magnitude
+from obspy.core.event.source import Tensor, MomentTensor, FocalMechanism
 
 
 def read_fortran_binary(path):
@@ -126,8 +127,6 @@ def read_stations(path_to_stations):
     :rtype: obspy.core.inventory.Inventory
     :return: a station-level Inventory object
     """
-
-
     stations = np.loadtxt(path_to_stations, dtype="str")
 
     # Get all the unique network names
@@ -139,7 +138,7 @@ def read_stations(path_to_stations):
         latitude_ = float(sta[2])
         longitude_ = float(sta[3])
         elevation_ = float(sta[4])
-        burial_ = float(sta[5])  # burial isnt an option for ObsPy
+        burial_ = float(sta[5])  # burial isnt an option in ObsPy
 
         # Create the station object, temp store in a network
         station = Station(code=station_, latitude=latitude_,
@@ -156,12 +155,11 @@ def read_stations(path_to_stations):
     return Inventory(networks=list_of_networks, source="PYATOA")
 
 
-def read_cmtsolution(path_to_cmtsolution):
+def read_cmtsolution(path_to_cmtsolution, rtype="event"):
     """
     Convert a Specfem3D CMTSOLUTION file into an ObsPy Event object
 
-    Note:
-        ResourceID's are not handled, they will be auto-set by ObsPy.
+    Note: ResourceID's are not handled, they will be auto-set by ObsPy.
 
     The values in the CMTSOLUTION are expected to be (in order):
      event_name, time_shift, half_duration, latitude, longitude, depth,
@@ -170,40 +168,61 @@ def read_cmtsolution(path_to_cmtsolution):
     The header should have the format:
      pde, year, month, day, hour, minute, second, lat, lon, depth, mb, ms, name
 
+     To Do:
+        Convert moment tensor to strike dip rake object
+
     :type path_to_cmtsolution: str
     :param path_to_cmtsolution: path to the CMTSOLUTION file associated with
         a Specfem3D DATA directory
-    :return:
+    :type rtype: str
+    :param rtype: return type, choice between 'Event' and 'Catalog' objects
+        defaults to returning an Event object
+    :rtype: obspy.core.event.Event or obspy.core.event.Catalog
+    :return: converted CMTSOLUTION into an Event, or a Catalog object.
     """
-    def seismic_moment(moment_tensor):
-        """
-        Return the seismic moment based on a moment tensor
+    assert(rtype in ["event", "catalog"]), \
+        "Return type must be 'event' or 'catalog'"
 
-        :type moment_tensor: list of floats
-        :param moment_tensor: the components of the moment tensor M_ij
+    def seismic_moment(mt):
+        """
+        Return the seismic moment based on a moment tensor. Can take a list of
+        tensor components, or a Tensor object from ObsPy.
+
+        Same as pyatoa.utils.srcrcv.seismic_moment()
+
+        :type mt: list of floats or obspy.core.event.source.Tensor
+        :param mt: the components of the moment tensor M_ij
         :rtype: float
         :return: the seismic moment, in units of N*m
         """
-        return 1/np.sqrt(2) * np.sqrt(sum([_**2 for _ in moment_tensor]))
+        if isinstance(mt, Tensor):
+            # Little one liner to spit out moment tensor components into a list
+            mt_temp = [getattr(mt, key) for key in mt.keys()
+                                            if not key.endswith("errors")]
+            assert(len(mt_temp) == 6), "Moment tensor should have 6 components"
+            mt = mt_temp
+        return 1/np.sqrt(2) * np.sqrt(sum([_**2 for _ in mt]))
 
     def moment_magnitude(moment):
         """
         Return the moment magitude based on a seismic moment, from
         Hanks & Kanamori (1979)
 
+        Same as pyatoa.utils.srcrcv.moment_magnitude()
+
         :type moment: float
         :param moment: the seismic moment, in units of N*m
         :rtype: float
-        :return: moment magnitude M_w
+        :return: moment magnitude, M_w
         """
         return 2/3 * np.log10(moment) - 10.7
 
+    # Read in header and body
     header = np.genfromtxt(path_to_cmtsolution, dtype="str", max_rows=1)
     cmtsolution = np.genfromtxt(path_to_cmtsolution, dtype="str", skip_header=1,
                                 delimiter=":")
 
-    # Split up the header, we just want the origin time, all the other info
-    # can be found in the body of the file
+    # Parse header, get origin time and name
     year = header[1]
     month = header[2]
     day = header[3]
@@ -211,26 +230,47 @@ def read_cmtsolution(path_to_cmtsolution):
     minute = header[5]
     seconds = header[6]
     origintime = UTCDateTime(f"{year}-{month}-{day}T{hour}:{minute}:{seconds}")
+    name = header[-1]  # a text description of where the event occurred
 
-    # Description of the event location
-    description = header[-1]
-
-    cmt = dict()
-    # Event name will not be a float
-    cmt[cmtsolution[0][0].replace(" ", "_")] = cmtsolution[0][1].strip()
+    # Parse the body of the CMTSOLUTION, event ID gets separate treatment
     # Replace spaces in tags with underscores
+    cmt = dict()
+    cmt[cmtsolution[0][0].replace(" ", "_")] = cmtsolution[0][1].strip()
     for value in cmtsolution[1:]:
         cmt[value[0].replace(" ", "_")] = float(value[1].strip())
 
-    # Create the Origin object which includes time, location
+    # Tensor to be put in the MomentTensor
+    tensor = Tensor(m_rr=cmt["Mrr"], m_tt=cmt["Mtt"], m_pp=cmt["Mpp"],
+                    m_rt=cmt["Mrt"], m_rp=cmt["Mrp"], m_tp=cmt["Mtp"]
+                    )
+
+    # Use the tensor to get M0 and Mw
+    scalar_moment = seismic_moment(tensor)
+    mw = moment_magnitude(scalar_moment)
+
+    # Create various objects used to fill the Event to be more info rich
     origin = Origin(time=origintime, longitude=cmt["longitude"],
                     latitude=cmt["latitude"], depth=cmt["depth"]*1E3,
                     )
+    moment_tensor = MomentTensor(tensor=tensor, scalar_moment=scalar_moment)
+    focal_mechanism = FocalMechanism(moment_tensor=moment_tensor)
+    magnitude = Magnitude(mag=float(f"{mw:.2f}"), magnitude_type="Mw")
+    info = CreationInfo(author="Pyatoa from CMTSOLUTION",
+                        creation_time=UTCDateTime())
+    description = EventDescription(text=name)
 
+    # Create the Event using all the pieces created, set preferences
+    event = Event(origins=[origin], focal_mechanisms=[focal_mechanism],
+                  magnitudes=[magnitude], event_descriptions=[description],
+                  creation_info=info)
 
-    # Write information into an Event object
+    event.preferred_origin_id = origin.resource_id
+    event.preferred_focal_mechanism_id = focal_mechanism.resource_id
+    event.preferred_magnitude_id = magnitude.resource_id
 
-    # TO DO: focal mechanism to put in the moment tensor
-    # TO DO: magnitude from moment tensor summation?
-    # TO DO: event description from header
-    event = Event(resource_)
+    # Determine if an Event or Catalog is returned
+    if rtype == "event":
+        return event
+    elif rtype == "catalog":
+        return Catalog(events=[event])
+

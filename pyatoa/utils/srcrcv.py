@@ -4,18 +4,28 @@ or their corresponding representations in ObsPy
 """
 import numpy as np
 from obspy.geodetics import gps2dist_azimuth
+from obspy.core.event.source import Tensor
 
 
-def seismic_moment(moment_tensor):
+def seismic_moment(mt):
     """
-    Return the seismic moment based on a moment tensor
+    Return the seismic moment based on a moment tensor.
+    Can take a list of tensor components, or a Tensor object from ObsPy.
 
-    :type moment_tensor: list of floats
-    :param moment_tensor: the components of the moment tensor M_ij
+    Same as pyatoa.utils.srcrcv.seismic_moment()
+
+    :type mt: list of floats or obspy.core.event.source.Tensor
+    :param mt: the components of the moment tensor M_ij
     :rtype: float
     :return: the seismic moment, in units of N*m
     """
-    return 1 / np.sqrt(2) * np.sqrt(sum([_ ** 2 for _ in moment_tensor]))
+    if isinstance(mt, Tensor):
+        # Little one liner to spit out moment tensor components into a list
+        mt_temp = [getattr(mt, key) for key in mt.keys()
+                   if not key.endswith("errors")]
+        assert (len(mt_temp) == 6), "Moment tensor should have 6 components"
+        mt = mt_temp
+    return 1 / np.sqrt(2) * np.sqrt(sum([_ ** 2 for _ in mt]))
 
 
 def moment_magnitude(moment):
