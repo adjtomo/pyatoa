@@ -1,7 +1,168 @@
 """
-Functions used in determining source receiver information
+Functions used in determining information related to sources and receivers,
+or their corresponding representations in ObsPy
 """
+import numpy as np
 from obspy.geodetics import gps2dist_azimuth
+
+
+def seismic_moment(moment_tensor):
+    """
+    Return the seismic moment based on a moment tensor
+
+    :type moment_tensor: list of floats
+    :param moment_tensor: the components of the moment tensor M_ij
+    :rtype: float
+    :return: the seismic moment, in units of N*m
+    """
+    return 1 / np.sqrt(2) * np.sqrt(sum([_ ** 2 for _ in moment_tensor]))
+
+
+def moment_magnitude(moment):
+    """
+    Return the moment magitude based on a seismic moment, from
+    Hanks & Kanamori (1979)
+
+    :type moment: float
+    :param moment: the seismic moment, in units of N*m
+    :rtype: float
+    :return: moment magnitude M_w
+    """
+    return 2 / 3 * np.log10(moment) - 10.7
+
+
+def half_duration_from_m0(moment):
+    """
+    Empirical formula for half duration used by Harvard CMT, stated in
+    Dahlen and Tromp (1998, p.178).
+
+    :type moment: float
+    :param moment: seismic moment in N*m
+    :rtype: float
+    :return: empirically scaled half duration
+    """
+    return 2.4E-6 * moment**(1/3)
+
+
+def mt_transform(mt, method):
+    """
+    Transform moment tensor between XYZ and RTP coordinates
+
+    Acceptable formats for the parameter mt:
+        1) [m11,m22,m33,m12,m13,m23]
+        2) [mxx,myy,mzz,mxy,mxz,myz]
+        3) [mrr,mtt,mpp,mrt,mrp,mtp]
+
+    Based on equation ?? from Aki and Richards Quantitative Seismology
+    TO DO: find the correct equation number
+
+    :type mt: dict
+    :param mt: moment tensor in format above
+    :type method: str
+    :param method: type of conversion, "rtp2xyz" or "xyz2rtp"
+    :rtype: dict
+    :return: converted moment tensor dictionary
+    """
+    if method == "xyz2rtp":
+        if "m_xx" not in mt.keys():
+            print("for xyz2rtp, dict must have keys in xyz")
+        m_rr = mt["m_zz"]
+        m_tt = mt["m_xx"]
+        m_pp = mt["m_yy"]
+        m_rt = mt["m_xz"]
+        m_rp = -1 * mt["m_yz"]
+        m_tp = -1 * mt["m_xy"]
+        return {"m_rr": m_rr, "m_tt": m_tt, "m_pp": m_pp, "m_rt": m_rt,
+                "m_rp": m_rp, "m_tp": m_tp}
+    elif method == "rtp2xyz":
+        if "m_tt" not in mt.keys():
+            print("for rtp2xyz, dict must have keys in rtp")
+        m_xx = mt["m_tt"]
+        m_yy = mt["m_pp"]
+        m_zz = mt["m_rr"]
+        m_xy = -1 * mt["m_tp"]
+        m_xz = mt["m_rt"]
+        m_yz = -1 * mt["m_rp"]
+        return {"m_xx": m_xx, "m_yy": m_yy, "m_zz": m_zz, "m_xy": m_xy,
+                "m_xz": m_xz, "m_yz": m_yz}
+    else:
+        print("Invalid transformation method, xyz2rtp or rtp2xyz")
+        return None
+
+
+def lonlat_utm(lon_or_x, lat_or_y, utm_zone=-60, inverse=False):
+    """
+    Convert latitude and longitude coordinates to UTM projection
+
+    :type lon_or_x: float or int
+    :param lon_or_x: longitude value in WGS84 or X in UTM-'zone' projection
+    :type lat_or_y: float or int
+    :param lat_or_y: latude value in WGS84 or Y in UTM-'zone' projection
+    :type utm_zone: int
+    :param utm_zone: UTM zone for conversion from WGS84
+    :type inverse: bool
+    :param inverse: if inverse == False, latlon => UTM, vice versa.
+    :rtype x_or_lon: float
+    :return x_or_lon: x coordinate in UTM or longitude in WGS84
+    :rtype y_or_lat: float
+    :return y_or_lat: y coordinate in UTM or latitude in WGS84
+    """
+    from pyproj import Proj
+    # Determine if the projection is north or south
+    if utm_zone < 0:
+        direction = "south"
+    else:
+        direction = "north"
+    # Proj doesn't accept negative zones
+    utm_zone = abs(utm_zone)
+
+    projstr = (f"+proj=utm +zone={utm_zone}, +{direction} +ellps=WGS84"
+               " +datum=WGS84 +units=m +no_defs")
+    projection = Proj(projstr)
+
+    x_or_lon, y_or_lat = projection(lon_or_x, lat_or_y, inverse=inverse)
+
+    return x_or_lon, y_or_lat
+
+
+def gcd_and_baz(event, sta):
+    """
+    Calculate great circle distance and backazimuth values for a given
+    station and event configuration
+
+    :type event: obspy.core.event.Event
+    :param event: event object
+    :type sta: obspy.core.inventory.station.Station
+    :param sta: station object
+    :rtype gcdist: float
+    :return gcdist: great circle distance in km
+    :rtype baz: float
+    :return baz: backazimuth in degrees
+    """
+    gcdist, _, baz = gps2dist_azimuth(lat1=event.preferred_origin().latitude,
+                                      lon1=event.preferred_origin().longitude,
+                                      lat2=sta.latitude,
+                                      lon2=sta.longitude
+                                      )
+    return gcdist*1E-3, baz
+
+
+def theoretical_p_arrival(source_depth_in_km, distance_in_degrees,
+                          model='iasp91'):
+    """
+    Calculate theoretical arrivals
+
+    :type source_depth_in_km: float
+    :param source_depth_in_km: source depth in units of km
+    :type distance_in_degrees: float
+    :param distance_in_degrees: distance between source and receiver in degrees
+    :type model: str
+    :param model: model to be used to get travel times from
+    """
+    from obspy.taup import TauPyModel
+    model = TauPyModel(model=model)
+    return model.get_travel_times(source_depth_in_km, distance_in_degrees,
+                                  phase_list=["P"])
 
 
 def merge_inventories(inv_a, inv_b):
@@ -123,94 +284,6 @@ def sort_by_backazimuth(ds, clockwise=True):
         station_names.reverse()
 
     return station_names
-
-
-def lonlat_utm(lon_or_x, lat_or_y, utm_zone=-60, inverse=False):
-    """
-    Convert latitude and longitude coordinates to UTM projection
-
-    :type lon_or_x: float or int
-    :param lon_or_x: longitude value in WGS84 or X in UTM-'zone' projection
-    :type lat_or_y: float or int
-    :param lat_or_y: latude value in WGS84 or Y in UTM-'zone' projection
-    :type utm_zone: int
-    :param utm_zone: UTM zone for conversion from WGS84
-    :type inverse: bool
-    :param inverse: if inverse == False, latlon => UTM, vice versa.
-    :rtype x_or_lon: float
-    :return x_or_lon: x coordinate in UTM or longitude in WGS84
-    :rtype y_or_lat: float
-    :return y_or_lat: y coordinate in UTM or latitude in WGS84
-    """
-    from pyproj import Proj
-    # Determine if the projection is north or south
-    if utm_zone < 0:
-        direction = "south"
-    else:
-        direction = "north"
-    # Proj doesn't accept negative zones
-    utm_zone = abs(utm_zone)
-
-    projstr = (f"+proj=utm +zone={utm_zone}, +{direction} +ellps=WGS84"
-               " +datum=WGS84 +units=m +no_defs")
-    projection = Proj(projstr)
-
-    x_or_lon, y_or_lat = projection(lon_or_x, lat_or_y, inverse=inverse)
-
-    return x_or_lon, y_or_lat
-
-
-def gcd_and_baz(event, sta):
-    """
-    Calculate great circle distance and backazimuth values for a given
-    station and event configuration
-
-    :type event: obspy.core.event.Event
-    :param event: event object
-    :type sta: obspy.core.inventory.station.Station
-    :param sta: station object
-    :rtype gcdist: float
-    :return gcdist: great circle distance in km
-    :rtype baz: float
-    :return baz: backazimuth in degrees
-    """
-    gcdist, _, baz = gps2dist_azimuth(lat1=event.preferred_origin().latitude,
-                                      lon1=event.preferred_origin().longitude,
-                                      lat2=sta.latitude,
-                                      lon2=sta.longitude
-                                      )
-    return gcdist*1E-3, baz
-
-
-def theoretical_p_arrival(source_depth_in_km, distance_in_degrees,
-                          model='iasp91'):
-    """
-    Calculate theoretical arrivals
-
-    :type source_depth_in_km: float
-    :param source_depth_in_km: source depth in units of km
-    :type distance_in_degrees: float
-    :param distance_in_degrees: distance between source and receiver in degrees
-    :type model: str
-    :param model: model to be used to get travel times from
-    """
-    from obspy.taup import TauPyModel
-    model = TauPyModel(model=model)
-    return model.get_travel_times(source_depth_in_km, distance_in_degrees,
-                                  phase_list=["P"])
-
-
-def half_duration_from_m0(moment):
-    """
-    Empirical formula for half duration used by Harvard CMT, stated in
-    Dahlen and Tromp (1998, p.178).
-
-    :type moment: float
-    :param moment: seismic moment in N*m
-    :rtype: float
-    :return: empirically scaled half duration
-    """
-    return 2.4E-6 * moment**(1/3)
 
 
 def event_by_distance(cat, filter_type=False, filter_bounds=None, random=False):
@@ -398,59 +471,5 @@ def generate_focal_mechanism(mtlist, event=None):
         return None, focal_mechanism
 
 
-def mt_transform(mt, method):
-    """
-    Transform moment tensor between XYZ and RTP coordinates
-
-    Acceptable formats for the parameter mt:
-        1) [m11,m22,m33,m12,m13,m23]
-        2) [mxx,myy,mzz,mxy,mxz,myz]
-        3) [mrr,mtt,mpp,mrt,mrp,mtp]
-
-    Based on equation ?? from Aki and Richards Quantitative Seismology
-    TO DO: find the correct equation number
-
-    :type mt: dict
-    :param mt: moment tensor in format above
-    :type method: str
-    :param method: type of conversion, "rtp2xyz" or "xyz2rtp"
-    :rtype: dict
-    :return: converted moment tensor dictionary
-    """
-    if method == "xyz2rtp":
-        if "m_xx" not in mt.keys():
-            print("for xyz2rtp, dict must have keys in xyz")
-        m_rr = mt["m_zz"]
-        m_tt = mt["m_xx"]
-        m_pp = mt["m_yy"]
-        m_rt = mt["m_xz"]
-        m_rp = -1 * mt["m_yz"]
-        m_tp = -1 * mt["m_xy"]
-        return {"m_rr": m_rr, "m_tt": m_tt, "m_pp": m_pp, "m_rt": m_rt,
-                "m_rp": m_rp, "m_tp": m_tp}
-    elif method == "rtp2xyz":
-        if "m_tt" not in mt.keys():
-            print("for rtp2xyz, dict must have keys in rtp")
-        m_xx = mt["m_tt"]
-        m_yy = mt["m_pp"]
-        m_zz = mt["m_rr"]
-        m_xy = -1 * mt["m_tp"]
-        m_xz = mt["m_rt"]
-        m_yz = -1 * mt["m_rp"]
-        return {"m_xx": m_xx, "m_yy": m_yy, "m_zz": m_zz, "m_xy": m_xy,
-                "m_xz": m_xz, "m_yz": m_yz}
-    else:
-        print("Invalid transformation method, xyz2rtp or rtp2xyz")
-        return None
 
 
-def moment_tensor_to_moment_magnitude(moment_tensor):
-    """
-    Convet sesmic moment tensor to seismic moment magnitude
-    """
-    from numpy import sqrt
-    moment = sum([_**2 for _ in moment_tensor])
-    moment = sqrt(moment)
-    moment /= sqrt(2)
-
-    return moment

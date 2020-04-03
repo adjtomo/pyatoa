@@ -1,5 +1,7 @@
 """
 Utilities for reading various file types, mostly from Specfem3D to ObsPy classes
+These are meant to be standalone functions so they may repeat some functionality
+found elsewhere in the package.
 """
 import os
 import numpy as np
@@ -7,6 +9,8 @@ from obspy import Stream, Trace, UTCDateTime, Inventory
 from obspy.core.inventory.network import Network
 from obspy.core.inventory.station import Station
 from obspy.core.event.event import Event
+from obspy.core.event.origin import Origin
+from obspy.core.event.source import MomentTensor
 
 
 def read_fortran_binary(path):
@@ -122,6 +126,8 @@ def read_stations(path_to_stations):
     :rtype: obspy.core.inventory.Inventory
     :return: a station-level Inventory object
     """
+
+
     stations = np.loadtxt(path_to_stations, dtype="str")
 
     # Get all the unique network names
@@ -154,6 +160,9 @@ def read_cmtsolution(path_to_cmtsolution):
     """
     Convert a Specfem3D CMTSOLUTION file into an ObsPy Event object
 
+    Note:
+        ResourceID's are not handled, they will be auto-set by ObsPy.
+
     The values in the CMTSOLUTION are expected to be (in order):
      event_name, time_shift, half_duration, latitude, longitude, depth,
      Mrr, Mtt, Mpp, Mrt, Mrp, Mtp
@@ -166,7 +175,28 @@ def read_cmtsolution(path_to_cmtsolution):
         a Specfem3D DATA directory
     :return:
     """
-    raise NotImplementedError
+    def seismic_moment(moment_tensor):
+        """
+        Return the seismic moment based on a moment tensor
+
+        :type moment_tensor: list of floats
+        :param moment_tensor: the components of the moment tensor M_ij
+        :rtype: float
+        :return: the seismic moment, in units of N*m
+        """
+        return 1/np.sqrt(2) * np.sqrt(sum([_**2 for _ in moment_tensor]))
+
+    def moment_magnitude(moment):
+        """
+        Return the moment magitude based on a seismic moment, from
+        Hanks & Kanamori (1979)
+
+        :type moment: float
+        :param moment: the seismic moment, in units of N*m
+        :rtype: float
+        :return: moment magnitude M_w
+        """
+        return 2/3 * np.log10(moment) - 10.7
 
     header = np.genfromtxt(path_to_cmtsolution, dtype="str", max_rows=1)
     cmtsolution = np.genfromtxt(path_to_cmtsolution, dtype="str", skip_header=1,
@@ -192,7 +222,15 @@ def read_cmtsolution(path_to_cmtsolution):
     for value in cmtsolution[1:]:
         cmt[value[0].replace(" ", "_")] = float(value[1].strip())
 
+    # Create the Origin object which includes time, location
+    origin = Origin(time=origintime, longitude=cmt["longitude"],
+                    latitude=cmt["latitude"], depth=cmt["depth"]*1E3,
+                    )
+
+
     # Write information into an Event object
+
     # TO DO: focal mechanism to put in the moment tensor
     # TO DO: magnitude from moment tensor summation?
     # TO DO: event description from header
+    event = Event(resource_)
