@@ -9,10 +9,9 @@ from numpy import array
 from mayavi import mlab
 from mayavi.modules.surface import Surface
 from mayavi.modules.scalar_cut_plane import ScalarCutPlane
-
 from pyatoa.visuals.model_tools import (logger, get_coordinates, set_axes,
                                         annotate, coastline, colorscale,
-                                        srcrcv, colors)
+                                        srcrcv, colors, get_ranges)
 
 
 class Model:
@@ -20,7 +19,7 @@ class Model:
     A Class to automatically visualize slices of a model saved in .vtk
     """
     def __init__(self, fid, srcs=None, rcvs=None, coast=None,
-                 figsize=(1000, 1000)):
+                 figsize=(1000, 1000), zero_origin=False, convert=1):
         """
         :type fid: str
         :param fid: the file id of the .vtk file to be plotted
@@ -34,6 +33,10 @@ class Model:
         :param figsize: figure size
         """
         self.coords = get_coordinates(fid)
+        self.ranges = get_ranges(self.coords)
+        self.convert = convert
+        self.axes_ranges = get_ranges(self.coords, convert=self.convert,
+                                      zero_origin=zero_origin)
 
         # Distribute pathnames
         self.fid = fid
@@ -52,8 +55,6 @@ class Model:
         Whenever the figure is shown, startup needs to be called again,
         similar to how showing a matplotlib figure will destroy the instance.
         """
-        if self.fig and self.engine and self.vtkfr:
-            return
         logger.debug(f"Reading {self.fid} and creating figure size "
                      f"{self.figsize}")
         # Instantiate mlab
@@ -110,7 +111,7 @@ class Model:
         :type show: bool
         :param show: show the figure after making it
         """
-        coastline_z = self.coords[:, 2].max()
+        coastline_z = self.ranges[-1]
         if depth_km:
             depth_m = -1 * abs(depth_km) * 1E3
             coastline_z = depth_m
@@ -128,14 +129,18 @@ class Model:
                    marker="2dcircle")
 
         # Plot the model at the given height
+        # Axes behave weirdly when cutting planes so turn off Y-axis, not sure
+        # why this works... sorry
         if depth_km:
             # Show a slice (plane) at a given depth
             self.cut_plane(choice="Z", slice_at=depth_m)
             tag = f"depth_{int(abs(depth_km))}km"
+            set_axes(xyz=[True, False, True], ranges=self.axes_ranges, **kwargs)
         else:
             # Show a surface projection
             self.engine.add_filter(Surface(), self.vtkfr)
             tag = "surface"
+            set_axes(xyz=[True, True, False], ranges=self.axes_ranges, **kwargs)
 
         # Set the camera with top down view
         scene = self.engine.scenes[0]
@@ -143,7 +148,6 @@ class Model:
 
         # Plot extras
         colorscale(orientation="vertical", **kwargs)
-        # set_axes(xyz=[True, True, False], **kwargs)
         annotate(s=f"{tag.replace('_', ' ')}", c="k", width=0.2)
 
         # Finalize
@@ -178,25 +182,36 @@ class Model:
         # visibility toggling needs to reflect that
         if show_axis:
             if choice == "X":
-                set_axes(xyz=[True, True, False], **kwargs)
+                set_axes(xyz=[True, True, False], ranges=self.axes_ranges,
+                         **kwargs)
             elif choice == "Y":
-                set_axes(xyz=[True, True, True], **kwargs)
+                set_axes(xyz=[True, True, True], ranges=self.axes_ranges,
+                         **kwargs)
 
         self.cut_plane(choice=choice, slice_at=slice_at)
 
         # Determine which direction we are slicing
         if self.rcvs or self.srcs:
+            slice_x, slice_y = None, None
             if choice == "X":
-                slice_x, slice_y = slice_at, None
+                # Determine where to slice based on the range and the percentage
+                # given in the variable slice_at
+                slice_x = (slice_at * (self.ranges[1] - self.ranges[0]) +
+                           self.ranges[0])
+                logger.info(f"Slicing X at {slice_x}")
             elif choice == "Y":
-                slice_x, slice_y = None, slice_at
+                slice_y = (slice_at * (self.ranges[3] - self.ranges[2]) +
+                           self.ranges[2])
+                logger.info(f"Slicing Y at {slice_y}")
         # Plot the sources and receivers along a given slice
         if self.rcvs:
-            srcrcv(self.rcvs, color="w", x_value=slice_x, y_value=slice_y,
+            srcrcv(self.rcvs, color="k", x_value=slice_x, y_value=slice_y,
                    marker="2ddiamond")
         if self.srcs:
+            # Sources need to be spheres because I don't want to figure out how
+            # to rotate 2d glyphs lol
             srcrcv(self.srcs, color="g", x_value=slice_x, y_value=slice_y,
-                   marker="2dcircle")
+                   marker="sphere")
 
         # Set the camera with a side on view. No preset so set to the preset and
         # rotate to get to the proper frame of reference
@@ -209,8 +224,13 @@ class Model:
 
         # Plot extras
         colorscale(orientation="horizontal", **kwargs)
-        tag = f"{choice.lower()}={slice_at*1E2:.2f}%"
-        annotate(x=.2, y=.675, s=tag, c="k", width=0.1)
+        # Annotation location changes based on which axis you slice
+        if choice == "X":
+            tag = f"{choice.lower()}={slice_x*self.convert:.2f}km"
+            annotate(x=.2, y=.3, s=tag, c="k", width=0.15)
+        elif choice == "Y":
+            tag = f"{choice.lower()}={slice_y*self.convert:.2f}km"
+            annotate(x=.27, y=.3, s=tag, c="k", width=0.15)
 
         # Finalize
         if save:
@@ -236,6 +256,8 @@ class Model:
 
         # Axes parameters
         font_factor = 1.1
+        convert = 1E-3
+        zero_origin = True
 
         # Colormap parameters
         colormap = "RdYlBu"
@@ -254,6 +276,7 @@ class Model:
                                     reverse=reverse, title=cbar_title,
                                     num_colors=number_of_colors,
                                     min_max=min_max, default_range=default_range,
+                                    convert=convert, zero_origin=zero_origin,
                                     font_factor=font_factor,
                                     num_clabels=number_of_labels,
                                     round_to=round_to, save=save_fid, show=show)
@@ -280,6 +303,8 @@ class Model:
 
         # Axes parameters
         font_factor = 1.1
+        convert = 1E-3
+        zero_origin = True
 
         # Colormap parameters
         colormap = "RdYlBu"
@@ -296,6 +321,8 @@ class Model:
             self.startup()
             self.plot_depth_cross_section(choice="X", slice_at=xval,
                                           font_factor=font_factor,
+                                          convert=convert,
+                                          zero_origin=zero_origin,
                                           cmap=colormap, reverse=reverse,
                                           default_range=default_range,
                                           min_max=min_max, title=cbar_title,
@@ -309,6 +336,8 @@ class Model:
             self.startup()
             self.plot_depth_cross_section(choice="Y", slice_at=yval,
                                           font_factor=font_factor,
+                                          convert=convert,
+                                          zero_origin=zero_origin,
                                           cmap=colormap, reverse=reverse,
                                           default_range=default_range,
                                           min_max=min_max, title=cbar_title,

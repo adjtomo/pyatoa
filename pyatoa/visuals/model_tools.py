@@ -36,7 +36,7 @@ def get_coordinates(fid):
     :type fid: str
     :param fid: file id of the .vtk file
     :rtype: numpy array
-    :return: Nx4 numpy array with columns corresponding to x, y, z, v
+    :return: Nx3 numpy array with columns corresponding to x, y, z
     """
     import vtk
     from vtk.util.numpy_support import vtk_to_numpy
@@ -45,11 +45,44 @@ def get_coordinates(fid):
     reader.SetFileName(fid)
     reader.Update()
     coords = vtk_to_numpy(reader.GetOutput().GetPoints().GetData())
-    values = vtk_to_numpy(reader.GetOutput().GetPointData().GetScalars())
 
-    arr_out = np.c_[coords, values]
+    return coords
 
-    return arr_out
+
+def get_ranges(coords, convert=False, zero_origin=False):
+    """
+    Get a list of ranges to use for setting Axes elements by generating an empty
+    axis object. A bit hacky but it works within the context of Mayavi.
+
+    Option to convert the units of range by some constant value.
+    Option to set the origin to zero.
+
+    :type coords: np.array
+    :param coords: Nx4 numpy array with columns representing x, y, z, v, the
+        output of get_coordinates()
+    :type convert: float
+    :param convert: constant value to multiply against all ranges, to e.g.
+        change units from 'm' to 'km'
+    :type zero_origin: bool
+    :param zero_origin: sets X and Y origin to 0, Z stays the same
+    :rtype: list of floats
+    :return: [xmin, xmax, ymin, ymax, zmin, zmax]
+    """
+    xmin, xmax = coords[:, 0].min(), coords[:, 0].max()
+    ymin, ymax = coords[:, 1].min(), coords[:, 1].max()
+    zmin, zmax = coords[:, 2].min(), coords[:, 2].max()
+
+    # Set the ranges
+    if zero_origin:
+        ranges = [0, xmax-xmin, 0, ymax-ymin, zmin, zmax]
+    else:
+        ranges = [xmin, xmax, ymin, ymax, zmin, zmax]
+
+    # Convert the range
+    if convert:
+        ranges = [_ * convert for _ in ranges]
+
+    return ranges
 
 
 def colorscale(orientation, **kwargs):
@@ -158,10 +191,12 @@ def colorscale(orientation, **kwargs):
     return cbar
 
 
-def set_axes(xlabel="E (m)", ylabel="N (m)", zlabel="Z (m)",
+def set_axes(xlabel="E (m)", ylabel="N (m)", zlabel="Z (m)", ranges=None,
              xyz=[True, True, True], **kwargs):
     """
-    Utility function to create an axis object that wraps around data
+    Utility function to create an axis object that wraps around data.
+    Changing the ranges on the axes only changes labels, doesn't affect e.g.
+    plotting other points onto the axis
 
     :type xlabel: str
     :param xlabel: label for the X-axis
@@ -186,11 +221,12 @@ def set_axes(xlabel="E (m)", ylabel="N (m)", zlabel="Z (m)",
     axes = mlab.axes(color=(0., 0., 0.,), line_width=3., xlabel=xlabel,
                      ylabel=ylabel, zlabel=zlabel, x_axis_visibility=xyz[0],
                      y_axis_visibility=xyz[1], z_axis_visibility=xyz[2],
+                     ranges=ranges
                      )
 
     # Edit full properties
     axes.axes.label_format = '%-#.2f'
-    axes.axes.number_of_labels = 3
+    axes.axes.number_of_labels = 6
     axes.axes.font_factor = font_factor
 
     # Edit label attributes

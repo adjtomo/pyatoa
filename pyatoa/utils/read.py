@@ -160,12 +160,13 @@ def read_cmtsolution(path_to_cmtsolution, rtype="event"):
     Convert a Specfem3D CMTSOLUTION file into an ObsPy Event object
 
     Note:
-        1) ResourceID's are not handled, they will be auto-set by ObsPy.
-        2) This function ignores time shift and half duration
+        1) Except for the highest level Event object, ResourceID's are not
+           handled, and will be auto-set by ObsPy.
+        2) This function ignores time shift and half duration in the CMTSOLUTION
 
     The values in the CMTSOLUTION are expected to be (in order):
-     event_name, time_shift, half_duration, latitude, longitude, depth,
-     Mrr, Mtt, Mpp, Mrt, Mrp, Mtp
+        event_name, time_shift, half_duration, latitude, longitude, depth,
+        Mrr, Mtt, Mpp, Mrt, Mrp, Mtp
 
     To Do:
         Convert moment tensor to strike dip rake object
