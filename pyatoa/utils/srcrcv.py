@@ -12,8 +12,6 @@ def seismic_moment(mt):
     Return the seismic moment based on a moment tensor.
     Can take a list of tensor components, or a Tensor object from ObsPy.
 
-    Same as pyatoa.utils.srcrcv.seismic_moment()
-
     :type mt: list of floats or obspy.core.event.source.Tensor
     :param mt: the components of the moment tensor M_ij
     :rtype: float
@@ -28,17 +26,20 @@ def seismic_moment(mt):
     return 1 / np.sqrt(2) * np.sqrt(sum([_ ** 2 for _ in mt]))
 
 
-def moment_magnitude(moment):
+def moment_magnitude(moment, c=10.7):
     """
     Return the moment magitude based on a seismic moment, from
     Hanks & Kanamori (1979)
 
+    :type c: float
+    :param c: correction factor for conversion, 10.7 for units of N*m,
+        16.1 for units of dyne*cm
     :type moment: float
     :param moment: the seismic moment, in units of N*m
     :rtype: float
-    :return: moment magnitude M_w
+    :return: moment magnitude, M_w
     """
-    return 2 / 3 * np.log10(moment) - 10.7
+    return 2 / 3 * np.log10(moment) - c
 
 
 def half_duration_from_m0(moment):

@@ -159,16 +159,15 @@ def read_cmtsolution(path_to_cmtsolution, rtype="event"):
     """
     Convert a Specfem3D CMTSOLUTION file into an ObsPy Event object
 
-    Note: ResourceID's are not handled, they will be auto-set by ObsPy.
+    Note:
+        1) ResourceID's are not handled, they will be auto-set by ObsPy.
+        2) This function ignores time shift and half duration
 
     The values in the CMTSOLUTION are expected to be (in order):
      event_name, time_shift, half_duration, latitude, longitude, depth,
      Mrr, Mtt, Mpp, Mrt, Mrp, Mtp
 
-    The header should have the format:
-     pde, year, month, day, hour, minute, second, lat, lon, depth, mb, ms, name
-
-     To Do:
+    To Do:
         Convert moment tensor to strike dip rake object
 
     :type path_to_cmtsolution: str
@@ -198,39 +197,39 @@ def read_cmtsolution(path_to_cmtsolution, rtype="event"):
         if isinstance(mt, Tensor):
             # Little one liner to spit out moment tensor components into a list
             mt_temp = [getattr(mt, key) for key in mt.keys()
-                                            if not key.endswith("errors")]
+                       if not key.endswith("errors")]
             assert(len(mt_temp) == 6), "Moment tensor should have 6 components"
             mt = mt_temp
         return 1/np.sqrt(2) * np.sqrt(sum([_**2 for _ in mt]))
 
-    def moment_magnitude(moment):
+    def moment_magnitude(moment, c=10.7):
         """
         Return the moment magitude based on a seismic moment, from
         Hanks & Kanamori (1979)
 
         Same as pyatoa.utils.srcrcv.moment_magnitude()
 
+        :type c: float
+        :param c: correction factor for conversion, 10.7 for units of N*m,
+            16.1 for units of dyne*cm
         :type moment: float
         :param moment: the seismic moment, in units of N*m
         :rtype: float
         :return: moment magnitude, M_w
         """
-        return 2/3 * np.log10(moment) - 10.7
+        return 2/3 * np.log10(moment) - c
 
     # Read in header and body
-    header = np.genfromtxt(path_to_cmtsolution, dtype="str", max_rows=1)
+    header = np.genfromtxt(path_to_cmtsolution, dtype="str",
+                           max_rows=1).tolist()
     cmtsolution = np.genfromtxt(path_to_cmtsolution, dtype="str", skip_header=1,
                                 delimiter=":")
 
     # Parse header, get origin time and name
-    year = header[1]
-    month = header[2]
-    day = header[3]
-    hour = header[4]
-    minute = header[5]
-    seconds = header[6]
-    origintime = UTCDateTime(f"{year}-{month}-{day}T{hour}:{minute}:{seconds}")
-    name = header[-1]  # a text description of where the event occurred
+    info = header[:12]
+    pde_event_name = " ".join(header[12:])
+    pde, year, month, day, hour, minute, sec, lat, lon, depth, mb, ms = info
+    origintime = UTCDateTime(f"{year}-{month}-{day}T{hour}:{minute}:{sec}")
 
     # Parse the body of the CMTSOLUTION, event ID gets separate treatment
     # Replace spaces in tags with underscores
@@ -257,12 +256,14 @@ def read_cmtsolution(path_to_cmtsolution, rtype="event"):
     magnitude = Magnitude(mag=float(f"{mw:.2f}"), magnitude_type="Mw")
     info = CreationInfo(author="Pyatoa from CMTSOLUTION",
                         creation_time=UTCDateTime())
-    description = EventDescription(text=name)
+    description = EventDescription(text=pde_event_name)
 
     # Create the Event using all the pieces created, set preferences
     event = Event(origins=[origin], focal_mechanisms=[focal_mechanism],
                   magnitudes=[magnitude], event_descriptions=[description],
-                  creation_info=info)
+                  creation_info=info, force_resource_id=False,
+                  resource_id=f"smi:local/pyatoa/{cmt['event_name']}"
+                  )
 
     event.preferred_origin_id = origin.resource_id
     event.preferred_focal_mechanism_id = focal_mechanism.resource_id
