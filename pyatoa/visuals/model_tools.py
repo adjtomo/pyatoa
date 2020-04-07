@@ -178,13 +178,13 @@ def colorscale(orientation, **kwargs):
 
             # Makes the colorbar interactive and changes its size
             cbar.scalar_bar_representation.proportional_resize = True
-            cbar.scalar_bar_representation.position = array([0.12, .03])
-            cbar.scalar_bar_representation.position2 = array([0.75, 0.15])
+            cbar.scalar_bar_representation.position = array([0.2, .04])
+            cbar.scalar_bar_representation.position2 = array([0.6, 0.12])
 
         # Vertical scalebar sits to the right of the figure, for top down
         elif orientation == "vertical":
             cbar.scalar_bar.title_ratio = 0.36  # smaller title size
-            cbar.scalar_bar.bar_ratio = 0.325  # thickness of colorbar
+            cbar.scalar_bar.bar_ratio = 0.36  # thickness of colorbar
             cbar.scalar_bar_representation.position = array([0.8, 0.1])
             cbar.scalar_bar_representation.position2 = array([0.125, .8])
 
@@ -244,21 +244,20 @@ def set_axes(xlabel="E (m)", ylabel="N (m)", zlabel="Z (m)", ranges=None,
     return axes
 
 
-def coastline(coast_fid, z_value=1000, color="k"):
+def coastline(coords, z_value=1000, color="k"):
     """
     Plot coastline on top of plot. Coastline should be an npy file that is an
     N x 3 array with the columns representing x, y, z
 
-    :type coast_fid: str
-    :param coast_fid: fid for npy file
+    :type coords: np.array
+    :param coords: Nx3 array with columns relating to x, y z
     :type z_value: float
     :param z_value: height of the coastline in meters, negative down
     :type color: str
     :param color: color of the coastline
     """
-    coast = np.load(coast_fid)
-    x = coast[:, 0]
-    y = coast[:, 1]
+    x = coords[:, 0]
+    y = coords[:, 1]
     z = np.ones(len(x)) * z_value
 
     p3d = mlab.points3d(x, y, z, color=colors[color], mode="2dcircle",
@@ -267,7 +266,7 @@ def coastline(coast_fid, z_value=1000, color="k"):
     return p3d
 
 
-def srcrcv(fid, x_value=None, y_value=None, z_value=None, color="w",
+def srcrcv(coords, x_value=None, y_value=None, z_value=None, color="w",
            marker="2ddiamond"):
     """
     Take a receivers VTK file, outputted by Pyatoa, and plot it ontop of
@@ -280,8 +279,8 @@ def srcrcv(fid, x_value=None, y_value=None, z_value=None, color="w",
      ‘2dtriangle’ or ‘2dvertex’ or ‘arrow’ or ‘axes’ or ‘cone’ or ‘cube’ or
      ‘cylinder’ or ‘point’ or ‘sphere’.
 
-    :type fid: str
-    :param fid: file id of the source or receiver .vtk files
+    :type coords: np.array
+    :param coords: Nx3 array with columns relating to x, y z
     :type x_value: float
     :param x_value: if plotting on a plane, collapses axis to a single value
     :type y_value: float
@@ -293,7 +292,6 @@ def srcrcv(fid, x_value=None, y_value=None, z_value=None, color="w",
     :type marker: str
     :param marker: marker to use for the points
     """
-    coords = np.loadtxt(fid, skiprows=5)
     x = coords[:, 0]
     y = coords[:, 1]
     z = coords[:, 2]

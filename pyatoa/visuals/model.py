@@ -5,6 +5,7 @@ and vertical cross sections which show depth slices of the model.
 Repeatedly used auxiliary functionality contained in model_tools
 """
 import os
+import numpy as np
 from numpy import array
 from mayavi import mlab
 from mayavi.modules.surface import Surface
@@ -41,9 +42,13 @@ class Model:
         # Distribute pathnames
         self.fid = fid
         assert(os.path.exists(self.fid)), f"File {fid} does not exist"
-        self.srcs = srcs
-        self.rcvs = rcvs
-        self.coast = coast
+        self.srcs, self.rcvs, self.coast = None, None, None
+        if srcs:
+            self.srcs = np.loadtxt(srcs, skiprows=5)
+        if rcvs:
+            self.rcvs = np.loadtxt(rcvs, skiprows=5)
+        if coast:
+            self.coast = np.load(coast)
 
         # Initiate the plotting engine
         self.figsize = figsize
@@ -55,6 +60,7 @@ class Model:
         Whenever the figure is shown, startup needs to be called again,
         similar to how showing a matplotlib figure will destroy the instance.
         """
+        mlab.close(all=True)
         logger.debug(f"Reading {self.fid} and creating figure size "
                      f"{self.figsize}")
         # Instantiate mlab
@@ -82,10 +88,10 @@ class Model:
         # Set some attributes of the cut plane
         origin = cut.implicit_plane.origin
         if choice == "X":
-            cut.implicit_plane.origin = array([origin[0], origin[1], origin[2]])
+            cut.implicit_plane.origin = array([slice_at, origin[1], origin[2]])
             cut.implicit_plane.normal = array([1, 0, 0])
         elif choice == "Y":
-            cut.implicit_plane.origin = array([origin[0], origin[1], origin[2]])
+            cut.implicit_plane.origin = array([origin[0], slice_at, origin[2]])
             cut.implicit_plane.normal = array([0, 1, 0])
         elif choice == "Z":
             cut.implicit_plane.origin = array([origin[0], origin[1], slice_at])
@@ -95,7 +101,6 @@ class Model:
 
         return cut
 
-    @mlab.show
     def plot_model_topdown(self, depth_km=None, save=False, show=True,
                            **kwargs):
         """
@@ -112,35 +117,35 @@ class Model:
         :param show: show the figure after making it
         """
         coastline_z = self.ranges[-1]
-        if depth_km:
+        if depth_km != "surface":
             depth_m = -1 * abs(depth_km) * 1E3
             coastline_z = depth_m
 
         # Put the coastline at some height above the topography, or at depth
-        if self.coast:
+        if self.coast is not None:
             coastline(self.coast, coastline_z)
 
         # Plot the stations and receivers
-        if self.rcvs:
+        if self.rcvs is not None:
             srcrcv(self.rcvs, color="w", z_value=coastline_z,
                    marker="2ddiamond")
-        if self.srcs:
+        if self.srcs is not None:
             srcrcv(self.srcs, color="g", z_value=coastline_z,
                    marker="2dcircle")
 
         # Plot the model at the given height
         # Axes behave weirdly when cutting planes so turn off Y-axis, not sure
         # why this works... sorry
-        if depth_km:
+        if depth_km == "surface":
+            # Show a surface projection
+            self.engine.add_filter(Surface(), self.vtkfr)
+            tag = depth_km
+            set_axes(xyz=[True, True, False], ranges=self.axes_ranges, **kwargs)
+        else:
             # Show a slice (plane) at a given depth
             self.cut_plane(choice="Z", slice_at=depth_m)
             tag = f"depth_{int(abs(depth_km))}km"
             set_axes(xyz=[True, False, True], ranges=self.axes_ranges, **kwargs)
-        else:
-            # Show a surface projection
-            self.engine.add_filter(Surface(), self.vtkfr)
-            tag = "surface"
-            set_axes(xyz=[True, True, False], ranges=self.axes_ranges, **kwargs)
 
         # Set the camera with top down view
         scene = self.engine.scenes[0]
@@ -156,19 +161,18 @@ class Model:
         if show:
             mlab.show()
 
-    @mlab.show
     def plot_depth_cross_section(self, choice, slice_at, show_axis=True,
                                  show=True, save=False, **kwargs):
         """
         Plot a depth cross-section of the model, with the Y-axis plotting depth
 
-        If choice is X, the slice is parallel to Y-axis for a constant value of
-        X same for choice of Y
+        If choice is X, the slice is normal the Y-axis
+        if choice is Y, the slice is normal the X-axis
 
-        kwargs passed to colorscale()
+        kwargs passed to colorscale() and set_axes()
 
         :type choice: str
-        :param choice: choice of axis to slice along, 'X', 'Y' or 'Z'
+        :param choice: choice of axis to slice along, 'X', 'Y'
         :type slice_at: float
         :param slice_at: depth or distance value in meters to slice at
         :type show_axis: bool
@@ -178,36 +182,46 @@ class Model:
         :type show: bool
         :param show: show the figure after making it
         """
-        # Generate axes for the data, Z values are now on the Y-axis so
-        # visibility toggling needs to reflect that
+        choice = choice.upper()
+
+        def slice_range(ranges_, slice_at_, choice_):
+            """
+            Convenience function to calculate where to slice by checking the
+            min and max of the range and multiplying by a percentage
+
+            :type ranges_: list
+            :param ranges_: [xmin, xmax, ymin, ymax, zmin, zmax]
+            :type slice_at_: float
+            :param slice_at_: percentage of axis from [0,1]
+            :type choice_: str
+            :param choice_: choice of X or Y axis
+            """
+            if choice_ == "X":
+                return slice_at_ * (ranges_[1] - ranges_[0]) + ranges_[0]
+            elif choice_ == "Y":
+                return slice_at_ * (ranges_[3] - ranges_[2]) + ranges_[2]
+
+        # Determine what part of the axis we are slicing
+        slice_val = slice_range(self.ranges, slice_at, choice)
+        tag = slice_range(self.axes_ranges, slice_at, choice)
+        logger.info(f"Slicing {choice} at {slice_val}")
         if show_axis:
-            if choice == "X":
-                set_axes(xyz=[True, True, False], ranges=self.axes_ranges,
-                         **kwargs)
-            elif choice == "Y":
-                set_axes(xyz=[True, True, True], ranges=self.axes_ranges,
-                         **kwargs)
+            set_axes(xyz=[True, True, False], ranges=self.axes_ranges,
+                     **kwargs)
+        self.cut_plane(choice=choice, slice_at=slice_val)
 
-        self.cut_plane(choice=choice, slice_at=slice_at)
+        # Differentiate which way were slicing to put the sources and receivers
+        slice_x, slice_y = None, None
+        if choice == "X":
+            slice_x = slice_val
+        elif choice == "Y":
+            slice_y = slice_val
 
-        # Determine which direction we are slicing
-        if self.rcvs or self.srcs:
-            slice_x, slice_y = None, None
-            if choice == "X":
-                # Determine where to slice based on the range and the percentage
-                # given in the variable slice_at
-                slice_x = (slice_at * (self.ranges[1] - self.ranges[0]) +
-                           self.ranges[0])
-                logger.info(f"Slicing X at {slice_x}")
-            elif choice == "Y":
-                slice_y = (slice_at * (self.ranges[3] - self.ranges[2]) +
-                           self.ranges[2])
-                logger.info(f"Slicing Y at {slice_y}")
         # Plot the sources and receivers along a given slice
-        if self.rcvs:
+        if self.rcvs is not None:
             srcrcv(self.rcvs, color="k", x_value=slice_x, y_value=slice_y,
                    marker="2ddiamond")
-        if self.srcs:
+        if self.srcs is not None:
             # Sources need to be spheres because I don't want to figure out how
             # to rotate 2d glyphs lol
             srcrcv(self.srcs, color="g", x_value=slice_x, y_value=slice_y,
@@ -225,127 +239,15 @@ class Model:
         # Plot extras
         colorscale(orientation="horizontal", **kwargs)
         # Annotation location changes based on which axis you slice
+        anno_tag = f"{choice.lower()}={slice_at*1E2}%={tag:.2f}km"
         if choice == "X":
-            tag = f"{choice.lower()}={slice_x*self.convert:.2f}km"
-            annotate(x=.2, y=.3, s=tag, c="k", width=0.15)
+            annotate(x=.2, y=.3, s=anno_tag, c="k", width=0.15)
         elif choice == "Y":
-            tag = f"{choice.lower()}={slice_y*self.convert:.2f}km"
-            annotate(x=.27, y=.3, s=tag, c="k", width=0.15)
+            annotate(x=.27, y=.3, s=anno_tag, c="k", width=0.15)
 
         # Finalize
         if save:
-            mlab.savefig(save.format(tag=tag))
+            mlab.savefig(save.format(tag=f"{tag:.0f}km"))
         if show:
             mlab.show()
-
-    def top_down(self, depths=[None, 5, 10, 15, 25, 50], show=True, save=False):
-        """
-        Main function to visualize model from the surface down to a given depth
-
-        :type depths: list of float
-        :param depths: iterable list of depths to show the model at
-        :type save: bool
-        :param save: save the figure with a unique generic identifier
-        :type show: bool
-        :param show: show the figure after making it
-        """
-        # Figure parameters
-        save_fid = None
-        if save:
-            save_fid = self.fid + "_Z_{tag}.png"
-
-        # Axes parameters
-        font_factor = 1.1
-        convert = 1E-3
-        zero_origin = True
-
-        # Colormap parameters
-        colormap = "RdYlBu"
-        reverse = False
-        cbar_title = "log(Vs)"
-        min_max = [-.25, .25]
-        number_of_colors = 51
-        number_of_labels = 5
-        default_range = False
-        round_to = 50  # only if default_range == True
-
-        # Plot for a given set of depths
-        for depth in depths:
-            self.startup()
-            self.plot_model_topdown(depth_km=depth, cmap=colormap,
-                                    reverse=reverse, title=cbar_title,
-                                    num_colors=number_of_colors,
-                                    min_max=min_max, default_range=default_range,
-                                    convert=convert, zero_origin=zero_origin,
-                                    font_factor=font_factor,
-                                    num_clabels=number_of_labels,
-                                    round_to=round_to, save=save_fid, show=show)
-
-    def depth_slice(self, x_values=[0.5], y_values=[0.5], show=True,
-                    save=False):
-        """
-        Plot depth cross sections of the model parallel to X and Y axes
-
-        :type x_values: list of float
-        :param x_values: iterable list of X values to slice the model at
-        :type y_values: list of int or None
-        :param y_values: iterable list of Y values to slice the model at
-        :type save: bool
-        :param save: save the figure with a unique generic identifier
-        :type show: bool
-        :param show: show the figure after making it
-        """
-        # ID's for files to plot
-        save_fid_x, save_fid_y = None, None
-        if save:
-            save_fid_x = self.fid + "_X_{tag}.png"
-            save_fid_y = self.fid + "_Y_{tag}.png"
-
-        # Axes parameters
-        font_factor = 1.1
-        convert = 1E-3
-        zero_origin = True
-
-        # Colormap parameters
-        colormap = "RdYlBu"
-        reverse = False
-        cbar_title = "Vs (m/s)"
-        number_of_colors = 51
-        number_of_labels = 3
-        default_range = False
-        round_to = 50  # only if default_range == True
-        min_max = [-.25, .25]
-
-        # Initiate the engine and reader
-        for xval in y_values:
-            self.startup()
-            self.plot_depth_cross_section(choice="X", slice_at=xval,
-                                          font_factor=font_factor,
-                                          convert=convert,
-                                          zero_origin=zero_origin,
-                                          cmap=colormap, reverse=reverse,
-                                          default_range=default_range,
-                                          min_max=min_max, title=cbar_title,
-                                          num_colors=number_of_colors,
-                                          num_clabels=number_of_labels,
-                                          round_to=round_to, save=save_fid_x,
-                                          show=show
-                                          )
-
-        for yval in x_values:
-            self.startup()
-            self.plot_depth_cross_section(choice="Y", slice_at=yval,
-                                          font_factor=font_factor,
-                                          convert=convert,
-                                          zero_origin=zero_origin,
-                                          cmap=colormap, reverse=reverse,
-                                          default_range=default_range,
-                                          min_max=min_max, title=cbar_title,
-                                          num_colors=number_of_colors,
-                                          num_clabels=number_of_labels,
-                                          round_to=round_to, save=save_fid_y,
-                                          show=show)
-
-
-
 

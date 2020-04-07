@@ -113,7 +113,7 @@ class Inspector(Artist):
         return self.__str__()
 
     @property
-    def event_ids(self):
+    def events(self):
         """Return a list of all event ids"""
         if not self._event_ids:
             self._get_event_ids_stations()

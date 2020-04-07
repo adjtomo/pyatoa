@@ -576,7 +576,7 @@ class Artist:
         val, bound = retrieve_val(model)
         if model_comp:
             val_comp, bound_comp = retrieve_val(model_comp)
-            bound = max(bound, bound_comp)
+            bound_max = max(bound, bound_comp)
             
         # Plot the histogram, side by side if comparing two models
         f, ax = plt.subplots(figsize=figsize)
@@ -590,18 +590,36 @@ class Artist:
                      )
             mu1, var1, std1 = get_stats(n, bins)
         else:
-            # Compare models side by side
+            # Compare models, plot original model on top 
             n, bins, patches = plt.hist(
-                     x=[val, val_comp], 
-                     bins=len(np.arange(-1*bound, bound, binsize)),
-                     color=[color, color_comp],  histtype="bar", 
-                     edgecolor="black", linewidth=2.5, 
-                     label=[f"{model}; N={len(val)}", 
-                            f"{model_comp}; N={len(val_comp)}"], 
-                     zorder=10,
+                     x=val,
+                     bins=np.arange(-1*bound, bound+.1, binsize),
+                     color=color,  histtype="bar", 
+                     edgecolor="black", linewidth=3, 
+                     label=f"{model}; N={len(val)}", 
+                     zorder=11, alpha=1.
                      )
-            mu1, var1, std1 = get_stats(n[0], bins)
-            mu2, var2, std2 = get_stats(n[1], bins)
+            mu1, var1, std1 = get_stats(n, bins)
+
+            # Plot comparison below
+            n2, bins2, patches2 = plt.hist(
+                     x=val_comp, 
+                     bins=np.arange(-1*bound, bound+.1, binsize),
+                     color=color_comp,  histtype="bar", 
+                     edgecolor="black", linewidth=2.5, 
+                     label=f"{model_comp}; N={len(val_comp)}", 
+                     zorder=10, 
+                     )
+            mu2, var2, std2 = get_stats(n2, bins2)
+
+            # plot edges of comparison over top
+            n2, bins2, patches2 = plt.hist(
+                     x=val_comp, 
+                     bins=np.arange(-1*bound, bound+.1, binsize),
+                     color="k",  histtype="step", 
+                     edgecolor=color_comp, linewidth=6., 
+                     zorder=12, 
+                     )
 
         # Set xlimits of the plot
         if xlim:
@@ -612,10 +630,10 @@ class Artist:
 
         # Stats annotationg for the title
         if anno:
-            anno = f"$\mu({model})\pm\sigma({model})$={mu1:.1f}$\pm${std1:.1f}"
+            anno = f"$\mu({model})\pm\sigma({model})$={mu1:.2f}$\pm${std1:.2f}"
             if model_comp:
                 anno += (f"\n$\mu({model_comp})\pm\sigma({model_comp})$="
-                         f"{mu2:.1f}$\pm${std2:.1f}")
+                         f"{mu2:.2f}$\pm${std2:.2f}")
 
         # Finalize plot details
         plt.xlabel(label_dict[choice], fontsize=fontsize)
