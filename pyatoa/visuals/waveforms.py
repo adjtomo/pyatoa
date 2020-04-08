@@ -138,13 +138,12 @@ def window_maker(st_obs, st_syn, config, time_offset_sec=0., windows=None,
                  "ACC": "acceleration [m/s^2]",
                  "none": ""}
     adj_unit = "m$^{-4}$ s"
-    window_anno_template = "{ccs:.1f}s"
-    # window_anno_template = ("max_cc={mcc:.2f}\n"
-    #                         "cc_shift={ccs:.2f}s\n"
-    #                         "dlnA={dln:.3f}\n"
-    #                         "left={lft:.1f}s\n"
-    #                         "length={lgt:.1f}s\n"
-    #                         )
+    window_anno_template = ("max_cc={mcc:.2f}\n"
+                            "cc_shift={ccs:.2f}s\n"
+                            "dlnA={dln:.3f}\n"
+                            "left={lft:.1f}s\n"
+                            "length={lgt:.1f}s\n"
+                            )
 
     # Legend tag for data-synthetic or synthetic-synthetic
     obs_tag = 'OBS'
@@ -299,7 +298,7 @@ def window_maker(st_obs, st_syn, config, time_offset_sec=0., windows=None,
                 twaxes[i].set_ylabel(_label, rotation=270, labelpad=42.5) #  27.5)
             # middle trace contains units for all traces, overwrite comp var.
             comp = f"{unit_dict[config.unit_output]}\n{comp}"
-        #bc axes[i].set_ylabel(comp)
+        axes[i].set_ylabel(comp)
 
         # LEGEND
         if legend:
@@ -319,7 +318,7 @@ def window_maker(st_obs, st_syn, config, time_offset_sec=0., windows=None,
     if config.event_id is not None:
         title = " ".join([title, config.event_id])
     # Filter bounds to plot title
-    #bc title += f" [{config.min_period}s, {config.max_period}s]"
+    title += f" [{config.min_period}s, {config.max_period}s]"
     # User appended title information
     if append_title is not None:
         title = " ".join([title, append_title])
