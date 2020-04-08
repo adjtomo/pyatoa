@@ -118,7 +118,7 @@ class Config:
             m=self.model_number or "default", s=self.step_count or "")
 
         self.pyflex_preset = pyflex_preset
-        self.adj_src_type = src_type(adj_src_type)
+        self.adj_src_type = adj_src_type
         self.map_corners = map_corners
         self.synthetics_only = synthetics_only
         self.window_amplitude_ratio = window_amplitude_ratio
@@ -209,6 +209,9 @@ class Config:
         if self.window_amplitude_ratio > 0:
             assert(self.window_amplitude_ratio < 1), \
                 "window amplitude ratio should be < 1"
+
+        # Make sure adjoint source type is formatted properly
+        self.adj_src_type = src_type(self.adj_src_type)
 
         # Set Pyflex confict through wrapper function
         self.pyflex_config, unused_kwargs_pf = set_pyflex_config(
