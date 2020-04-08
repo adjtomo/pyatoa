@@ -129,13 +129,6 @@ class Pyaflowa:
         """
         return step(self.step)
 
-    @property
-    def model_step(self):
-        """
-        Formatted model and step count used to access auxiliary data
-        """
-        return f"{self.model_number}{self.step_count}"
-
     def _check(self):
         """
         Perform some sanity checks upon initialization. If they fail, hard exit
@@ -322,16 +315,19 @@ class Pyaflowa:
             finalization of workflow
         """
         logger.info("writing adjoint sources")
-        write_adj_src_to_ascii(ds, self.model_step, oj(cwd, "traces", "adj"))
+        write_adj_src_to_ascii(ds, self.model_number, self.step_count, 
+                               oj(cwd, "traces", "adj"))
 
         logger.info("creating STATIONS_ADJOINT")
-        create_stations_adjoint(ds, self.model_step,
+        create_stations_adjoint(ds, model=self.model_number, 
+                                step=self.step_count,
                                 specfem_station_file=ev_paths["stations"],
                                 pathout=oj(cwd, "DATA")
                                 )
 
         logger.info("writing event misfit to disk")
-        write_misfit_stats(ds, self.model_step, self.misfits_dir)
+        write_misfit_stats(ds, self.model_number, self.step_count, 
+                           pathout=self.misfits_dir)
 
         # Combine images into a pdf for easier visualization
         if self.par["combine_imgs"]:
