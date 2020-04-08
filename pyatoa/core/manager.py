@@ -863,20 +863,20 @@ class Manager:
         Save adjoint sources to Pyasdf Dataset
         """
         for key, adj_src in self.adj_srcs.items():
-            logger.debug(f"saving adjoint sources {key} to PyASDF")
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")
                 # Figure out how to tag the data in the dataset
                 if self.config.model_number and self.config.step_count:
                     # model/step/window_tag
-                    path = "/".join([f"{self.config.model_number}"
-                                     f"{self.config.step_count}"]
+                    path = "/".join([self.config.model_number,
+                                     self.config.step_count]
                                     )
                 elif self.config.model_number:
                     # model/window_tag
                     path = self.config.model_number
                 else:
                     path = "default"
+                logger.debug(f"saving adjoint sources {key} to PyASDF {path}")
 
                 # The tag hardcodes an X as the second channel index
                 # to signify that these are synthetic waveforms

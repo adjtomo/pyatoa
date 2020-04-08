@@ -19,16 +19,14 @@ def clean_ds(ds, model=None, step=None, fix_windows=False):
         :type step: str
     :param step: step number, e.g. "s00"
     """
-    del_synthetic_waveforms(ds=ds, model=model)
+    del_synthetic_waveforms(ds=ds, model=model, step=step)
+    retain = []
     if fix_windows:
-        del_auxiliary_data_except(ds=ds, model=model,
-                                  dont_delete=["MisfitWindows"]
-                                  )
-    else:
-        del_auxiliary_data(ds=ds, model=model, step=step)
+        retain.append("MisfitWindows")
+    del_auxiliary_data(ds=ds, model=model, step=step, retain=retain)
 
 
-def del_synthetic_waveforms(ds, model=None):
+def del_synthetic_waveforms(ds, model=None, step=None):
     """
     Remove "synthetic_{model}" tagged waveforms from an asdf dataset.
     If no model number given, wipes all synthetic data from dataset.   
@@ -37,48 +35,22 @@ def del_synthetic_waveforms(ds, model=None):
     :param ds: dataset to be cleaned
     :type model: str
     :param model: model number, e.g. "m00"
+    :type step: str
+    :param model: step count, e.g. "s00"
     """
     for sta in ds.waveforms.list():
         for stream in ds.waveforms[sta].list():
             if "synthetic" in stream:
                 if (model is not None) and model in stream:
-                    del ds.waveforms[sta][stream]
+                    if (step is not None) and step in stream:
+                        del ds.waveforms[sta][stream]
+                    else:
+                        del ds.waveforms[sta][stream]
                 elif model is None:
                     del ds.waveforms[sta][stream]
 
 
-def del_auxiliary_data_except(ds, model=None, dont_delete=[]):
-    """
-    Delete all items in auxiliary data for a given model,
-    except for those listed in dont_delete.
-    if model not given, wipes all auxiliary data, except for those listed
-
-    :type ds: pyasdf.ASDFDataSet
-    :param ds: dataset to be cleaned
-    :type dont_delete: list of str
-    :param dont_delete: names of auxiliary_data to not delete,
-        e.g. ["MisfitWindows"]
-    :type model: str
-    :param model: model number, e.g. "m00"
-    """
-    for aux in ds.auxiliary_data.list():
-        if model:
-            for _model in ds.auxiliary_data[aux].list():
-                if _model == model:
-                    if aux in dont_delete:
-                        continue
-                    else:
-                        del ds.auxiliary_data[aux][_model]
-                else:
-                    continue
-        else:
-            if aux in dont_delete:
-                continue
-            else:
-                del ds.auxiliary_data[aux]
-
-
-def del_auxiliary_data(ds, model=None):
+def del_auxiliary_data(ds, model=None, step=None, retain=[]):
     """
     Delete all items in auxiliary data for a given model, if model not given,
     wipes all auxiliary data.
@@ -89,16 +61,20 @@ def del_auxiliary_data(ds, model=None):
     :param model: model number, e.g. "m00"
     :type step: str
     :param step: step number, e.g. "s00"
+    :type retain: list of str
+    :param retain: auxiliary data to retain
     """
     for aux in ds.auxiliary_data.list():
-        if model:
+        if aux in retain:
+            continue
+        if (model is not None) and hasattr(ds.auxiliary_data[aux], model):
             # If the aux data doesn't contain this model, nothing to clean
-            if hasattr(ds.auxiliary_data[aux], model):
-                if step:
-                    # Check that this auxiliary data contains this model
-                # If no 'step' given, simply delete the model subgroup if avail.
-                else:
-                    del ds.auxiliary_data[aux][model]
+            if (step is not None) and hasattr(ds.auxiliary_data[aux][model],
+                                              step):
+                del ds.auxiliary_data[aux][model][step]
+            # If no 'step' given, simply delete the model subgroup if avail.
+            else:
+                del ds.auxiliary_data[aux][model]
         else:
             del ds.auxiliary_data[aux]
 
