@@ -78,7 +78,7 @@ def del_auxiliary_data_except(ds, model=None, dont_delete=[]):
                 del ds.auxiliary_data[aux]
 
 
-def del_auxiliary_data(ds, model=None, step=None):
+def del_auxiliary_data(ds, model=None):
     """
     Delete all items in auxiliary data for a given model, if model not given,
     wipes all auxiliary data.
@@ -90,20 +90,12 @@ def del_auxiliary_data(ds, model=None, step=None):
     :type step: str
     :param step: step number, e.g. "s00"
     """
-    subgroups_with_step = ["Statistics"]
     for aux in ds.auxiliary_data.list():
         if model:
             # If the aux data doesn't contain this model, nothing to clean
             if hasattr(ds.auxiliary_data[aux], model):
                 if step:
                     # Check that this auxiliary data contains this model
-                    if aux in subgroups_with_step:
-                        # If this is one of the subgroups with a step attr.
-                        if hasattr(ds.auxiliary_data[aux][model], step):
-                            del ds.auxiliary_data[aux][model][step]
-                    # if 'step' is not in this subgroup, just delete the model
-                    else:
-                        del ds.auxiliary_data[aux][model]
                 # If no 'step' given, simply delete the model subgroup if avail.
                 else:
                     del ds.auxiliary_data[aux][model]

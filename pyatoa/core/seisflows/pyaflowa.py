@@ -235,7 +235,7 @@ class Pyaflowa:
         ds_name = oj(self.data_dir, f"{config.event_id}.h5")
 
         # Count number of successful processes
-        processed = 0
+        processed, config_written = 0, False
         with pyasdf.ASDFDataSet(ds_name) as ds:
             # Make sure the ASDFDataSet doesn't already contain auxiliary_data
             # for the model_number/step_count
@@ -284,12 +284,13 @@ class Pyaflowa:
                     # Just once, grab the processing stats from the Streams and
                     # append them to the Config object and save. A sort of
                     # hacky way to retain processing information from old runs.
-                    if processed == 0:
+                    if not config_written and mgmt.st_obs is not None:
                         setattr(config, "obs_processing",
                                 mgmt.st_syn[0].stats.processing)
                         setattr(config, "syn_processing",
                                 mgmt.st_obs[0].stats.processing)
                         config.write(write_to=ds)
+                        config_written = True
 
                     processed += 1
                 # Use traceback ensures more detailed error tracking
@@ -320,15 +321,9 @@ class Pyaflowa:
         :param config: Pyatoa config object containing parameters needed for
             finalization of workflow
         """
-        # Delete the temporary stored misfit data to avoid over-printing
-        for fid in glob.glob(oj(self.misfits_dir, "*")):
-            os.remove(fid)
-
-        # Write adjoint sources directly to the Seisflows traces/adj dir
         logger.info("writing adjoint sources")
         write_adj_src_to_ascii(ds, self.model_step, oj(cwd, "traces", "adj"))
 
-        # Write the STATIONS_ADJOINT file to the DATA directory of cwd
         logger.info("creating STATIONS_ADJOINT")
         create_stations_adjoint(ds, self.model_step,
                                 specfem_station_file=ev_paths["stations"],
@@ -338,15 +333,12 @@ class Pyaflowa:
         logger.info("writing event misfit to disk")
         write_misfit_stats(ds, self.model_step, self.misfits_dir)
 
-        # Only run this for the first 'step', otherwise we get too many pdfs
+        # Combine images into a pdf for easier visualization
         if self.par["combine_imgs"]:
+            # path/to/eventid_modelstep_wavmap.png
             logger.info("creating composite pdf")
-
-            # path/to/eventid_modelnumber_stepcount_wavmap.png
             save_to = oj(self.composites_dir,
-                         f"{config.event_id}_{config.model_number}"
-                         f"{self.step_count}_wavmap.pdf"
-                         )
+                         f"{config.event_id}_{self.model_step}.pdf")
             tile_combine_imgs(ds=ds, save_pdf_to=save_to,
                               wavs_path=ev_paths["figures"],
                               maps_path=ev_paths["maps"],
@@ -359,8 +351,12 @@ class Pyaflowa:
         objects if requested by the User. This includes statistical plots
         VTK files for model visualizations, and backups of the data.
         """
+        # Delete the temporary stored misfit data to avoid over-printing
+        for fid in glob.glob(oj(self.misfits_dir, "*")):
+            os.remove(fid)
+
         # Create copies of .h5 files at the end of each iteration, because .h5
-        # can be corrupted during crashes so it's good to have a backup
+        # can be corrupted if open during crashes so it's good to have a backup
         if self.par["snapshot"]:
             srcs = glob.glob(oj(self.data_dir, "*.h5"))
             for src in srcs:
@@ -373,21 +369,21 @@ class Pyaflowa:
                           )
 
         # Generate .vtk files for given source and receivers for model 0
-        if self.par["create_srcrcv_vtk"] and self.iteration == 0:
-            src_vtk_from_specfem(path_to_data=self.ext_paths["SPECFEM_DATA"],
-                                 path_out=self.vtks_dir)
-            rcv_vtk_from_specfem(path_to_data=self.ext_paths["SPECFEM_DATA"],
-                                 path_out=self.vtks_dir)
+        if self.par["create_srcrcv_vtk"] and self.iteration == 1:
+            for func in [src_vtk_from_specfem, rcv_vtk_from_specfem]:
+                func(path_to_data=self.ext_paths["SPECFEM_DATA"],
+                     path_out=self.vtks_dir)
 
         # Run the Inspector class to analyze the misfit behavior of inversion
         if self.par["inspect"]:
             insp = pyatoa.Inspector(path=self.data_dir)
-            insp.save(tag=f"{self.ext_par.TITLE}", path=self.data_dir)
+            insp.save(tag=f"{self.ext_par['TITLE']}", path=self.data_dir)
 
             # Create a misfit histogram for the initial and final model
-            for choice in ["cc_shift_sec", "dlna"]:
+            for choice, binsize in zip(["cc_shift_sec", "dlna"], [0.5, 0.25]):
                 insp.misfit_histogram(model=insp.models[0], choice=choice,
                                       model_comp=insp.models[-1], show=False,
+                                      binsize=binsize,
                                       save=oj(
                                           self.stats_dir,
                                           f"misfithisto_{insp.models[-1]}.png")

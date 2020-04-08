@@ -104,7 +104,7 @@ def window_maker(st_obs, st_syn, config, time_offset_sec=0., windows=None,
     window_anno_fontsize = kwargs.get("window_anno_fontsize", 8)
 
     # NOTE: window_anno_height is roughly percentage of visible y-axis
-    window_anno_height = kwargs.get("window_anno_height", 0.5)  
+    window_anno_height = kwargs.get("window_anno_height", 0.75)  
     window_anno_rotation = kwargs.get("window_anno_rotation", 0)
     window_anno_fontcolor = kwargs.get("window_anno_fontcolor", "k")
     window_anno_fontweight = kwargs.get("window_anno_fontweight", "normal")
