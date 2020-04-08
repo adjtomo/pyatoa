@@ -36,8 +36,7 @@ from pyatoa.plugins.new_zealand.process import preproc
 # knows that these arguments are acceptable.
 pyaflowa_kwargs = ["set_logging", "window_amp_ratio", "fix_windows", "snapshot",
                    "write_misfit_json", "create_srcrcv_vtk", "plot_waveforms",
-                   "plot_srcrcv_maps", "combine_imgs", "purge_waveform_figures",
-                   "purge_tile_figures", "inspect"]
+                   "plot_srcrcv_maps", "combine_imgs", "inspect"]
 
 
 class Pyaflowa:
@@ -120,16 +119,23 @@ class Pyaflowa:
     def model_number(self):
         """
         The model number is based on the current iteration, which starts at 1
-        so model number, starting from 0, lags behind by 1
+        so model number, starting from 0, lags behind by 1.
         """
         return model(max(self.iteration - 1, 0))
 
     @property
     def step_count(self):
         """
-        Step count based on
+        Formatted step count, e.g. 's00'
         """
         return step(self.step)
+
+    @property
+    def model_step(self):
+        """
+        Formatted model and step count used to access auxiliary data
+        """
+        return f"{self.model_number}{self.step_count}"
 
     def _check(self):
         """
@@ -139,7 +145,7 @@ class Pyaflowa:
         """
         # Ensure that the gathered seismogram length is greater than the
         # length of synthetics
-        if (self.ext_par.DT * self.ext_par.NT <=
+        if (self.ext_par["DT"] * self.ext_par["NT"] >=
                 self.par['start_pad'] + self.par['end_pad']):
             logger.warning("length of gathered observed waveforms will be less "
                            "than the length of synthetics... exiting")
@@ -227,7 +233,7 @@ class Pyaflowa:
         """
         # Run the setup and standardize some names
         config, ev_paths = self.setup_process(cwd, event_id)
-        ds_name = oj(self.data, f"{config.event_id}.h5")
+        ds_name = oj(self.data_dir, f"{config.event_id}.h5")
 
         # Count number of successful processes
         processed = 0
@@ -316,34 +322,26 @@ class Pyaflowa:
             finalization of workflow
         """
         # Delete the temporary stored misfit data to avoid over-printing
-        for fid in glob(oj(self.misfits_dir, "*")):
+        for fid in glob.glob(oj(self.misfits_dir, "*")):
             os.remove(fid)
 
         # Write adjoint sources directly to the Seisflows traces/adj dir
-        logger.info("exporting files to Specfem3D")
-        logger.info("\twriting adjoint sources to .sem? files...")
-        write_adj_src_to_ascii(ds, config.model_number,
-                               oj(cwd, "traces", "adj"))
+        logger.info("writing adjoint sources")
+        write_adj_src_to_ascii(ds, self.model_step, oj(cwd, "traces", "adj"))
 
         # Write the STATIONS_ADJOINT file to the DATA directory of cwd
-        logger.info("\tcreating STATIONS_ADJOINT file...")
-        create_stations_adjoint(ds, config.model_number,
+        logger.info("creating STATIONS_ADJOINT")
+        create_stations_adjoint(ds, self.model_step,
                                 specfem_station_file=ev_paths["stations"],
                                 pathout=oj(cwd, "DATA")
                                 )
 
-        logger.info("exporting files to Seisflows")
-        logger.info("\twriting event misfit to disk...")
-        write_misfit_stats(ds, config.model_number, self.misfits_dir)
-
-        logger.info("writing files for internal use")
-        logger.info("\twriting misfits.json to disk...")
-        write_misfit_json(ds, self.model_number, self.step_count,
-                          self.misfit_file)
+        logger.info("writing event misfit to disk")
+        write_misfit_stats(ds, self.model_step, self.misfits_dir)
 
         # Only run this for the first 'step', otherwise we get too many pdfs
         if self.par["combine_imgs"]:
-            logger.info("\tcreating composite pdf...")
+            logger.info("creating composite pdf")
 
             # path/to/eventid_modelnumber_stepcount_wavmap.png
             save_to = oj(self.composites_dir,
@@ -353,8 +351,7 @@ class Pyaflowa:
             tile_combine_imgs(ds=ds, save_pdf_to=save_to,
                               wavs_path=ev_paths["figures"],
                               maps_path=ev_paths["maps"],
-                              purge_wavs=self.par["purge_waveform_figures"],
-                              purge_tiles=self.par["purge_tile_figures"]
+                              purge_wavs=True, purge_tiles=True
                               )
 
     def finalize(self):
