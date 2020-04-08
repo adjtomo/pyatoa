@@ -721,18 +721,21 @@ class Manager:
         Save the misfit windows that are calculated by Pyflex into a Dataset
         """
         logger.debug("saving misfit windows to PyASDF")
+        # Determine how to name the path
+        if self.config.model_number and self.config.step_count:
+            # model/step/window_tag
+            path = "/".join([self.config.model_number,
+                             self.config.step_count])
+        elif self.config.model_number:
+            # model/window_tag
+            path = self.config.model_number
+        else:
+            path = "default"
+
+        # Save windows by component
         for comp in self.windows.keys():
             for i, window in enumerate(self.windows[comp]):
                 # Figure out how to tag the data in the dataset
-                if self.config.model_number and self.config.step_count:
-                    # model/step/window_tag
-                    path = "/".join([f"{self.config.model_number}"
-                                     f"{self.config.step_count}"])
-                elif self.config.model_number:
-                    # model/window_tag
-                    path = self.config.model_number
-                else:
-                    path = "default"
                 # net_sta_comp_n
                 window_tag = (f"{self.st_obs[0].stats.network}_"
                               f"{self.st_obs[0].stats.station}_{comp}_{i}")
@@ -862,21 +865,23 @@ class Manager:
         """
         Save adjoint sources to Pyasdf Dataset
         """
+        # Figure out how to tag the data in the dataset
+        if self.config.model_number and self.config.step_count:
+            # model/step/window_tag
+            path = "/".join([self.config.model_number,
+                             self.config.step_count]
+                            )
+        elif self.config.model_number:
+            # model/window_tag
+            path = self.config.model_number
+        else:
+            path = "default"
+
+        # Save adjoint sources by component
         for key, adj_src in self.adj_srcs.items():
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")
-                # Figure out how to tag the data in the dataset
-                if self.config.model_number and self.config.step_count:
-                    # model/step/window_tag
-                    path = "/".join([self.config.model_number,
-                                     self.config.step_count]
-                                    )
-                elif self.config.model_number:
-                    # model/window_tag
-                    path = self.config.model_number
-                else:
-                    path = "default"
-                logger.debug(f"saving adjoint sources {key} to PyASDF {path}")
+                logger.debug(f"saving adjoint sources {key} to PyASDF")
 
                 # The tag hardcodes an X as the second channel index
                 # to signify that these are synthetic waveforms

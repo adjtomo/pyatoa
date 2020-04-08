@@ -221,7 +221,7 @@ def src_vtk_from_specfem(path_to_data, path_out="./", utm_zone=-60, cx=None,
             continue
 
 
-def create_stations_adjoint(ds, model, specfem_station_file, step=None
+def create_stations_adjoint(ds, model, specfem_station_file, step=None,
                             pathout=None):
     """
     Generate the STATIONS_ADJOINT file for Specfem input by reading in the

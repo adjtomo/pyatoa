@@ -334,7 +334,8 @@ class Pyaflowa:
             # path/to/eventid_modelstep_wavmap.png
             logger.info("creating composite pdf")
             save_to = oj(self.composites_dir,
-                         f"{config.event_id}_{self.model_step}.pdf")
+                         f"{config.event_id}_"
+                         f"{self.model_number}{self.step_count}.pdf")
             tile_combine_imgs(ds=ds, save_pdf_to=save_to,
                               wavs_path=ev_paths["figures"],
                               maps_path=ev_paths["maps"],
