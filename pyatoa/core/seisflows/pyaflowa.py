@@ -315,6 +315,10 @@ class Pyaflowa:
         :param config: Pyatoa config object containing parameters needed for
             finalization of workflow
         """
+        # Delete the temporary stored misfit data to avoid over-printing
+        for fid in glob(oj(self.misfits_dir, "*")):
+            os.remove(fid)
+
         # Write adjoint sources directly to the Seisflows traces/adj dir
         logger.info("exporting files to Specfem3D")
         logger.info("\twriting adjoint sources to .sem? files...")
