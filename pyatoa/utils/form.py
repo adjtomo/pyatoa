@@ -56,7 +56,7 @@ def step(count):
     return step_count
 
 
-def event_id(event):
+def event_id(ds=None, event=None):
     """
     Formalize the defition of Event ID in Pyatoa
 
@@ -64,7 +64,10 @@ def event_id(event):
     :param event: event object
     :return:
     """
-    return event.resource_id.id.split('/')[-1]
+    if event:
+        return event.resource_id.id.split('/')[-1]
+    elif ds:
+        return os.path.basename(ds.filename).split(".")[0]
 
 
 def channel_codes(dt):

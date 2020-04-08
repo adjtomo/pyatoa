@@ -7,6 +7,7 @@ import json
 import time
 import random
 import numpy as np
+from pyatoa.utils.form import event_id
 
 
 def parse_output_optim(path_to_optim):
@@ -53,7 +54,7 @@ def parse_output_optim(path_to_optim):
     return iterations, steplens, misfits
 
 
-def write_misfit_stats(ds, model, pathout="./", fidout=None):
+def write_misfit_stats(ds, model, step=None, pathout="./", fidout=None):
     """
     A simpler alternative to write_misfit_json()
 
@@ -68,6 +69,8 @@ def write_misfit_stats(ds, model, pathout="./", fidout=None):
     :param ds: processed dataset, assumed to contain auxiliary_data.Statistics
     :type model: str
     :param model: model number, e.g. "m00"
+    :type step: str
+    :param step: step count, e.g. "s00"
     :type pathout: str
     :param pathout: output path to write the misfit. fid will be the event name
     :type fidout: str
@@ -76,13 +79,12 @@ def write_misfit_stats(ds, model, pathout="./", fidout=None):
     """
     from pyatoa.utils.asdf.extractions import sum_misfits
 
-    # By default, name the file after the name of the asdf dataset
+    # By default, name the file after the event id
     if fidout is None:
-        event_id = os.path.basename(ds.filename).split(".")[0]
-        fidout = os.path.join(pathout, event_id)
+        fidout = os.path.join(pathout, event_id(ds=ds))
     
     # calculate misfit 
-    misfit = sum_misfits(ds, model)
+    misfit = sum_misfits(ds, model, step=step)
 
     # save in the same format as seisflows 
     np.savetxt(fidout, [misfit], '%11.6e')
@@ -219,7 +221,8 @@ def src_vtk_from_specfem(path_to_data, path_out="./", utm_zone=-60, cx=None,
             continue
 
 
-def create_stations_adjoint(ds, model, specfem_station_file, pathout=None):
+def create_stations_adjoint(ds, model, step=None, specfem_station_file, 
+                            pathout=None):
     """
     Generate the STATIONS_ADJOINT file for Specfem input by reading in the
     STATIONS file and cross-checking which adjoint sources are available in the
@@ -229,16 +232,22 @@ def create_stations_adjoint(ds, model, specfem_station_file, pathout=None):
     :param ds: dataset containing AdjointSources auxiliary data
     :type model: str
     :param model: model number, e.g. "m00"
+    :type step: str
+    :param step: step count, e.g. "s00"
     :type specfem_station_file: str
     :param specfem_station_file: path/to/specfem/DATA/STATIONS
     :type pathout: str
     :param pathout: path to save file 'STATIONS_ADJOINT'
     """
-    event_id = os.path.basename(ds.filename).split('.')[0]
+    eid = event_id(ds=ds)
 
     # Check which stations have adjoint sources
     stas_with_adjsrcs = []
-    for code in ds.auxiliary_data.AdjointSources[model].list():
+    adj_srcs = ds.auxiliary_data.AdjointSources[model]
+    if step:
+        adj_srcs = adj_srcs[step]
+
+    for code in adj_srcs.list():
         stas_with_adjsrcs.append(code.split('_')[1])
     stas_with_adjsrcs = set(stas_with_adjsrcs)
 
@@ -249,7 +258,7 @@ def create_stations_adjoint(ds, model, specfem_station_file, pathout=None):
     # If no output path is specified, save into current working directory with
     # an event_id tag to avoid confusion with other files, else normal naming
     if pathout is None:
-        write_out = f"./STATIONS_ADJOINT_{event_id}"
+        write_out = f"./STATIONS_ADJOINT_{eid}"
     else:
         write_out = os.path.join(pathout, "STATIONS_ADJOINT")
 
@@ -260,7 +269,8 @@ def create_stations_adjoint(ds, model, specfem_station_file, pathout=None):
                     f.write(line)
 
 
-def write_adj_src_to_ascii(ds, model, pathout=None, comp_list=["N", "E", "Z"]):
+def write_adj_src_to_ascii(ds, model, step=None, pathout=None, 
+                           comp_list=["N", "E", "Z"]):
     """
     Take AdjointSource auxiliary data from a Pyasdf dataset and write out
     the adjoint sources into ascii files with proper formatting, for input
@@ -307,12 +317,15 @@ def write_adj_src_to_ascii(ds, model, pathout=None, comp_list=["N", "E", "Z"]):
 
     # Shortcuts
     adjsrcs = ds.auxiliary_data.AdjointSources[model]
-    event_id = ds.filename.split('/')[-1].split('.')[0]
+    if step:
+        adjsrcs = adjsrcs[step]
+
+    eid = event_id(ds=ds)
 
     # Set the path to write the data to.
     # If no path is given, default to current working directory
     if pathout is None:
-        pathout = os.path.join("./", event_id)
+        pathout = os.path.join("./", eid)
     if not os.path.exists(pathout):
         os.makedirs(pathout)
 

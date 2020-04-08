@@ -3,7 +3,7 @@ Functions for extracting information from a Pyasdf ASDFDataSet object
 """
 
 
-def windows_from_ds(ds, net, sta, model=None):
+def windows_from_ds(ds, net, sta, model=None, step=None):
     """
     If misfit windows are to be fixed, then window information needs to be saved
     between calls of Pyatoa. Fortunately, Pyatoa stores misfit window
@@ -30,10 +30,12 @@ def windows_from_ds(ds, net, sta, model=None):
     :return num_windows: number of windows
     """
     from pyflex.window import Window
-
+      
     if not model:
         model = ds.auxiliary_data.MisfitWindows.list()[-1]
     misfit_windows = ds.auxiliary_data.MisfitWindows[model]
+    if step:
+        misfit_windows = misfit_windows[step]
 
     # Pyatoa expects the Manager class windows as a dictionary with keys
     # corresponding to components, each item is then a list, containing
@@ -74,7 +76,7 @@ def windows_from_ds(ds, net, sta, model=None):
     return window_dict, num_windows
 
 
-def sum_misfits(ds, model, station=None):
+def sum_misfits(ds, model, step=None, station=None):
     """
     Misfits are stored in adjoint trace dictionaries, and are needed for
     Seisflows. This will sum the misfits and place them into a specific
@@ -97,6 +99,8 @@ def sum_misfits(ds, model, station=None):
     :param ds: asdf dataset which must contain AdjointSource auxiliary data
     :type model: str 
     :param model: model number, e.g "m00"
+    :type step: str
+    :param step: step count, e.g. "s00"
     :type station: str
     :param station: station code to check, e.g. 'NZ.BFZ'
     :rtype summed_misfit: float
@@ -104,6 +108,8 @@ def sum_misfits(ds, model, station=None):
     """
     misfits = []
     adjoint_sources = ds.auxiliary_data.AdjointSources[model]
+    if step:
+        adjoint_sources = adjoint_sources[step]
 
     # If fixed windows, get the latest windows in the dataset
     if not hasattr(ds.auxiliary_data.MisfitWindows, model):
@@ -111,11 +117,14 @@ def sum_misfits(ds, model, station=None):
         windows = ds.auxiliary_data.MisfitWindows[latest_model]
     else:
         windows = ds.auxiliary_data.MisfitWindows[model]
+    if step:
+        windows = windows[step]
 
     # Sum misfits only for a given station
     if station:
         try:
-            number_windows = count_misfit_windows(ds, model, True)[station]
+            number_windows = count_misfit_windows(
+                                ds, model, step, True)[station]
         except KeyError:
             return
         for adjsrc in adjoint_sources.list():
@@ -134,74 +143,10 @@ def sum_misfits(ds, model, station=None):
     return 0.5 * sum(misfits)/number_windows
 
 
-def misfit_stats(ds, model, include_lists=False):
-    """
-    !!! DEPRECATED in favor of using the Inspector class !!!
-
-    Extract misfit statistics from a dataset for a given model.
-    Return information as a dictionary object for easy access.    
-    Used primarily to write misfit stats into ASDF Dataset auxiliary data.
- 
-    :type ds: pyasdf.ASDFDataSet
-    :param ds: asdf dataset which must contain AdjointSource auxiliary data
-    :type model: str 
-    :param model: model number, e.g "m00"
-    :type include_lists: bool
-    :param include_lists: include list information containing statistics for
-        individual stations, components etc. Not always necessary
-    :rtype stats: dict
-    :return stats: a dictionary of statistics values 
-    """
-    from warnings import warn
-    warn("Deprecated in favor of pyatoa.core.seisflows.Inspector",
-         DeprecationWarning)
-
-    # collect relevant information
-    ds_adjsrc = ds.auxiliary_data.AdjointSources[model]
-    if not hasattr(ds.auxiliary_data.MisfitWindows, model):
-        latest_model = ds.auxiliary_data.MisfitWindows.list()[-1]
-        ds_windows = ds.auxiliary_data.MisfitWindows[latest_model]
-    else:
-        ds_windows = ds.auxiliary_data.MisfitWindows[model]
-    
-    syn_n, obs_n = _count_waveforms(ds.waveforms, model) 
-    misfits, max_misfit, min_misfit = _misfit_info(ds_adjsrc) 
-    cc_shift_secs, max_cc_values = _window_info(ds_windows) 
-    
-    # save stats in a dictionary
-    # commented out sections are lists that I don't think are necessary 
-    stats = {
-        "number_stations": len(ds.waveforms.list()),
-        "number_syn_waveforms": sum(syn_n),
-        "number_obs_waveforms": sum(obs_n),
-        "number_adjoint_sources": len(ds_adjsrc),
-        "min_misfit": min_misfit[0],
-        "min_misfit_component": min_misfit[1],
-        "max_misfit": max_misfit[0],
-        "max_misfit_component": max_misfit[1],
-        "average_misfit": sum(misfits)/len(misfits),
-        "number_misfit_windows": len(ds_windows),
-            }
-
-    # lists of information that may or may not be relevant
-    if include_lists:
-        lists = {
-            "stations": ds.waveforms.list(),
-            "syn_waveforms": syn_n,
-            "obs_waveforms": obs_n,
-            "adjoint_sources": ds_adjsrc.list(),
-            "misfits": misfits,
-            "cc_shift_in_seconds": cc_shift_secs,
-            "misfit_windows": ds_windows.list(),
-            "max_cc_values": max_cc_values
-        }
-        for item in lists.keys():
-            stats[item] = lists[item]
-
     return stats
 
 
-def count_misfit_windows(ds, model, count_by_stations=False):
+def count_misfit_windows(ds, model, step=None, count_by_stations=False):
     """
     Figure out which stations contain which windows, return a dictionary
     which lists available components.
@@ -211,6 +156,8 @@ def count_misfit_windows(ds, model, count_by_stations=False):
     :param ds: dataset to count misfit windows from
     :type model: str
     :param model: model number e.g. 'm00'
+    :type step: str
+    :param step: step count, e.g. 's00'
     :type count_by_stations: bool
     :param count_by_stations: if not, count by components
     :rtype counted_windows: dict
@@ -223,6 +170,8 @@ def count_misfit_windows(ds, model, count_by_stations=False):
     else:
         latest_model = ds.auxiliary_data.MisfitWindows.list()[-1] 
         windows = ds.auxiliary_data.MisfitWindows[latest_model]
+    if step:
+        windows = windows[step]
 
     # Count up windows for each channel
     for window in windows.list():
@@ -301,55 +250,6 @@ def histogram_data(ds, model, data_type):
                 continue 
 
     return return_list
-
-
-def retrieve(ds, sta, choice, model=None, component=None):
-    """
-    Convenience function to retrieve certain event information
-
-    :param ds:
-    :param choice:
-    :return:
-    """
-    import numpy as np
-    from obspy.geodetics import gps2dist_azimuth
-
-    # Just ensure that the station name is correctly formatted
-    sta = sta.replace('.', '_')
-
-    # Ensure the choice is avilable
-    choices = ["distance_km", "baz", "total_misfit"]
-    assert(sta.replace('_', '.') in ds.waveforms.list())
-    assert(choice in choices), f"choice must be in {choices}"
-
-    # Retrieve geographic information
-    if choice in ["distance_km", "baz"]:
-        ev_lat = ds.events[0].preferred_origin().latitude
-        ev_lon = ds.events[0].preferred_origin().longitude
-        sta_lat = ds.waveforms[sta].StationXML[0][0].latitude
-        sta_lon = ds.waveforms[sta].StationXML[0][0].longitude
-
-        gcd, _, baz = gps2dist_azimuth(lat1=ev_lat, lon1=ev_lon,
-                                       lat2=sta_lat, lon2=sta_lon)
-
-        if choice == "distance_km":
-            return gcd * 1E-3
-        elif choice == "baz":
-            return baz
-
-    # Retrieve the misfit of the station
-    elif choice == "total_misfit":
-        assert model
-        adjsrcs = ds.auxiliary_data.AdjointSources[model]
-        misfit, count = 0, 0
-        for adjsrc in adjsrcs.list():
-            if sta in adjsrc:
-                misfit += adjsrcs[adjsrc].parameters["misfit_value"]
-                count += 1
-        if count:
-            return misfit / count
-        else:
-            return np.nan
 
 
 def _count_waveforms(ds_waveforms, model):
