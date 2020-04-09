@@ -20,7 +20,8 @@ class Model:
     A Class to automatically visualize slices of a model saved in .vtk
     """
     def __init__(self, fid, srcs=None, rcvs=None, coast=None,
-                 figsize=(1000, 1000), zero_origin=False, convert=1):
+                 figsize=(1000, 1000), zero_origin=False, convert=1,
+                 offscreen=False, logging=True):
         """
         :type fid: str
         :param fid: the file id of the .vtk file to be plotted
@@ -54,6 +55,14 @@ class Model:
         self.figsize = figsize
         self.fig, self.engine, self.vtkfr = None, None, None
 
+        # Rendering offscreen to avoid popping up windows
+        if offscreen:
+            mlab.options.offscreen = True
+
+        # Toggle the logger
+        if not logging:
+            logger.setLevel("INFO")
+
     def startup(self):
         """
         Open a VTK file and return the engine that is visualizing it.
@@ -61,8 +70,6 @@ class Model:
         similar to how showing a matplotlib figure will destroy the instance.
         """
         mlab.close(all=True)
-        logger.debug(f"Reading {self.fid} and creating figure size "
-                     f"{self.figsize}")
         # Instantiate mlab
         self.fig = mlab.figure(size=self.figsize)
         self.engine = mlab.get_engine()
@@ -116,6 +123,7 @@ class Model:
         :type show: bool
         :param show: show the figure after making it
         """
+        logger.info(f"slicing '{self.fid}' across Z at {depth_km}km")
         coastline_z = self.ranges[-1]
         if depth_km != "surface":
             depth_m = -1 * abs(depth_km) * 1E3
@@ -204,7 +212,8 @@ class Model:
         # Determine what part of the axis we are slicing
         slice_val = slice_range(self.ranges, slice_at, choice)
         tag = slice_range(self.axes_ranges, slice_at, choice)
-        logger.info(f"Slicing {choice} at {slice_val}")
+        logger.info(
+                f"slicing '{self.fid}' across {choice} at {slice_val*1E-3}km")
         if show_axis:
             set_axes(xyz=[True, True, False], ranges=self.axes_ranges,
                      **kwargs)

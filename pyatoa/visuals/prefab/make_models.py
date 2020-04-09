@@ -11,10 +11,11 @@ Note:
     $ convert -delay 20 -loop 1 *png model_animated.gif
 """
 import os
+from glob import glob
 from pyatoa.visuals.model import Model
 
 
-def call_models():
+def call_models(fid, path_out="./figures"):
     """
     Set the parameters in this function, which will then be passed to Model
 
@@ -48,21 +49,23 @@ def call_models():
     x_slices, y_slices, z_slices = None, None, None  # empty initialization
 
     # File ID's for VTK objects that are to be plotted
-    fid = "./trial_log.vtk"
-    coast_fid = "nz_coast_utm60H_43-173_37-179_xyz.npy"
-    srcs_fid = "srcs_wdepth.vtk"
+    coast_fid = "coast.npy"
+    srcs_fid = "srcs.vtk"
     rcvs_fid = "rcvs.vtk"
 
     # File ID's for output files
-    fid_out = os.path.basename(fid).split(".")[0]
+    if not os.path.exists(path_out):
+        os.makedirs(path_out)
+
+    fid_out = os.path.join(path_out, os.path.basename(fid).split(".")[0])
     save_fid_z = fid_out + "_z_slice_{tag}.png"
     save_fid_x = fid_out + "_x_slice_{tag}.png"
     save_fid_y = fid_out + "_y_slice_{tag}.png"
 
     # Pick specific slices to create
     z_slices = ["surface", 5, 10, 15, 25, 30, 35, 40, 45, 50]
-    # x_slices = [0.25, 0.5, 0.75]
-    # y_slices = [0.25, 0.5, 0.75]
+    x_slices = [0.25, 0.5, 0.75]
+    y_slices = [0.25, 0.5, 0.75]
 
     # Set the parameters for all figures generated, passed as kwargs
     par = {"font_factor": 1.1,
@@ -72,17 +75,27 @@ def call_models():
            "reverse": False,
            "title": "Vs log(m/m00)",
            "min_max": [-0.25, 0.25],
-           "default_range": False,
+           "default_range": True,
            "num_colors": 51,
            "num_clabels": 5,
            "round_to": None,
            "show": False
            }
 
+    # Determine title and parameters for different plot types
+    if "log" in fid_out:
+        par = os.path.basename(fid).split(".")[0].split("_")[-1]
+        num = os.path.basename(fid).split(".")[0].split("_")[-2]
+        par["title"] = f"{par.capitalize()} log(m{int(num):0>2}/m00)"
+    elif "poisson" in fid_out:
+        par["title"] = "Poissons Ratio"
+        par["default_range"] = True
+
+
     # Call the model maker
     model = Model(fid=fid, srcs=srcs_fid, rcvs=rcvs_fid, coast=coast_fid,
                   figsize=figsize, zero_origin=par["zero_origin"],
-                  convert=par["convert"])
+                  convert=par["convert"], offscreen=True, logging=False)
 
     # Make the models
     if z_slices:
@@ -103,5 +116,7 @@ def call_models():
 
 
 if __name__ == "__main__":
-    call_models()
+    fids = glob("*poisson*.vtk")    
+    for fid in fids:
+        call_models(fid)
 
