@@ -10,7 +10,7 @@ import numpy as np
 import subprocess
 from glob import glob
 from pyatoa.utils.read import read_specfem_vtk
-from pyatoa.visuals.model import Model
+# from pyatoa.visuals.model import Model
 
 
 # Globally accessible paths and parameters
@@ -47,6 +47,20 @@ model_par = {"font_factor": 1.1,
              }
 
 
+def clean_dir():
+    """
+    Clean directory before progressing
+    """
+    fids = glob(os.path.join(path_to_specfem, "SUM", "*"))
+    if fids:
+        check = input("files found in SUM directory, clean? [y/(n)]: ")
+        if check == "y":
+            for f in fids:
+                os.remove(f)
+        else:
+            sys.exit(0)
+
+
 def pre_organize(file_tag="model"):
     """
     Bookkeeping function that symlinks all files with the unique tag names
@@ -60,24 +74,25 @@ def pre_organize(file_tag="model"):
     # Number of counts relates to time required for xcombine_vol_data_vtk
     count = 0
 
-    directories = glob(os.path.join("output", f"{file_tag}_*"))
+    directories = glob(os.path.join("output", f"{file_tag}_????"))
     for directory in directories:
         unique_id = os.path.basename(directory)
         for par in parameters:
             count += 1
 
-            srcs = glob(os.path.join(directory, f"proc_*_{par}.bin"))
+            srcs = glob(os.path.join(directory, f"proc*_{par}.bin"))
             for src in srcs:
                 # e.g. proc000000_vs.bin
                 filename = os.path.basename(src)
                 # Add a unique tag to the filename
                 parts = filename.split("_")
-                new_filename = "_".join(parts[0], unique_id, parts[1])
+                new_filename = "_".join([parts[0], unique_id, parts[1]])
                 # Set the source and destination for symlink
                 dst = os.path.join(path_to_specfem, "SUM", new_filename)
 
-                os.symlink(src, dst)
+                os.symlink(os.path.abspath(src), dst)
 
+    print(f"{count} unique ids symlinked")
     return count
 
 
@@ -108,7 +123,7 @@ def post_organize():
     # Move files
     for src in glob(os.path.join(path_to_specfem, "SUM", "*.vtk")):
         # e.g. model, kernel, gradient
-        tag = src.split("_")[1]
+        tag = os.path.basename(src).split("_")[0]
         dst_dir = os.path.join(path_to_vtks, tag)
         if not os.path.exists(dst_dir):
             os.makedirs(dst_dir)
@@ -118,7 +133,7 @@ def post_organize():
 
     # Remove symlinks
     for fid in glob(os.path.join(path_to_specfem, "SUM", "*.bin")):
-        if os.islink(fid):
+        if os.path.islink(fid):
             os.remove(fid)
 
     # Just make sure the directory is empty, otherwise something went wrong
@@ -142,18 +157,20 @@ def difference_models(log=True, poissons=True):
         for par in parameters:
             model_init = os.path.join(
                 path_to_vtks, "models", f"model_init_{par}.vtk")
-            for model in glob(os.path.join(path_to_vtks, "models", "*")):
+            models = glob(os.path.join(path_to_vtks, "models", "model*"))
+            for model in models:
                 if model == model_init:
                     continue
-                fid_out = os.path.join(os.path.dirname,
-                                       f"log_{os.path.os.path.basename(model)}")
+                fid_out = os.path.join(os.path.dirname(model),
+                                       f"log_{os.path.basename(model)}")
                 if not os.path.exists(fid_out):
                     diff_vtk(model_a=model, model_b=model_init, fidout=fid_out,
                              method="log")
 
     # Calculate Poissons ratio
     if poissons:
-        for model_vp in glob(os.path.join(path_to_vtks, "models", "*vp*")):
+        models_vp = glob(os.path.join(path_to_vtks, "models", "model*vp.vtk"))
+        for model_vp in models_vp:
             model_vs = model_vp.replace("vp", "vs")
             fid_out = model_vp.replace("vp", "poissons")
             if not os.path.exists(fid_out):
@@ -290,13 +307,14 @@ def diff_vtk(model_a, model_b, fidout, method="subtract"):
 
 if __name__ == "__main__":
     # Run functions in order
-    file_tags = ["model"]
-    c = 0
-    for ftag in file_tags:
-        c_ = pre_organize(ftag)
-        c += c_
-    run_xcombine_vol_data_vtk(c)
-    post_organize()
+    file_tags = ["model", "gradient"]
+    # c = 0
+    # clean_dir()
+    # for ftag in file_tags:
+    #     c_ = pre_organize(ftag)
+    #     c += c_
+    # run_xcombine_vol_data_vtk(c)
+    # post_organize()
     difference_models()
 
 
