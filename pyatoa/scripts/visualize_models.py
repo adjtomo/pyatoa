@@ -10,7 +10,10 @@ import numpy as np
 import subprocess
 from glob import glob
 from pyatoa.utils.read import read_specfem_vtk
-# from pyatoa.visuals.model import Model
+
+# Avoids 'QXcbConnection: Could not connect to display' error
+# os.environ['QT_QPA_PLATFORM']='offscreen'
+from pyatoa.visuals.model import Model
 
 
 # Globally accessible paths and parameters
@@ -140,7 +143,7 @@ def post_organize():
     assert(len(glob(os.path.join(path_to_specfem, "SUM", "*"))) == 0)
 
 
-def difference_models(log=True, poissons=True):
+def difference_models(log=True, poissons=True, outdir="model"):
     """
     Run diff_vtk() on all models, only if files don't already exist.
     Need to construct filenames before checking that they exist:
@@ -151,28 +154,35 @@ def difference_models(log=True, poissons=True):
     :param log: create net model update using log differences
     :type poissons: bool
     :param poissons: create poissons ratio vtk files
+    :type outdir: str
+    :param outdir: if given, name of the directory to save to the differenced 
+        models to. If not given, saved into the model directory
     """
+    outdir = os.path.join(path_to_vtks, outdir)
+    if not os.path.exists(outdir):
+        os.makedirs(outdir)
+
     # Create net model update, or log differences
     if log:
         for par in parameters:
             model_init = os.path.join(
-                path_to_vtks, "models", f"model_init_{par}.vtk")
-            models = glob(os.path.join(path_to_vtks, "models", "model*"))
+                path_to_vtks, "model", f"model_init_{par}.vtk")
+            models = glob(os.path.join(path_to_vtks, "model", "model*"))
             for model in models:
                 if model == model_init:
                     continue
-                fid_out = os.path.join(os.path.dirname(model),
-                                       f"log_{os.path.basename(model)}")
+                fid_out = os.path.join(outdir, f"log_{os.path.basename(model)}")
                 if not os.path.exists(fid_out):
                     diff_vtk(model_a=model, model_b=model_init, fidout=fid_out,
                              method="log")
 
     # Calculate Poissons ratio
     if poissons:
-        models_vp = glob(os.path.join(path_to_vtks, "models", "model*vp.vtk"))
+        models_vp = glob(os.path.join(path_to_vtks, "model", "model*vp.vtk"))
         for model_vp in models_vp:
             model_vs = model_vp.replace("vp", "vs")
             fid_out = model_vp.replace("vp", "poissons")
+            fid_out = os.path.join(outdir, os.path.basename(fid_out))
             if not os.path.exists(fid_out):
                 diff_vtk(model_a=model_vp, model_b=model_vs, fidout=fid_out,
                          method="poissons")
@@ -184,6 +194,8 @@ def make_models(tags=["models"]):
     """
     for t in tags:
         for fid in glob(os.path.join(path_to_vtks, t, "*.vtk")):
+            if "init" in fid:
+                continue
             vis_model(fid)
 
 
@@ -206,9 +218,9 @@ def vis_model(fid):
 
     # Determine title for colorbar
     if "log" in fid_out:
-        par = fid.split(".")[0].split("_")[-1]
-        num = fid.split(".")[0].split("_")[-2]
-        model_par["title"] = f"{par} log(m{num:0>2}/m00)"
+        par = os.path.basename(fid).split(".")[0].split("_")[-1]
+        num = os.path.basename(fid).split(".")[0].split("_")[-2]
+        model_par["title"] = f"{par.capitalize()} log(m{int(num):0>2}/m00)"
     elif "poisson" in fid_out:
         model_par["title"] = "Poissons Ratio"
 
@@ -307,7 +319,7 @@ def diff_vtk(model_a, model_b, fidout, method="subtract"):
 
 if __name__ == "__main__":
     # Run functions in order
-    file_tags = ["model", "gradient"]
+    file_tags = ["model"]
     # c = 0
     # clean_dir()
     # for ftag in file_tags:
@@ -315,6 +327,7 @@ if __name__ == "__main__":
     #     c += c_
     # run_xcombine_vol_data_vtk(c)
     # post_organize()
-    difference_models()
+    # difference_models(outdir="diffs")
+    make_models(tags=["diffs"])
 
 
