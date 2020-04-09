@@ -49,9 +49,9 @@ def src_type(choice):
     """
     if choice in ["cc", "cc_traveltime_misfit", "cross_correlation"]:
         adj_src_type = "cc_traveltime_misfit"
-    elif choice in ["mt", "mtm", "multitaper_misfit"]:
+    elif choice in ["mt", "mtm", "multitaper_misfit", "multitaper"]:
         adj_src_type = "multitaper_misfit"
-    elif choice in ["wav", "wave", "waveform"]:
+    elif choice in ["wav", "wave", "waveform", "w"]:
         adj_src_type = "waveform"
     else:
         raise ValueError(f"'{choice}' does not match available adjoint source "
