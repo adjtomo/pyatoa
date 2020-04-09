@@ -228,7 +228,7 @@ class Pyaflowa:
         ds_name = oj(self.data_dir, f"{config.event_id}.h5")
 
         # Count number of successful processes
-        processed, config_written = 0, False
+        processed = 0
         with pyasdf.ASDFDataSet(ds_name) as ds:
             # Make sure the ASDFDataSet doesn't already contain auxiliary_data
             # for the model_number/step_count
@@ -236,6 +236,7 @@ class Pyaflowa:
                      fix_windows=self.fix_windows)
 
             # Set up the manager and get station information
+            config.write(write_to=ds)
             mgmt = pyatoa.Manager(config=config, ds=ds)
             stations = np.loadtxt(ev_paths["stations"], usecols=[0, 1, 2, 3],
                                   dtype=str)
@@ -273,17 +274,6 @@ class Pyaflowa:
                             self.step_count == "s00":
                         mgmt.srcrcvmap(stations=coords, show=False,
                                        save=oj(ev_paths["maps"], f"map_{sta}"))
-
-                    # Just once, grab the processing stats from the Streams and
-                    # append them to the Config object and save. A sort of
-                    # hacky way to retain processing information from old runs.
-                    if not config_written and mgmt.st_obs is not None:
-                        setattr(config, "obs_processing",
-                                mgmt.st_syn[0].stats.processing)
-                        setattr(config, "syn_processing",
-                                mgmt.st_obs[0].stats.processing)
-                        config.write(write_to=ds)
-                        config_written = True
 
                     processed += 1
                 # Use traceback ensures more detailed error tracking
