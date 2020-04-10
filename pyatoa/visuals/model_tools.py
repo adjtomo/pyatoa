@@ -128,7 +128,7 @@ def colorscale(orientation, **kwargs):
     cbar.number_of_colors = num_colors
 
     # Bound the colorscale
-    logger.info(f"Data bounds are set to {cbar.data_range}")
+    logger.debug(f"Data bounds are set to {cbar.data_range}")
     if default_range:
         # Round the default min and max bounds of the dataset
         if round_to:
@@ -147,7 +147,7 @@ def colorscale(orientation, **kwargs):
             val = np.ceil(max(abs(cbar.data_range)))
             min_max = [-val, val]
         cbar.data_range = array(min_max)
-    logger.info(f"Data bounds have been set to to {cbar.data_range}")
+    logger.debug(f"Data bounds have been set to to {cbar.data_range}")
 
     # Create colorbar
     cbar.show_scalar_bar = colorbar
