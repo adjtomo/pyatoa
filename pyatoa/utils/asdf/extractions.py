@@ -112,15 +112,21 @@ def sum_misfits(ds, model, step=None, station=None):
     if step:
         adjoint_sources = adjoint_sources[step]
 
-    # If fixed windows, get the latest windows in the dataset
-    if not hasattr(ds.auxiliary_data.MisfitWindows, model):
-        latest_model = ds.auxiliary_data.MisfitWindows.list()[-1]    
-        windows = ds.auxiliary_data.MisfitWindows[latest_model]
-    else:
+    # Try to access misfit windows for given model and step, if windows were 
+    # fixed, this wont be possible and a KeyError will be thrown. In that case
+    # Get the latest misfit windows, which would have been used to calculate 
+    # the adjoint sources
+    try:
         windows = ds.auxiliary_data.MisfitWindows[model]
-    if step:
-        windows = windows[step]
-
+        if step:
+            windows = windows[step] 
+    except KeyError:
+        last_model = ds.auxiliary_data.MisfitWindows.list()[-1]
+        windows = ds.auxiliary_data.MisfitWindows[last_model]
+        if step:
+            last_step = windows.list()[-1]
+            windows = windows[last_step]
+        
     # Sum misfits only for a given station
     if station:
         try:
@@ -171,8 +177,9 @@ def count_misfit_windows(ds, model, step=None, count_by_stations=False):
     else:
         latest_model = ds.auxiliary_data.MisfitWindows.list()[-1] 
         windows = ds.auxiliary_data.MisfitWindows[latest_model]
-    if step:
-        windows = windows[step]
+    if not step:
+        step = windows.list()[-1]
+    windows = windows[step]
 
     # Count up windows for each channel
     for window in windows.list():
