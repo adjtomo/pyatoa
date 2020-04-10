@@ -34,8 +34,9 @@ def windows_from_ds(ds, net, sta, model=None, step=None):
     if not model:
         model = ds.auxiliary_data.MisfitWindows.list()[-1]
     misfit_windows = ds.auxiliary_data.MisfitWindows[model]
-    if step:
-        misfit_windows = misfit_windows[step]
+    if not step:
+        step = misfit_windows.list()[-1]
+    misfit_windows = misfit_windows[step]
 
     # Pyatoa expects the Manager class windows as a dictionary with keys
     # corresponding to components, each item is then a list, containing
