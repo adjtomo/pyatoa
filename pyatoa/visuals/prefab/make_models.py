@@ -84,9 +84,11 @@ def call_models(fid, path_out="./figures"):
 
     # Determine title and parameters for different plot types
     if "log" in fid_out:
-        par = os.path.basename(fid).split(".")[0].split("_")[-1]
+        tit = os.path.basename(fid).split(".")[0].split("_")[-1]
         num = os.path.basename(fid).split(".")[0].split("_")[-2]
-        par["title"] = f"{par.capitalize()} log(m{int(num):0>2}/m00)"
+        if num == "init":
+            num = 0
+        par["title"] = f"{tit.capitalize()} log(m{int(num):0>2}/m00)"
     elif "poisson" in fid_out:
         par["title"] = "Poissons Ratio"
         par["default_range"] = True
@@ -116,7 +118,7 @@ def call_models(fid, path_out="./figures"):
 
 
 if __name__ == "__main__":
-    fids = glob("*poisson*.vtk")    
+    fids = glob("*model*.vtk")    
     for fid in fids:
         call_models(fid)
 
