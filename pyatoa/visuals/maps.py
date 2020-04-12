@@ -22,7 +22,7 @@ def default_kwargs(**kwargs):
     :param kwargs: kwargs given by the workflow or user
     :return:
     """
-    figsize = kwargs.get("figsize", (8, 10))
+    figsize = kwargs.get("figsize", (6, 8))
     dpi = kwargs.get("dpi", 100)
 
     return figsize, dpi

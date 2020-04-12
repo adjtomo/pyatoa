@@ -400,7 +400,7 @@ class Inspector(Artist):
         :type ds: pyasdf.ASDFDataSet
         :param ds: dataset to query for misfit
         """
-        eid = event_id(ds.events[0])
+        eid = event_id(ds=ds)
 
         self.windows[eid] = {}
         for model in ds.auxiliary_data.MisfitWindows.list():

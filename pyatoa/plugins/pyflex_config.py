@@ -59,12 +59,12 @@ presets = {
     # From the New Zealand group doing local studies of North Island, 10-30s
     # Parameters are based on bulk misfit assessment. Loosened version of SoCal
     "nznorth_10-30s": {
-        "stalta_waterlevel": 0.12, 
+        "stalta_waterlevel": 0.10, 
         "tshift_acceptance_level": 8.0,  # based on sign-flip
         "dlna_acceptance_level": 2.0,
         "cc_acceptance_level": 0.7,
         "s2n_limit": 3.,
-        "max_time_before_first_arrival": 10.,
+        "max_time_before_first_arrival": 5.,
         "c_0": 0.7,
         "c_1": 2.0, 
         "c_3a": 3.0,
