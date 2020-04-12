@@ -44,7 +44,7 @@ def del_synthetic_waveforms(ds, model=None, step=None):
                 if (model is not None) and model in stream:
                     if (step is not None) and step in stream:
                         del ds.waveforms[sta][stream]
-                    else:
+                    elif step is None:
                         del ds.waveforms[sta][stream]
                 elif model is None:
                     del ds.waveforms[sta][stream]
@@ -73,9 +73,9 @@ def del_auxiliary_data(ds, model=None, step=None, retain=[]):
                                               step):
                 del ds.auxiliary_data[aux][model][step]
             # If no 'step' given, simply delete the model subgroup if avail.
-            else:
+            elif step is None:
                 del ds.auxiliary_data[aux][model]
-        else:
+        elif model is None:
             del ds.auxiliary_data[aux]
 
 
@@ -88,10 +88,10 @@ def del_adjoint_sources(ds, model=None):
     :type model: str
     :param model: model number, e.g. "m00"
     """
-    if model:
+    if model is not None:
         for comp in ds.auxiliary_data.AdjointSources[model].list():
             del ds.auxiliary_data.AdjointSources[model][comp]
-    else:
+    elif model is None:
         for model in ds.auxiliary.data.AdjointSources.list():
             for comp in ds.auxiliary_data.AdjointSources[model].list():
                 del ds.auxiliary_data.AdjointSources[model][comp]

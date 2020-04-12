@@ -663,9 +663,9 @@ class Manager:
                 self.windows, self._num_windows = windows_from_ds(self.ds, net, 
                                                                   sta)
             except AttributeError:
-                # If fixed windows fails, e.g. no windwos for given model/step
-                # default to calculating windows
-                self.select_windows()
+                # self.select_windows()
+                # If fix windows, don't select any new windows
+                pass
         else:
             # If not fixed windows, calculate windows using Pyflex
             self.select_windows()
