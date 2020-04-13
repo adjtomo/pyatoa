@@ -656,6 +656,8 @@ class Manager:
 
         # Get misfit windows
         # If windows are to be fixed, ensure that there are windows in dataset
+        # New datasets won't have MisfitWindow auxiliary data so this will
+        # default to select_windows()
         if fix_windows and (hasattr(self.ds, "auxiliary_data") and
                             hasattr(self.ds.auxiliary_data, "MisfitWindows")):
             net, sta, _, _ = self.st_obs[0].get_id().split(".")
@@ -663,12 +665,21 @@ class Manager:
                 self.windows, self._num_windows = windows_from_ds(self.ds, net, 
                                                                   sta)
             except AttributeError:
-                # self.select_windows()
                 # If fix windows, don't select any new windows
                 pass
         else:
             # If not fixed windows, calculate windows using Pyflex
             self.select_windows()
+
+        # Save to dataset regardless of new or fixed windows
+        if (self.ds is not None) and (self._num_windows != 0) and (
+                self.config.save_to_ds):
+            self.save_windows()
+        else:
+            logger.debug("windows are not being saved")
+
+        # Let the User know the outcomes of Pyflex
+        logger.info(f"{self._num_windows} window(s) total found")
 
     def select_windows(self):
         """
@@ -706,15 +717,6 @@ class Manager:
 
         self.windows = windows
         self._num_windows = nwin
-
-        # Save to dataset only if new windows are picked
-        if self.ds is not None and (nwin != 0) and self.config.save_to_ds:
-            self.save_windows()
-        else:
-            logger.debug("windows are not being saved")
-
-        # Let the User know the outcomes of Pyflex
-        logger.info(f"{self._num_windows} window(s) total found")
 
     def save_windows(self):
         """

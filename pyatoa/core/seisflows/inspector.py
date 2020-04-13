@@ -17,6 +17,7 @@ misfit: Misfit information from Pyadjoint, including number of windows
 import os
 import json
 import pyasdf
+import traceback
 from glob import glob
 from obspy import UTCDateTime
 from obspy.geodetics import gps2dist_azimuth
@@ -132,6 +133,12 @@ class Inspector(Artist):
         return list(self.sort_misfits_by_model().keys())
 
     @property
+    def steps(self):
+        """Returns a dictionary of models with values listing steps for each"""
+        mdls = self.sort_misfits_by_model().keys()
+        return {mdl: [step for step in mdl.keys()] for mdl in mdls}
+
+    @property
     def mags(self):
         """Return a dictionary of event magnitudes"""
         return self.event_info("mag")
@@ -188,6 +195,7 @@ class Inspector(Artist):
             return 0
         except KeyError as e:
             print(f"error: {e}")
+            traceback.print_exc()
             return 0
 
     def event_info(self, choice):
@@ -324,7 +332,7 @@ class Inspector(Artist):
         :param ds: dataset to query for distances
         """
         # Initialize the event as a dictionary
-        eid = event_id(ds.events[0])
+        eid = event_id(ds=ds)
 
         # Get UTM projection of event coordinates
         ev_x, ev_y = lonlat_utm(
@@ -373,19 +381,19 @@ class Inspector(Artist):
         :type ds: pyasdf.ASDFDataSet
         :param ds: dataset to query for misfit
         """
-        eid = event_id(ds.events[0])
+        eid = event_id(ds=ds)
 
         self.misfits[eid] = {}
         for model in ds.auxiliary_data.AdjointSources.list():
             self.misfits[eid][model] = {}
             for step in ds.auxiliary_data.AdjointSources[model].list():
                 self.misfits[eid][model][step] = {}
-                num_win = count_misfit_windows(ds, model,
+                num_win = count_misfit_windows(ds, model, step,
                                                count_by_stations=True)
 
                 # For each station, determine the number of windows and total misfit
                 for station in \
-                        ds.auxiliary_data.AdjointSources[model][step].list():
+                        ds.auxiliary_data.AdjointSources[model][step]:
                     sta_id = station.parameters["station_id"]
                     misfit = station.parameters["misfit_value"]
 
@@ -421,7 +429,7 @@ class Inspector(Artist):
                 self.windows[eid][model][step] = {}
                 # For each station, determine number of windows and total misfit
                 for window in \
-                        ds.auxiliary_data.MisfitWindows[model][step].list():
+                        ds.auxiliary_data.MisfitWindows[model][step]:
                     cha_id = window.parameters["channel_id"]
                     net, sta, loc, cha = cha_id.split(".")
                     sta_id = f"{net}.{sta}"

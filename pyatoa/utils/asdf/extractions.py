@@ -7,9 +7,13 @@ def windows_from_ds(ds, net, sta, model=None, step=None):
     """
     If misfit windows are to be fixed, then window information needs to be saved
     between calls of Pyatoa. Fortunately, Pyatoa stores misfit window
-    information into MisfitWindow auxiliary data subgroups. This function
-    accesses this information and creates window dictionaries in the format
-    expected by the Pyatoa Manager class.
+    information into MisfitWindow auxiliary data subgroups.
+    This function accesses this information and creates window dictionaries in
+    the format expected by the Pyatoa Manager class.
+
+    If no model/step information given, will take windows from the latest
+    available model and step, which should be the last iteration in inversion.
+
     These windows only contain enough information so that Pyflex cooperates,
     Pyadjoint can use them, and Pyatoa can generate plots.
 
@@ -177,9 +181,12 @@ def count_misfit_windows(ds, model, step=None, count_by_stations=False):
     else:
         latest_model = ds.auxiliary_data.MisfitWindows.list()[-1] 
         windows = ds.auxiliary_data.MisfitWindows[latest_model]
-    if not step:
-        step = windows.list()[-1]
-    windows = windows[step]
+    # Get information about step count
+    if step and hasattr(windows, step):
+        latest_step = step
+    else:
+        latest_step = windows.list()[-1]
+    windows = windows[latest_step]
 
     # Count up windows for each channel
     for window in windows.list():
