@@ -166,8 +166,10 @@ class Model:
         # Finalize
         if save:
             mlab.savefig(save.format(tag=tag))
+            return save.format(tag=tag)
         if show:
             mlab.show()
+        return None
 
     def plot_depth_cross_section(self, choice, slice_at, show_axis=True,
                                  show=True, save=False, **kwargs):
@@ -213,7 +215,7 @@ class Model:
         slice_val = slice_range(self.ranges, slice_at, choice)
         tag = slice_range(self.axes_ranges, slice_at, choice)
         logger.info(
-                f"slicing '{self.fid}' across {choice} at {slice_val*1E-3}km")
+                f"slicing '{self.fid}' across {choice} at {slice_val*1E-3}")
         if show_axis:
             set_axes(xyz=[True, True, False], ranges=self.axes_ranges,
                      **kwargs)
@@ -256,7 +258,10 @@ class Model:
 
         # Finalize
         if save:
-            mlab.savefig(save.format(tag=f"{tag:.0f}km"))
+            save_tag = save.format(tag=f"{tag:.0f}km")
+            mlab.savefig(save_tag)
+            return save_tag
         if show:
             mlab.show()
+        return None
 

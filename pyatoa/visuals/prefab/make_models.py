@@ -13,6 +13,7 @@ Note:
 import os
 from glob import glob
 from pyatoa.visuals.model import Model
+from pyatoa.visuals.plot_tools import imgs_to_pdf
 
 
 def call_models(fid, path_out="./figures"):
@@ -89,10 +90,10 @@ def call_models(fid, path_out="./figures"):
         if num == "init":
             num = 0
         par["title"] = f"{tit.capitalize()} log(m{int(num):0>2}/m00)"
+        par["default_range"] = False
     elif "poisson" in fid_out:
         par["title"] = "Poissons Ratio"
         par["default_range"] = True
-
 
     # Call the model maker
     model = Model(fid=fid, srcs=srcs_fid, rcvs=rcvs_fid, coast=coast_fid,
@@ -102,23 +103,41 @@ def call_models(fid, path_out="./figures"):
     # Make the models
     if z_slices:
         par["save"] = save_fid_z
+        z_fids = []
         for z in z_slices:
             model.startup()
-            model.plot_model_topdown(depth_km=z, **par)
+            fid_out = model.plot_model_topdown(depth_km=z, **par)
+            z_fids.append(fid_out)
+            imgs_to_pdf(z_fids, save_fid_z.format(tag="all"))
     if x_slices:
         par["save"] = save_fid_x
+        x_fids = []
         for x in x_slices:
             model.startup()
-            model.plot_depth_cross_section(choice="X", slice_at=x, **par)
+            fid_out = model.plot_depth_cross_section(choice="X",
+                                                     slice_at=x, **par)
+            x_fids.append(fid_out)
+            imgs_to_pdf(x_fids,
+                        save_fid_x.format(tag="all").replace("png", "pdf"))
     if y_slices:
         par["save"] = save_fid_y
+        y_fids = []
         for y in y_slices:
             model.startup()
-            model.plot_depth_cross_section(choice="Y", slice_at=y, **par)
+            fid_out = model.plot_depth_cross_section(choice="Y",
+                                                     slice_at=y, **par)
+            y_fids.append(fid_out)
+            imgs_to_pdf(y_fids,
+                        save_fid_y.format(tag="all").replace("png", "pdf"))
+
+    # Remove all the pngs as theyre in the pdf now
+    for pngfids in [x_fids, y_fids, z_fids]:
+        for fid_ in pngfids:
+            os.remove(fid_)
 
 
 if __name__ == "__main__":
-    fids = glob("*model*.vtk")    
+    fids = glob("*0004*.vtk")
     for fid in fids:
         call_models(fid)
 

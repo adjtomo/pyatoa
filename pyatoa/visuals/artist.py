@@ -72,7 +72,7 @@ class Artist:
 
         return f, ax
 
-    def windows_by_distance(self, model, choice="cc_shift_sec",
+    def windows_by_distance(self, model, step, choice="cc_shift_sec",
                             show=True, save=False, event_id=None,
                             sta_code=None, cha_code=None, color_by=None):
         """
@@ -81,6 +81,8 @@ class Artist:
 
         :type model: str
         :param model: model to query, e.g. "m00"
+        :type step: str
+        :param step: step count to query, e.g. 's00'
         :type choice: str
         :param choice: variable to query for windows
             available: "cc_shift_sec", "dlna", "length_s", "max_cc", "weight"
@@ -118,13 +120,13 @@ class Artist:
         for i, event in enumerate(self.windows):
             if event_id and event != event_id:
                 continue
-            for j, sta in enumerate(self.windows[event][model]):
+            for j, sta in enumerate(self.windows[event][model][step]):
                 if sta_code and sta != sta_code:
                     continue
-                for k, cha in enumerate(self.windows[event][model][sta]):
+                for k, cha in enumerate(self.windows[event][model][step][sta]):
                     if cha_code and cha != cha_code:
                         continue
-                    window = self.windows[event][model][sta][cha][choice]
+                    window = self.windows[event][model][step][sta][cha][choice]
                     # For each window, assign a point
                     for value in window:
                         stations.append(f"{sta}.{cha}\n{event}\n{value:.2f}")
@@ -163,13 +165,15 @@ class Artist:
     
         return f, ax
 
-    def misfit_by_distance(self, model, show=True, save=False,
+    def misfit_by_distance(self, model, step, show=True, save=False,
                            event_id=None, sta_code=None, color_by=None):
         """
         Make a scatterplot of misfit versus source-receiver distance.
 
         :type model: str
         :param model: model to query, e.g. "m00"
+        :type step: str
+        :param step: step count to query, e.g. 's00'
         :type event_id: str
         :param event_id: only plot for a given event id
         :type sta_code: str
@@ -186,6 +190,7 @@ class Artist:
         """
         assert self.srcrcv, "No distance information"
         assert(model in self.models), f"Model must be in {self.models}"
+
         if event_id:
             assert(event_id in self.event_ids), \
                 f"event_id must be in {self.event_ids}"
@@ -199,10 +204,10 @@ class Artist:
         for i, event in enumerate(self.misfits):
             if event_id and event != event_id:
                 continue
-            for j, sta in enumerate(self.misfits[event][model]):
+            for j, sta in enumerate(self.misfits[event][model][step]):
                 if sta_code and sta != sta_code:
                     continue
-                misfit = self.misfits[event][model][sta]["msft"]
+                misfit = self.misfits[event][model][step][sta]["msft"]
                 stations.append(f"{sta}\n{event}\n{misfit:.2f}")
                 distances.append(self.srcrcv[event][sta]["dist_km"])
                 misfits.append(misfit)
@@ -232,7 +237,7 @@ class Artist:
     
         return f, ax
 
-    def plot_paths(self, model, choice, event_id=None, sta_code=None,
+    def plot_paths(self, model, step, choice, event_id=None, sta_code=None,
                    threshold=None, hover_on_lines=False, annotate=True,
                    colormap=plt.cm.Spectral_r, color="k",
                    normalize_to_model=False,
@@ -243,6 +248,8 @@ class Artist:
 
         :type model: str
         :param model: model to choose for misfit
+        :type step: str
+        :param step: step count to query, e.g. 's00'
         :type choice: str
         :param choice: choice between `misfit` and `cc_shift_sec` time shift
         :type event_id: str
@@ -296,7 +303,7 @@ class Artist:
         x_values, y_values, alphas, misfit_list = [], [], [], []
         coverage = 0  # to count number of srcs or rcvs covered
 
-        for event in misfits[model]:
+        for event in misfits[model][step]:
             # Skip event if requested
             if event_id and event != event_id:
                 continue
@@ -309,15 +316,17 @@ class Artist:
                 try:
                     # For misfit, just append misfit value, normalize if wanted
                     if choice == "misfit":
-                        misfit = misfits[model][event][sta]["msft"]
+                        misfit = misfits[model][step][event][sta]["msft"]
                         if normalize_to_model:
                             misfit /= max(values)
 
                     # Take the mean of all time shifts for all measurements
                     elif choice == "cc_shift_sec":
                         misfit = n_windows = 0
-                        for i, cha in enumerate(misfits[model][event][sta]):
-                            cs = misfits[model][event][sta][cha]["cc_shift_sec"]
+                        for i, cha in enumerate(
+                                misfits[model][step][event][sta]):
+                            cha_ = misfits[model][step][event][sta][cha]
+                            cs = cha_["cc_shift_sec"]
                             n_windows += len(cs)
                             misfit += sum([abs(_) for _ in cs])
                         misfit /= n_windows
@@ -375,7 +384,7 @@ class Artist:
 
         # Plot all sources as scatter
         event_x, event_y, event_s = [], [], []
-        for event in misfits[model]:
+        for event in misfits[model][step]:
             event_s.append(event)
             event_x.append(self.srcrcv[event]["utm_x"])
             event_y.append(self.srcrcv[event]["utm_y"])
@@ -417,6 +426,7 @@ class Artist:
         plt.title(f"Source-Receiver misfit; N={len(misfit_list)}")
         
         anno = (f"model: {model}\n"
+                f"step: {step}\n"
                 f"event: {event_id}\n"
                 f"station: {sta_code}\n"
                 f"min: {min_misfit}\n"
@@ -505,11 +515,11 @@ class Artist:
         if show:
             plt.show
     
-    def misfit_histogram(self, model, model_comp=None, choice="cc_shift_sec",
+    def misfit_histogram(self, model, step, model_comp=None, choice="cc_shift_sec",
                          binsize=1., show=True, save=None, title=None, 
                          anno=None, xlim=None, color="darkorange", 
                          color_comp="deepskyblue", fontsize=12, figsize=(8,6),
-                         legend=True, label_range=False, step=2):
+                         legend=True, label_range=False, xstep=2):
         """
         Create a histogram of misfit information for either time shift or
         amplitude differences. Option to compare against different models,
@@ -519,6 +529,8 @@ class Artist:
 
         :type model: str
         :param model: model to choose for misfit
+        :type step: str
+        :param step: step count to query, e.g. 's00'
         :type model_comp: str
         :param model_comp: model to compare with, will be plotted in front
         :type choice: str
@@ -549,9 +561,9 @@ class Artist:
         def retrieve_val(model):
             """retrieve some model information"""
             if choice == "misfit":
-                val = self.misfit_values(model)
+                val = self.misfit_values(model, step)
             else:
-                val = self.window_values(model, choice)
+                val = self.window_values(model, step, choice)
 
             # Determine bound for histogram
             min_value = np.floor(min(val))
@@ -644,7 +656,7 @@ class Artist:
         plt.tick_params(which='both', direction='in', top=True, right=True,
                         labelsize=fontsize, width=2.)
         if label_range:
-            plt.xticks(np.arange(-1*label_range, label_range+.1, step=step))
+            plt.xticks(np.arange(-1*label_range, label_range+.1, step=xstep))
         plt.axvline(x=0, ymin=0, ymax=1, linewidth=2., c="k", zorder=2, 
                     alpha=0.75, linestyle=':')
         if legend:
@@ -659,7 +671,7 @@ class Artist:
     
         return f, ax
 
-    def plot_windows(self, model, event_id=None, sta_choice=None,
+    def plot_windows(self, model, step, event_id=None, sta_choice=None,
                      component=None, color_by_comp=False,
                      velocities=[2, 4, 7], alpha=0.2):
         """
@@ -670,6 +682,8 @@ class Artist:
 
         :type model: str
         :param model: model to analyze
+        :type step: str
+        :param step: step count to query, e.g. 's00'
         :type component: str
         :param component: choose a specific component to analyze
         :type color_by_comp: bool
@@ -679,7 +693,7 @@ class Artist:
             against certain seismic phases, if none, no lines plotted
         :return:
         """
-        windows = self.sort_windows_by_model()[model]
+        windows = self.sort_windows_by_model()[model][step]
         comp_dict = {'Z': 'r', 'N': 'g', 'R': 'g', 'E': 'b', 'T': 'b'}
         if component:
             assert(component.upper() in comp_dict), \

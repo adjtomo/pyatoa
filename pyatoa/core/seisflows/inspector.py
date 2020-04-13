@@ -206,7 +206,7 @@ class Inspector(Artist):
                 continue
         return info
 
-    def event_stats(self, model, choice="cc_shift_sec", sta_code=None,
+    def event_stats(self, model, step, choice="cc_shift_sec", sta_code=None,
                     eventid=None, print_choice=abs_max):
         """
         Return lists of stats for a given model. Event and station optional.
@@ -237,7 +237,7 @@ class Inspector(Artist):
         """
         events, msftval, nwins = [], [], []
 
-        misfits = self.sort_windows_by_model()[model]
+        misfits = self.sort_windows_by_model()[model][step]
         for event in misfits.keys():
             if eventid and event != eventid:
                 continue
@@ -264,7 +264,7 @@ class Inspector(Artist):
 
         return events, nwins, msftval
 
-    def window_values(self, model, choice):
+    def window_values(self, model, step, choice):
         """
         Return a list of all chosen values for a given model.
         Choices are: "cc_shift_sec", "dlna", "max_cc", "length_s", "weight"
@@ -272,6 +272,8 @@ class Inspector(Artist):
 
         :type model: str
         :param model: model to query e.g. 'm00'
+        :type step: str
+        :param step: step count to query, e.g. 's00'
         :type choice: str
         :param choice: key choice for window query
         :rtype list:
@@ -283,18 +285,20 @@ class Inspector(Artist):
 
         ret = []
         windows = self.sort_windows_by_model()
-        for event in windows[model]:
-            for sta in windows[model][event]:
-                for cha in windows[model][event][sta]:
-                    ret += windows[model][event][sta][cha][choice]
+        for event in windows[model][step]:
+            for sta in windows[model][step][event]:
+                for cha in windows[model][step][event][sta]:
+                    ret += windows[model][step][event][sta][cha][choice]
         return ret
 
-    def misfit_values(self, model):
+    def misfit_values(self, model, step):
         """
         Return a list of misfit values for a given model
 
         :type model: str
         :param model: model to query e.g. 'm00'
+        :type step: str
+        :param step: step count to query, e.g. 's00'
         :rtype list:
         :return: list of misfit values for a given model
         """
@@ -303,8 +307,12 @@ class Inspector(Artist):
             for model_ in self.misfits[event]:
                 if model_ != model:
                     continue
-                for sta in self.misfits[event][model]:
-                    misfit.append(self.misfits[event][model][sta]["msft"])
+                for step_ in self.misfits[event][step]:
+                    if step_ != step:
+                        continue
+                    for sta in self.misfits[event][model][step]:
+                        misfit.append(
+                            self.misfits[event][model][step][sta]["msft"])
         return misfit
 
     def get_srcrcv(self, ds):
@@ -370,27 +378,31 @@ class Inspector(Artist):
         self.misfits[eid] = {}
         for model in ds.auxiliary_data.AdjointSources.list():
             self.misfits[eid][model] = {}
-            num_win = count_misfit_windows(ds, model, count_by_stations=True)
+            for step in ds.auxiliary_data.AdjointSources[model].list():
+                self.misfits[eid][model][step] = {}
+                num_win = count_misfit_windows(ds, model,
+                                               count_by_stations=True)
 
-            # For each station, determine the number of windows and total misfit
-            for station in ds.auxiliary_data.AdjointSources[model]:
-                sta_id = station.parameters["station_id"]
-                misfit = station.parameters["misfit_value"]
+                # For each station, determine the number of windows and total misfit
+                for station in \
+                        ds.auxiliary_data.AdjointSources[model][step].list():
+                    sta_id = station.parameters["station_id"]
+                    misfit = station.parameters["misfit_value"]
 
-                # One time initiatation of a new dictionary object
-                if sta_id not in self.misfits[eid][model]:
-                    self.misfits[eid][model][sta_id] = {"msft": 0,
-                                                        "nwin": num_win[sta_id]
-                                                        }
+                    # One time initiatation of a new dictionary object
+                    if sta_id not in self.misfits[eid][model][step]:
+                        self.misfits[eid][model][step][sta_id] = {
+                            "msft": 0, "nwin": num_win[sta_id]
+                        }
 
-                # Append the total number of windows, and the total misfit
-                self.misfits[eid][model][sta_id]["msft"] += misfit
+                    # Append the total number of windows, and the total misfit
+                    self.misfits[eid][model][step][sta_id]["msft"] += misfit
 
-            # Scale the misfit of each station by the number of windows
-            # a la Tape (2010) Eq. 6
-            for sta_id in self.misfits[eid][model].keys():
-                self.misfits[eid][model][sta_id]["msft"] /= \
-                                    2 * self.misfits[eid][model][sta_id]["nwin"]
+                # Scale the misfit of each station by the number of windows
+                # a la Tape (2010) Eq. 6
+                for sta_id in self.misfits[eid][model][step].keys():
+                    self.misfits[eid][model][step][sta_id]["msft"] /= \
+                        2 * self.misfits[eid][model][step][sta_id]["nwin"]
                 
     def get_windows(self, ds):
         """
@@ -405,42 +417,44 @@ class Inspector(Artist):
         self.windows[eid] = {}
         for model in ds.auxiliary_data.MisfitWindows.list():
             self.windows[eid][model] = {}
+            for step in ds.auxiliary_data.MisfitWindows[model].list():
+                self.windows[eid][model][step] = {}
+                # For each station, determine number of windows and total misfit
+                for window in \
+                        ds.auxiliary_data.MisfitWindows[model][step].list():
+                    cha_id = window.parameters["channel_id"]
+                    net, sta, loc, cha = cha_id.split(".")
+                    sta_id = f"{net}.{sta}"
 
-            # For each station, determine the number of windows and total misfit
-            for window in ds.auxiliary_data.MisfitWindows[model]:
-                cha_id = window.parameters["channel_id"]
-                net, sta, loc, cha = cha_id.split(".")
-                sta_id = f"{net}.{sta}"
+                    dlna = window.parameters["dlnA"]
+                    weight = window.parameters["window_weight"]
+                    max_cc = window.parameters["max_cc_value"]
+                    length_s = (window.parameters["relative_endtime"] -
+                                window.parameters["relative_starttime"]
+                                )
+                    rel_start = window.parameters["relative_starttime"]
+                    rel_end = window.parameters["relative_endtime"]
+                    cc_shift_sec = window.parameters["cc_shift_in_seconds"]
 
-                dlna = window.parameters["dlnA"]
-                weight = window.parameters["window_weight"]
-                max_cc = window.parameters["max_cc_value"]
-                length_s = (window.parameters["relative_endtime"] -
-                            window.parameters["relative_starttime"]
-                            )
-                rel_start = window.parameters["relative_starttime"]
-                rel_end = window.parameters["relative_endtime"]
-                cc_shift_sec = window.parameters["cc_shift_in_seconds"]
+                    # One time initiatations of a new dictionary object
+                    win = self.windows[eid][model][step]
+                    if sta_id not in win:
+                        win[sta_id] = {}
+                    if cha not in self.windows[eid][model][step][sta_id]:
+                        win[sta_id][cha] = {"cc_shift_sec": [], "dlna": [],
+                                            "weight": [], "max_cc": [],
+                                            "length_s": [], "rel_start": [],
+                                            "rel_end": []
+                                            }
 
-                # One time initiatations of a new dictionary object
-                win = self.windows[eid][model]
-                if sta_id not in win:
-                    win[sta_id] = {}
-                if cha not in self.windows[eid][model][sta_id]:
-                    win[sta_id][cha] = {"cc_shift_sec": [], "dlna": [],
-                                        "weight": [], "max_cc": [],
-                                        "length_s": [], "rel_start": [],
-                                        "rel_end": []
-                                        }
-
-                # Append values from the parameters into dictionary object
-                win[sta_id][cha]["dlna"].append(dlna)
-                win[sta_id][cha]["weight"].append(weight)
-                win[sta_id][cha]["max_cc"].append(max_cc)
-                win[sta_id][cha]["length_s"].append(length_s)
-                win[sta_id][cha]["rel_end"].append(rel_end)
-                win[sta_id][cha]["rel_start"].append(rel_start)
-                win[sta_id][cha]["cc_shift_sec"].append(cc_shift_sec)
+                    # Append values from the parameters into dictionary object
+                    win[sta_id][cha]["dlna"].append(dlna)
+                    win[sta_id][cha]["weight"].append(weight)
+                    win[sta_id][cha]["max_cc"].append(max_cc)
+                    win[sta_id][cha]["length_s"].append(length_s)
+                    win[sta_id][cha]["rel_end"].append(rel_end)
+                    win[sta_id][cha]["rel_start"].append(rel_start)
+                    win[sta_id][cha]["cc_shift_sec"].append(cc_shift_sec)
 
     def save(self, tag, path="./"):
         """
@@ -494,7 +508,7 @@ class Inspector(Artist):
             print("not found")
             pass
 
-    def sort_by_window(self, model, choice="cc_shift_sec"):
+    def sort_by_window(self, model, step, choice="cc_shift_sec"):
         """
         Sorts through misfit windows and returns based on choice.
         Returns two lists, sorted values and then then a tuple corresponding to:
@@ -506,12 +520,14 @@ class Inspector(Artist):
 
         :type model: str
         :param model: model to query, e.g. 'm00'
+        :type step: str
+        :param step: step count to query, e.g. 's00'
         :type choice: str
         :param choice: choice of measurement to return
         """
         values, info = [], []
 
-        windows = self.sort_windows_by_model()[model]
+        windows = self.sort_windows_by_model()[model][step]
         for event in windows:
             for sta in windows[event]:
                 for comp in windows[event][sta]:
@@ -536,23 +552,27 @@ class Inspector(Artist):
             for model in self.misfits[event]:
                 if model not in misfits:
                     misfits[model] = {}
-                for sta in self.misfits[event][model]:
-                    if sta not in misfits[model]:
-                        misfits[model][sta] = {"msft": 0, "nwin": 0,
-                                               "nevents": 0}
+                for step in self.misfits[event][model]:
+                    if step not in misfits[model]:
+                        misfits[model][step] = {}
+                    for sta in self.misfits[event][model][step]:
+                        if sta not in misfits[model][step]:
+                            misfits[model][step][sta] = {"msft": 0, "nwin": 0,
+                                                         "nevents": 0}
 
-                    # Append misfit info from each station-event in same model
-                    misfits[model][sta]["msft"] += (
-                        self.misfits[event][model][sta]["msft"]
-                    )
-                    misfits[model][sta]["nwin"] += (
-                        self.misfits[event][model][sta]["nwin"]
-                    )
-                    misfits[model][sta]["nevents"] += 1
+                        # Append misfit info from each station-event in same model
+                        misfits[model][step][sta]["msft"] += (
+                            self.misfits[event][model][sta]["msft"]
+                        )
+                        misfits[model][step][sta]["nwin"] += (
+                            self.misfits[event][model][sta]["nwin"]
+                        )
+                        misfits[model][step][sta]["nevents"] += 1
 
-            # Scale the total misfit per station by the number of events
-            for sta in misfits[model]:
-                misfits[model][sta]["msft"] /= misfits[model][sta]["nevents"]
+                # Scale the total misfit per station by the number of events
+                for sta in misfits[model][step]:
+                    misfits[model][step][sta]["msft"] /= \
+                        misfits[model][step][sta]["nevents"]
 
         return misfits
 
@@ -569,9 +589,13 @@ class Inspector(Artist):
             for model in self.misfits[event]:
                 if model not in misfits:
                     misfits[model] = {}
-                if event not in misfits[model]:
-                    misfits[model][event] = {}
-                misfits[model][event] = self.misfits[event][model]
+                for step in self.misfits[event][model]:
+                    if step not in misfits[model]:
+                        misfits[model][step] = {}
+                    if event not in misfits[model][step]:
+                        misfits[model][step][event] = {}
+                    misfits[model][step][event] = \
+                        self.misfits[event][model][step]
 
         return misfits
 
@@ -588,9 +612,12 @@ class Inspector(Artist):
             for model in self.windows[event]:
                 if model not in windows:
                     windows[model] = {}
-                if event not in windows[model]:
-                    windows[model][event] = {}
-                windows[model][event] = self.windows[event][model]
+                for step in self.windows[event][model]:
+                    windows[model][step] = {}
+                    if event not in windows[model][step]:
+                        windows[model][step][event] = {}
+                    windows[model][step][event] = \
+                        self.windows[event][model][step]
 
         return windows
 
@@ -608,11 +635,12 @@ class Inspector(Artist):
         cumulative_window_length = {key: 0 for key in windows}
         for model in windows:
             for event in windows[model]:
-                for sta in windows[model][event]:
-                    for cha in windows[model][event][sta]:
-                        for length in (
-                                windows[model][event][sta][cha]["length_s"]):
-                            cumulative_window_length[model] += length
+                for step in windows[model][event]:
+                    for sta in windows[model][step][event]:
+                        for cha in windows[model][step][event][sta]:
+                            w_ = windows[model][step][event][sta][cha]
+                            for length in w_["length_s"]:
+                                cumulative_window_length[model] += length
 
         return cumulative_window_length
 
@@ -626,17 +654,19 @@ class Inspector(Artist):
         """
         misfits = self.sort_misfits_by_model()
 
-        cmsft = {key: 0 for key in misfits}
+        # One liner for nested dictionaries for each step to have a misfit val
+        cmsft = {key: {step: 0 for step in misfits[key]} for key in misfits}
         for model in misfits:
             total_misfit = 0
-            for e, event in enumerate(misfits[model]):
-                ev_msft = 0
-                for sta in misfits[model][event]:
-                    # already scaled like (Tape 2010 eq. 6) by get_misfit()
-                    ev_msft += misfits[model][event][sta]["msft"]
-                total_misfit += ev_msft
-            # Divide by the number of sources (Tape 2010 eq. 7)
-            cmsft[model] = total_misfit / (e + 1)
+            for step in misfits[model]:
+                for e, event in enumerate(misfits[model][step]):
+                    ev_msft = 0
+                    for sta in misfits[model][step][event]:
+                        # already scaled like (Tape 2010 eq. 6) by get_misfit()
+                        ev_msft += misfits[model][step][event][sta]["msft"]
+                    total_misfit += ev_msft
+                # Divide by the number of sources (Tape 2010 eq. 7)
+                cmsft[model][step] = total_misfit / (e + 1)
 
         return cmsft
 
