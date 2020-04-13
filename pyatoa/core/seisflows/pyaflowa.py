@@ -89,7 +89,7 @@ class Pyaflowa:
         self.step = 0
         self.synthetics_only = bool(par["CASE"].lower() == "synthetic")
 
-        # self._check(par)
+        self._check(par)
 
     def __str__(self):
         """
