@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-Pyaflowa
+Pyaflowa - Pyatoa's Seisflows plugin class
 
-The Seisflows plugin class that allows easy scripting of Pyatoa
+This Seisflows plugin class that allows easy scripting of Pyatoa
 functionality into a Seisflows workflow. Pre-written functionalities simplify
 calls made in Seisflows to Pyatoa, to reduce clutter inside the workflow.
 """
@@ -56,18 +56,16 @@ class Pyaflowa:
         :param paths: a dictionary of the Seisflows paths contained in the
             `PATH` variable. should be passed here as vars(PATH)
         """
-        # Ensure that the inputs are accessible by the class
-        self.par = par["PYATOA"]
-        self.ext_paths = paths
-        self.ext_par = par
+        # Distribute the relative Seisflows paramaters to Pyaflowa
+        self.__dict__ = par["PYATOA"]
+        self.title = par["TITLE"]
 
-        # Distribute internal hardcoded path structure
-        assert("PYATOA_IO" in self.ext_paths.keys())
-        pyatoa_io = self.ext_paths["PYATOA_IO"]
-
-        # Tag the external files that will need to be used throughout
-        self.config_file = oj(self.ext_paths["WORKDIR"], "parameters.yaml")
-        self.misfit_file = oj(pyatoa_io, "misfits.json")
+        # Grab relevant external paths
+        assert("PYATOA_IO" in paths.keys())
+        pyatoa_io = paths["PYATOA_IO"]
+        self.work_dir = paths["WORKDIR"]
+        self.specfem_data = paths["SPECFEM_DATA"]
+        self.config_file = oj(self.work_dir, "parameters.yaml")
 
         # Distribute internal paths
         self.data_dir = oj(pyatoa_io, "data")
@@ -89,10 +87,9 @@ class Pyaflowa:
         # Set some attributes that will be set/used during the workflow
         self.iteration = 0
         self.step = 0
-        self.fix_windows = self.par["fix_windows"]
         self.synthetics_only = bool(par["CASE"].lower() == "synthetic")
 
-        self._check()
+        # self._check(par)
 
     def __str__(self):
         """
@@ -110,10 +107,6 @@ class Pyaflowa:
             str_out += f"\t{key+':':<25}{item}\n"
         return str_out
 
-    def __repr__(self):
-        """Simple point to __str__()"""
-        return self.__str__()
-
     @property
     def model_number(self):
         """
@@ -129,16 +122,42 @@ class Pyaflowa:
         """
         return step(self.step)
 
-    def _check(self):
+    def fixwin(self, ds):
+        """
+        Determine if window fixing is required. This can be done by step count,
+        by iteration, or not at all.
+
+        :type ds: pyasdf.ASDFDataSet
+        :param ds: dataset to check for misfit windows
+        :rtype: bool
+        :return: if fix window by step, always return true.
+                 if fix by iteration, only return True if first step count
+                 else return False
+        """
+        if self.fix_windows == "step":
+            return True
+        elif self.fix_windows == "iter":
+            # True if this is the first step in the iteration, False else
+            if self.hasattr(ds.auxiliary_data, "MisfitWindows"):
+                return not hasattr(ds.auxiliary_data.MisfitWindows,
+                                   self.model_number)
+            else:
+                return False
+        else:
+            return False
+
+    def _check(self, ext_par):
         """
         Perform some sanity checks upon initialization. If they fail, hard exit
         so that Seisflows crashes, that way things don't crash after jobs have
         been submitted etc.
+
+        :type ext_par: dict
+        :param ext_par: parameter dictionary from Seisflows
         """
         # Ensure that the gathered seismogram length is greater than the
         # length of synthetics
-        if (self.ext_par["DT"] * self.ext_par["NT"] >=
-                self.par['start_pad'] + self.par['end_pad']):
+        if ext_par["DT"] * ext_par["NT"] >= self.start_pad + self.end_pad:
             logger.warning("length of gathered observed waveforms will be less "
                            "than the length of synthetics... exiting")
             sys.exit(-1)
@@ -166,10 +185,11 @@ class Pyaflowa:
                 del kwargs[key]
         self.__dict__.update(kwargs)
 
-    def setup_process(self, cwd, event_id=None):
+    def setup(self, cwd, event_id=None):
         """
-        Set up the workflow by creating process dependent pathways, and creating
-        the Pyatoa Config object that will control the worklow
+        Set up one embarassingly parallelizable workflow by creating individual
+        process dependent pathways, and creating indvidual Pyatoa Config objects
+        that will control the worklow.
 
         :type cwd: str
         :param cwd: current working directory for this instance of Pyatoa
@@ -193,7 +213,7 @@ class Pyaflowa:
                 os.makedirs(item)
 
         # Set logging output level for all packages
-        for log, level in self.par["set_logging"].items():
+        for log, level in self.set_logging.items():
             if level:
                 logger_ = logging.getLogger(log)
                 if level == "info":
@@ -216,7 +236,7 @@ class Pyaflowa:
     def process(self, cwd, event_id=None):
         """
         Main workflow calling on the core functionality of Pyatoa to process
-        observed and synthetic waveforms and perform misfit quantification
+        observed and synthetic waveforms and perform misfit quantification.
 
         :type cwd: str
         :param cwd: current working directory for this instance of Pyatoa
@@ -224,16 +244,19 @@ class Pyaflowa:
         :param event_id: event identifier tag for file naming etc.
         """
         # Run the setup and standardize some names
-        config, ev_paths = self.setup_process(cwd, event_id)
+        config, ev_paths = self.setup(cwd, event_id)
         ds_name = oj(self.data_dir, f"{config.event_id}.h5")
 
         # Count number of successful processes
         processed = 0
         with pyasdf.ASDFDataSet(ds_name) as ds:
+            fix_windows = self.fixwin(ds)
+            logger.info(f"Fix windows: {fix_windows}")
+
             # Make sure the ASDFDataSet doesn't already contain auxiliary_data
             # for the model_number/step_count
             clean_ds(ds=ds, model=self.model_number, step=self.step_count,
-                     fix_windows=self.fix_windows)
+                     fix_windows=fix_windows)
 
             # Set up the manager and get station information
             config.write(write_to=ds)
@@ -251,11 +274,11 @@ class Pyaflowa:
                     mgmt.gather(station_code=f"{net}.{sta}.*.HH*")
                     mgmt.standardize()
                     mgmt.preprocess(overwrite=preproc)
-                    mgmt.window(fix_windows=self.fix_windows)
+                    mgmt.window(fix_windows=fix_windows)
                     mgmt.measure()
 
                     # Plot waveforms with misfit windows and adjoint sources
-                    if self.par["plot_waveforms"]:
+                    if self.plot_waveforms:
                         # Format some strings to append to the waveform title
                         tit = " ".join([
                             f"\n{config.model_number}{self.step_count}",
@@ -269,8 +292,8 @@ class Pyaflowa:
                                   )
 
                     # Only plot maps once since they won't change
-                    if self.par["plot_srcrcv_maps"] and \
-                            self.model_number == "m00" and \
+                    if self.plot_srcrcv_maps and \
+                        self.model_number == "m00" and \
                             self.step_count == "s00":
                         mgmt.srcrcvmap(stations=coords, show=False,
                                        save=oj(ev_paths["maps"], f"map_{sta}"))
@@ -319,7 +342,7 @@ class Pyaflowa:
         write_misfit_stats(ds, self.model_number, self.step_count, 
                            pathout=self.misfits_dir)
 
-        # Combine images into a pdf for easier visualization
+        # Combine images into a pdf for easier visualization, will delete .png's
         if self.par["combine_imgs"]:
             # path/to/eventid_modelstep_wavmap.png
             logger.info("creating composite pdf")
@@ -344,27 +367,25 @@ class Pyaflowa:
 
         # Create copies of .h5 files at the end of each iteration, because .h5
         # can be corrupted if open during crashes so it's good to have a backup
-        if self.par["snapshot"]:
+        if self.snapshot:
             srcs = glob.glob(oj(self.data_dir, "*.h5"))
             for src in srcs:
                 shutil.copy(src, oj(self.snapshots_dir, os.path.basename(src)))
 
         # Plot the output.optim file outputted by Seisflows
-        plot_output_optim(path_to_optim=oj(self.ext_paths["WORKDIR"],
-                                           "output.optim"),
+        plot_output_optim(path_to_optim=oj(self.work_dir, "output.optim"),
                           save=oj(self.figures_dir, "output_optim.png")
                           )
 
         # Generate .vtk files for given source and receivers for model 0
-        if self.par["create_srcrcv_vtk"] and self.iteration == 1:
+        if self.create_srcrcv_vtk and self.iteration == 1:
             for func in [src_vtk_from_specfem, rcv_vtk_from_specfem]:
-                func(path_to_data=self.ext_paths["SPECFEM_DATA"],
-                     path_out=self.vtks_dir)
+                func(path_to_data=self.specfem_data, path_out=self.vtks_dir)
 
         # Run the Inspector class to analyze the misfit behavior of inversion
-        if self.par["inspect"]:
+        if self.inspect:
             insp = pyatoa.Inspector(path=self.data_dir)
-            insp.save(tag=f"{self.ext_par['TITLE']}", path=self.data_dir)
+            insp.save(tag=self.title, path=self.data_dir)
 
             # Create a misfit histogram for the initial and final model
             for choice, binsize in zip(["cc_shift_sec", "dlna"], [0.5, 0.25]):

@@ -27,6 +27,8 @@ def windows_from_ds(ds, net, sta, model=None, step=None):
     :param sta: station code used to find the name of the misfit window
     :type model: str or None
     :param model: model number, e.g. "m00". If None, most recent windows used
+    :type step: str
+    :param step: step count, e.g. "s00"
     :rtype window_dict: dict
     :return window_dict: dictionary containing misfit windows, in a format
         expected by Pyatoa Manager class
@@ -38,9 +40,9 @@ def windows_from_ds(ds, net, sta, model=None, step=None):
     if not model:
         model = ds.auxiliary_data.MisfitWindows.list()[-1]
     misfit_windows = ds.auxiliary_data.MisfitWindows[model]
-    if not step:
+    if step is None:
         step = misfit_windows.list()[-1]
-    misfit_windows = misfit_windows[step]
+        misfit_windows = misfit_windows[step]
 
     # Pyatoa expects the Manager class windows as a dictionary with keys
     # corresponding to components, each item is then a list, containing
@@ -105,7 +107,8 @@ def sum_misfits(ds, model, step=None, station=None):
     :type model: str 
     :param model: model number, e.g "m00"
     :type step: str
-    :param step: step count, e.g. "s00"
+    :param step: step count, e.g. 's00', if None, defaults to latest step of
+        given model. if False, assumes no step information present, only model
     :type station: str
     :param station: station code to check, e.g. 'NZ.BFZ'
     :rtype summed_misfit: float
@@ -113,7 +116,7 @@ def sum_misfits(ds, model, step=None, station=None):
     """
     misfits = []
     adjoint_sources = ds.auxiliary_data.AdjointSources[model]
-    if step:
+    if step is not None:
         adjoint_sources = adjoint_sources[step]
 
     # Try to access misfit windows for given model and step, if windows were 
@@ -122,12 +125,12 @@ def sum_misfits(ds, model, step=None, station=None):
     # the adjoint sources
     try:
         windows = ds.auxiliary_data.MisfitWindows[model]
-        if step:
+        if step is not None:
             windows = windows[step] 
     except KeyError:
         last_model = ds.auxiliary_data.MisfitWindows.list()[-1]
         windows = ds.auxiliary_data.MisfitWindows[last_model]
-        if step:
+        if step is not None:
             last_step = windows.list()[-1]
             windows = windows[last_step]
         
@@ -153,7 +156,6 @@ def sum_misfits(ds, model, step=None, station=None):
 
     return 0.5 * sum(misfits)/number_windows
 
-
     return stats
 
 
@@ -167,8 +169,9 @@ def count_misfit_windows(ds, model, step=None, count_by_stations=False):
     :param ds: dataset to count misfit windows from
     :type model: str
     :param model: model number e.g. 'm00'
-    :type step: str
-    :param step: step count, e.g. 's00'
+    :type step: str or None or False
+    :param step: step count, e.g. 's00', if None, defaults to latest step of
+        given model. if False, assumes no step information present, only model
     :type count_by_stations: bool
     :param count_by_stations: if not, count by components
     :rtype counted_windows: dict
@@ -182,11 +185,12 @@ def count_misfit_windows(ds, model, step=None, count_by_stations=False):
         latest_model = ds.auxiliary_data.MisfitWindows.list()[-1] 
         windows = ds.auxiliary_data.MisfitWindows[latest_model]
     # Get information about step count
-    if step and hasattr(windows, step):
-        latest_step = step
-    else:
-        latest_step = windows.list()[-1]
-    windows = windows[latest_step]
+    if step is None:
+        if hasattr(windows, step):
+            latest_step = step
+        else:
+            latest_step = windows.list()[-1]
+        windows = windows[latest_step]
 
     # Count up windows for each channel
     for window in windows.list():
@@ -215,7 +219,7 @@ def count_misfit_windows(ds, model, step=None, count_by_stations=False):
     return counted_windows
 
 
-def histogram_data(ds, model, data_type):
+def histogram_data(ds, model, data_type, step=None):
     """
     Returns values to be used in a statistics histogram. For example, a list
     containing all traveltime differences for every window, or amplitude
@@ -225,6 +229,9 @@ def histogram_data(ds, model, data_type):
     :param ds: dataset to count misfit windows from
     :type model: str
     :param model: model number e.g. 'm00'
+    :type step: str or None or False
+    :param step: step count, e.g. 's00', if None, defaults to latest step of
+        given model. if False, assumes no step information present, only model
     :type data_type: str
     :param data_type: chosen data type to return histogram data for, available:
         'cc_shift_in_samples', 'cc_shift_in_seconds', 
@@ -240,7 +247,11 @@ def histogram_data(ds, model, data_type):
     # time shift statistics are kept in the misfit windows
     if "cc" in data_type:
         if hasattr(ds.auxiliary_data.MisfitWindows, model):
-            for window in ds.auxiliary_data.MisfitWindows[model]:
+            windows = ds.auxiliary_data.MisfitWindows[model]
+            if (step is not None) and (
+                    hasattr(ds.auxiliary_data.MisfitWindows, step)):
+                windows = windows[step]
+            for window in windows:
                 return_list.append(window.parameters[data_type])
     # amplitude information is recovered from waveforms
     elif data_type == "amplitude":
