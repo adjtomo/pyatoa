@@ -151,7 +151,7 @@ def colorscale(orientation, **kwargs):
             elif maxval < 0:
                 min_max = [minval, 0]
             else:
-                val = max(abs([minval, maxval]))
+                val = max([abs(_) for _ in [minval, maxval]])
                 min_max = [-val, val]
         cbar.data_range = array(min_max)
     logger.debug(f"Data bounds have been set to to {cbar.data_range}")

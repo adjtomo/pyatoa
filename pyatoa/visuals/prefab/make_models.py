@@ -16,6 +16,18 @@ from pyatoa.visuals.model import Model
 from pyatoa.visuals.plot_tools import imgs_to_pdf
 
 
+def save_pdf(pngs, tag):
+    """
+    Convenience function to collect pngs into a pdf and then remove pngs
+    :param pngs:
+    :param tag:
+    :return:
+    """
+    imgs_to_pdf(pngs, tag.format(tag="all").replace("png", "pdf"))
+    for png in pngs:
+        os.remove(png)
+
+
 def call_models(fid, path_out="./figures"):
     """
     Set the parameters in this function, which will then be passed to Model
@@ -64,9 +76,9 @@ def call_models(fid, path_out="./figures"):
     save_fid_y = fid_out + "_y_slice_{tag}.png"
 
     # Pick specific slices to create
-    z_slices = ["surface", 5, 10, 15, 25, 30, 35, 40, 45, 50]
-    x_slices = [0.25, 0.5, 0.75]
-    y_slices = [0.25, 0.5, 0.75]
+    z_slices = ["surface", 5, 10, 15, 30, 50]
+    x_slices = [0.5]
+    y_slices = [0.5]
 
     # Set the parameters for all figures generated, passed as kwargs
     par = {"font_factor": 1.1,
@@ -114,8 +126,7 @@ def call_models(fid, path_out="./figures"):
             model.startup()
             fid_out = model.plot_model_topdown(depth_km=z, **par)
             z_fids.append(fid_out)
-            imgs_to_pdf(z_fids, 
-                        save_fid_z.format(tag="all").replace("png", "pdf"))
+        save_pdf(z_fids, save_fid_z)
     if x_slices:
         par["save"] = save_fid_x
         x_fids = []
@@ -124,8 +135,7 @@ def call_models(fid, path_out="./figures"):
             fid_out = model.plot_depth_cross_section(choice="X",
                                                      slice_at=x, **par)
             x_fids.append(fid_out)
-            imgs_to_pdf(x_fids,
-                        save_fid_x.format(tag="all").replace("png", "pdf"))
+        save_pdf(x_fids, save_fid_x)
     if y_slices:
         par["save"] = save_fid_y
         y_fids = []
@@ -134,17 +144,11 @@ def call_models(fid, path_out="./figures"):
             fid_out = model.plot_depth_cross_section(choice="Y",
                                                      slice_at=y, **par)
             y_fids.append(fid_out)
-            imgs_to_pdf(y_fids,
-                        save_fid_y.format(tag="all").replace("png", "pdf"))
-
-    # Remove all the pngs as theyre in the pdf now
-    for pngfids in [x_fids, y_fids, z_fids]:
-        for fid_ in pngfids:
-            os.remove(fid_)
+        save_pdf(y_fids, save_fid_y)
 
 
 if __name__ == "__main__":
-    fids = glob("*0008*vp*.vtk")
+    fids = glob("*gradient*.vtk")
     for fid in fids:
         call_models(fid)
 
