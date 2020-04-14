@@ -255,7 +255,7 @@ def window_maker(st_obs, st_syn, config, time_offset_sec=0., windows=None,
                 b1, = twaxes[i].plot(
                     t, adj_src.adjoint_source[::-1], adj_src_color, alpha=0.55,
                     linestyle='-.', zorder=z-1,
-                    label=f"Adjoint Source ($\chi$={adj_src.misfit:.2f})"
+                    label=f"Adjoint Source ($\chi$={adj_src.misfit:.2E})"
                 )
                 lines_for_legend += [b1]
 
