@@ -183,7 +183,8 @@ class Gatherer:
                 logger.warning("external obs data unavailable, no observed "
                                "stream can be returned")
                 st_obs = None
-            if self.ds is not None and self.config.save_to_ds:
+            if (self.ds is not None) and self.config.save_to_ds and (
+                    st_obs is not None):
                 self.ds.add_waveforms(waveform=st_obs,
                                       tag=self.config.observed_tag)
             else:

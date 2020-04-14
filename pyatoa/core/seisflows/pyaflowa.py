@@ -343,7 +343,7 @@ class Pyaflowa:
                            pathout=self.misfits_dir)
 
         # Combine images into a pdf for easier visualization, will delete .png's
-        if self.par["combine_imgs"]:
+        if self.combine_imgs:
             # path/to/eventid_modelstep_wavmap.png
             logger.info("creating composite pdf")
             save_to = oj(self.composites_dir,
