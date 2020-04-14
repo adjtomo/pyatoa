@@ -95,7 +95,7 @@ def colorscale(orientation, **kwargs):
 
     Keyword arguments:
         :type cmap: str
-        :param cmap: colorscale to use, matches names from ParaView
+        :param cmap: colorscale to use, matches names from Matplotlib
         :type reverse: bool
         :param reverse: reverse the colorscale
         :type min_max: list
@@ -144,8 +144,15 @@ def colorscale(orientation, **kwargs):
     else:
         if not min_max:
             # If no min_max values, set absolute max as the +/- bounds
-            val = np.ceil(max(abs(cbar.data_range)))
-            min_max = [-val, val]
+            maxval = max(abs(cbar.data_range))
+            minval = min(cbar.data_range)
+            if minval > 0:
+                min_max = [0, maxval]
+            elif maxval < 0:
+                min_max = [minval, 0]
+            else:
+                val = max(abs([minval, maxval]))
+                min_max = [-val, val]
         cbar.data_range = array(min_max)
     logger.debug(f"Data bounds have been set to to {cbar.data_range}")
 

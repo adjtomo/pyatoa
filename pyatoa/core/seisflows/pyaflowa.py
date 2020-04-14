@@ -292,11 +292,11 @@ class Pyaflowa:
                                   )
 
                     # Only plot maps once since they won't change
-                    if self.plot_srcrcv_maps and \
-                        self.model_number == "m00" and \
-                            self.step_count == "s00":
-                        mgmt.srcrcvmap(stations=coords, show=False,
-                                       save=oj(ev_paths["maps"], f"map_{sta}"))
+                    if self.plot_srcrcv_maps:
+                        map_fid = oj(ev_paths["maps"], f"map_{sta}.png")
+                        if not os.path.exists(map_fid):
+                            mgmt.srcrcvmap(stations=coords, show=False,
+                                           save=map_fid)
 
                     processed += 1
                 # Use traceback ensures more detailed error tracking

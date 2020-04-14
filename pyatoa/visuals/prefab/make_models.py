@@ -75,8 +75,8 @@ def call_models(fid, path_out="./figures"):
            "cmap": "RdYlBu",
            "reverse": False,
            "title": "Vs log(m/m00)",
-           "min_max": [-0.25, 0.25],
-           "default_range": True,
+           "min_max": None,
+           "default_range": False,
            "num_colors": 51,
            "num_clabels": 5,
            "round_to": None,
@@ -90,10 +90,16 @@ def call_models(fid, path_out="./figures"):
         if num == "init":
             num = 0
         par["title"] = f"{tit.capitalize()} log(m{int(num):0>2}/m00)"
-        par["default_range"] = False
+        par["cmap"] = "RdYlBu"
+        if "vs" in fid_out:
+            par["default_range"] = False
+        elif "vs" in fid_out:
+            par["default_range"] = True
     elif "poisson" in fid_out:
+        par["cmap"] = "viridis" 
         par["title"] = "Poissons Ratio"
-        par["default_range"] = True
+        par["default_range"] = False
+        par["min_max"] = None
 
     # Call the model maker
     model = Model(fid=fid, srcs=srcs_fid, rcvs=rcvs_fid, coast=coast_fid,
@@ -108,7 +114,8 @@ def call_models(fid, path_out="./figures"):
             model.startup()
             fid_out = model.plot_model_topdown(depth_km=z, **par)
             z_fids.append(fid_out)
-            imgs_to_pdf(z_fids, save_fid_z.format(tag="all"))
+            imgs_to_pdf(z_fids, 
+                        save_fid_z.format(tag="all").replace("png", "pdf"))
     if x_slices:
         par["save"] = save_fid_x
         x_fids = []
@@ -137,7 +144,7 @@ def call_models(fid, path_out="./figures"):
 
 
 if __name__ == "__main__":
-    fids = glob("*0004*.vtk")
+    fids = glob("*0008*vp*.vtk")
     for fid in fids:
         call_models(fid)
 
