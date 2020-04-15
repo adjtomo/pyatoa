@@ -123,7 +123,7 @@ class Model:
         :type show: bool
         :param show: show the figure after making it
         """
-        logger.info(f"slicing '{self.fid}' across Z at {depth_km}km")
+        logger.info(f"slicing '{self.fid}' across Z at {depth_km} [km]")
         coastline_z = self.ranges[-1]
         if depth_km != "surface":
             depth_m = -1 * abs(depth_km) * 1E3
@@ -164,12 +164,13 @@ class Model:
         annotate(s=f"{tag.replace('_', ' ')}", c="k", width=0.2)
 
         # Finalize
+        save_tag = None
         if save:
             mlab.savefig(save.format(tag=tag))
-            return save.format(tag=tag)
+            save_tag = save.format(tag=tag)
         if show:
             mlab.show()
-        return None
+        return save_tag
 
     def plot_depth_cross_section(self, choice, slice_at, show_axis=True,
                                  show=True, save=False, **kwargs):
@@ -257,11 +258,11 @@ class Model:
             annotate(x=.27, y=.3, s=anno_tag, c="k", width=0.15)
 
         # Finalize
+        save_tag = None
         if save:
             save_tag = save.format(tag=f"{tag:.0f}km")
             mlab.savefig(save_tag)
-            return save_tag
         if show:
             mlab.show()
-        return None
+        return save_tag
 

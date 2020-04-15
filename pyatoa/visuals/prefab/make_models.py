@@ -77,41 +77,47 @@ def call_models(fid, path_out="./figures"):
 
     # Pick specific slices to create
     z_slices = ["surface", 5, 10, 15, 30, 50]
-    x_slices = [0.5]
-    y_slices = [0.5]
+    # x_slices = [0.5]
+    # y_slices = [0.5]
 
-    # Set the parameters for all figures generated, passed as kwargs
+    # Set common parameters for all figures generated, passed as kwargs
     par = {"font_factor": 1.1,
            "convert": 1E-3,
            "zero_origin": True,
-           "cmap": "RdYlBu",
-           "reverse": False,
-           "title": "Vs log(m/m00)",
            "min_max": None,
-           "default_range": False,
            "num_colors": 51,
            "num_clabels": 5,
            "round_to": None,
            "show": False
            }
 
-    # Determine title and parameters for different plot types
+
+    # Different plot types require different colors and titles    
     if "log" in fid_out:
-        tit = os.path.basename(fid).split(".")[0].split("_")[-1]
-        num = os.path.basename(fid).split(".")[0].split("_")[-2]
+        # Collect some information from the file id
+        tit = os.path.basename(fid).split(".")[0].split("_")[-1]  # e.g. vp
+        num = os.path.basename(fid).split("_")[2]  # e.g. 0003
         if num == "init":
             num = 0
+
         par["title"] = f"{tit.capitalize()} log(m{int(num):0>2}/m00)"
-        par["cmap"] = "RdYlBu"
-        if "vs" in fid_out:
-            par["default_range"] = False
-        elif "vs" in fid_out:
-            par["default_range"] = True
-    elif "poisson" in fid_out:
-        par["cmap"] = "viridis" 
-        par["title"] = "Poissons Ratio"
+        par["cmap"] = "Spectral"
+        par["reverse"] = False
         par["default_range"] = False
-        par["min_max"] = None
+    elif "poisson" in fid_out:
+        par["title"] = "Poissons Ratio"
+        par["cmap"] = "viridis" 
+        par["reverse"] = False
+        par["default_range"] = True
+    elif "gradient" in fid_out:
+        tit = os.path.basename(fid).split("_")[2]
+        num = os.path.basename(fid).split("_")[1]
+        if num == "init": 
+            num = 0
+        par["title"] = f"Grad({tit.capitalize()}) [m{int(num):0>2}]"
+        par["cmap"] = "RdBu"
+        par["reverse"] = True
+        par["default_range"] = False
 
     # Call the model maker
     model = Model(fid=fid, srcs=srcs_fid, rcvs=rcvs_fid, coast=coast_fid,
@@ -148,7 +154,13 @@ def call_models(fid, path_out="./figures"):
 
 
 if __name__ == "__main__":
-    fids = glob("*gradient*.vtk")
+    fids = []
+    # fids += glob("*log*.vtk")
+    fids += glob("*poisson*.vtk")
+    # fids += glob("*gradient*.vtk")
+
     for fid in fids:
+        if "rcvs" in fid or "srcs" in fid:
+            continue
         call_models(fid)
 

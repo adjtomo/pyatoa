@@ -129,6 +129,7 @@ def colorscale(orientation, **kwargs):
 
     # Bound the colorscale
     logger.debug(f"Data bounds are set to {cbar.data_range}")
+    print(f"\t{cbar.data_range}", end="->")
     if default_range:
         # Round the default min and max bounds of the dataset
         if round_to:
@@ -154,6 +155,12 @@ def colorscale(orientation, **kwargs):
                 val = max([abs(_) for _ in [minval, maxval]])
                 min_max = [-val, val]
         cbar.data_range = array(min_max)
+
+    # Use 'E' notation for small values like gradients
+    if max(cbar.data_range) < .01:
+        cbar.scalar_bar.label_format = "%-#.2E"
+
+    print(cbar.data_range)
     logger.debug(f"Data bounds have been set to to {cbar.data_range}")
 
     # Create colorbar
