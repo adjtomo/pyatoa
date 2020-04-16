@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
 Functions used to create standard statistical plots for the Inspector class
+This is the Inspector's Gadgte ;)
 """
 import numpy as np
 import matplotlib as mpl
@@ -8,7 +9,7 @@ import matplotlib.pyplot as plt
 from pyatoa.utils.calculate import normalize_a_to_b
 
 
-class Artist:
+class Gadget:
     """
     A class of methods for plotting statistics from an Inspector.
     Should not be called on its own, these functions will be inherited by
@@ -282,10 +283,10 @@ class Artist:
 
         # Pick which value is going to be plotted
         if choice == "misfit":
-            misfits = self.sort_misfits_by_model()
+            misfits = self.sort_by_model("misfits")
             values = self.misfit_values(model)
         elif choice == "cc_shift_sec":
-            misfits = self.sort_windows_by_model()
+            misfits = self.sort_by_model("windows")
             values = self.window_values(model, choice)
         assert(model in misfits), f"model must be in {misfits.keys()}"
 
