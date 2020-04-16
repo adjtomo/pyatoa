@@ -79,8 +79,9 @@ class Inspector(Gadget):
                 status = self.append(dsfid, windows, srcrcv, misfits)
                 if status:
                     print("done")
-        self._get_str()
         self._get_info()
+        self._get_str()
+
     
     def _get_str(self):
         """
@@ -93,14 +94,19 @@ class Inspector(Gadget):
         # Get a list of internal public variables
         variable_list = [var for var in vars(self).keys()
                          if not var.startswith("_")]
-        str_out = "INSPECTOR\nVARIABLES:\n"
+        str_out = "INSPECTOR\n"
+        str_out += ("Attributes:\n"
+                    f"\tevents: {len(self._events)}\n"
+                    f"\tstations: {len(self._stations)}\n"
+                    f"\tmodels: {len(self._models)}\n")
+        str_out += "Variables:\n"
         for var in variable_list:
             str_out += f"\t{var}\n"
-        str_out += "METHODS:\n"
+        str_out += "Methods:\n"
         for meth in method_list:
             if meth in self.__class__.__dict__.keys():
                 str_out += f"\t{meth}\n"
-        str_out += "PLOTTING:\n"
+        str_out += "Plotting (Gadget):\n"
         for meth in method_list:
             if meth not in self.__class__.__dict__.keys():
                 str_out += f"\t{meth}\n"
@@ -220,7 +226,6 @@ class Inspector(Gadget):
             try:
                 info[event] = self.srcrcv[event][choice]
             except KeyError:
-                print(f"{choice} not a key of Inspector.srcrcv")
                 continue
         return info
 
@@ -255,7 +260,7 @@ class Inspector(Gadget):
         """
         events, msftval, nwins = [], [], []
 
-        misfits = self.sort_windows_by_model()[model][step]
+        misfits = self.sort_by_model("windows")[model][step]
         for event in misfits.keys():
             if eventid and event != eventid:
                 continue
@@ -302,7 +307,7 @@ class Inspector(Gadget):
         assert(choice in choices), f"choice must be in {choices}"
 
         ret = []
-        windows = self.sort_windows_by_model()
+        windows = self.sort_by_model("windows")
         for event in windows[model][step]:
             for sta in windows[model][step][event]:
                 for cha in windows[model][step][event][sta]:
@@ -543,7 +548,7 @@ class Inspector(Gadget):
         elif choice == "windows":
             d = self.windows
 
-        return {j:{k:d[k][j] for k in d if j in d[k]} for key in self.models}
+        return {j:{k:d[k][j] for k in d if j in d[k]} for j in self.models}
 
 
     def sort_by_window(self, model, step, choice="cc_shift_sec"):
@@ -565,7 +570,7 @@ class Inspector(Gadget):
         """
         values, info = [], []
 
-        windows = self.sort_windows_by_model()[model][step]
+        windows = self.sort_by_model("windows")[model][step]
         for event in windows:
             for sta in windows[event]:
                 for comp in windows[event][sta]:
@@ -624,7 +629,8 @@ class Inspector(Gadget):
         :rtype: dict
         :return: cumulative window length in seconds for each model
         """
-        windows = self.sort_windows_by_model()
+        self._get_str()
+        windows = self.sort_by_model("windows")
         cumulative_window_length = {key: 0 for key in windows}
         for model in windows:
             for event in windows[model]:
@@ -645,7 +651,7 @@ class Inspector(Gadget):
         :rtype: dict
         :return: total misfit for each model in the class
         """
-        misfits = self.sort_misfits_by_model()
+        misfits = self.sort_by_model("misfits")
 
         # One liner for nested dictionaries for each step to have a misfit val
         cmsft = {key: {step: 0 for step in misfits[key]} for key in misfits}
@@ -735,8 +741,8 @@ class Inspector(Gadget):
             del self.srcrcv[event]
 
         # Regather attribute information
-        self._get_str()
         self._get_info()
+        self._get_str()
 
 
 
