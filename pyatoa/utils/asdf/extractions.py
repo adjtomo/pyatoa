@@ -191,6 +191,8 @@ def count_misfit_windows(ds, model, step=None, count_by_stations=False):
         else:
             latest_step = windows.list()[-1]
         windows = windows[latest_step]
+    else:
+        windows = windows[step]
 
     # Count up windows for each channel
     for window in windows.list():

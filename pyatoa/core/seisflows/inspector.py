@@ -26,10 +26,10 @@ from pyatoa.utils.form import event_id
 from pyatoa.utils.calculate import abs_max
 from pyatoa.utils.srcrcv import lonlat_utm
 from pyatoa.utils.asdf.extractions import count_misfit_windows
-from pyatoa.visuals.artist import Artist
+from pyatoa.visuals.gadget import Gadget
 
 
-class Inspector(Artist):
+class Inspector(Gadget):
     """
     This plugin object will collect information from a Pyatoa run folder and
     allow the User to easily understand statistical information or generate
@@ -60,9 +60,13 @@ class Inspector(Artist):
         self.misfits = {}
         self.windows = {}
         self._utm = utm
+
+        # Internal attributes for properties, to be filled by getters
         self._stations = None
-        self._event_ids = None
+        self._events = None
         self._str = None
+        self._models = None
+        self._steps = None
 
         # If a tag is given, load rather than reading from datasets
         if tag is not None:
@@ -75,6 +79,9 @@ class Inspector(Artist):
                 status = self.append(dsfid, windows, srcrcv, misfits)
                 if status:
                     print("done")
+        self._get_info()
+        self._get_str()
+
     
     def _get_str(self):
         """
@@ -87,14 +94,19 @@ class Inspector(Artist):
         # Get a list of internal public variables
         variable_list = [var for var in vars(self).keys()
                          if not var.startswith("_")]
-        str_out = "INSPECTOR\nVARIABLES:\n"
+        str_out = "INSPECTOR\n"
+        str_out += ("Attributes:\n"
+                    f"\tevents: {len(self._events)}\n"
+                    f"\tstations: {len(self._stations)}\n"
+                    f"\tmodels: {len(self._models)}\n")
+        str_out += "Variables:\n"
         for var in variable_list:
             str_out += f"\t{var}\n"
-        str_out += "METHODS:\n"
+        str_out += "Methods:\n"
         for meth in method_list:
             if meth in self.__class__.__dict__.keys():
                 str_out += f"\t{meth}\n"
-        str_out += "PLOTTING:\n"
+        str_out += "Plotting (Gadget):\n"
         for meth in method_list:
             if meth not in self.__class__.__dict__.keys():
                 str_out += f"\t{meth}\n"
@@ -105,8 +117,6 @@ class Inspector(Artist):
         """
         Return a list of all variables and functions available for quick ref
         """
-        if not self._str or flush:
-            self._get_str()
         return self._str
 
     def __repr__(self):
@@ -116,27 +126,22 @@ class Inspector(Artist):
     @property
     def events(self):
         """Return a list of all event ids"""
-        if not self._event_ids:
-            self._get_event_ids_stations()
-        return self._event_ids
+        return self._events
 
     @property
     def stations(self):
         """Return a list of all stations"""
-        if not self._stations:
-            self._get_event_ids_stations()
         return self._stations
 
     @property
     def models(self):
         """Return a list of all models"""
-        return list(self.sort_misfits_by_model().keys())
+        return self._models
 
     @property
     def steps(self):
         """Returns a dictionary of models with values listing steps for each"""
-        mdls = self.sort_misfits_by_model().keys()
-        return {mdl: [step for step in mdl.keys()] for mdl in mdls}
+        return self._steps
 
     @property
     def mags(self):
@@ -153,19 +158,29 @@ class Inspector(Artist):
         """Return a dictionary of event depths in units of meters"""
         return self.event_info("depth_m")
 
-    def _get_event_ids_stations(self):
+    def _get_info(self):
         """
         One-time retrieve lists of station names and event ids, based on the 
         fact that stations are separated by a '.' and events are not.
+        Also grabs model and step information based on organization of misfits
         """
-        event_ids, stations = [], []
+        events, stations = [], []
         for key in self.srcrcv.keys():
             if "." in key:
                 stations.append(key)
             else:
-                event_ids.append(key)
+                events.append(key)
         self._stations = stations
-        self._event_ids = event_ids
+        self._events = events
+
+        # Only need to check one event because they share same model/step info
+        _event = list(self.misfits.keys())[0]
+        models = list(self.misfits[_event].keys())
+        steps = {m: [s for s in self.misfits[_event][m].keys()] for m in models} 
+                
+        self._models = models
+        self._steps = steps
+            
     
     def append(self, dsfid, windows=True, srcrcv=True, misfits=True):
         """
@@ -245,7 +260,7 @@ class Inspector(Artist):
         """
         events, msftval, nwins = [], [], []
 
-        misfits = self.sort_windows_by_model()[model][step]
+        misfits = self.sort_by_model("windows")[model][step]
         for event in misfits.keys():
             if eventid and event != eventid:
                 continue
@@ -292,7 +307,7 @@ class Inspector(Artist):
         assert(choice in choices), f"choice must be in {choices}"
 
         ret = []
-        windows = self.sort_windows_by_model()
+        windows = self.sort_by_model("windows")
         for event in windows[model][step]:
             for sta in windows[model][step][event]:
                 for cha in windows[model][step][event][sta]:
@@ -391,7 +406,7 @@ class Inspector(Artist):
                 num_win = count_misfit_windows(ds, model, step,
                                                count_by_stations=True)
 
-                # For each station, determine the number of windows and total misfit
+                # For each station, determine the number of windows and misfit
                 for station in \
                         ds.auxiliary_data.AdjointSources[model][step]:
                     sta_id = station.parameters["station_id"]
@@ -516,6 +531,26 @@ class Inspector(Artist):
             print("not found")
             pass
 
+    def sort_by_model(self, choice):
+        """
+        Rearrage dictionary so that the first layer corresponds to model
+        rather than the default sorting of by event.
+
+        One liner dict comprehension taken from StackOverflow
+
+        :rtype dict:
+        :return: misfits sorted by model
+        """
+        assert(choice in ["misfits", "windows"]), \
+                                    "choice must be in 'misfits', 'windows'"
+        if choice == "misfits":
+            d = self.misfits
+        elif choice == "windows":
+            d = self.windows
+
+        return {j:{k:d[k][j] for k in d if j in d[k]} for j in self.models}
+
+
     def sort_by_window(self, model, step, choice="cc_shift_sec"):
         """
         Sorts through misfit windows and returns based on choice.
@@ -535,7 +570,7 @@ class Inspector(Artist):
         """
         values, info = [], []
 
-        windows = self.sort_windows_by_model()[model][step]
+        windows = self.sort_by_model("windows")[model][step]
         for event in windows:
             for sta in windows[event]:
                 for comp in windows[event][sta]:
@@ -568,7 +603,7 @@ class Inspector(Artist):
                             misfits[model][step][sta] = {"msft": 0, "nwin": 0,
                                                          "nevents": 0}
 
-                        # Append misfit info from each station-event in same model
+                        # Append misfit info from each station-event 
                         misfits[model][step][sta]["msft"] += (
                             self.misfits[event][model][sta]["msft"]
                         )
@@ -584,51 +619,6 @@ class Inspector(Artist):
 
         return misfits
 
-    def sort_misfits_by_model(self):
-        """
-        Rearrage misfits so that the first dictionary layer is sorted by model
-        rather than the default sorting of by event
-
-        :rtype dict:
-        :return: misfits sorted by model
-        """
-        misfits = {}
-        for event in self.misfits:
-            for model in self.misfits[event]:
-                if model not in misfits:
-                    misfits[model] = {}
-                for step in self.misfits[event][model]:
-                    if step not in misfits[model]:
-                        misfits[model][step] = {}
-                    if event not in misfits[model][step]:
-                        misfits[model][step][event] = {}
-                    misfits[model][step][event] = \
-                        self.misfits[event][model][step]
-
-        return misfits
-
-    def sort_windows_by_model(self):
-        """
-        Rearrage windows so that the first dictionary layer is sorted by model
-        rather than the default sorting of by event
-
-        :rtype dict:
-        :return: windows sorted by model
-        """
-        windows = {}
-        for event in self.windows:
-            for model in self.windows[event]:
-                if model not in windows:
-                    windows[model] = {}
-                for step in self.windows[event][model]:
-                    windows[model][step] = {}
-                    if event not in windows[model][step]:
-                        windows[model][step][event] = {}
-                    windows[model][step][event] = \
-                        self.windows[event][model][step]
-
-        return windows
-
     def cum_win_len(self):
         """
         Find the cumulative length of misfit windows for a given model.
@@ -639,7 +629,8 @@ class Inspector(Artist):
         :rtype: dict
         :return: cumulative window length in seconds for each model
         """
-        windows = self.sort_windows_by_model()
+        self._get_str()
+        windows = self.sort_by_model("windows")
         cumulative_window_length = {key: 0 for key in windows}
         for model in windows:
             for event in windows[model]:
@@ -660,7 +651,7 @@ class Inspector(Artist):
         :rtype: dict
         :return: total misfit for each model in the class
         """
-        misfits = self.sort_misfits_by_model()
+        misfits = self.sort_by_model("misfits")
 
         # One liner for nested dictionaries for each step to have a misfit val
         cmsft = {key: {step: 0 for step in misfits[key]} for key in misfits}
@@ -749,8 +740,9 @@ class Inspector(Artist):
             del self.windows[event]
             del self.srcrcv[event]
 
-        # Regather event id list
-        self._get_event_ids_stations()
+        # Regather attribute information
+        self._get_info()
+        self._get_str()
 
 
 
