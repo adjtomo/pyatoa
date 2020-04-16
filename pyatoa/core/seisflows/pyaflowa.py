@@ -236,7 +236,7 @@ class Pyaflowa:
 
         return config, ev_paths
 
-    def process(self, cwd, event_id=None):
+    def process(self, cwd, event_id=None, overwrite=None):
         """
         Main workflow calling on the core functionality of Pyatoa to process
         observed and synthetic waveforms and perform misfit quantification.
@@ -276,7 +276,7 @@ class Pyaflowa:
                     mgmt.reset()
                     mgmt.gather(station_code=f"{net}.{sta}.*.HH*")
                     mgmt.standardize()
-                    mgmt.preprocess(overwrite=preproc)
+                    mgmt.preprocess(overwrite=overwrite)
                     mgmt.window(fix_windows=fix_windows)
                     mgmt.measure()
 
