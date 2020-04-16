@@ -75,12 +75,10 @@ class Pyaflowa:
         self.maps_dir = oj(pyatoa_io, "figures", "maps")
         self.vtks_dir = oj(pyatoa_io, "figures", "vtks")
         self.stats_dir = oj(pyatoa_io, "figures", "stats")
-        self.composites_dir = oj(pyatoa_io, "figures", "composites")
 
         # Create Pyatoa directory structure
         for fid in [self.figures_dir, self.data_dir, self.misfits_dir,
-                    self.maps_dir, self.vtks_dir, self.composites_dir,
-                    self.snapshots_dir]:
+                    self.maps_dir, self.vtks_dir, self.snapshots_dir]:
             if not os.path.exists(fid):
                 os.makedirs(fid)
 
@@ -122,30 +120,6 @@ class Pyaflowa:
         """
         return step(self.step)
 
-    def fixwin(self, ds):
-        """
-        Determine if window fixing is required. This can be done by step count,
-        by iteration, or not at all.
-
-        :type ds: pyasdf.ASDFDataSet
-        :param ds: dataset to check for misfit windows
-        :rtype: bool
-        :return: if fix window by step, always return true.
-                 if fix by iteration, only return True if first step count
-                 else return False
-        """
-        if self.fix_windows == "step":
-            return True
-        elif self.fix_windows == "iter":
-            # True if this is the first step in the iteration, False else
-            if self.hasattr(ds.auxiliary_data, "MisfitWindows"):
-                return not hasattr(ds.auxiliary_data.MisfitWindows,
-                                   self.model_number)
-            else:
-                return False
-        else:
-            return False
-
     def _check(self, ext_par):
         """
         Perform some sanity checks upon initialization. If they fail, hard exit
@@ -162,6 +136,10 @@ class Pyaflowa:
                            "than the length of synthetics... exiting")
             sys.exit(-1)
 
+        # Check that fix windows parameter set correctly
+        assert(self.fix_windows in [True, False, "iter"]), \
+                    "fix_windows must be bool or 'iter'"
+
         # Try to feed the parameter file into Config to see if it throws
         # any ValueErrors from incorrect arguments
         try:
@@ -170,6 +148,31 @@ class Pyaflowa:
             logger.warning(e)
             logger.warning("Config encountered unexpected arguments... exiting")
             sys.exit(-1)
+
+    def fixwin(self, ds):
+        """
+        Determine if window fixing is required. This can be done by step count,
+        by iteration, or not at all.
+
+        :type ds: pyasdf.ASDFDataSet
+        :param ds: dataset to check for misfit windows
+        :rtype: bool
+        :return: if fix window True, don't reevaluate window unless m00s00
+                 if fix by iteration, return False if s00, True otherwise
+                 if fix window False, reevaluate windows each step
+        """
+        if isinstance(self.fix_windows, bool):
+            return self.fix_windows
+        elif self.fix_windows == "iter":
+            # False if this is the first step in the iteration, True else
+            try:
+                return hasattr(ds.auxiliary_data.MisfitWindows,
+                               self.model_number)
+            except AttributeError:
+                # If no MisfitWindows aux data, ds has just been instantiated
+                return False
+        else:
+            raise TypeError("fix_windows should be bool or 'iter'")
 
     def set(self, **kwargs):
         """
@@ -343,17 +346,22 @@ class Pyaflowa:
                            pathout=self.misfits_dir)
 
         # Combine images into a pdf for easier visualization, will delete .png's
-        if self.par["combine_imgs"]:
-            # path/to/eventid_modelstep_wavmap.png
+        if self.combine_imgs:
             logger.info("creating composite pdf")
-            save_to = oj(self.composites_dir,
-                         f"{config.event_id}_"
-                         f"{self.model_number}{self.step_count}.pdf")
-            tile_combine_imgs(ds=ds, save_pdf_to=save_to,
+            # path/to/figures/m??/s??/eid_m??_s??.pdf
+            fig_path = oj(self.figures_dir, self.model_number, self.step_count)
+            fid = f"{config.event_id}_{self.model_number}{self.step_count}.pdf"
+            if not os.path.exists(fig_path):
+                os.makedirs(fig_path)
+            tile_combine_imgs(ds=ds, save_pdf_to=oj(fig_path, fid),
                               wavs_path=ev_paths["figures"],
                               maps_path=ev_paths["maps"],
                               purge_wavs=True, purge_tiles=True
                               )
+            # remove the empty event directory which has been purged
+            if not glob.glob(oj(ev_paths["figures"], "*")):
+                os.rmdir(ev_paths["figures"])
+                
 
     def finalize(self):
         """
