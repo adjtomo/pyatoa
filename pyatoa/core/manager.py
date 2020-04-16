@@ -438,7 +438,8 @@ class Manager:
         else:
             raise NotImplementedError
 
-    def load(self, station_code, model, ds=None):
+    def load(self, station_code, ds=None, synthetic_tag=None, 
+             observed_tag=None):
         """
         Populate the manager using a given PyASDF Dataset, based on user-defined
         station code. Useful for re-instantiating an existing workflow that
@@ -446,8 +447,6 @@ class Manager:
 
         :type station_code: str
         :param station_code: SEED conv. code, e.g. NZ.BFZ.10.HHZ
-        :type model: str
-        :param model: model number to search for data, e.g. 'm00'
         :type ds: None or pyasdf.ASDFDataSet
         :param ds: dataset can be given to load from, will not set the ds
         """
@@ -457,18 +456,25 @@ class Manager:
         else:
             raise AttributeError("load requires a Dataset")
 
-        assert len(station_code.split('.')) == 4,\
-            "station_code must be in form 'NN.SSS.LL.CCC'"
+        assert len(station_code.split('.')) == 2,\
+            "station_code must be in form 'NN.SSS'"
 
         self.event = ds.events[0]
 
-        net, sta, _, _ = station_code.split('.')
+        net, sta = station_code.split('.')
         sta_tag = f"{net}.{sta}"
         if sta_tag in ds.waveforms.list():
-            self.st_obs = ds.waveforms[sta_tag][self.config.observed_tag]
-            self.st_syn = ds.waveforms[sta_tag][
-                self.config.synthetic_tag.format(model)]
+            if synthetic_tag is None:
+                synthetic_tag = self.config.synthetic_tag
+            self.st_syn = ds.waveforms[sta_tag][synthetic_tag]
+
+            if observed_tag is None:
+                observed_tag = self.config.observed_tag
+            self.st_obs = ds.waveforms[sta_tag][observed_tag]
+
             self.inv = ds.waveforms[sta_tag].StationXML
+        else:
+            logger.warning(f"no data for {sta_tag} found in dataset")
 
     def standardize(self, force=False, standardize_to="syn"):
         """
@@ -897,7 +903,7 @@ class Manager:
                                       tag=f"{path}/{adj_src_tag}",
                                       time_offset=self._time_offset_sec)
 
-    def plot(self, append_title='', length_sec=None,
+    def plot(self, append_title='', length_sec=None, normalize=False,
              figsize=(11.69, 8.27), dpi=100, show=True, save=None,
              return_figure=False, **kwargs):
         """
@@ -912,6 +918,9 @@ class Manager:
         :param length_sec: if "dynamic", dynamically determine length of wav 
             based on src rcv distance. If type float or type int, User defined
             waveform length in seconds. If None, default to full trace length
+        :type normalize: bool
+        :param normalize: normalize obs and syn waveforms, e.g. to make it 
+            easier to look at phase matching
         :type show: bool
         :param show: show the plot once generated, defaults to False
         :type save: str
@@ -943,11 +952,11 @@ class Manager:
 
         # Call on window making function to produce waveform plots
         fig_window = window_maker(
-            st_obs=self.st_obs, st_syn=self.st_syn, config=self.config,
+            st_obs_in=self.st_obs, st_syn_in=self.st_syn, config=self.config,
             time_offset_sec=self._time_offset_sec, windows=self.windows,
             staltas=self.staltas, adj_srcs=self.adj_srcs, length_sec=length_sec,
             append_title=append_title, figsize=figsize, dpi=dpi, show=show,
-            save=save, **kwargs
+            save=save, normalize=normalize, **kwargs
         )
         if return_figure:
             return fig_window

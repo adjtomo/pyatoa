@@ -439,9 +439,18 @@ class Config:
         :type ds: pyasdf.ASDFDataSet
         :param ds: dataset with config parameter to read
         :type path: str
-        :param path: model number e.g. 'm00' or 'default'
+        :param path: model number e.g. 'm00' or 'default', or 'm00/s00'
         """
-        cfgin = ds.auxiliary_data.Configs[path].parameters
+        # Check if nested paths are provided
+        splitpath = path.split("/")
+        if len(splitpath) > 1:
+            cfgin = ds.auxiliary_data.Configs
+            for p in splitpath:
+                cfgin = cfgin[p]
+            cfgin = cfgin.parameters
+        else:
+            cfgin = ds.auxiliary_data.Configs[path].parameters
+
         cfgpaths = {}
         for key, item in cfgin.items():
             if "cfgpaths" in key:

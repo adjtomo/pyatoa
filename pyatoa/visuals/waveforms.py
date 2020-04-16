@@ -53,8 +53,8 @@ def setup_plot(number_of, twax=True):
     return axes, twaxes
 
 
-def window_maker(st_obs, st_syn, config, time_offset_sec=0., windows=None,
-                 staltas=None, adj_srcs=None, length_sec=None,
+def window_maker(st_obs_in, st_syn_in, config, time_offset_sec=0., windows=None,
+                 staltas=None, adj_srcs=None, length_sec=None, normalize=False,
                  append_title=None, show=False, save=None, **kwargs):
     """
     Plot streams and windows. assumes you have N observation traces and
@@ -66,10 +66,10 @@ def window_maker(st_obs, st_syn, config, time_offset_sec=0., windows=None,
         volumentric delta function since it's assumed this is  happening in a 
         3D volume. 
 
-    :type st_obs: obspy.stream.Stream
-    :param st_obs: observation stream object to plot
-    :type st_syn: obspy.stream.Stream
-    :param st_syn: synthetic stream object to plot
+    :type st_obs_in: obspy.stream.Stream
+    :param st_obs_in: observation stream object to plot
+    :type st_syn_in: obspy.stream.Stream
+    :param st_syn_in: synthetic stream object to plot
     :type config: pyatoa.core.config.Config
     :param config: Configuration that must contain:
         required: component_list, unit_output, event_id, min_period, max_period
@@ -85,6 +85,8 @@ def window_maker(st_obs, st_syn, config, time_offset_sec=0., windows=None,
     :type length_sec: int
     :param length_sec: sets the seismogram length, useful for short waveforms
         that have lots of zeros in the back
+    :type normalize: bool
+    :param normalize: normalize obs and syn waveforms before plotting
     :type append_title: str
     :param append_title: appends any extra information after the stock title
     :type show: bool or str
@@ -93,6 +95,10 @@ def window_maker(st_obs, st_syn, config, time_offset_sec=0., windows=None,
     :type save: str
     :param save: pathname to save the figure, if not given, will not save
     """
+    # Copy the streams to avoid any accidental edit-in-place
+    st_obs = st_obs_in.copy()
+    st_syn = st_syn_in.copy()
+
     # general kwargs
     figsize = kwargs.get("figsize", (11.689, 8.27))  # A4
     dpi = kwargs.get("dpi", 100)
@@ -164,14 +170,20 @@ def window_maker(st_obs, st_syn, config, time_offset_sec=0., windows=None,
 
     # Plot each component in the same fashion
     for i, comp in enumerate(config.component_list):
-        obs = st_obs.select(component=comp)
-        syn = st_syn.select(component=comp)
+        # Easier to work with trace objects since were going component-wise
+        obs = st_obs.select(component=comp)[0]
+        syn = st_syn.select(component=comp)[0]
+
+        # Option to normalize the data traces
+        if normalize:
+            obs.data /= obs.data.max()
+            syn.data /= syn.data.max()
 
         # WAVEFORMS (convention of black for obs, red for syn)
-        a1, = axes[i].plot(t, obs[0].data, obs_color, zorder=z,
-                           label="{} ({})".format(obs[0].get_id(), obs_tag))
-        a2, = axes[i].plot(t, syn[0].data, syn_color, zorder=z,
-                           label="{} (SYN)".format(syn[0].get_id()))
+        a1, = axes[i].plot(t, obs.data, obs_color, zorder=z,
+                           label="{} ({})".format(obs.get_id(), obs_tag))
+        a2, = axes[i].plot(t, syn.data, syn_color, zorder=z,
+                           label="{} (SYN)".format(syn.get_id()))
         lines_for_legend = [a1, a2]
 
         # Seismogram length; min starttime of -10s 
@@ -188,7 +200,7 @@ def window_maker(st_obs, st_syn, config, time_offset_sec=0., windows=None,
         # Amplitude ratio criteria
         if config.window_amplitude_ratio > 0:
             threshold_amp = abs(
-                config.window_amplitude_ratio * abs_max(obs[0].data)
+                config.window_amplitude_ratio * abs_max(obs.data)
             )
             # Both negative and positive bounds
             for sign in [-1, 1]:
@@ -222,7 +234,7 @@ def window_maker(st_obs, st_syn, config, time_offset_sec=0., windows=None,
 
                 window_anno = window_anno_template.format(
                     mcc=window.max_cc_value,
-                    ccs=window.cc_shift * st_obs[0].stats.delta,
+                    ccs=window.cc_shift * obs.stats.delta,
                     dln=window.dlnA, lft=tleft, lgt=tright - tleft
                 )
                 # Annotate window information
@@ -319,6 +331,9 @@ def window_maker(st_obs, st_syn, config, time_offset_sec=0., windows=None,
         title = " ".join([title, config.event_id])
     # Filter bounds to plot title
     title += f" [{config.min_period}s, {config.max_period}s]"
+    # Tell the User if the data has been normalized
+    if normalize:
+        title += " (normalized) "
     # User appended title information
     if append_title is not None:
         title = " ".join([title, append_title])
