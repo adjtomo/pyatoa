@@ -55,6 +55,8 @@ class Inspector(Gadget):
         :param path: path to the ASDFDataSets that were outputted
             by Pyaflowa in the Seisflows workflow
         """
+        status = 0
+
         # If no tag given, create dictionaries based on datasets
         self.srcrcv = {}
         self.misfits = {}
@@ -67,10 +69,11 @@ class Inspector(Gadget):
         self._str = None
         self._models = None
         self._steps = None
+        self._iterations = 0
 
         # If a tag is given, load rather than reading from datasets
         if tag is not None:
-            self.load(tag)
+            status = self.load(tag)
         elif path is not None:
             dsfids = glob(os.path.join(path, "*.h5"))
             for i, dsfid in enumerate(dsfids):
@@ -79,9 +82,9 @@ class Inspector(Gadget):
                 status = self.append(dsfid, windows, srcrcv, misfits)
                 if status:
                     print("done")
-        self._get_info()
-        self._get_str()
-
+        if status:
+            self._get_info()
+            self._get_str()
     
     def _get_str(self):
         """
@@ -144,6 +147,11 @@ class Inspector(Gadget):
         return self._steps
 
     @property
+    def iterations(self):
+        """Returns the number of iterations, or the sum of all step counts"""
+        return self._iterations
+
+    @property
     def mags(self):
         """Return a dictionary of event magnitudes"""
         return self.event_info("mag")
@@ -176,12 +184,15 @@ class Inspector(Gadget):
         # Only need to check one event because they share same model/step info
         _event = list(self.misfits.keys())[0]
         models = list(self.misfits[_event].keys())
-        steps = {m: [s for s in self.misfits[_event][m].keys()] for m in models} 
-                
+        steps = {m: [s for s in self.misfits[_event][m].keys()] for m in models}
+        iterations = 0
+        for m in models:
+            iterations += len(steps[m])
+
         self._models = models
         self._steps = steps
-            
-    
+        self._iterations = iterations
+
     def append(self, dsfid, windows=True, srcrcv=True, misfits=True):
         """
         Append a new pyasdf.ASDFDataSet file to the current set of internal
@@ -221,6 +232,8 @@ class Inspector(Gadget):
         :param choice: choice of key to query dictionary
             choices are: depth_m, lat, lon, mag, time, utm_x, utm_y
         """
+        choices = ["depth_m", "lat", "lon", "mag", "time", "utm_x", "utm_y"]
+        assert(choice in choices), f"Choice must be in {choices}"
         info = {}
         for event in self.srcrcv.keys():
             try:
@@ -243,6 +256,8 @@ class Inspector(Gadget):
 
         :type model: str
         :param model: model to query, e.g. 'm00'
+        :type step: str
+        :param step: step count to query, e.g. 's00'
         :type choice: str
         :param choice: choice of number of measurement to return, available
             choices are: dlna, length_s, max_cc, rel_end, rel_start, weight
@@ -316,7 +331,7 @@ class Inspector(Gadget):
 
     def misfit_values(self, model, step):
         """
-        Return a list of misfit values for a given model
+        Return a list of misfit values for a given model and step
 
         :type model: str
         :param model: model to query e.g. 'm00'
@@ -330,7 +345,7 @@ class Inspector(Gadget):
             for model_ in self.misfits[event]:
                 if model_ != model:
                     continue
-                for step_ in self.misfits[event][step]:
+                for step_ in self.misfits[event][model][step]:
                     if step_ != step:
                         continue
                     for sta in self.misfits[event][model][step]:
@@ -506,6 +521,8 @@ class Inspector(Gadget):
 
         :type tag: str
         :param tag: unique naming tag for saving json files
+        :type path: str
+        :param path: optional path to file, defaults to cwd
         """
         self.save(tag, path)
 
@@ -519,6 +536,8 @@ class Inspector(Gadget):
         :param path: optional path to file, defaults to cwd
         """
         variables = [_ for _ in vars(self).keys() if '_' not in _]
+        if tag.endswith(".json"):
+            tag = tag.split(".")[0]
 
         print(f"reading file", end="... ")
         try:
@@ -527,29 +546,32 @@ class Inspector(Gadget):
                 print("found")
                 for v in variables:
                     setattr(self, v, loaded_variables[v])
+            return 1
         except FileNotFoundError:
             print("not found")
-            pass
+            return 0
 
     def sort_by_model(self, choice):
         """
         Rearrage dictionary so that the first layer corresponds to model
         rather than the default sorting of by event.
 
-        One liner dict comprehension taken from StackOverflow
-
         :rtype dict:
         :return: misfits sorted by model
         """
         assert(choice in ["misfits", "windows"]), \
-                                    "choice must be in 'misfits', 'windows'"
+            "choice must be in 'misfits', 'windows'"
         if choice == "misfits":
             d = self.misfits
         elif choice == "windows":
             d = self.windows
 
-        return {j:{k:d[k][j] for k in d if j in d[k]} for j in self.models}
-
+        # Nasty one liner to rearrage a double-nested dictionary from
+        # event/model/step - > model/step/event
+        return {m: {s: {e: d[e][m][s] for e in d if m in d[e]}
+                    for s in self.steps[m]}
+                for m in self.models
+                }
 
     def sort_by_window(self, model, step, choice="cc_shift_sec"):
         """
@@ -619,29 +641,39 @@ class Inspector(Gadget):
 
         return misfits
 
-    def cum_win_len(self):
+    def measurements(self, choice):
         """
-        Find the cumulative length of misfit windows for a given model.
-        This is hopefully a more useful proxy than number of measurements
-        because Pyflex sometimes joins windows which makes number of windows
-        a difficult variable to use.
+        Find the cumulative length of misfit windows for a given model/step,
+        or the number of misfit windows for a given model/step.
 
         :rtype: dict
-        :return: cumulative window length in seconds for each model
+        :return: cumulative window length in seconds for each model/step
         """
+        assert(choice in ["cum_win_len", "num_windows"]), \
+            "choice must be 'cum_win_len or 'num_windows"
         self._get_str()
         windows = self.sort_by_model("windows")
-        cumulative_window_length = {key: 0 for key in windows}
+
+        cumulative_window_length = {m: {s: 0 for s in windows[m]}
+                                    for m in windows
+                                    }
+        number_of_windows = {m: {s: 0 for s in windows[m]}
+                             for m in windows
+                             }
         for model in windows:
-            for event in windows[model]:
-                for step in windows[model][event]:
+            for step in windows[model]:
+                for event in windows[model][step]:
                     for sta in windows[model][step][event]:
                         for cha in windows[model][step][event][sta]:
                             w_ = windows[model][step][event][sta][cha]
+                            # Each of these entries is a list of the same len
+                            number_of_windows[model][step] += len(w_["dlna"])
                             for length in w_["length_s"]:
-                                cumulative_window_length[model] += length
-
-        return cumulative_window_length
+                                cumulative_window_length[model][step] += length
+        if choice == "cum_win_len":
+            return cumulative_window_length
+        elif choice == "num_windows":
+            return number_of_windows
 
     def sum_misfits(self):
         """
@@ -656,8 +688,8 @@ class Inspector(Gadget):
         # One liner for nested dictionaries for each step to have a misfit val
         cmsft = {key: {step: 0 for step in misfits[key]} for key in misfits}
         for model in misfits:
-            total_misfit = 0
             for step in misfits[model]:
+                total_misfit = 0
                 for e, event in enumerate(misfits[model][step]):
                     ev_msft = 0
                     for sta in misfits[model][step][event]:

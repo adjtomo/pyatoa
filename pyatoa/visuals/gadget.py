@@ -516,11 +516,12 @@ class Gadget:
         if show:
             plt.show
     
-    def misfit_histogram(self, model, step, model_comp=None, choice="cc_shift_sec",
-                         binsize=1., show=True, save=None, title=None, 
-                         anno=None, xlim=None, color="darkorange", 
-                         color_comp="deepskyblue", fontsize=12, figsize=(8,6),
-                         legend=True, label_range=False, xstep=2):
+    def misfit_histogram(self, model, step, model_comp=None, step_comp=None,
+                         choice="cc_shift_sec", binsize=1., show=True,
+                         save=None, title=None,  anno=None, xlim=None,
+                         color="darkorange", color_comp="deepskyblue",
+                         fontsize=12, figsize=(8,6), legend=True,
+                         label_range=False, xstep=2):
         """
         Create a histogram of misfit information for either time shift or
         amplitude differences. Option to compare against different models,
@@ -534,6 +535,8 @@ class Gadget:
         :param step: step count to query, e.g. 's00'
         :type model_comp: str
         :param model_comp: model to compare with, will be plotted in front
+        :type step_comp: str
+        :param step_comp: step to compare with
         :type choice: str
         :param choice: choice of 'cc_shift_s' for time shift, or 'dlna' as
             amplitude
@@ -559,12 +562,12 @@ class Gadget:
 
             return mean, var, std
 
-        def retrieve_val(model):
+        def retrieve_val(model_, step_):
             """retrieve some model information"""
             if choice == "misfit":
-                val = self.misfit_values(model, step)
+                val = self.misfit_values(model_, step_)
             else:
-                val = self.window_values(model, step, choice)
+                val = self.window_values(model_, step_, choice)
 
             # Determine bound for histogram
             min_value = np.floor(min(val))
@@ -573,22 +576,26 @@ class Gadget:
 
             return val, bound
 
+        # Assigning local variables to be used in plotting and checks
         choices = ["misfit", "dlna", "cc_shift_sec", "length_s"]
-        assert(choice in choices), f"choice must be in {choices}"
-        assert(model in self.models), f"model {model} not in Inspector"
-        if model_comp:
-            pass
-            # assert(model != model_comp), "model_comp must be different"
-    
         label_dict = {"cc_shift_sec": "Time Shift (s)",
                       "dlna": "$\Delta\ln$(A)",
                       "misfit": "misfit",
                       "length_s": "Window Length (s)"}
    
-        # Get the values to plot on histogram, and the bounds of the bins
-        val, bound = retrieve_val(model)
+        # Few checks to make sure User defined model and step are available
+        assert(choice in choices), f"choice must be in {choices}"
+        assert(model in self.models), f"model {model} not in Inspector"
+        assert(step in self.steps[model]), f"{model} has no step {step}"
         if model_comp:
-            val_comp, bound_comp = retrieve_val(model_comp)
+            assert(step_comp is not None), "step_comp required for model_comp"
+            assert(step_comp in self.steps[model_comp]), \
+                f"{model_comp} has no step {step_comp}"
+    
+        # Get the values to plot on histogram, and the bounds of the bins
+        val, bound = retrieve_val(model, step)
+        if model_comp:
+            val_comp, bound_comp = retrieve_val(model_comp, step_comp)
             bound_max = max(bound, bound_comp)
             
         # Plot the histogram, side by side if comparing two models
@@ -609,7 +616,7 @@ class Gadget:
                      bins=np.arange(-1*bound, bound+.1, binsize),
                      color=color,  histtype="bar", 
                      edgecolor="black", linewidth=3, 
-                     label=f"{model}; N={len(val)}", 
+                     label=f"{model}{step}; N={len(val)}", 
                      zorder=11, alpha=1.
                      )
             mu1, var1, std1 = get_stats(n, bins)
@@ -620,7 +627,7 @@ class Gadget:
                      bins=np.arange(-1*bound, bound+.1, binsize),
                      color=color_comp,  histtype="bar", 
                      edgecolor="black", linewidth=2.5, 
-                     label=f"{model_comp}; N={len(val_comp)}", 
+                     label=f"{model_comp}{step_comp}; N={len(val_comp)}", 
                      zorder=10, 
                      )
             mu2, var2, std2 = get_stats(n2, bins2)
@@ -772,57 +779,100 @@ class Gadget:
 
         plt.show()
 
-    def convergence(self, linewidth=2., markersize=8., c="k", show=True,
-                    save=None):
+    def convergence(self, choice, windows_by="cum_win_len", fontsize=15,
+                    show=True, save=None):
         """
         Plot the convergence rate over the course of an inversion.
-        Scatter plot of total misfit against model number.
+        Scatter plot of total misfit against model number, or by step count
 
         :type choice: str
-        :param choice: choice between plotting "step" lengths or "iter" ations
-        :type linewidth: float
-        :param linewidth: line width for the connecting lines
-        :type markersize: float
-        :param markersize: marker size of the points
+        :param choice: choice to plot convergence through 'model' or 'iter'
+        :type windows_by: str
+        :param windows_by: parameter to use for Inspector.measurements() to
+            determine how to illustrate measurement number, either by
+            cum_win_len: cumulative window length in seconds
+            num_windows: number of misfit windows
+        :type fontsize: int
+        :param fontsize: fontsize of all labels
         :type show: bool
         :param show: show the plot after making it
         :type save: str
         :param save: file id to save the figure to
         """
-        # Set up the values to plot
-        misfits = self.sum_misfits()
-        windows = self.cum_win_len()
-        models = list(misfits.keys())
-        xvalues = np.arange(0, 10, 1)
-        misfits = list(misfits.values())
-        windows = list(windows.values())
-
+        assert(choice in ["iter", "model"]), "choice must be in 'iter', 'model'"
         f, ax1 = plt.subplots(figsize=(8, 6))
         ax2 = ax1.twinx()
-        ax1.plot(xvalues, misfits, 'o-', c=c, linewidth=linewidth,
-                 markersize=markersize)
-        ax2.plot(xvalues, windows, 'v--', c=c, linewidth=linewidth,
-                 markersize=markersize)
+        ydict = {"cum_win_len": "Cumulative Window Length [s]",
+                 "num_windows": "Numer of Measurements"}
 
-        ax1.set_xlabel("Model Number")
-        ax1.set_ylabel("Total Normalized Misfiti (solid)")
-        ax2.set_ylabel("Cumulative Window Length [s] (dashed)", rotation=270, 
-                       labelpad=15.)
+        # Set up the values to plot
+        misfit_dict = self.sum_misfits()
+        window_dict = self.measurements(windows_by)
+
+        # Plot by model only, looking at final misfit and window count
+        if choice == "model":
+            xlabels, misfits, windows = [], [], []
+            xvalues = np.arange(0, len(self.models), 1)
+            for m, model in enumerate(self.models):
+                xlabels.append(model)
+                try:
+                    misfits.append(misfit_dict[model]["s00"])
+                    windows.append(window_dict[model]["s00"])
+                except KeyError:
+                    # if s00 not available, it is contained in m[i-1]s[-1]
+                    prev_model = self.models[m-1]
+                    last_step = self.steps[prev_model][-1]
+                    misfits.append(misfit_dict[prev_model][last_step])
+                    windows.append(window_dict[prev_model][last_step])
+
+            ax1.plot(xvalues, misfits, 'o-', linewidth=3, markersize=10, c="k")
+            ax2.plot(xvalues, windows, 'v--', linewidth=3, markersize=10, c="k")
+
+            # Change the labels to the model numbers
+            ax1.set_xlabel("Model number", fontsize=fontsize)
+            ax1.xaxis.set_ticks(xvalues)
+            ax1.set_xticklabels(xlabels, rotation=45, ha="right")
+
+        # Plot by iteration to show step count
+        elif choice == "iter":
+            xlabels = []
+            i, misfit_check = 0, 0
+            for m, model in enumerate(self.models):
+                j = i  # j counts the start of each iteration
+                misfits, windows = [], []
+                for s, step in enumerate(self.steps[model]):
+                    i += 1  # i counts the end of each iteration
+                    xlabels.append(f"{model}{step}")
+                    misfits.append(misfit_dict[model][step])
+                    windows.append(window_dict[model][step])
+                # If the misfits are the same, then the two iterations are same
+                if np.isclose(misfits[0], misfit_check):
+                    j -= 1
+                    i -= 1
+                xvalues = np.arange(j, i, 1)
+                ax1.plot(xvalues, misfits, 'o-', linewidth=3, markersize=10,
+                         label=model)
+                ax2.plot(xvalues, windows, 'v--', linewidth=3, markersize=10,
+                         label=model)
+                misfit_check = misfits[-1]
+            ax1.set_xlabel("Iteration", fontsize=fontsize)
+            ax1.legend()
+
+        # Custom formatting
+        for ax in [ax1, ax2]:
+            ax.tick_params(which="both", direction="in", labelsize=fontsize)
+        ax1.set_ylabel("Total Normalized Misfit (solid)", fontsize=fontsize)
+        ax2.set_ylabel(f"{ydict[windows_by]} (dashed)", rotation=270,
+                       labelpad=15., fontsize=fontsize)
         ax2.ticklabel_format(style="sci", axis="y", scilimits=(0, 0))
-        ax1.grid(True, alpha=0.5, linestyle='--', linewidth=1.)
-
-        # Change the labels to the model numbers
-        labels = [item.get_text() for item in ax1.get_xticklabels()]
-        for i, model in enumerate(models):
-            labels[i] = model
-        ax1.set_xticklabels(labels)
+        f.tight_layout()
 
         if save:
             plt.savefig(save)
         if show:
             plt.show()
 
-        plt.close()
+        return f, ax1
 
 
 def colormap_colorbar(cmap, **kwargs):
