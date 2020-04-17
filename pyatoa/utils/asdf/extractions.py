@@ -1,6 +1,8 @@
 """
 Functions for extracting information from a Pyasdf ASDFDataSet object
 """
+from pyflex.window import Window
+from obspy import UTCDateTime
 
 
 def windows_from_ds(ds, net, sta, model=None, step=None):
@@ -35,7 +37,6 @@ def windows_from_ds(ds, net, sta, model=None, step=None):
     :rtype num_windows: int
     :return num_windows: number of windows
     """
-    from pyflex.window import Window
       
     if not model:
         model = ds.auxiliary_data.MisfitWindows.list()[-1]
@@ -58,7 +59,7 @@ def windows_from_ds(ds, net, sta, model=None, step=None):
             window_ = Window(
                 left=par["left_index"], right=par["right_index"],
                 center=par["center_index"], dt=par["dt"],
-                time_of_first_sample=par["time_of_first_sample"],
+                time_of_first_sample=UTCDateTime(par["time_of_first_sample"]),
                 min_period=par["min_period"], channel_id=par["channel_id"]
             )
 
