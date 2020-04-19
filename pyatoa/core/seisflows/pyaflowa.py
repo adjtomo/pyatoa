@@ -118,7 +118,7 @@ class Pyaflowa:
         """
         Formatted step count, e.g. 's00'
         """
-        return step_count(self.step)
+        return step_count(self.step_count)
 
     def _check(self, ext_par):
         """
