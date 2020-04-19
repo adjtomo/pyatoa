@@ -91,8 +91,8 @@ def window_by_amplitude(mgmt, window, comp):
         else:
             logger.info(
                 "removing window due to global amplitude ratio: "
-                f"{ abs(window_peak / waveform_peak)} < "
-                f"{mgmt.config.window_amplitude_ratio}")
+                f"{ abs(window_peak / waveform_peak):.2f} < "
+                f"{mgmt.config.window_amplitude_ratio:.2f}")
             continue
 
     return suppressed_windows

@@ -684,6 +684,9 @@ class Manager:
 
         nwin, windows = 0, {}
         for comp in self.config.component_list:
+            # If no observed waveforms for a given component, skip over
+            if not self.st_obs.select(component=comp):
+                continue
             try:
                 # Pyflex throws a TauP warning from ObsPy #2280, ignore that
                 with warnings.catch_warnings():
