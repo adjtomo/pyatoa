@@ -152,9 +152,9 @@ def window_maker(st_obs_in, st_syn_in, config, time_offset_sec=0., windows=None,
                             )
 
     # Legend tag for data-synthetic or synthetic-synthetic
-    obs_tag = 'OBS'
+    obs_tag = "OBS"
     if config.synthetics_only:
-        obs_tag = 'TRUE'
+        obs_tag = "TRUE"
 
     if staltas is not None:
         stalta_wl = config.pyflex_config.stalta_waterlevel
@@ -162,16 +162,18 @@ def window_maker(st_obs_in, st_syn_in, config, time_offset_sec=0., windows=None,
     # Instantiate plotting instances
     f = plt.figure(figsize=figsize, dpi=dpi)
     axes, twaxes = setup_plot(number_of=len(st_obs), twax=True)
-    t = np.linspace(
-        time_offset_sec,
-        st_obs[0].stats.endtime-st_obs[0].stats.starttime+time_offset_sec,
-        len(st_obs[0].data)
-        )
+
+    # Manager.standardize() should ensure common time axis
+    t = st_obs[0].times() - time_offset_sec
 
     # Plot each component in the same fashion
     for i, comp in enumerate(config.component_list):
         # Easier to work with trace objects since were going component-wise
-        obs = st_obs.select(component=comp)[0]
+        # If a component is unavailable it will throw an IndexError
+        try:
+            obs = st_obs.select(component=comp)[0]
+        except IndexError:
+            continue
         syn = st_syn.select(component=comp)[0]
 
         # Option to normalize the data traces
@@ -181,9 +183,9 @@ def window_maker(st_obs_in, st_syn_in, config, time_offset_sec=0., windows=None,
 
         # WAVEFORMS (convention of black for obs, red for syn)
         a1, = axes[i].plot(t, obs.data, obs_color, zorder=z,
-                           label="{} ({})".format(obs.get_id(), obs_tag))
+                           label=f"{obs.id} ({obs_tag})")
         a2, = axes[i].plot(t, syn.data, syn_color, zorder=z,
-                           label="{} (SYN)".format(syn.get_id()))
+                           label=f"{syn.id} (SYN)")
         lines_for_legend = [a1, a2]
 
         # Seismogram length; min starttime of -10s 
@@ -326,9 +328,9 @@ def window_maker(st_obs_in, st_syn_in, config, time_offset_sec=0., windows=None,
     # TITLE with relevant information
     title = f"{st_obs[0].stats.network}.{st_obs[0].stats.station}"
 
-    # Event id may not be given
+    # Event id may not be given, if it is, append to title
     if config.event_id is not None:
-        title = " ".join([title, config.event_id])
+        title += f" {config.event_id}"
     # Filter bounds to plot title
     title += f" [{config.min_period}s, {config.max_period}s]"
     # Tell the User if the data has been normalized
