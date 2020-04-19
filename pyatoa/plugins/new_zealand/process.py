@@ -8,11 +8,33 @@ Used for preprocessing data through filtering and tapering, zero padding etc.
 Also contains tools for synthetic traces such as source time function
 convolutions
 """
+import numpy as np
 from pyatoa import logger
 from pyatoa.utils.process import is_preprocessed, change_syn_units
 
 
-def scale_beacon_amplitudes(st):
+def snr(a, axis=0, ddof=0):
+    """
+    Signal to Noise ratio defiend as mean over standard deviation, taken from 
+    the old scipy.stats.signaltonoise 
+
+    https://github.com/scipy/scipy/issues/9097
+    
+    :type a: np.array
+    :param a: array object containing data
+    :type axis: int or None, optional
+    :param axis: axis over which to operate
+    :type ddof: int, optional
+    :param ddof: degrees of freedom correction for standard deviation
+    :rtype s2n: ndarray
+    :return s2n: mean to standard deviation along axis
+    """
+    a = np.asanyarray(a)
+    m = a.mean(axis)
+    sd = a.std(axis=axis, ddof=ddof)
+    return np.where(sd==0, m/sd)
+
+def scale_beacon_amplitudes(st, st_syn):
     """
     Return a waveform with scaled amplitudes based on station identifiers.
     This scaling is empirical and is required to boost amplitudes of our
@@ -22,25 +44,22 @@ def scale_beacon_amplitudes(st):
 
     :type st: obspy.core.stream.Stream
     :param st: stream containing waveform data to be scaled
+    :type st_syn: obspy.core.stream.Stream
+    :param st_syn: synthetic waveform used to check the scaled amplitudes
     :rtype: obspy.core.stream.Stream
     :return: stream with scaled waveforms
     """
     st_scale = st.copy()
 
     # Amplitude scaling
-    # scale_1 = 22.
-    # scale_2 = 0.4
-    # scale_3 = 57.5
-    scale_1 = 100.
-    scale_2 = 2.
-    scale_3 = 250.
-    scales = [scale_1, scale_2, scale_3]
+    scale_60s = 75.
+    scale_30s = .2
+    scales = [scale_30s, scale_60s]
 
     # Stations that belong to each scaling group
-    group_1 = [1, 2, 6, 7, 8, 9, 13, 14, 15]  # 60s instruments
-    group_2 = [3, 10, 11, 12, 16, 17, 19, 20, 21]  # 30s instruments
-    group_3 = [4, 5, 18]  # somehow worse 60s instruments
-    groups = [group_1, group_2, group_3]
+    cmg_60s = [1, 2, 4, 5,  6, 7, 8, 9, 13, 14, 15, 18]  # 60s instruments
+    cmg_30s = [3, 10, 11, 12, 16, 17, 19, 20, 21]  # 30s instruments
+    groups = [cmg_30s, cmg_60s]
 
     # Determine group by checking station name
     try: 
@@ -48,11 +67,16 @@ def scale_beacon_amplitudes(st):
     except ValueError:
         logger.debug("station code does not match BEACON station formatting")
         return st 
+
+    # Scale the group based on the instrument type
     for s, g in zip(scales, groups):
         if idx in g:
             logger.debug(f"scaling {st_scale[0].get_id()} by {s}")
             for tr in st_scale:
-                tr.data *= s
+                # Check the SNR of the data to ensure were not scaling noise
+                data_try = tr.data * s 
+                # Check if the scaled data  
+                tr.data = data_try
             return st_scale
 
 
@@ -74,11 +98,15 @@ def preproc(mgmt, choice, water_level=60, corners=4, taper_percentage=0.05):
     :type taper_percentage: float
     :param taper_percentage: amount to taper ends of waveform
     """
-    # Copy the stream to avoid editing in place
+    # Copy the stream to avoid editing in place, use synthetic waveform as a
+    # check against amplitude scaling
     if choice == "syn":
         st = mgmt.st_syn.copy()
+        st_check = None
     elif choice == "obs":
         st = mgmt.st_obs.copy()
+        st_check = mgmt.st_syn.copy()
+
     if is_preprocessed(st):
         return st
 
@@ -151,7 +179,8 @@ def preproc(mgmt, choice, water_level=60, corners=4, taper_percentage=0.05):
 
     # Beacon data requires amplitude scaling, perform after filtering to
     # avoid boosting the amplitude of noise
-    if st[0].stats.network == "XX" and not mgmt.config.synthetics_only:
-        st = scale_beacon_amplitudes(st)
+    if st_check and st[0].stats.network == "XX" \
+                                and not mgmt.config.synthetics_only:
+        st = scale_beacon_amplitudes(st, st_check)
 
     return st
