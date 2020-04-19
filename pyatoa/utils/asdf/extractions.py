@@ -1,25 +1,33 @@
 """
 Functions for extracting information from a Pyasdf ASDFDataSet object
 """
+from pyatoa import logger
 from pyflex.window import Window
 from obspy import UTCDateTime
 
 
-def windows_from_ds(ds, net, sta, model=None, step=None):
+
+def windows_from_ds(ds, net, sta, model, step):
     """
-    If misfit windows are to be fixed, then window information needs to be saved
-    between calls of Pyatoa. Fortunately, Pyatoa stores misfit window
-    information into MisfitWindow auxiliary data subgroups.
-    This function accesses this information and creates window dictionaries in
-    the format expected by the Pyatoa Manager class.
+    Returns misfit windows from an ASDFDataSet for a given model, step,
+    network and station, as well as a count of windows returned.
 
-    If no model/step information given, will take windows from the latest
-    available model and step, which should be the last iteration in inversion.
+    If given model and step are not present in dataset (e.g. during line search,
+    new step), will try to search the previous step, which may or may not be
+    contained in the previous model. 
 
-    These windows only contain enough information so that Pyflex cooperates,
-    Pyadjoint can use them, and Pyatoa can generate plots.
+    Returns windows as Pyflex Window objects which can be used in Pyadjoint or
+    in the Pyatoa workflow.
 
-    :raises AttributeError: if no windows are found for the given parameters
+    Note:
+        Expects that windows are saved into the dataset at each model and step 
+        such that there is a coherent structure within the dataset
+
+    To do:
+        If windows are calculated for a given model/step but e.g. something 
+        fails and I change parameters and retry, those windows will still be 
+        there, and will be re-retrieved, which is not ideal. Might have to 
+        clean dataset before rerunning? or add some choice variable.
 
     :type ds: pyasdf.ASDFDataSet
     :param ds: ASDF dataset containing MisfitWindows subgroup
@@ -37,50 +45,117 @@ def windows_from_ds(ds, net, sta, model=None, step=None):
     :rtype num_windows: int
     :return num_windows: number of windows
     """
-      
-    if not model:
-        model = ds.auxiliary_data.MisfitWindows.list()[-1]
-    misfit_windows = ds.auxiliary_data.MisfitWindows[model]
-    if step is None:
-        step = misfit_windows.list()[-1]
-        misfit_windows = misfit_windows[step]
+    def previous_windows():
+        """
+        Retrieve the windows from the previous step.
+        Used for window fixing. Previous step may be contained in previous model
+        so there are a few cases that need to be addressed here.
 
-    # Pyatoa expects the Manager class windows as a dictionary with keys
-    # corresponding to components, each item is then a list, containing
-    # Pyflex Window objects
-    window_dict, num_windows = {}, 0
-    for window_name in misfit_windows.list():
-        net_, sta_, comp_, n_ = window_name.split("_")
-        # Check the title of the misfit window to see if applicable
-        if (net == net_) and (sta == sta_):
-            par = misfit_windows[window_name].parameters
+        :rtype: pyasdf.utils.AuxiliaryDataAccessor
+        :return: ds.auxiliary_data.MisfitWindows
+        """
+        misfit_windows = ds.auxiliary_data.MisfitWindows
 
-            # Create the misfit window
-            window_ = Window(
-                left=par["left_index"], right=par["right_index"],
-                center=par["center_index"], dt=par["dt"],
-                time_of_first_sample=UTCDateTime(par["time_of_first_sample"]),
-                min_period=par["min_period"], channel_id=par["channel_id"]
-            )
+        # If the given model has already retrieved windows, get previous step
+        if hasattr(misfit_windows, model):
+            idx_model_out = misfit_windows.list().index(model)
 
-            # Pyflex is weird that it doesn't allow one to set all values
-            # in __init__, so we need to manual set some values after init
-            window_.dlnA = par["dlnA"]
-            window_.cc_shift = par["cc_shift_in_samples"]
-            window_.max_cc_value = par["max_cc_value"]
-
-            # Either append to existing entry
-            if comp_ in window_dict.keys():
-                window_dict[comp_] += [window_]
-            # Or create the first entry
+            # Pyatoa has already started filling in this step, step info present
+            # but window will not be, get previous step
+            if hasattr(misfit_windows[model], step):
+                idx_step_out = misfit_windows[model].list().index(step) - 1
+                # If this is the first step count, need to go to previous model
+                if idx_step_out < 0:
+                    idx_model_out -= 1
+                    idx_step_out = -1
+                    if idx_model_out < 0:
+                        idx_model_out = 0
+            # Pyatoa has not yet encountered this step, get latest step
             else:
-                window_dict[comp_] = [window_]
+                # First step, go to previous model
+                if not len(misfit_windows[model].list()): 
+                    idx_model_out -= 1
+                idx_step_out = -1
+            
+            model_out = misfit_windows.list()[idx_model_out]
+            step_out = misfit_windows[model_out].list()[idx_step_out]
+        # First entry of windows for the given model, take from most recent 
+        # This will not behave if models are skipped, e.g. 
+        # trying to access m01 from [m00, m02, m03]. Manager should always save
+        # windows, even if they are re-retrieved
+        else:
+            model_out = misfit_windows.list()[-1]
+            step_out = misfit_windows[model_out].list()[-1]
 
-            num_windows += 1
+        logger.debug(f"no windows for {model}{step}, searching "
+                     f"previous model {model_out}{step_out}")
+
+        return misfit_windows[model_out][step_out]
+
+
+    def retrieve_windows(windows):
+        """
+        Pyatoa expects the Manager class windows as a dictionary with keys
+        corresponding to components, each item is then a list, containing
+        Pyflex Window objects
+
+        Returns empty dict and 0 if no windows are found
+
+        :type windows: pyasdf.utils.AuxiliaryDataAccessor
+        :param windows: ds.auxiliary_data.MisfitWindows
+        :rtype window_dict: dict
+        :return window_dict: dictionary of window attributes in the same format
+            that Pyflex outputs
+        :rtype num_windows: int
+        :return num_windows: number of windows for a given model, step, net, sta
+        """
+        window_dict, num_windows = {}, 0
+        for window_name in windows.list():
+            net_, sta_, comp_, n_ = window_name.split("_")
+            # Check the title of the misfit window to see if applicable
+            if (net == net_) and (sta == sta_):
+                par = windows[window_name].parameters
+
+                # Create the misfit window
+                window_ = Window(
+                    left=par["left_index"], right=par["right_index"],
+                    center=par["center_index"], dt=par["dt"],
+                    time_of_first_sample=
+                            UTCDateTime(par["time_of_first_sample"]),
+                    min_period=par["min_period"], channel_id=par["channel_id"]
+                )
+
+                # Pyflex is weird that it doesn't allow one to set all values
+                # in __init__, so we need to manual set some values after init
+                window_.dlnA = par["dlnA"]
+                window_.cc_shift = par["cc_shift_in_samples"]
+                window_.max_cc_value = par["max_cc_value"]
+
+                # Either append to existing entry
+                if comp_ in window_dict.keys():
+                    window_dict[comp_] += [window_]
+                # Or create the first entry
+                else:
+                    window_dict[comp_] = [window_]
+
+                num_windows += 1
+
+        return window_dict, num_windows
     
-    if not window_dict:
-        raise AttributeError(f"No windows found for {model}.{net}.{sta}")
+    # Attempt to retrieve windows from the given model/step
+    try:
+        window_dict, num_windows = retrieve_windows(
+                                ds.auxiliary_data.MisfitWindows[model][step])
+        # No windows found, try previous model/step
+        if num_windows == 0:
+            window_dict, num_windows = retrieve_windows(previous_windows())
+    # No model/step, try previous model/step 
+    except KeyError:
+        window_dict, num_windows = retrieve_windows(previous_windows())   
 
+    logger.debug(f"{num_windows} window(s) retrieved from dataset for "
+                 f"{net}.{sta}")
+    
     return window_dict, num_windows
 
 

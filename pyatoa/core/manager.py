@@ -661,30 +661,19 @@ class Manager:
         self.staltas = staltas
 
         # Get misfit windows
-        # If windows are to be fixed, ensure that there are windows in dataset
-        # New datasets won't have MisfitWindow auxiliary data so this will
-        # default to select_windows()
         if fix_windows and (hasattr(self.ds, "auxiliary_data") and
                             hasattr(self.ds.auxiliary_data, "MisfitWindows")):
+            # If fixed windows, attempt to retrieve them from the dataset
             net, sta, _, _ = self.st_obs[0].get_id().split(".")
-            try:
-                self.windows, self._num_windows = windows_from_ds(self.ds, net, 
-                                                                  sta)
-            except AttributeError:
-                # If fix windows, don't select any new windows
-                pass
+            self.windows, self._num_windows = windows_from_ds(
+                ds=self.ds, net=net, sta= sta, 
+                model=self.config.model_number, step=self.config.step_count)
         else:
-            # If not fixed windows, calculate windows using Pyflex
+            # If not fixed windows, or m00s00, calculate windows using Pyflex
             self.select_windows()
 
-        # Save to dataset regardless of new or fixed windows
-        if (self.ds is not None) and (self._num_windows != 0) and (
-                self.config.save_to_ds):
-            self.save_windows()
-        else:
-            logger.debug("windows are not being saved")
-
         # Let the User know the outcomes of Pyflex
+        self.save_windows()
         logger.info(f"{self._num_windows} window(s) total found")
 
     def select_windows(self):
@@ -728,6 +717,13 @@ class Manager:
         """
         Save the misfit windows that are calculated by Pyflex into a Dataset
         """
+        # Criteria to check if windows should be saved. Windows and dataset
+        # should be available, and User config set to save
+        if self.ds is None or \
+               self._num_windows == 0 or not self.config.save_to_ds:
+            logger.debug("windows not being saved")
+            return
+
         logger.debug("saving misfit windows to PyASDF")
         # Determine how to name the path
         if self.config.model_number and self.config.step_count:

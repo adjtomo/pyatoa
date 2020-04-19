@@ -169,9 +169,9 @@ def window_maker(st_obs_in, st_syn_in, config, time_offset_sec=0., windows=None,
     # Plot each component in the same fashion
     for i, comp in enumerate(config.component_list):
         # Easier to work with trace objects since were going component-wise
-        # If a component is unavailable it will throw an IndexError
         try:
             obs = st_obs.select(component=comp)[0]
+        # If a component is unavailable it will throw an IndexError
         except IndexError:
             continue
         syn = st_syn.select(component=comp)[0]

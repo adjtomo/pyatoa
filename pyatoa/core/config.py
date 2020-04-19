@@ -20,7 +20,8 @@ class Config:
     """
     Configuration class that controls functionalities inside Pyatoa
     """
-    def __init__(self, yaml_fid=None, model_number=None, step_count=None,
+    def __init__(self, yaml_fid=None, ds=None, path=None, model_number=None, 
+                 step_count=None,
                  event_id=None, min_period=10, max_period=30, filter_corners=4,
                  client="IRIS", rotate_to_rtz=False, unit_output="DISP",
                  pyflex_preset="default", component_list=None,
@@ -144,6 +145,9 @@ class Config:
         # Overwrite config parameters from .yaml if given
         if yaml_fid:
             kwargs = self._read_yaml(yaml_fid)
+        elif ds:
+            assert(path is not None), "'path' is required to load from dataset"
+            self._read_asdf(ds, path=path)
 
         # Run internal sanity checks
         self._check(**kwargs)
