@@ -10,7 +10,7 @@ through scripts or interactive shells.
 """
 import yaml
 from pyatoa import logger
-from pyatoa.utils.form import model, step
+from pyatoa.utils.form import model_number, step_count
 from pyatoa.core.seisflows.pyaflowa import pyaflowa_kwargs
 from pyatoa.plugins.pyflex_config import set_pyflex_config
 from pyatoa.plugins.pyadjoint_config import set_pyadjoint_config, src_type
@@ -20,8 +20,7 @@ class Config:
     """
     Configuration class that controls functionalities inside Pyatoa
     """
-    def __init__(self, yaml_fid=None, ds=None, path=None, model_number=None, 
-                 step_count=None,
+    def __init__(self, yaml_fid=None, ds=None, path=None, model=None, step=None,
                  event_id=None, min_period=10, max_period=30, filter_corners=4,
                  client="IRIS", rotate_to_rtz=False, unit_output="DISP",
                  pyflex_preset="default", component_list=None,
@@ -101,8 +100,8 @@ class Config:
             overwrite the data inside while you do some temporary processing.
         """
         # Format the model number and step count to Pyatoa standard
-        self.model_number = model(model_number)
-        self.step_count = step(step_count)
+        self.model = model_number(model)
+        self.step = step_count(step)
 
         self.event_id = event_id
         self.min_period = float(min_period)
@@ -115,8 +114,8 @@ class Config:
         self.observed_tag = observed_tag
 
         # Tag synthetics based on model number and step count if given
-        self.synthetic_tag = synthetic_tag.format(
-            m=self.model_number or "default", s=self.step_count or "")
+        self.synthetic_tag = synthetic_tag.format(m=self.model or "default",
+                                                  s=self.step or "")
 
         self.pyflex_preset = pyflex_preset
         self.adj_src_type = adj_src_type
@@ -367,11 +366,11 @@ class Config:
         del attrs["cfgpaths"]
 
         # Figure out how to tag the data in the dataset
-        if self.model_number and self.step_count:
+        if self.model and self.step:
             # model/step/window_tag
-            path = f"{self.model_number}/{self.step_count}"
-        elif self.model_number:
-            path = self.model_number
+            path = f"{self.model}/{self.step}"
+        elif self.model:
+            path = self.model
         else:
             path = "default"
 

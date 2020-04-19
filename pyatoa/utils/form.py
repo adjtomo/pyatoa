@@ -7,7 +7,7 @@ into the correct formats.
 import os
 
 
-def model(iteration):
+def model_number(iteration):
     """
     The model number is based on the current iteration and should be formatted
     with a leading 'm' character and two digits. Inputs can be strings or
@@ -21,20 +21,20 @@ def model(iteration):
     if isinstance(iteration, str):
         # If e.g. model_number = "0"
         if not iteration[0] == "m":
-            model_number = f"m{iteration:0>2}"
+            mdlnmbr = f"m{iteration:0>2}"
         # If e.g. model_number = "m00"
         else:
-            model_number = iteration
+            mdlnmbr = iteration
     # If e.g. model_number = 0
     elif isinstance(iteration, int):
-        model_number = f"m{iteration:0>2}"
+        mdlnmbr = f"m{iteration:0>2}"
     else:
-        model_number = None
+        mdlnmbr = None
 
-    return model_number
+    return mdlnmbr
 
 
-def step(count):
+def step_count(count):
     """
     Same as for model number but step count is formatted with a leading 's'
 
@@ -45,15 +45,15 @@ def step(count):
     """
     if isinstance(count, str):
         if not count[0] == "s":
-            step_count = f"s{count:0>2}"
+            stpcnt = f"s{count:0>2}"
         else:
-            step_count = count
+            stpcnt = count
     elif isinstance(count, int):
-        step_count = f"s{count:0>2}"
+        stpcnt = f"s{count:0>2}"
     else:
-        step_count = None
+        stpcnt = None
 
-    return step_count
+    return stpcnt
 
 
 def event_id(ds=None, event=None):

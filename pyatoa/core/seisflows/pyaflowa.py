@@ -19,7 +19,7 @@ import traceback
 import numpy as np
 
 from pyatoa import logger
-from pyatoa.utils.form import model, step
+from pyatoa.utils.form import model_number, step_count
 from pyatoa.utils.asdf.deletions import clean_ds
 from pyatoa.visuals.statistics import plot_output_optim
 from pyatoa.utils.write import (create_stations_adjoint, write_adj_src_to_ascii, 
@@ -84,7 +84,7 @@ class Pyaflowa:
 
         # Set some attributes that will be set/used during the workflow
         self.iteration = 0
-        self.step = 0
+        self.step_count = 0
         self.synthetics_only = bool(par["CASE"].lower() == "synthetic")
 
         self._check(par)
@@ -96,8 +96,8 @@ class Pyaflowa:
         """
         # An ugly way to format the first two lines the same as the rest
         str_out = "\n".join([
-            "PYAFLOWA", "\t{:<25}{}".format("model_number:", self.model_number),
-            "\t{:<25}{}".format("step_count:", self.step_count), ""]
+            "PYAFLOWA", "\t{:<25}{}".format("model:", self.model),
+            "\t{:<25}{}".format("step:", self.step), ""]
         )
         for key, item in vars(self).items():
             if isinstance(item, dict):
@@ -106,19 +106,19 @@ class Pyaflowa:
         return str_out
 
     @property
-    def model_number(self):
+    def model(self):
         """
         The model number is based on the current iteration, which starts at 1
-        so model number, starting from 0, lags behind by 1.
+        so model number, starting from 0, lags behind by 1. Formatted like 'm00'
         """
-        return model(max(self.iteration - 1, 0))
+        return model_number(max(self.iteration - 1, 0))
 
     @property
-    def step_count(self):
+    def step(self):
         """
         Formatted step count, e.g. 's00'
         """
-        return step(self.step)
+        return step_count(self.step)
 
     def _check(self, ext_par):
         """
@@ -138,7 +138,7 @@ class Pyaflowa:
 
         # Check that fix windows parameter set correctly
         assert(self.fix_windows in [True, False, "iter"]), \
-                    "fix_windows must be bool or 'iter'"
+            "fix_windows must be bool or 'iter'"
 
         # Try to feed the parameter file into Config to see if it throws
         # any ValueErrors from incorrect arguments
@@ -166,8 +166,7 @@ class Pyaflowa:
         elif self.fix_windows == "iter":
             # False if this is the first step in the iteration, True else
             try:
-                return hasattr(ds.auxiliary_data.MisfitWindows,
-                               self.model_number)
+                return hasattr(ds.auxiliary_data.MisfitWindows, self.model)
             except AttributeError:
                 # If no MisfitWindows aux data, ds has just been instantiated
                 return False
@@ -206,8 +205,7 @@ class Pyaflowa:
         # Process specific internal directories for the processing
         ev_paths = {"stations": oj(cwd, "DATA", "STATIONS"),
                     "maps": oj(self.maps_dir, event_id),
-                    "figures": oj(self.figures_dir, self.model_number,
-                                  event_id),
+                    "figures": oj(self.figures_dir, self.model, event_id),
                     }
 
         # Create the process specific event directories
@@ -227,9 +225,8 @@ class Pyaflowa:
         # Read in the Pyatoa Config object from the .yaml file, with
         # additional parameter set by the individual process
         config = pyatoa.Config(
-            yaml_fid=self.config_file, event_id=event_id,
-            model_number=self.model_number, step_count=self.step_count,
-            synthetics_only=self.synthetics_only,
+            yaml_fid=self.config_file, event_id=event_id, model=self.model,
+            step=self.step, synthetics_only=self.synthetics_only,
             cfgpaths={"synthetics": oj(cwd, "traces", "syn"),
                       "waveforms": oj(cwd, "traces", "obs")}
         )
@@ -258,8 +255,7 @@ class Pyaflowa:
 
             # Make sure the ASDFDataSet doesn't already contain auxiliary_data
             # for the model_number/step_count
-            clean_ds(ds=ds, model=self.model_number, step=self.step_count,
-                     fix_windows=fix_windows)
+            clean_ds(ds=ds, model=self.model, step=self.step)
 
             # Set up the manager and get station information
             config.write(write_to=ds)
@@ -284,7 +280,7 @@ class Pyaflowa:
                     if self.plot_waveforms:
                         # Format some strings to append to the waveform title
                         tit = " ".join([
-                            f"\n{config.model_number}{self.step_count}",
+                            f"\n{config.model}{self.step}",
                             f"pyflex={config.pyflex_preset},",
                             f"pyadjoint={config.adj_src_type},",
                             f"misfit={mgmt.misfit:.2E}"
@@ -331,26 +327,25 @@ class Pyaflowa:
             finalization of workflow
         """
         logger.info("writing adjoint sources")
-        write_adj_src_to_ascii(ds, self.model_number, self.step_count, 
+        write_adj_src_to_ascii(ds, self.model, self.step,
                                oj(cwd, "traces", "adj"))
 
         logger.info("creating STATIONS_ADJOINT")
-        create_stations_adjoint(ds, model=self.model_number, 
-                                step=self.step_count,
+        create_stations_adjoint(ds, model=self.model, 
+                                step=self.step,
                                 specfem_station_file=ev_paths["stations"],
                                 pathout=oj(cwd, "DATA")
                                 )
 
         logger.info("writing event misfit to disk")
-        write_misfit_stats(ds, self.model_number, self.step_count, 
-                           pathout=self.misfits_dir)
+        write_misfit_stats(ds, self.model, self.step, pathout=self.misfits_dir)
 
         # Combine images into a pdf for easier visualization, will delete .png's
         if self.combine_imgs:
             logger.info("creating composite pdf")
             # path/to/figures/m??/s??/eid_m??_s??.pdf
-            fig_path = oj(self.figures_dir, self.model_number, self.step_count)
-            fid = f"{config.event_id}_{self.model_number}{self.step_count}.pdf"
+            fig_path = oj(self.figures_dir, self.model, self.step)
+            fid = f"{config.event_id}_{self.model}{self.step}.pdf"
             if not os.path.exists(fig_path):
                 os.makedirs(fig_path)
             tile_combine_imgs(ds=ds, save_pdf_to=oj(fig_path, fid),
@@ -361,7 +356,6 @@ class Pyaflowa:
             # remove the empty event directory which has been purged
             if not glob.glob(oj(ev_paths["figures"], "*")):
                 os.rmdir(ev_paths["figures"])
-                
 
     def finalize(self):
         """

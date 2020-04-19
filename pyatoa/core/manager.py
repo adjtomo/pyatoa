@@ -438,8 +438,7 @@ class Manager:
         else:
             raise NotImplementedError
 
-    def load(self, station_code, ds=None, synthetic_tag=None, 
-             observed_tag=None):
+    def load(self, station_code, ds=None, synthetic_tag=None, observed_tag=None):
         """
         Populate the manager using a given PyASDF Dataset, based on user-defined
         station code. Useful for re-instantiating an existing workflow that
@@ -667,7 +666,7 @@ class Manager:
             net, sta, _, _ = self.st_obs[0].get_id().split(".")
             self.windows, self._num_windows = windows_from_ds(
                 ds=self.ds, net=net, sta= sta, 
-                model=self.config.model_number, step=self.config.step_count)
+                model=self.config.model, step=self.config.step)
         else:
             # If not fixed windows, or m00s00, calculate windows using Pyflex
             self.select_windows()
@@ -726,13 +725,13 @@ class Manager:
 
         logger.debug("saving misfit windows to PyASDF")
         # Determine how to name the path
-        if self.config.model_number and self.config.step_count:
+        if self.config.model and self.config.step:
             # model/step/window_tag
-            path = "/".join([self.config.model_number,
-                             self.config.step_count])
-        elif self.config.model_number:
+            path = "/".join([self.config.model,
+                             self.config.step])
+        elif self.config.model:
             # model/window_tag
-            path = self.config.model_number
+            path = self.config.model
         else:
             path = "default"
 
@@ -870,14 +869,14 @@ class Manager:
         Save adjoint sources to Pyasdf Dataset
         """
         # Figure out how to tag the data in the dataset
-        if self.config.model_number and self.config.step_count:
+        if self.config.model and self.config.step:
             # model/step/window_tag
-            path = "/".join([self.config.model_number,
-                             self.config.step_count]
+            path = "/".join([self.config.model,
+                             self.config.step]
                             )
-        elif self.config.model_number:
+        elif self.config.model:
             # model/window_tag
-            path = self.config.model_number
+            path = self.config.model
         else:
             path = "default"
 
