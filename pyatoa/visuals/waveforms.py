@@ -76,6 +76,8 @@ def plot_wave(st_obs_in, st_syn_in, config, time_offset_sec=0., windows=None,
         optional: pyflex_config
     :type time_offset_sec: float
     :param time_offset_sec: Offset from origintime. Origintime is set as time=0
+        Should carry its own sign, e.g. if the starttime is 20 seconds before
+        the origintime, time_offset_sec = -20
     :type windows: dict of pyflex.Window objects
     :param windows: If given, will plot all the misfit windows in the dictionary
     :type staltas: dict of pyflex.sta_lta objects
@@ -164,7 +166,7 @@ def plot_wave(st_obs_in, st_syn_in, config, time_offset_sec=0., windows=None,
     axes, twaxes = setup_plot(number_of=len(st_obs), twax=True)
 
     # Manager.standardize() should ensure common time axis
-    t = st_obs[0].times() - time_offset_sec
+    t = st_obs[0].times() + time_offset_sec
 
     # Plot each component in the same fashion
     for i, comp in enumerate(config.component_list):
