@@ -10,7 +10,7 @@ import numpy as np
 from pyatoa import logger
 
 
-def zero_pad_stream(st, pad_length_in_seconds):
+def zero_pad(st, pad_length_in_seconds):
     """
     Zero pad the data of a stream, change the starttime to reflect the change
 
@@ -21,15 +21,16 @@ def zero_pad_stream(st, pad_length_in_seconds):
     :rtype st: obspy.stream.Stream
     :return st: stream with zero padded data object
     """
-    for tr in st:
+    st_pad = st.copy()
+    for tr in st_pad:
         array = tr.data
         pad_width = int(pad_length_in_seconds * tr.stats.sampling_rate)
         tr.data = np.pad(array, pad_width, mode='constant')
         tr.stats.starttime -= pad_length_in_seconds
-    return st
+    return st_pad
 
 
-def trimstreams(st_a, st_b, force=None):
+def trim_streams(st_a, st_b, force=None):
     """
     Trim two streams to common start and end times,
     Do some basic preprocessing before trimming.

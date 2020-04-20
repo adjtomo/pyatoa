@@ -32,7 +32,8 @@ def snr(a, axis=0, ddof=0):
     a = np.asanyarray(a)
     m = a.mean(axis)
     sd = a.std(axis=axis, ddof=ddof)
-    return np.where(sd==0, m/sd)
+    return np.where(sd == 0, 0, m/sd)
+
 
 def scale_beacon_amplitudes(st, st_syn):
     """
@@ -42,6 +43,10 @@ def scale_beacon_amplitudes(st, st_syn):
     amplitudes. The 30s instruments are okay but amplitudes are larger than
     GeoNet stations (maybe site response?), so we put in a small scaling factor.
 
+    Station Number for 60s instruments (require scaling):
+        1, 2, 4, 5,  6, 7, 8, 9, 13, 14, 15, 18
+    Station Number for 30s instruments:
+        3, 10, 11, 12, 16, 17, 19, 20, 21
     :type st: obspy.core.stream.Stream
     :param st: stream containing waveform data to be scaled
     :type st_syn: obspy.core.stream.Stream
@@ -53,13 +58,7 @@ def scale_beacon_amplitudes(st, st_syn):
 
     # Amplitude scaling
     scale_60s = 75.
-    scale_30s = .2
-    scales = [scale_30s, scale_60s]
-
-    # Stations that belong to each scaling group
-    cmg_60s = [1, 2, 4, 5,  6, 7, 8, 9, 13, 14, 15, 18]  # 60s instruments
-    cmg_30s = [3, 10, 11, 12, 16, 17, 19, 20, 21]  # 30s instruments
-    groups = [cmg_30s, cmg_60s]
+    instr_60s = [1, 2, 4, 5,  6, 7, 8, 9, 13, 14, 15, 18]
 
     # Determine group by checking station name
     try: 
@@ -69,15 +68,19 @@ def scale_beacon_amplitudes(st, st_syn):
         return st 
 
     # Scale the group based on the instrument type
-    for s, g in zip(scales, groups):
-        if idx in g:
-            logger.debug(f"scaling {st_scale[0].get_id()} by {s}")
-            for tr in st_scale:
-                # Check the SNR of the data to ensure were not scaling noise
-                data_try = tr.data * s 
-                # Check if the scaled data  
-                tr.data = data_try
-            return st_scale
+    if idx in instr_60s:
+        logger.debug(f"scaling {st_scale[0].get_id()} by {scale_60s}")
+        for tr in st_scale:
+            data_try = tr.data * scale_60s
+            # Get the synthetic component to use for comparisons
+            comp = tr.id[-1]
+            tr_syn = st_syn.select(component=comp)[0]
+            # Check the scaled data
+            if data_try.max() > 10 * tr_syn.data.max():
+                logger.warning(f"scaled obs max is >10x syn max")
+            # Check if the scaled data
+            tr.data = data_try
+        return st_scale
 
 
 def preproc(mgmt, choice, water_level=60, corners=4, taper_percentage=0.05):
@@ -182,5 +185,6 @@ def preproc(mgmt, choice, water_level=60, corners=4, taper_percentage=0.05):
     if st_check and st[0].stats.network == "XX" \
                                 and not mgmt.config.synthetics_only:
         st = scale_beacon_amplitudes(st, st_check)
+        st.taper(max_percentage=.15)
 
     return st

@@ -6,7 +6,6 @@ import matplotlib.pyplot as plt
 from numpy import ndarray
 from pyatoa.utils.srcrcv import gcd_and_baz
 from pyatoa.utils.asdf.extractions import count_misfit_windows, sum_misfits
-from pyatoa.plugins.new_zealand import map_plugins
 from pyatoa.visuals.map_tools import (initiate_basemap, plot_stations,
                                       plot_stations_simple, event_beachball,
                                       interpolate_and_contour,
@@ -29,8 +28,7 @@ def default_kwargs(**kwargs):
 
 
 def standalone_map(map_corners, inv=None, catalog=None, annotate_names=False,
-                   show_nz_faults=False, color_by_network=False, show=True,
-                   save=None, **kwargs):
+                   color_by_network=False, show=True, save=None, **kwargs):
     """
     To be used in a standalone mapmaker. Plots a catalog and an inventory
     to show all events and all stations for e.g. a given tomographic inversion
@@ -49,8 +47,6 @@ def standalone_map(map_corners, inv=None, catalog=None, annotate_names=False,
     :param inv: inventory containing relevant network and stations
     :type annotate_names: bool
     :param annotate_names: annotate station names next to markers
-    :type show_nz_faults: bool
-    :param show_nz_faults: call hardcoded fault plotting scripts (TO DO change)
     :type color_by_network: bool
     :param color_by_network: color station markers based on network name
     :type show: bool
@@ -68,12 +64,6 @@ def standalone_map(map_corners, inv=None, catalog=None, annotate_names=False,
     # Initiate matplotlib instances
     f = plt.figure(figsize=figsize, dpi=dpi)
     m = initiate_basemap(map_corners=map_corners, scalebar=True, **kwargs)
-
-    # TO DO: remove hard coding
-    # Plot fault lines, hardcoded into structure
-    if show_nz_faults:
-        map_plugins.plot_hikurangi_trench(m)
-        map_plugins.plot_active_faults(m)
 
     # If given, plot all background stations for this given event.
     if inv:
@@ -101,8 +91,7 @@ def standalone_map(map_corners, inv=None, catalog=None, annotate_names=False,
 
 def event_misfit_map(map_corners, ds, model, step=None, normalize=None,
                      annotate_station_info=False, contour_overlay=True,
-                     filled_contours=True, show_nz_faults=False, show=True,
-                     save=None, **kwargs):
+                     filled_contours=True, show=True, save=None, **kwargs):
     """
     To be used to plot misfit information from a Pyasdf Dataset
 
@@ -124,8 +113,6 @@ def event_misfit_map(map_corners, ds, model, step=None, normalize=None,
     :param contour_overlay: interpolate z_values and create contour
     :type filled_contours: bool
     :param filled_contours: if True, use countourf, else use contour
-    :type show_nz_faults: bool
-    :param show_nz_faults: call hardcoded fault plotting scripts (TO DO change)
     :type show: bool
     :param show: show the plot once generated, defaults to False
     :type save: str
@@ -259,11 +246,6 @@ def event_misfit_map(map_corners, ds, model, step=None, normalize=None,
                                 fill=filled_contours, cbar_label=cbar_label
                                 )
 
-    # Plot fault lines, hardcoded into structure
-    if show_nz_faults:
-        map_plugins.plot_hikurangi_trench(m)
-        map_plugins.plot_geonet_active_faults(m)
-
     # Set a title
     if step:
         title = f"{model}.{step} misfit map, {len(x_values)} stations"
@@ -298,8 +280,8 @@ def event_misfit_map(map_corners, ds, model, step=None, normalize=None,
 
 
 def manager_map(map_corners, inv=None, event=None, stations=None,
-                annotate_names=False, show_nz_faults=False,
-                color_by_network=False, show=True, save=None, **kwargs):
+                annotate_names=False, color_by_network=False, show=True, 
+                save=None, **kwargs):
     """
     Initiate and populate a basemap object.
 
@@ -319,8 +301,6 @@ def manager_map(map_corners, inv=None, event=None, stations=None,
         will be more complex.
     :type annotate_names: bool
     :param annotate_names: annotate station names next to markers
-    :type show_nz_faults: bool
-    :param show_nz_faults: call hardcoded fault plotting scripts (TO DO change)
     :type color_by_network: bool
     :param color_by_network: color station markers based on network name
     :type show: bool
@@ -337,12 +317,6 @@ def manager_map(map_corners, inv=None, event=None, stations=None,
     # Initiate matplotlib instances
     f = plt.figure(figsize=figsize, dpi=dpi)
     m = initiate_basemap(map_corners=map_corners, scalebar=True)
-
-    # TO DO: remove hard coding
-    # Plot fault lines, hardcoded into structure
-    if show_nz_faults:
-        map_plugins.plot_hikurangi_trench(m)
-        map_plugins.plot_geonet_active_faults(m)
 
     # If given, plot all background stations for this given event.
     if stations is not None:

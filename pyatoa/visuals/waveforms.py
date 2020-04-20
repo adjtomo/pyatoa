@@ -53,9 +53,9 @@ def setup_plot(number_of, twax=True):
     return axes, twaxes
 
 
-def window_maker(st_obs_in, st_syn_in, config, time_offset_sec=0., windows=None,
-                 staltas=None, adj_srcs=None, length_sec=None, normalize=False,
-                 append_title=None, show=False, save=None, **kwargs):
+def plot_wave(st_obs_in, st_syn_in, config, time_offset_sec=0., windows=None,
+              staltas=None, adj_srcs=None, length_sec=None, normalize=False,
+              append_title=None, show=False, save=None, **kwargs):
     """
     Plot streams and windows. assumes you have N observation traces and
     N synthetic traces for a 2N length stream object
@@ -354,5 +354,4 @@ def window_maker(st_obs_in, st_syn_in, config, time_offset_sec=0., windows=None,
             return f
         else:
             plt.show()
-    plt.close("all")
     return f
