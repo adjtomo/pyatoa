@@ -901,8 +901,8 @@ class Manager:
                                       tag=f"{path}/{adj_src_tag}",
                                       time_offset=self._time_offset_sec)
 
-    def plot(self, append_title='', length_sec=None, normalize=False,
-             figsize=(11.69, 8.27), dpi=100, show=True, save=None,
+    def plot(self, save=None, show=True, append_title='', length_sec=None, 
+             normalize=False, figsize=(11.69, 8.27), dpi=100,
              return_figure=False, **kwargs):
         """
         Waveform plots for all given components.
@@ -959,7 +959,7 @@ class Manager:
         if return_figure:
             return fig_window
 
-    def srcrcvmap(self, map_corners=None, stations=None, show_nz_faults=False,
+    def srcrcvmap(self, save=None, show=True, map_corners=None, stations=None, 
                   annotate_names=False, color_by_network=False,
                   figsize=(8, 8.27), dpi=100, show=True, save=None, **kwargs):
         """
@@ -1003,8 +1003,7 @@ class Manager:
 
         # Call external function to generate map
         manager_map(map_corners=map_corners, inv=self.inv, event=self.event,
-                    stations=stations, show_nz_faults=show_nz_faults,
-                    color_by_network=color_by_network,
+                    stations=stations, color_by_network=color_by_network,
                     annotate_names=annotate_names, show=show, figsize=figsize,
                     dpi=dpi, save=save, **kwargs
                     )
