@@ -53,7 +53,7 @@ def scale_beacon_amplitudes(st, st_syn):
 
     # Amplitude scaling
     scale_60s = 75.
-    scale_30s = .2
+    scale_30s = 1.
     scales = [scale_30s, scale_60s]
 
     # Stations that belong to each scaling group

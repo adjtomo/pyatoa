@@ -26,11 +26,11 @@ from pyatoa.utils.asdf.additions import write_adj_src_to_asdf
 from pyatoa.utils.asdf.extractions import windows_from_ds
 from pyatoa.utils.srcrcv import gcd_and_baz, seismogram_length
 from pyatoa.utils.form import create_window_dictionary, channel_codes
-from pyatoa.utils.process import (preproc, trimstreams, stf_convolve,
-                                  zero_pad_stream, match_npts)
+from pyatoa.utils.process import (preproc, trimstreams, stf_convolve, zero_pad, 
+                                  match_npts)
 
 from pyatoa.visuals.maps import manager_map
-from pyatoa.visuals.waveforms import window_maker
+from pyatoa.visuals.waveforms import plot_wave
 
 
 class Manager:
@@ -502,8 +502,8 @@ class Manager:
 
         # Zero pad the data if set by Config
         if self.config.zero_pad:
-            self.st_obs = zero_pad_stream(self.st_obs, self.config.zero_pad)
-            self.st_syn = zero_pad_stream(self.st_syn, self.config.zero_pad)
+            self.st_obs = zero_pad(self.st_obs, self.config.zero_pad)
+            self.st_syn = zero_pad(self.st_syn, self.config.zero_pad)
             logger.debug(f"zero padding front, back by {self.config.zero_pad}s")
 
         # Resample one Stream to match the other
@@ -949,7 +949,7 @@ class Manager:
             length_sec = None
 
         # Call on window making function to produce waveform plots
-        fig_window = window_maker(
+        fig_window = plot_wave(
             st_obs_in=self.st_obs, st_syn_in=self.st_syn, config=self.config,
             time_offset_sec=self._time_offset_sec, windows=self.windows,
             staltas=self.staltas, adj_srcs=self.adj_srcs, length_sec=length_sec,
@@ -961,7 +961,7 @@ class Manager:
 
     def srcrcvmap(self, save=None, show=True, map_corners=None, stations=None, 
                   annotate_names=False, color_by_network=False,
-                  figsize=(8, 8.27), dpi=100, show=True, save=None, **kwargs):
+                  figsize=(8, 8.27), dpi=100, **kwargs):
         """
         Map plot showing a map of the given target region. All stations that
         show data availability (according to the station master list) are

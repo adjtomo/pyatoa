@@ -23,7 +23,7 @@ def align_yaxis(ax1, ax2):
     ax2.set_ylim(ymin_a2+dy, ymax_a2+dy)
 
 
-def pretty_grids(input_ax, twax=False):
+def pretty_grids(input_ax, twax=False, grid=False):
     """
     standard plot skeleton formatting, thick lines and internal tick marks etc.
 
@@ -39,9 +39,10 @@ def pretty_grids(input_ax, twax=False):
     # Set the grids 'on' only if main axis
     if not twax:
         input_ax.minorticks_on()
-        for axis_ in ['major', 'minor']:
-            input_ax.grid(which=axis_, linestyle=':', linewidth='0.5',
-                          color='k', alpha=0.25)
+        if grid:
+            for axis_ in ['major', 'minor']:
+                input_ax.grid(which=axis_, linestyle=':', linewidth='0.5',
+                              color='k', alpha=0.25)
 
 
 def format_axis(input_ax):
