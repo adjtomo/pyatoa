@@ -26,7 +26,7 @@ from pyatoa.utils.asdf.additions import write_adj_src_to_asdf
 from pyatoa.utils.asdf.extractions import windows_from_ds
 from pyatoa.utils.srcrcv import gcd_and_baz, seismogram_length
 from pyatoa.utils.form import create_window_dictionary, channel_codes
-from pyatoa.utils.process import (preproc, trimstreams, stf_convolve, zero_pad, 
+from pyatoa.utils.process import (preproc, trim_streams, stf_convolve, zero_pad, 
                                   match_npts)
 
 from pyatoa.visuals.maps import manager_map
@@ -514,7 +514,7 @@ class Manager:
 
         # Trim observations and synthetics to the length of chosen
         trim_to = {"obs": "a", "syn": "b"}
-        self.st_obs, self.st_syn = trimstreams(
+        self.st_obs, self.st_syn = trim_streams(
             st_a=self.st_obs, st_b=self.st_syn, force=trim_to[standardize_to])
 
         # Match the number of samples between the streams

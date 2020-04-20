@@ -6,7 +6,6 @@ import matplotlib.pyplot as plt
 from numpy import ndarray
 from pyatoa.utils.srcrcv import gcd_and_baz
 from pyatoa.utils.asdf.extractions import count_misfit_windows, sum_misfits
-from pyatoa.plugins.new_zealand import map_plugins
 from pyatoa.visuals.map_tools import (initiate_basemap, plot_stations,
                                       plot_stations_simple, event_beachball,
                                       interpolate_and_contour,
