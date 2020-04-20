@@ -156,7 +156,7 @@ def call_models(fid, path_out="./figures"):
 if __name__ == "__main__":
     fids = []
     # fids += glob("*log*.vtk")
-    fids += glob("*poisson*.vtk")
+    fids += glob("*8*poisson*.vtk")
     # fids += glob("*gradient*.vtk")
 
     for fid in fids:
