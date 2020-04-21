@@ -44,7 +44,8 @@ class Gatherer:
         :param: event supplied by User
         """
         self.event = event
-        self.event.preferred_origin().time.precision = 2
+        # FutureWarning
+        # self.event.preferred_origin().time.precision = 2
         self.fetcher.origintime = self.event.preferred_origin().time
         self.getter.origintime = self.event.preferred_origin().time
 
@@ -85,7 +86,8 @@ class Gatherer:
             logger.debug("event got from external")
 
         # Propogate the origin time to Fetcher and Getter classes
-        self.event.preferred_origin().time.precision = 2
+        # FutureWarning
+        # self.event.preferred_origin().time.precision = 2
         self.fetcher.origintime = self.event.preferred_origin().time
         self.getter.origintime = self.event.preferred_origin().time
 
