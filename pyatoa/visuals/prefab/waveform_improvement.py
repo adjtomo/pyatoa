@@ -16,6 +16,7 @@ import matplotlib.pyplot as plt
   
 from obspy.signal.cross_correlation import correlate, xcorr_max
 from pyatoa import Config, Manager, logger
+from pyatoa.utils.form import event_name
 from pyatoa.utils.asdf.extractions import windows_from_ds
 from pyatoa.utils.srcrcv import gcd_and_baz, seismogram_length
 
@@ -165,19 +166,8 @@ def plot_iterative_waveforms(dsfid, output_dir, min_period, max_period,
 
     # Read in each of the datasets
     with pyasdf.ASDFDataSet(dsfid) as ds:
-        event_id = ds.events[0].resource_id.id.split('/')[-1]
-
-        # User defined filtering parameters
-        config = Config(
-            event_id=event_id,
-            model_number=0,
-            min_period=min_period,
-            max_period=max_period,
-            filter_corners=4,
-            rotate_to_rtz=False,
-            unit_output="DISP",
-            synthetics_only=synthetics_only
-        )
+        event_id = event_name(ds)
+        con        
 
         # Loop through the available stations
         for sta in ds.waveforms.list():
@@ -348,13 +338,13 @@ def plot_iterative_waveforms(dsfid, output_dir, min_period, max_period,
 if __name__ == "__main__":
     try:
         # Set parameters here 
-        datasets_path = "./hdf5"
+        datasets_path = "./"
 
         # Path to save figures to, if None given, figures wil not be saved
-        output_dir = "./waveforms"
+        output_dir = "../figures/wavupdate"
         
         # If you only want to choose one event in your directory, wildcards okay
-        event_ids = ["*.h5"]
+        event_ids = ["2018p130600.h5"]
 
         # If you don't want to plot all models, can add e.g. 'synthetic_m00' 
         select_models = []

@@ -10,7 +10,7 @@ kwargs available for dump:
     waveform_directory
 """
 import os
-from ..format import event_id
+from pyatoa.utils.form import event_name
 
 
 def dump(ds, **kwargs):
@@ -18,6 +18,7 @@ def dump(ds, **kwargs):
     Convenience function to dump everything inside a dataset
     :return:
     """
+    raise NotImplementedError
 
 
 def dir_check(directory):
@@ -64,7 +65,7 @@ def waveforms(ds, path="./", **kwargs):
         for tag in tags:
             st = ds.waveforms[sta][tag]
             # Set up the directory structure for this tag
-            wav_dir = os.path.join(path, path_tag, event_id(ds), tag)
+            wav_dir = os.path.join(path, path_tag, event_name(ds), tag)
             dir_check(wav_dir)
             # Make sure separators are underscores
             st.write(os.path.join(wav_dir, sta.replace(".", "_")), format=fmt)

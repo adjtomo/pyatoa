@@ -22,7 +22,7 @@ from glob import glob
 from obspy import UTCDateTime
 from obspy.geodetics import gps2dist_azimuth
 
-from pyatoa.utils.form import event_id
+from pyatoa.utils.form import event_name
 from pyatoa.utils.calculate import abs_max
 from pyatoa.utils.srcrcv import lonlat_utm
 from pyatoa.utils.asdf.extractions import count_misfit_windows
@@ -362,7 +362,7 @@ class Inspector(Gadget):
         :param ds: dataset to query for distances
         """
         # Initialize the event as a dictionary
-        eid = event_id(ds=ds)
+        eid = event_name(ds=ds)
 
         # Get UTM projection of event coordinates
         ev_x, ev_y = lonlat_utm(
@@ -411,7 +411,7 @@ class Inspector(Gadget):
         :type ds: pyasdf.ASDFDataSet
         :param ds: dataset to query for misfit
         """
-        eid = event_id(ds=ds)
+        eid = event_name(ds=ds)
 
         self.misfits[eid] = {}
         for model in ds.auxiliary_data.AdjointSources.list():
@@ -450,7 +450,7 @@ class Inspector(Gadget):
         :type ds: pyasdf.ASDFDataSet
         :param ds: dataset to query for misfit
         """
-        eid = event_id(ds=ds)
+        eid = event_name(ds=ds)
 
         self.windows[eid] = {}
         for model in ds.auxiliary_data.MisfitWindows.list():

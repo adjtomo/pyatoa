@@ -7,7 +7,7 @@ import json
 import time
 import random
 import numpy as np
-from pyatoa.utils.form import event_id
+from pyatoa.utils.form import event_name
 
 
 def parse_output_optim(path_to_optim):
@@ -81,7 +81,7 @@ def write_misfit_stats(ds, model, step=None, pathout="./", fidout=None):
 
     # By default, name the file after the event id
     if fidout is None:
-        fidout = os.path.join(pathout, event_id(ds=ds))
+        fidout = os.path.join(pathout, event_name(ds=ds))
     
     # calculate misfit 
     misfit = sum_misfits(ds, model, step=step)
@@ -239,7 +239,7 @@ def create_stations_adjoint(ds, model, specfem_station_file, step=None,
     :type pathout: str
     :param pathout: path to save file 'STATIONS_ADJOINT'
     """
-    eid = event_id(ds=ds)
+    eid = event_name(ds=ds)
 
     # Check which stations have adjoint sources
     stas_with_adjsrcs = []
@@ -320,7 +320,7 @@ def write_adj_src_to_ascii(ds, model, step=None, pathout=None,
     if step:
         adjsrcs = adjsrcs[step]
 
-    eid = event_id(ds=ds)
+    eid = event_name(ds=ds)
 
     # Set the path to write the data to.
     # If no path is given, default to current working directory

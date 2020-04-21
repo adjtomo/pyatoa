@@ -56,7 +56,7 @@ def step_count(count):
     return stpcnt
 
 
-def event_id(ds=None, event=None):
+def event_name(ds=None, event=None):
     """
     Formalize the defition of Event ID in Pyatoa
 
