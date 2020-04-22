@@ -10,12 +10,13 @@
       *Moved purge outside loop and set it to delete all files inside the dir with the correct tag*
 - [X] Pyaflowa waveform composites aren't made if a thrifty inversion is done because it skips s00  
       *removed the step count requirement in the if statement*
+
       
 #### Questions
 - [ ] Fixed windowing might encounter some problems because the synthetic trace is changing, so the values of max_cc_, cc_shift and dlnA       are not being re-evaluated. Can this be remedied?
 - [ ] Is weighting adjoint sources by station proximity something that Pyatoa should do, how could it be implemented?
 - [ ] Should we be able to export ASDFDataSets to hardcoded directory structures. This would provide a form of 'backwards compatability' to old styles of tomography, but if the User already can access a Dataset, do they need this functionality?
-
+- [ ] Pyflex: Very close source-receiver distances means P-wave arrival is within the first wavelength, meaning no noise amplitude calculations can take place, and windows are not picked even for good waveforms. Can this be reconciled in Pyflex, or do we need to exclude distances <100km e.g.?
 
 #### General
 - [ ] Documentation, tutorials, examples and API
@@ -46,8 +47,9 @@
 - [X] Ability to turn off saving for pyasdf dataset  
      *added a 'save_to_ds' bool parameter to the config object that toggles saving for waveforms, metadata, windows, adj_srcs
 - [ ] Enforce zero padding front and back of waveforms for short source-receiver distance, as windowing ignores these because the stalta starts too early.
-- [ ] Manager.load() take model number from Config if available
+- [X] Manager.load() take model number from Config if available
 - [ ] Log statement stating fid when saving figures
+- [ ] Manager.load() should allow loading misfit windows and adjoint sources as well, will need a warning statement to say waveforms are not processed
 
 #### ASDF
 - [ ] Generate waveform plots, maps, from an ASDF dataset. As in remove the need to create a Manager just to make 
@@ -59,6 +61,7 @@
 #### Misc.
 - [X] Move all hardcoded stuff into plugins, e.g. fault_coordinates, geonet_moment_tensor
 - [X] Move tools and visualize out of utils dir into main dir
+
 
 #### Visuals
 - [X] Depth cross section of a Catalog object  
@@ -88,4 +91,8 @@
 - [X] make rcvs.vtk for all receivers
 - [X] make srcs_w_depth.vtk, and perhaps with depth as planar slices  
       *New src_vtk_from_specfem() function that takes constant x y or z values to make planar slices*
+- [X] Waveform improvement script should take advantage of Manager.load() rather than accessing waveform tags
+
+#### Inspector:
+- [ ] Find window corresponding to largest time shift, or misfit
 
