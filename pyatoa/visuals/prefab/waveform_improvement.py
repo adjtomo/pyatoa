@@ -5,25 +5,27 @@ progressive model updates. Each individual model gets its on row in the plot,
 with optional choices for choosing events, stations, and models.
 Works using PyASDF datasets formatted by a Pyatoa workflow.
 """
-import sys
 import os
+import sys
 import glob
 import pyasdf
 import warnings
+import traceback
 import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
   
-from obspy.signal.cross_correlation import correlate, xcorr_max
 from pyatoa import Config, Manager, logger
 from pyatoa.utils.form import event_name
 from pyatoa.utils.asdf.extractions import windows_from_ds
 from pyatoa.utils.srcrcv import gcd_and_baz, seismogram_length
 
-mpl.rcParams['lines.linewidth'] = 1.5
+mpl.rcParams['lines.linewidth'] = 2.
+mpl.rcParams['axes.linewidth'] = 2.
+mpl.rcParams['font.size'] = 14.
 
 warnings.simplefilter("ignore")
-logger.setLevel("DEBUG")
+# logger.setLevel("DEBUG")
 
 
 def setup_plot(nrows, ncols, label_units=False):
@@ -44,7 +46,7 @@ def setup_plot(nrows, ncols, label_units=False):
     :return axes: axis objects
     """
     gs = mpl.gridspec.GridSpec(nrows, ncols, hspace=0, wspace=0.05, 
-                               width_ratios=[2] * ncols,
+                               width_ratios=[1.75] * ncols,
                                height_ratios=[1] * nrows
                                )
 
@@ -118,10 +120,9 @@ def center_on_peak_energy(st, thresh_value=0.1):
 
 
 def plot_iterative_waveforms(dsfid, output_dir, min_period, max_period,
-                             event_id="*.h5", select_models=[],
+                             event_id="*.h5", select_paths=[],
                              select_stations=[], synthetics_only=False,
-                             trace_length=[], cross_corr=False,
-                             label_units=False, show=True):
+                             trace_length=[], label_units=False, show=True):
     """
     Main function to plot waveforms iterative based on model updates
 
@@ -135,9 +136,9 @@ def plot_iterative_waveforms(dsfid, output_dir, min_period, max_period,
     :param max_period: maximum filter period for waveforms
     :type event_id: str
     :param event_id: event id to identify the asdf dataset, can be wildcard
-    :type select_models: list of str
-    :param select_models: allows User to select which models are included in the
-        waveform plots
+    :type select_paths: list of str
+    :param select_paths: allows User to select which models are included in the
+        waveform plots, entries should be in the form 'm??s??'
     :type select_stations: list of str
     :param select_stations: allows User to select which stations queried
         for the waveform plots
@@ -147,17 +148,15 @@ def plot_iterative_waveforms(dsfid, output_dir, min_period, max_period,
     :type trace_length: list of floats
     :param trace_length: [trace_start, trace_end] will be used to set the x
         limit on the waveform data. If none, no xlim will be set
-    :type cross_corr: bool
-    :param cross_corr: if True, cross correlation will be taken between traces
-        at each model and max correlation will be annotated to each plot.
     :type label_units: bool
     :param label_units: if True, units will be placed on the y-axis
     :type show: bool
     :param show: Show the plot or do not
     """
     # Plotting parameters
-    dpi = 125
-    figsize = (10, 10)
+    dpi = 100
+    figsize = (10, 12)
+    anno_h = [0.75, 0.075]
     z = 5
     color_list = ["r", "b", "g"]
     unit_dict = {"DISP": "displacement [m]",
@@ -167,38 +166,42 @@ def plot_iterative_waveforms(dsfid, output_dir, min_period, max_period,
     # Read in each of the datasets
     with pyasdf.ASDFDataSet(dsfid) as ds:
         event_id = event_name(ds)
-        con        
+        models = ds.auxiliary_data.Configs.list()
 
         # Loop through the available stations
         for sta in ds.waveforms.list():
+            network, station = sta.split(".")
             if select_stations and (sta not in select_stations):
                 continue 
             try:
-                print(sta)
-                mgmt = Manager(config=config, empty=True)
-                mgmt.inv = ds.waveforms[sta].StationXML
-                mgmt.event = ds.events[0]
-            
-                # Hacky way to preprocess all the synthetic traces using Pyatoa
-                synthetics, windows = {}, {}
-                for syn_tag in ds.waveforms[sta].get_waveform_tags():
-                    if syn_tag == "observed":
-                        continue
-                    else:
-                        if select_models and (syn_tag not in select_models):
+                # Preprocess all traces using Pyatoa and store in dict
+                st_obs, synthetics, windows = None, {}, {}
+                for m, model in enumerate(models):
+                    steps = ds.auxiliary_data.Configs[model].list()
+                    for s, step in enumerate(steps):
+                        # If specific paths are given, only choose those.
+                        # Else only take m00s00, and last step each other model
+                        path = f"{model}/{step}"
+                        if select_paths and path != select_paths:
                             continue
-                        mgmt.st_obs = ds.waveforms[sta].observed.copy()
-                        mgmt.st_syn = ds.waveforms[sta][syn_tag].copy()
+                        elif m == 0 and s != 0:
+                            continue
+                        elif m != 0 and s != len(steps) - 1:
+                            continue
+                        print(f"{sta} {path}") 
+                        cfg = Config(path=path, ds=ds)
+                        mgmt = Manager(config=cfg, ds=ds)   
+                        mgmt.load(sta)
                         mgmt.standardize()
-                        mgmt.preprocess()
-                        synthetics[syn_tag] = mgmt.st_syn.copy()
-                        windows[syn_tag], _ = windows_from_ds(
-                                               ds, model=syn_tag.split('_')[-1],
-                                               net=sta.split('.')[0],
-                                               sta=sta.split('.')[1])
-
-                # Collect the observed trace last
-                st_obs = mgmt.st_obs.copy()
+                        mgmt.preprocess() 
+                        synthetics[path] = mgmt.st_syn.copy() 
+                        windows[path], _ = windows_from_ds(
+                                                 ds=ds, model=model, step=step,
+                                                 net=network, sta=station
+                                                 )
+                        # Observed waveform will be the same
+                        if st_obs is None:
+                            st_obs = mgmt.st_obs.copy()
 
                 # Determine a rough estimate for the length of the seismogram
                 length_sec = seismogram_length(
@@ -226,7 +229,7 @@ def plot_iterative_waveforms(dsfid, output_dir, min_period, max_period,
                 # Plot each model on a different row
                 for row, syn_key in enumerate(synthetic_keys):
                     ylab = ""
-                    if len(select_models) == 2:
+                    if len(select_paths) == 2:
                         if syn_key == "synthetic_m00":
                             ylab += "initial model"
                         else:
@@ -235,10 +238,10 @@ def plot_iterative_waveforms(dsfid, output_dir, min_period, max_period,
                     else:
                         ylab += syn_key.split('_')[-1]
                     if label_units:
-                        ylab += f"\n{unit_dict[config.unit_output]}"
+                        ylab += f"\n{unit_dict[cfg.unit_output]}"
                 
                     # Plot each component in a different column
-                    for col, comp in enumerate(config.component_list):
+                    for col, comp in enumerate(cfg.component_list):
                         obs = st_obs.select(component=comp)
                         syn = synthetics[syn_key].select(component=comp)
 
@@ -253,27 +256,27 @@ def plot_iterative_waveforms(dsfid, output_dir, min_period, max_period,
                         xmin, xmax = axes[row][col].get_xlim()
                         ymin, ymax = axes[row][col].get_ylim()
 
-                        # Plot windows
-                        window_list = windows[syn_tag][comp]
-                        for win in window_list:
+                        # Plot windows if available for this given component
+                        window_list = []
+                        if comp in windows[syn_key]:
+                            window_list = windows[syn_key][comp]
+                        for w, win in enumerate(window_list):
                             tleft = win.left * win.dt + mgmt.time_offset_sec
                             tright = win.right * win.dt + mgmt.time_offset_sec
+                            tshift = win.cc_shift * syn[0].stats.delta
 
                             axes[row][col].add_patch(mpl.patches.Rectangle(
-                                          xy=(tleft, ymin), width=tright-tleft, 
-                                          height=ymax-ymin, color='orange',
+                                          xy=(tleft, 2*ymin), 
+                                          width=tright-tleft, 
+                                          height=ymax*3, color='orange',
                                           alpha=(win.max_cc_value **2) / 4)
                                                     )
-
-                        # cross-correlate obs and syn for a sense of misfit
-                        if cross_corr:
-                            cc = correlate(obs[0].data, syn[0].data, 
-                                           shift=len(obs[0].data), domain="freq")
-                            f_shift, corr = xcorr_max(cc)
-                            axes[row][col].annotate(f"cc:{corr:.2f}", xy=(1,0),
-                                                    xycoords='axes fraction',
-                                                    horizontalalignment='right',
-                                                    verticalalignment='bottom')
+                            # Annotate time shift value into window,
+                            # Alternate height if multiple windows so no overlap
+                            axes[row][col].text(s=f"{tshift:.2f}s", 
+                                                x=tleft, 
+                                                y=(ymax-ymin)*anno_h[w%2]+ymin,
+                                                fontsize=12, zorder=z+1)
 
                         if row == 0:
                             # determine how long the traces should be
@@ -287,7 +290,7 @@ def plot_iterative_waveforms(dsfid, output_dir, min_period, max_period,
                                 t_start = max(t[st_idx] - 10, 0)
                                 t_end = min(t[end_idx] + 10, t[-1])
 
-                                axes[row][col].set_xlim([t_start, t_end])                            
+                                axes[row][col].set_xlim([t_start, t_end])
                             # determine the length of the seismogram based on
                             # arrival of latest energy
                             else:
@@ -303,13 +306,22 @@ def plot_iterative_waveforms(dsfid, output_dir, min_period, max_period,
                                 title = (f"{st_obs[0].stats.network}."
                                          f"{st_obs[0].stats.station} "
                                          f"{event_id}\n")
-                                title += comp
-                            else:
-                                title = comp
-                            axes[row][col].set_title(title)
+                                axes[row][col].set_title(title)
                     
+                            # Append component to bottom right of subplot  
+                            axes[row][col].text(
+                                        x=0.95, y=0.15, s=comp.upper(),
+                                        horizontalalignment="center",
+                                        verticalalignment="center",
+                                        transform=axes[row][col].transAxes)
+
+                            # Set the y limits
+                            ylim = max(abs(ymin), abs(ymax))
+                            axes[row][col].set_ylim([-1*ylim, ylim])
+                  
                     # y-label after all the processing has occurred
-                    axes[row][0].set_ylabel(ylab)
+                    axes[row][0].set_ylabel(ylab, rotation="horizontal",
+                                            ha="right")
 
                 # Label the time axis on the bottom row
                 axes[-1][middle_column].set_xlabel("time [sec]")
@@ -318,10 +330,9 @@ def plot_iterative_waveforms(dsfid, output_dir, min_period, max_period,
                 if output_dir:
                     if not os.path.exists(output_dir):
                         os.makedirs(output_dir)
-
-                    final_model = synthetic_keys[-1].split('_')[-1]
+                    final_model = synthetic_keys[-1].replace("/", "")
                     fid_out = os.path.join(
-                        output_dir, f"{event_id}_{sta}_{final_model}_mtm.png")
+                        output_dir, f"{event_id}_{sta}_{final_model}.png")
                     plt.savefig(fid_out, figsize=figsize, dpi=dpi)
 
                 # Show the plot
@@ -331,7 +342,8 @@ def plot_iterative_waveforms(dsfid, output_dir, min_period, max_period,
                 plt.close()
 
             except Exception as e:
-                print(e)
+                traceback.print_exc()
+                sys.exit()
                 continue
 
 
@@ -346,11 +358,11 @@ if __name__ == "__main__":
         # If you only want to choose one event in your directory, wildcards okay
         event_ids = ["2018p130600.h5"]
 
-        # If you don't want to plot all models, can add e.g. 'synthetic_m00' 
-        select_models = []
+        # If you don't want to plot all models, can add e.g. 'm00s00', 'm09s01'
+        select_paths = []
 
         # Pick stations, if left empty, will plot all stations in dataset
-        select_stations = []
+        select_stations = ["NZ.BFZ"]
 
         # list of two ints, "dynamic" (default) or "center_on_peak"
         trace_length = "center_on_peak"
@@ -364,7 +376,6 @@ if __name__ == "__main__":
 
         # User-defined figure parameters
         label_units = False  # label the units of the traces, otherwise blank
-        cross_corr = True  # cross-correlate traces and annotate max correlation
         show = True  # show the figure after plotting
 
         for event_id in event_ids:
@@ -373,11 +384,10 @@ if __name__ == "__main__":
                                          min_period=min_period, 
                                          max_period=max_period, 
                                          event_id=event_id, 
-                                         select_models=select_models,
+                                         select_paths=select_paths,
                                          select_stations=select_stations, 
                                          synthetics_only=synthetics_only,
                                          trace_length=trace_length, 
-                                         cross_corr=cross_corr,
                                          label_units=label_units, show=show)
     except KeyboardInterrupt:
         sys.exit()
