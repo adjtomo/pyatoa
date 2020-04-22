@@ -1,5 +1,8 @@
 ## For Version 0.2.0
 
+#### Features
+- [ ] Use Pandas in the Inspector class to do the large-scale data analysis required for all the misfit windows, etc.
+
 #### Bugs
 - [X] FDSNException in gatherer.gather_observed( Uknown Error (timeout))  
       *Added catch for FDSNException in gather_observed() and return st_obs=None*
