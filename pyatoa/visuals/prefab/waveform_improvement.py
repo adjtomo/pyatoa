@@ -46,7 +46,7 @@ def setup_plot(nrows, ncols, label_units=False):
     :return axes: axis objects
     """
     gs = mpl.gridspec.GridSpec(nrows, ncols, hspace=0, wspace=0.05, 
-                               width_ratios=[1.75] * ncols,
+                               width_ratios=[1.25] * ncols,
                                height_ratios=[1] * nrows
                                )
 
@@ -66,9 +66,6 @@ def setup_plot(nrows, ncols, label_units=False):
                                  right=True)
             # Set the grids on
             ax.minorticks_on()
-            for axis_ in ['major', 'minor']:
-                ax.grid(which=axis_, linestyle=':', linewidth='0.5',
-                              color='k', alpha=0.75)
             components.append(ax)
         axes.append(components)
 
@@ -305,7 +302,7 @@ def plot_iterative_waveforms(dsfid, output_dir, min_period, max_period,
                             if col == middle_column:
                                 title = (f"{st_obs[0].stats.network}."
                                          f"{st_obs[0].stats.station} "
-                                         f"{event_id}\n")
+                                         f"{event_id}")
                                 axes[row][col].set_title(title)
                     
                             # Append component to bottom right of subplot  
@@ -325,6 +322,9 @@ def plot_iterative_waveforms(dsfid, output_dir, min_period, max_period,
 
                 # Label the time axis on the bottom row
                 axes[-1][middle_column].set_xlabel("time [sec]")
+               
+                # Keep it toight 
+                f.tight_layout()
 
                 # Save the generated figure
                 if output_dir:
@@ -335,7 +335,6 @@ def plot_iterative_waveforms(dsfid, output_dir, min_period, max_period,
                         output_dir, f"{event_id}_{sta}_{final_model}.png")
                     plt.savefig(fid_out, figsize=figsize, dpi=dpi)
 
-                # Show the plot
                 if show:
                     plt.show()
                 
@@ -356,16 +355,16 @@ if __name__ == "__main__":
         output_dir = "../figures/wavupdate"
         
         # If you only want to choose one event in your directory, wildcards okay
-        event_ids = ["2018p130600.h5"]
+        event_ids = ["3540318.h5"]
 
         # If you don't want to plot all models, can add e.g. 'm00s00', 'm09s01'
         select_paths = []
 
         # Pick stations, if left empty, will plot all stations in dataset
-        select_stations = ["NZ.BFZ"]
+        select_stations = ["NZ.BKZ"]
 
         # list of two ints, "dynamic" (default) or "center_on_peak"
-        trace_length = "center_on_peak"
+        trace_length = [25, 120] # "center_on_peak"
 
         # Synthetic only tests need to be treated differently
         synthetics_only = True
