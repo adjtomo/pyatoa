@@ -287,7 +287,7 @@ class Gadget:
             values = self.misfit_values(model)
         elif choice == "cc_shift_sec":
             misfits = self.sort_by_model("windows")
-            values = self.window_values(model, choice)
+            values = self.window_values(model, step, choice, values_only=True)
         assert(model in misfits), f"model must be in {misfits.keys()}"
 
         # Ensure that optional arguments are acceptable
@@ -567,7 +567,8 @@ class Gadget:
             if choice == "misfit":
                 val = self.misfit_values(model_, step_)
             else:
-                val = self.window_values(model_, step_, choice)
+                val = self.window_values(model_, step_, choice,
+                                         values_only=True)
 
             # Determine bound for histogram
             min_value = np.floor(min(val))
@@ -807,7 +808,7 @@ class Gadget:
 
         # Set up the values to plot
         misfit_dict = self.sum_misfits()
-        window_dict = self.measurements(windows_by)
+        window_dict = self.measurement_length(windows_by)
 
         # Plot by model only, looking at final misfit and window count
         if choice == "model":

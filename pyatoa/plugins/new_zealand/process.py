@@ -8,31 +8,8 @@ Used for preprocessing data through filtering and tapering, zero padding etc.
 Also contains tools for synthetic traces such as source time function
 convolutions
 """
-import numpy as np
 from pyatoa import logger
 from pyatoa.utils.process import is_preprocessed, change_syn_units
-
-
-def snr(a, axis=0, ddof=0):
-    """
-    Signal to Noise ratio defiend as mean over standard deviation, taken from 
-    the old scipy.stats.signaltonoise 
-
-    https://github.com/scipy/scipy/issues/9097
-    
-    :type a: np.array
-    :param a: array object containing data
-    :type axis: int or None, optional
-    :param axis: axis over which to operate
-    :type ddof: int, optional
-    :param ddof: degrees of freedom correction for standard deviation
-    :rtype s2n: ndarray
-    :return s2n: mean to standard deviation along axis
-    """
-    a = np.asanyarray(a)
-    m = a.mean(axis)
-    sd = a.std(axis=axis, ddof=ddof)
-    return np.where(sd == 0, 0, m/sd)
 
 
 def scale_beacon_amplitudes(st, st_syn):
@@ -58,7 +35,7 @@ def scale_beacon_amplitudes(st, st_syn):
 
     # Amplitude scaling
     scale_60s = 75.
-    instr_60s = [1, 2, 4, 5,  6, 7, 8, 9, 13, 14, 15, 18]
+    instr_60s = [1, 2, 4, 5, 6, 7, 8, 9, 13, 14, 15, 18]
 
     # Determine group by checking station name
     try: 
@@ -69,7 +46,7 @@ def scale_beacon_amplitudes(st, st_syn):
 
     # Scale the group based on the instrument type
     if idx in instr_60s:
-        logger.debug(f"scaling {st_scale[0].get_id()} by {scale_60s}")
+        logger.debug(f"scaling {st_scale[0].get_id()} by -1 * {scale_60s}")
         for tr in st_scale:
             data_try = tr.data * scale_60s
             # Get the synthetic component to use for comparisons
@@ -80,7 +57,8 @@ def scale_beacon_amplitudes(st, st_syn):
                 logger.warning(f"scaled obs max is >10x syn max")
             # Check if the scaled data
             tr.data = data_try
-        return st_scale
+
+    return st_scale
 
 
 def preproc(mgmt, choice, water_level=60, corners=4, taper_percentage=0.05):
