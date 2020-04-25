@@ -153,13 +153,36 @@ def call_models(fid, path_out="./figures"):
         save_pdf(y_fids, save_fid_y)
 
 
-if __name__ == "__main__":
-    fids = []
-    # fids += glob("*log*.vtk")
-    fids += glob("*8*poisson*.vtk")
-    # fids += glob("*gradient*.vtk")
+def user_input():
+    """
+    A function to ask the user to choose from available files for making models
 
-    for fid in fids:
+    :rtype: list
+    :return: list of chosen filenames
+    """
+    fids = []
+    model = f"{input('Choose model number (wildcards okay): '):0>4}"
+
+    add_mods = input("Make models for 'models'?: [y]/n")
+    add_logs = input("Make models for 'log differences'?: [y]/n")
+    add_grads = input("Make models for 'gradients'?: [y]/n")
+    add_pois = input("Make models for 'Poissons ratios'?: [y]/n")
+    if add_mods != "n":
+        fids += glob("model_{model}_*.vtk")
+    if add_logs != "n":
+        fids += glob(f"log_model_{model}_??.vtk")
+    if add_grads != "n":
+        fids += glob(f"gradient_{model}_*.vtk")
+    if add_pois != "n":
+        fids += glob(f"model_{model}_poissons.vtk")
+
+    print(f"{len(fids)} file(s) found")
+    return fids
+
+
+if __name__ == "__main__":
+    filenames = user_input()
+    for fid in filenames:
         if "rcvs" in fid or "srcs" in fid:
             continue
         call_models(fid)

@@ -5,13 +5,18 @@ looking at misfit information en masse and producing dictionary objects that
 can quickly be queried by built-in functions.to look at stats and figures to
 understand the progress of an inversion
 
+To Do:
+    -Incorporate Pandas into this class to make it easier to work with
+     such large scale data. Dictionaries and lists will be cumbersome for large
+     scale inversions
+
 The Inspector carries around information about:
 
 srcrcv: Sources and receivers, locations, depths, distances, backazimuths
     origintimes for sources
-windows: All information regarding misfit windows, such as time shift,
+windows: All information regarding individual misfit windows, e.g. time shift,
     amplitude anomaly, window start and end, correlations
-misfit: Misfit information from Pyadjoint, including number of windows
+misfit: En masse misfit information from Pyadjoint, including number of windows
     and total misfit
 """
 import os
@@ -154,17 +159,17 @@ class Inspector(Gadget):
     @property
     def mags(self):
         """Return a dictionary of event magnitudes"""
-        return self.event_info("mag")
+        return self._event_info("mag")
 
     @property
     def times(self):
         """Return a dictionary of event origin times"""
-        return self.event_info("time")
+        return self._event_info("time")
 
     @property
     def depths(self):
         """Return a dictionary of event depths in units of meters"""
-        return self.event_info("depth_m")
+        return self._event_info("depth_m")
 
     def _get_info(self):
         """
@@ -193,6 +198,25 @@ class Inspector(Gadget):
         self._steps = steps
         self._iterations = iterations
 
+    def _event_info(self, choice):
+        """
+        Return chosen event information in a dictionary object, called by
+        class properties.
+
+        :type choice: str
+        :param choice: choice of key to query dictionary
+            choices are: depth_m, lat, lon, mag, time, utm_x, utm_y
+        """
+        choices = ["depth_m", "lat", "lon", "mag", "time", "utm_x", "utm_y"]
+        assert (choice in choices), f"Choice must be in {choices}"
+        info = {}
+        for event in self.srcrcv.keys():
+            try:
+                info[event] = self.srcrcv[event][choice]
+            except KeyError:
+                continue
+        return info
+
     def append(self, dsfid, windows=True, srcrcv=True, misfits=True):
         """
         Append a new pyasdf.ASDFDataSet file to the current set of internal
@@ -210,11 +234,11 @@ class Inspector(Gadget):
         try:
             with pyasdf.ASDFDataSet(dsfid) as ds:
                 if windows:
-                    self.get_windows(ds)
+                    self.get_windows_from_dataset(ds)
                 if srcrcv:
-                    self.get_srcrcv(ds)
+                    self.get_srcrcv_from_dataset(ds)
                 if misfits:
-                    self.get_misfits(ds)
+                    self.get_misfits_from_dataset(ds)
                 return 1
         except OSError:
             print(f"error: already open")
@@ -224,23 +248,203 @@ class Inspector(Gadget):
             traceback.print_exc()
             return 0
 
-    def event_info(self, choice):
+    def save(self, tag, path="./"):
         """
-        Return event information in a dictionary object
+        Save the downloaded attributes into JSON files for easier re-loading.
 
-        :type choice: str
-        :param choice: choice of key to query dictionary
-            choices are: depth_m, lat, lon, mag, time, utm_x, utm_y
+        :type tag: str
+        :param tag: unique naming tag for saving json files
+        :type path: str
+        :param path: optional path to save to, defaults to cwd
         """
-        choices = ["depth_m", "lat", "lon", "mag", "time", "utm_x", "utm_y"]
-        assert(choice in choices), f"Choice must be in {choices}"
-        info = {}
-        for event in self.srcrcv.keys():
-            try:
-                info[event] = self.srcrcv[event][choice]
-            except KeyError:
-                continue
-        return info
+        variables = [_ for _ in vars(self).keys() if '_' not in _]
+        # Save all components into a single dictionary
+        save_dict = {}
+        for v in variables:
+            if hasattr(self, v):
+                save_dict[v] = getattr(self, v)
+
+        # Save all outputs
+        with open(os.path.join(path, f"{tag}.json"), "w") as f:
+            print("writing file")
+            json.dump(save_dict, f, indent=4, sort_keys=True)
+
+    def write(self, tag, path="./"):
+        """
+        Same as save(), but I kept writing .write() so I figured i'd have it
+
+        :type tag: str
+        :param tag: unique naming tag for saving json files
+        :type path: str
+        :param path: optional path to file, defaults to cwd
+        """
+        self.save(tag, path)
+
+    def load(self, tag, path="./"):
+        """
+        Load previously saved attributes to avoid re-processing data.
+
+        :type tag: str
+        :param tag: tag to look for json files
+        :type path: str
+        :param path: optional path to file, defaults to cwd
+        """
+        variables = [_ for _ in vars(self).keys() if '_' not in _]
+        if tag.endswith(".json"):
+            tag = tag.split(".")[0]
+
+        print(f"reading file", end="... ")
+        try:
+            with open(os.path.join(path, f"{tag}.json"), "r") as f:
+                loaded_variables = json.load(f)
+                print("found")
+                for v in variables:
+                    setattr(self, v, loaded_variables[v])
+            return 1
+        except FileNotFoundError:
+            print("not found")
+            return 0
+
+    def get_srcrcv_from_dataset(self, ds):
+        """
+        Get source receiver info including coordinates, distances and BAz
+        from a given dataset. Appends to internal variable srcrcv.
+
+        :type ds: pyasdf.ASDFDataSet
+        :param ds: dataset to query for distances
+        """
+        # Initialize the event as a dictionary
+        eid = event_name(ds=ds)
+
+        # Get UTM projection of event coordinates
+        ev_x, ev_y = lonlat_utm(
+            lon_or_x=ds.events[0].preferred_origin().longitude,
+            lat_or_y=ds.events[0].preferred_origin().latitude,
+            utm_zone=self._utm, inverse=False
+        )
+
+        self.srcrcv[eid] = {"lat": ds.events[0].preferred_origin().latitude,
+                            "lon": ds.events[0].preferred_origin().longitude,
+                            "depth_m": ds.events[0].preferred_origin().depth,
+                            "time": str(ds.events[0].preferred_origin().time),
+                            "mag": ds.events[0].preferred_magnitude().mag,
+                            "utm_x": ev_x,
+                            "utm_y": ev_y
+                            }
+
+        # Loop through all the stations in the dataset
+        for sta, sta_info in ds.get_all_coordinates().items():
+            # Append station location information one-time to dictionary
+            if sta not in self.srcrcv:
+                sta_x, sta_y = lonlat_utm(lon_or_x=sta_info["longitude"],
+                                          lat_or_y=sta_info["latitude"],
+                                          utm_zone=self._utm, inverse=False
+                                          )
+                self.srcrcv[sta] = {"lat": sta_info["latitude"],
+                                    "lon": sta_info["longitude"],
+                                    "elv_m": sta_info["elevation_in_m"],
+                                    "utm_x": sta_x,
+                                    "utm_y": sta_y
+                                    }
+
+            # Append src-rcv distance and backazimuth to specific event
+            gcd, _, baz = gps2dist_azimuth(lat1=self.srcrcv[eid]["lat"],
+                                           lon1=self.srcrcv[eid]["lon"],
+                                           lat2=self.srcrcv[sta]["lat"],
+                                           lon2=self.srcrcv[sta]["lon"]
+                                           )
+            self.srcrcv[eid][sta] = {"dist_km": gcd * 1E-3, "baz": baz}
+
+    def get_misfits_from_dataset(self, ds):
+        """
+        Get Misfit information from a dataset.
+        Appends to internal variable misfit.
+
+        :type ds: pyasdf.ASDFDataSet
+        :param ds: dataset to query for misfit
+        """
+        eid = event_name(ds=ds)
+
+        self.misfits[eid] = {}
+        for model in ds.auxiliary_data.AdjointSources.list():
+            self.misfits[eid][model] = {}
+            for step in ds.auxiliary_data.AdjointSources[model].list():
+                self.misfits[eid][model][step] = {}
+                num_win = count_misfit_windows(ds, model, step,
+                                               count_by_stations=True)
+
+                # For each station, determine the number of windows and misfit
+                for station in \
+                        ds.auxiliary_data.AdjointSources[model][step]:
+                    sta_id = station.parameters["station_id"]
+                    misfit = station.parameters["misfit_value"]
+
+                    # One time initiatation of a new dictionary object
+                    if sta_id not in self.misfits[eid][model][step]:
+                        self.misfits[eid][model][step][sta_id] = {
+                            "msft": 0, "nwin": num_win[sta_id]
+                        }
+
+                    # Append the total number of windows, and the total misfit
+                    self.misfits[eid][model][step][sta_id]["msft"] += misfit
+
+                # Scale the misfit of each station by the number of windows
+                # a la Tape (2010) Eq. 6
+                for sta_id in self.misfits[eid][model][step].keys():
+                    self.misfits[eid][model][step][sta_id]["msft"] /= \
+                        2 * self.misfits[eid][model][step][sta_id]["nwin"]
+
+    def get_windows_from_dataset(self, ds):
+        """
+        Get Window information from auxiliary_data.MisfitWindows
+        Appends to internal variable windows.
+
+        :type ds: pyasdf.ASDFDataSet
+        :param ds: dataset to query for misfit
+        """
+        eid = event_name(ds=ds)
+
+        self.windows[eid] = {}
+        for model in ds.auxiliary_data.MisfitWindows.list():
+            self.windows[eid][model] = {}
+            for step in ds.auxiliary_data.MisfitWindows[model].list():
+                self.windows[eid][model][step] = {}
+                # For each station, determine number of windows and total misfit
+                for window in \
+                        ds.auxiliary_data.MisfitWindows[model][step]:
+                    cha_id = window.parameters["channel_id"]
+                    net, sta, loc, cha = cha_id.split(".")
+                    sta_id = f"{net}.{sta}"
+
+                    dlna = window.parameters["dlnA"]
+                    weight = window.parameters["window_weight"]
+                    max_cc = window.parameters["max_cc_value"]
+                    length_s = (window.parameters["relative_endtime"] -
+                                window.parameters["relative_starttime"]
+                                )
+                    rel_start = window.parameters["relative_starttime"]
+                    rel_end = window.parameters["relative_endtime"]
+                    cc_shift_sec = window.parameters["cc_shift_in_seconds"]
+
+                    # One time initiatations of a new dictionary object
+                    win = self.windows[eid][model][step]
+                    if sta_id not in win:
+                        win[sta_id] = {}
+                    if cha not in self.windows[eid][model][step][sta_id]:
+                        win[sta_id][cha] = {"cc_shift_sec": [], "dlna": [],
+                                            "weight": [], "max_cc": [],
+                                            "length_s": [], "rel_start": [],
+                                            "rel_end": []
+                                            }
+
+                    # Append values from the parameters into dictionary object
+                    win[sta_id][cha]["dlna"].append(dlna)
+                    win[sta_id][cha]["weight"].append(weight)
+                    win[sta_id][cha]["max_cc"].append(max_cc)
+                    win[sta_id][cha]["length_s"].append(length_s)
+                    win[sta_id][cha]["rel_end"].append(rel_end)
+                    win[sta_id][cha]["rel_start"].append(rel_start)
+                    win[sta_id][cha]["cc_shift_sec"].append(cc_shift_sec)
 
     def event_stats(self, model, step, choice="cc_shift_sec", sta_code=None,
                     eventid=None, print_choice=abs_max):
@@ -302,36 +506,61 @@ class Inspector(Gadget):
 
         return events, nwins, msftval
 
-    def window_values(self, model, step, choice):
+    def window_values(self, model, step, choice="cc_shift_sec",
+                      values_only=False):
         """
-        Return a list of all chosen values for a given model.
+        Sorts through misfit windows and returns a sorted list of `choice`.
+        Useful for looking for maximum time shift or misfit and the
+        corresponding event, component, etc.
+
+        If values_only == True:
+            returns a single list of values for the given choice
+        elif values_only == False:
+            returns a list of lists, where each list contains corresponding
+            event, station, component and window information in the following:
+            [event_id, station, component, window_number, value]
+
         Choices are: "cc_shift_sec", "dlna", "max_cc", "length_s", "weight"
                      "rel_end", "rel_start"
 
         :type model: str
-        :param model: model to query e.g. 'm00'
+        :param model: model to query, e.g. 'm00'
         :type step: str
         :param step: step count to query, e.g. 's00'
         :type choice: str
-        :param choice: key choice for window query
-        :rtype list:
-        :return: list of time shift values for a given model
+        :param choice: choice of measurement to return
+        :type values_only: bool
+        :param values_only: only return the values, not the corresponding info
+        :rtype a_out: list
+        :return a_out: values of windows for given choice
         """
         choices = ["cc_shift_sec", "dlna", "max_cc", "length_s", "weight",
                    "rel_start", "rel_end"]
         assert(choice in choices), f"choice must be in {choices}"
 
-        ret = []
-        windows = self.sort_by_model("windows")
-        for event in windows[model][step]:
-            for sta in windows[model][step][event]:
-                for cha in windows[model][step][event][sta]:
-                    ret += windows[model][step][event][sta][cha][choice]
-        return ret
+        windows = self.sort_by_model("windows")[model][step]
+        a_out = []
+        for event in windows:
+            for sta in windows[event]:
+                for comp in windows[event][sta]:
+                    # Each window gets its own line in the array
+                    for w, val in enumerate(windows[event][sta][comp][choice]):
+                        if values_only:
+                            a_out.append(float(val))
+                        else:
+                            a_out.append([event, sta, comp, int(w), float(val)])
+
+        # Sort by the values
+        if values_only:
+            a_out.sort(reverse=True)
+        else:
+            a_out.sort(key=lambda x: x[-1], reverse=True)
+
+        return a_out
 
     def misfit_values(self, model, step):
         """
-        Return a list of misfit values for a given model and step
+        Return a single list of misfit values for a given model and step.
 
         :type model: str
         :param model: model to query e.g. 'm00'
@@ -353,208 +582,15 @@ class Inspector(Gadget):
                             self.misfits[event][model][step][sta]["msft"])
         return misfit
 
-    def get_srcrcv(self, ds):
-        """
-        Get source receiver info including coordinates, distances and BAz
-        from a given dataset. Appends to internal variable srcrcv.
-
-        :type ds: pyasdf.ASDFDataSet
-        :param ds: dataset to query for distances
-        """
-        # Initialize the event as a dictionary
-        eid = event_name(ds=ds)
-
-        # Get UTM projection of event coordinates
-        ev_x, ev_y = lonlat_utm(
-            lon_or_x=ds.events[0].preferred_origin().longitude,
-            lat_or_y=ds.events[0].preferred_origin().latitude,
-            utm_zone=self._utm, inverse=False
-        )
-
-        self.srcrcv[eid] = {"lat": ds.events[0].preferred_origin().latitude,
-                            "lon": ds.events[0].preferred_origin().longitude,
-                            "depth_m": ds.events[0].preferred_origin().depth,
-                            "time": str(ds.events[0].preferred_origin().time),
-                            "mag": ds.events[0].preferred_magnitude().mag,
-                            "utm_x": ev_x,
-                            "utm_y": ev_y
-                            }
-
-        # Loop through all the stations in the dataset
-        for sta, sta_info in ds.get_all_coordinates().items():
-            # Append station location information one-time to dictionary
-            if sta not in self.srcrcv:
-                sta_x, sta_y = lonlat_utm(lon_or_x=sta_info["longitude"],
-                                          lat_or_y=sta_info["latitude"],
-                                          utm_zone=self._utm, inverse=False
-                                          )
-                self.srcrcv[sta] = {"lat": sta_info["latitude"],
-                                    "lon": sta_info["longitude"],
-                                    "elv_m": sta_info["elevation_in_m"],
-                                    "utm_x": sta_x,
-                                    "utm_y": sta_y
-                                    }
-
-            # Append src-rcv distance and backazimuth to specific event
-            gcd, _, baz = gps2dist_azimuth(lat1=self.srcrcv[eid]["lat"],
-                                           lon1=self.srcrcv[eid]["lon"],
-                                           lat2=self.srcrcv[sta]["lat"],
-                                           lon2=self.srcrcv[sta]["lon"]
-                                           )
-            self.srcrcv[eid][sta] = {"dist_km": gcd * 1E-3, "baz": baz}
-
-    def get_misfits(self, ds):
-        """
-        Get Misfit information from a dataset.
-        Appends to internal variable misfit.
-
-        :type ds: pyasdf.ASDFDataSet
-        :param ds: dataset to query for misfit
-        """
-        eid = event_name(ds=ds)
-
-        self.misfits[eid] = {}
-        for model in ds.auxiliary_data.AdjointSources.list():
-            self.misfits[eid][model] = {}
-            for step in ds.auxiliary_data.AdjointSources[model].list():
-                self.misfits[eid][model][step] = {}
-                num_win = count_misfit_windows(ds, model, step,
-                                               count_by_stations=True)
-
-                # For each station, determine the number of windows and misfit
-                for station in \
-                        ds.auxiliary_data.AdjointSources[model][step]:
-                    sta_id = station.parameters["station_id"]
-                    misfit = station.parameters["misfit_value"]
-
-                    # One time initiatation of a new dictionary object
-                    if sta_id not in self.misfits[eid][model][step]:
-                        self.misfits[eid][model][step][sta_id] = {
-                            "msft": 0, "nwin": num_win[sta_id]
-                        }
-
-                    # Append the total number of windows, and the total misfit
-                    self.misfits[eid][model][step][sta_id]["msft"] += misfit
-
-                # Scale the misfit of each station by the number of windows
-                # a la Tape (2010) Eq. 6
-                for sta_id in self.misfits[eid][model][step].keys():
-                    self.misfits[eid][model][step][sta_id]["msft"] /= \
-                        2 * self.misfits[eid][model][step][sta_id]["nwin"]
-                
-    def get_windows(self, ds):
-        """
-        Get Window information from auxiliary_data.MisfitWindows
-        Appends to internal variable windows.
-
-        :type ds: pyasdf.ASDFDataSet
-        :param ds: dataset to query for misfit
-        """
-        eid = event_name(ds=ds)
-
-        self.windows[eid] = {}
-        for model in ds.auxiliary_data.MisfitWindows.list():
-            self.windows[eid][model] = {}
-            for step in ds.auxiliary_data.MisfitWindows[model].list():
-                self.windows[eid][model][step] = {}
-                # For each station, determine number of windows and total misfit
-                for window in \
-                        ds.auxiliary_data.MisfitWindows[model][step]:
-                    cha_id = window.parameters["channel_id"]
-                    net, sta, loc, cha = cha_id.split(".")
-                    sta_id = f"{net}.{sta}"
-
-                    dlna = window.parameters["dlnA"]
-                    weight = window.parameters["window_weight"]
-                    max_cc = window.parameters["max_cc_value"]
-                    length_s = (window.parameters["relative_endtime"] -
-                                window.parameters["relative_starttime"]
-                                )
-                    rel_start = window.parameters["relative_starttime"]
-                    rel_end = window.parameters["relative_endtime"]
-                    cc_shift_sec = window.parameters["cc_shift_in_seconds"]
-
-                    # One time initiatations of a new dictionary object
-                    win = self.windows[eid][model][step]
-                    if sta_id not in win:
-                        win[sta_id] = {}
-                    if cha not in self.windows[eid][model][step][sta_id]:
-                        win[sta_id][cha] = {"cc_shift_sec": [], "dlna": [],
-                                            "weight": [], "max_cc": [],
-                                            "length_s": [], "rel_start": [],
-                                            "rel_end": []
-                                            }
-
-                    # Append values from the parameters into dictionary object
-                    win[sta_id][cha]["dlna"].append(dlna)
-                    win[sta_id][cha]["weight"].append(weight)
-                    win[sta_id][cha]["max_cc"].append(max_cc)
-                    win[sta_id][cha]["length_s"].append(length_s)
-                    win[sta_id][cha]["rel_end"].append(rel_end)
-                    win[sta_id][cha]["rel_start"].append(rel_start)
-                    win[sta_id][cha]["cc_shift_sec"].append(cc_shift_sec)
-
-    def save(self, tag, path="./"):
-        """
-        Save the downloaded attributes into JSON files for easier re-loading.
-
-        :type tag: str
-        :param tag: unique naming tag for saving json files
-        :type path: str
-        :param path: optional path to save to, defaults to cwd
-        """
-        variables = [_ for _ in vars(self).keys() if '_' not in _]
-        # Save all components into a single dictionary
-        save_dict = {}
-        for v in variables:
-            if hasattr(self, v):
-                save_dict[v] = getattr(self, v)
-
-        # Save all outputs
-        with open(os.path.join(path, f"{tag}.json"), "w") as f:
-            print("writing file")
-            json.dump(save_dict, f, indent=4, sort_keys=True)
-
-    def write(self, tag, path="./"):
-        """
-        Same as save(), but I kept writing .write() so I figured i'd have it
-
-        :type tag: str
-        :param tag: unique naming tag for saving json files
-        :type path: str
-        :param path: optional path to file, defaults to cwd
-        """
-        self.save(tag, path)
-
-    def load(self, tag, path="./"):
-        """
-        Load previously saved attributes to avoid re-processing data.
-
-        :type tag: str
-        :param tag: tag to look for json files
-        :type path: str
-        :param path: optional path to file, defaults to cwd
-        """
-        variables = [_ for _ in vars(self).keys() if '_' not in _]
-        if tag.endswith(".json"):
-            tag = tag.split(".")[0]
-
-        print(f"reading file", end="... ")
-        try:
-            with open(os.path.join(path, f"{tag}.json"), "r") as f:
-                loaded_variables = json.load(f)
-                print("found")
-                for v in variables:
-                    setattr(self, v, loaded_variables[v])
-            return 1
-        except FileNotFoundError:
-            print("not found")
-            return 0
-
     def sort_by_model(self, choice):
         """
-        Rearrage dictionary so that the first layer corresponds to model
+        Rearrage chosen dictionary so that the first layer corresponds to model
         rather than the default sorting of by event.
+
+        Nesting layers goes from:
+            event > model > step
+        to
+            model > step > event
 
         :rtype dict:
         :return: misfits sorted by model
@@ -572,37 +608,6 @@ class Inspector(Gadget):
                     for s in self.steps[m]}
                 for m in self.models
                 }
-
-    def sort_by_window(self, model, step, choice="cc_shift_sec"):
-        """
-        Sorts through misfit windows and returns based on choice.
-        Returns two lists, sorted values and then then a tuple corresponding to:
-        (event_id, station, component)
-        Useful for e.g., finding largest time shifts
-
-        Choices are: "cc_shift_sec", "dlna", "max_cc", "length_s", "weight"
-                     "rel_end", "rel_start"
-
-        :type model: str
-        :param model: model to query, e.g. 'm00'
-        :type step: str
-        :param step: step count to query, e.g. 's00'
-        :type choice: str
-        :param choice: choice of measurement to return
-        """
-        values, info = [], []
-
-        windows = self.sort_by_model("windows")[model][step]
-        for event in windows:
-            for sta in windows[event]:
-                for comp in windows[event][sta]:
-                    for value in windows[event][sta][comp][choice]:
-                        values.append(value)
-                        info.append((event, sta, comp))
-        # sort by value
-        values, info = (list(_) for _ in zip(*sorted(zip(values, info))))
-
-        return values, info
 
     def sort_misfits_by_station(self):
         """
@@ -641,7 +646,7 @@ class Inspector(Gadget):
 
         return misfits
 
-    def measurements(self, choice):
+    def measurement_length(self, choice):
         """
         Find the cumulative length of misfit windows for a given model/step,
         or the number of misfit windows for a given model/step.

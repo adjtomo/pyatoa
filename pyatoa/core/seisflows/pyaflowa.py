@@ -27,9 +27,6 @@ from pyatoa.utils.write import (create_stations_adjoint, write_adj_src_to_ascii,
                                 src_vtk_from_specfem, rcv_vtk_from_specfem
                                 )
 
-# Overwrite the preprocessing function
-from pyatoa.plugins.new_zealand.process import preproc
-
 # A list of key word arguments that are accepted by Pyaflowa but are only
 # listed in Seisflows' parameters.yaml file. Listed here so that Pyatoa
 # knows that these arguments are acceptable.
@@ -275,6 +272,7 @@ class Pyaflowa:
                     mgmt.preprocess(overwrite=overwrite)
                     mgmt.window(fix_windows=fix_windows)
                     mgmt.measure()
+                    processed += 1
 
                     # Plot waveforms with misfit windows and adjoint sources
                     if self.plot_waveforms:
@@ -296,9 +294,6 @@ class Pyaflowa:
                         if not os.path.exists(map_fid):
                             mgmt.srcrcvmap(stations=coords, show=False,
                                            save=map_fid)
-
-                    processed += 1
-                # Use traceback ensures more detailed error tracking
                 except Exception:
                     logger.debug(traceback.print_exc())
                     continue

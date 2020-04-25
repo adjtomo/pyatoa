@@ -310,7 +310,7 @@ class Manager:
     def reset(self, hard_reset=False):
         """
         Delete all collected data in the Manager, to restart workflow.
-        Retains Config, ds.
+        Retains Config, dataset.
 
         Soft reset retains event information so that another Station can be
         gathered for the same event, without needing to relaunch Gatherer and
@@ -346,55 +346,6 @@ class Manager:
         if hard_reset:
             self._launch(reset=True)
         self._check()
-
-    def gather(self, station_code, choice=None):
-        """
-        Launch a gatherer object and gather event, station and waveform
-        information given a station code. Fills the manager based on information
-        most likely to be available (we expect an event to be available more
-        often than waveform data).
-        Catches general exceptions along the way, stops gathering if errors.
-
-        :type station_code: str
-        :param station_code: Station code following SEED naming convention.
-            This must be in the form NN.SSSS.LL.CCC (N=network, S=station,
-            L=location, C=channel). Allows for wildcard naming. By default
-            the pyatoa workflow wants three orthogonal components in the N/E/Z
-            coordinate system. Example station code: NZ.OPRZ.10.HH?
-        :type choice: list
-        :param choice: allows user to gather individual bits of data, rather
-            than gathering all. Allowed: 'inv', 'st_obs', 'st_syn'
-        """
-        if self.gatherer is None:
-            self._launch()
-        try:
-            self.station_code = station_code
-            logger.info(f"gathering {station_code} for {self.config.event_id}")
-            # Gather all data
-            if choice is None:
-                logger.debug("gathering station information")
-                self.inv = self.gatherer.gather_station(station_code)
-                logger.debug("gathering observation waveforms")
-                self.st_obs = self.gatherer.gather_observed(station_code)
-                logger.debug("gathering synthetic waveforms")
-                self.st_syn = self.gatherer.gather_synthetic(station_code)
-            # Gather specific data based on user defined choice
-            else:
-                if "inv" in choice:
-                    logger.debug("gathering station information")
-                    self.inv = self.gatherer.gather_station(station_code)
-                if "st_obs" in choice:
-                    logger.debug("gathering observation waveforms")
-                    self.st_obs = self.gatherer.gather_observed(station_code)
-                if "st_syn" in choice:
-                    logger.debug("gathering synthetic waveforms")
-                    self.st_syn = self.gatherer.gather_synthetic(station_code)
-        except obspy.clients.fdsn.header.FDSNNoDataException:
-            logger.info("No data found internally or externally")
-            return
-        except Exception as e:
-            traceback.print_exc() 
-            return
 
     def write(self, write_to="ds"):
         """
@@ -438,7 +389,8 @@ class Manager:
         else:
             raise NotImplementedError
 
-    def load(self, station_code, ds=None, synthetic_tag=None, observed_tag=None):
+    def load(self, station_code, ds=None, synthetic_tag=None,
+             observed_tag=None):
         """
         Populate the manager using a given PyASDF Dataset, based on user-defined
         station code. Useful for re-instantiating an existing workflow that
@@ -448,6 +400,12 @@ class Manager:
         :param station_code: SEED conv. code, e.g. NZ.BFZ.10.HHZ
         :type ds: None or pyasdf.ASDFDataSet
         :param ds: dataset can be given to load from, will not set the ds
+        :type synthetic_tag: str
+        :param synthetic_tag: waveform tag of the synthetic data in the dataset
+            e.g. 'synthetic_m00s00'
+        :type observed_tag: str
+        :param observed_tag: waveform tag of the observed data in the dataset
+            e.g. 'observed'
         """
         # Allows a ds to be provided outside the attribute
         if self.ds and ds is None:
@@ -455,11 +413,14 @@ class Manager:
         else:
             raise AttributeError("load requires a Dataset")
 
-        assert len(station_code.split('.')) == 2,\
+        assert len(station_code.split('.')) == 2, \
             "station_code must be in form 'NN.SSS'"
 
-        self.event = ds.events[0]
+        # Hard reset the Manager incase it was used previously
+        self.reset(hard_reset=True)
 
+        # Populate using the dataset
+        self.event = ds.events[0]
         net, sta = station_code.split('.')
         sta_tag = f"{net}.{sta}"
         if sta_tag in ds.waveforms.list():
@@ -474,6 +435,58 @@ class Manager:
             self.inv = ds.waveforms[sta_tag].StationXML
         else:
             logger.warning(f"no data for {sta_tag} found in dataset")
+
+    def gather(self, station_code, choice=None):
+        """
+        Launch a gatherer object and gather event, station and waveform
+        information given a station code. Fills the manager based on information
+        most likely to be available (we expect an event to be available more
+        often than waveform data).
+        Catches general exceptions along the way, stops gathering if errors.
+
+        :type station_code: str
+        :param station_code: Station code following SEED naming convention.
+            This must be in the form NN.SSSS.LL.CCC (N=network, S=station,
+            L=location, C=channel). Allows for wildcard naming. By default
+            the pyatoa workflow wants three orthogonal components in the N/E/Z
+            coordinate system. Example station code: NZ.OPRZ.10.HH?
+        :type choice: list
+        :param choice: allows user to gather individual bits of data, rather
+            than gathering all. Allowed: 'inv', 'st_obs', 'st_syn'
+        :rtype: bool
+        :return: status of the function, 1: successful / 0: failed
+        """
+        if self.gatherer is None:
+            self._launch()
+        try:
+            self.station_code = station_code
+            logger.info(f"gathering {station_code} for {self.config.event_id}")
+            # Gather all data
+            if choice is None:
+                logger.debug("gathering station information")
+                self.inv = self.gatherer.gather_station(station_code)
+                logger.debug("gathering observation waveforms")
+                self.st_obs = self.gatherer.gather_observed(station_code)
+                logger.debug("gathering synthetic waveforms")
+                self.st_syn = self.gatherer.gather_synthetic(station_code)
+            # Gather specific data based on user defined choice
+            else:
+                if "inv" in choice:
+                    logger.debug("gathering station information")
+                    self.inv = self.gatherer.gather_station(station_code)
+                if "st_obs" in choice:
+                    logger.debug("gathering observation waveforms")
+                    self.st_obs = self.gatherer.gather_observed(station_code)
+                if "st_syn" in choice:
+                    logger.debug("gathering synthetic waveforms")
+                    self.st_syn = self.gatherer.gather_synthetic(station_code)
+            return 1
+        except obspy.clients.fdsn.header.FDSNNoDataException:
+            logger.info("No data found internally or externally")
+            return 0
+        except Exception as e:
+            traceback.print_exc() 
+            return 0
 
     def standardize(self, force=False, standardize_to="syn"):
         """
@@ -490,14 +503,16 @@ class Manager:
             by default the Observed traces should conform to the Synthetic ones
             because exports to Specfem should be controlled by the Synthetic
             sampling rate, npts, etc.
+        :rtype: bool
+        :return: status of the function, 1: successful / 0: failed
         """
         self._check()
         if min(self._len_obs, self._len_syn) == 0:
             logger.warning("cannot standardize, not enough waveform data")
-            return
+            return 0
         elif self._standardize_flag and not force:
             logger.warning("already standardized")
-            return
+            return 1
         logger.info("standardizing streams")
 
         # Zero pad the data if set by Config
@@ -533,6 +548,7 @@ class Manager:
         logger.debug(f"time offset set to {self._time_offset_sec}s")
 
         self._standardize_flag = True
+        return 1
 
     def preprocess(self, which="both", overwrite=None):
         """
@@ -550,6 +566,8 @@ class Manager:
             standard preprocessing function. All arguments that are given
             to the standard preprocessing function will be passed as kwargs to
             the new function. This allows for customized preprocessing
+        :rtype: bool
+        :return: status of the function, 1: successful / 0: failed
         """
         self._check()
         # Make sure an instrument response is available for removal, or that
@@ -557,7 +575,7 @@ class Manager:
         if (not isinstance(self.inv, obspy.core.inventory.Inventory)) \
                 and (not self.config.synthetics_only):
             logger.warning("cannot preprocess, no inventory")
-            return
+            return 0
         if overwrite:
             # Ensure the overwrite call is a function
             assert(hasattr(overwrite, '__call__')), "overwrite must be function"
@@ -566,7 +584,6 @@ class Manager:
             preproc_fx = preproc
 
         # If required, rotate based on source receiver lat/lon values
-        baz = None
         if self.config.rotate_to_rtz:
             self.gcd, self.baz = gcd_and_baz(event=self.event,
                                              sta=self.inv[0][0])
@@ -576,7 +593,6 @@ class Manager:
                 which.lower() in ["obs", "both"]:
             logger.info("preprocessing observation data")
             self.st_obs = preproc_fx(self, choice="obs")
-
         if self.st_syn is not None and not self._syn_filter_flag and \
                 which.lower() in ["syn", "both"]:
             logger.info("preprocessing synthetic data")
@@ -586,10 +602,11 @@ class Manager:
         self._check()
         if not self._obs_filter_flag or not self._syn_filter_flag:
             logger.warning("preprocessing failed")
-            return
+            return 0
 
         # Convolve synthetic data with a gaussian source-time-function
         self._convolve_source_time_function(which)
+        return 1
 
     def _convolve_source_time_function(self, which="both"):
         """
@@ -636,17 +653,19 @@ class Manager:
         :type force: bool
         :param force: ignore flag checks and run function, useful if e.g.
             external preprocessing is used that doesn't meet flag criteria
+        :rtype: bool
+        :return: status of the function, 1: successful / 0: failed
         """
         # Pre-check to see if data has already been standardized
         self._check()
         if not self._standardize_flag and not force:
             logger.warning("cannot window, waveforms not standardized")
-            return
+            return 1
         if fix_windows and not self.ds:
             logger.warning("cannot fix window, no dataset")
             fix_windows = False
 
-        # Get STA/LTA information
+        # Get STA/LTA information used for plotting
         staltas = {}
         for comp in self.config.component_list:
             try:
@@ -659,13 +678,13 @@ class Manager:
                 continue
         self.staltas = staltas
 
-        # Get misfit windows
+        # Get misfit windows from dataset or using Pyflex
         if fix_windows and (hasattr(self.ds, "auxiliary_data") and
                             hasattr(self.ds.auxiliary_data, "MisfitWindows")):
             # If fixed windows, attempt to retrieve them from the dataset
             net, sta, _, _ = self.st_obs[0].get_id().split(".")
             self.windows, self._num_windows = windows_from_ds(
-                ds=self.ds, net=net, sta= sta, 
+                ds=self.ds, net=net, sta= sta,
                 model=self.config.model, step=self.config.step)
         else:
             # If not fixed windows, or m00s00, calculate windows using Pyflex
@@ -675,10 +694,12 @@ class Manager:
         self.save_windows()
         logger.info(f"{self._num_windows} window(s) total found")
 
+        return int(bool(self._num_windows))
+
     def select_windows(self):
         """
-        Custom window selection function to include suppression by amplitude
-        and counting of misfit windows
+        Custom window selection function that calls Pyflex select windows, but
+        includes further window suppression introduced by Pyatoa.
         """
         logger.info(f"running Pyflex w/ map: {self.config.pyflex_preset}")
 
@@ -718,15 +739,16 @@ class Manager:
     def save_windows(self):
         """
         Save the misfit windows that are calculated by Pyflex into a Dataset
+        Auxiliary data tag is hardcoded to MisfitWindows
         """
         # Criteria to check if windows should be saved. Windows and dataset
         # should be available, and User config set to save
-        if self.ds is None or \
-               self._num_windows == 0 or not self.config.save_to_ds:
+        if self.ds is None or self._num_windows == 0 \
+                or not self.config.save_to_ds:
             logger.debug("windows not being saved")
             return
-
         logger.debug("saving misfit windows to PyASDF")
+
         # Determine how to name the path
         if self.config.model and self.config.step:
             # model/step/window_tag
@@ -778,23 +800,24 @@ class Manager:
         :type force: bool
         :param force: ignore flag checks and run function, useful if e.g.
             external preprocessing is used that doesn't meet flag criteria
+        :rtype: bool
+        :return: status of the function, 1: successful / 0: failed
         """
         self._check()
 
         # Check that data has been filtered and standardized
         if not self._standardize_flag and not force:
             logger.warning("cannot measure misfit, traces not standardized")
-            return
+            return 0
         elif not (self._obs_filter_flag and self._syn_filter_flag) \
                 and not force:
             logger.warning(
                 "cannot measure misfit, waveforms not filtered")
-            return
+            return 0
         elif self._num_windows == 0 and not force:
             logger.warning("cannot measure misfit, no windows")
-            return
-        logger.info(
-            f"running Pyadjoint w/ adj_src_type: {self.config.adj_src_type}")
+            return 0
+        logger.debug(f"running Pyadjoint w/ type: {self.config.adj_src_type}")
 
         # Create list of windows needed for Pyadjoint
         adjoint_windows = self._format_windows()
@@ -835,6 +858,7 @@ class Manager:
 
         # Let the User know the outcome of Pyadjoint
         logger.info(f"total misfit {self._misfit:.3f}")
+        return 1
 
     def _format_windows(self):
         """
@@ -934,7 +958,7 @@ class Manager:
         self._check()
         if not self._standardize_flag:
             logger.warning("cannot plot, waveforms not standardized")
-            return
+            return 0
         logger.info("plotting waveform")
 
         # Calculate the seismogram length based on given options
@@ -983,9 +1007,6 @@ class Manager:
         :param show: show the plot once generated, defaults to False
         :type save: str
         :param save: absolute filepath and filename if figure should be saved
-        :type show_nz_faults: bool
-        :param show_nz_faults: plot active faults and hikurangi trench from
-            internally saved coordinate files. takes extra time over simple plot
         :type figsize: tuple of floats
         :param figsize: length and width of the figure
         :type dpi: int
