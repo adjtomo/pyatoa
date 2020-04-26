@@ -54,7 +54,7 @@ def setup_plot(number_of, twax=True):
 
 
 def plot_wave(st_obs_in, st_syn_in, config, time_offset_sec=0., windows=None,
-              staltas=None, adj_srcs=None, length_sec=None, normalize=False,
+              staltas=None, adj_srcs=None, length_sec=None, normalize=False, 
               append_title=None, show=False, save=None, **kwargs):
     """
     Plot streams and windows. assumes you have N observation traces and
@@ -63,7 +63,7 @@ def plot_wave(st_obs_in, st_syn_in, config, time_offset_sec=0., windows=None,
     Note:
         The unit of adjoint source is based on Eq. 57 of Tromp et al. 2005, 
         which is a traveltime adjoint source, and includes the units of the 
-        volumentric delta function since it's assumed this is  happening in a 
+        volumentric delta function since it's assumed this is happening in a 
         3D volume. 
 
     :type st_obs_in: obspy.stream.Stream
@@ -348,7 +348,7 @@ def plot_wave(st_obs_in, st_syn_in, config, time_offset_sec=0., windows=None,
         title += f" pyflex={config.pyflex_preset} "
     # If adjoint sources given, put adj_src_type and misfit in
     if adj_srcs:
-        title += f" pyadjoint={config.adj_src_type} misfit={mgmt.misfit:.2E}"
+        title += f" pyadjoint={config.adj_src_type} "
     # User appended title information
     if append_title is not None:
         title = " ".join([title, append_title])

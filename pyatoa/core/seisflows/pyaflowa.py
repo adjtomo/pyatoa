@@ -261,8 +261,8 @@ class Pyaflowa:
             inv = read_stations(ev_paths["stations"])
 
             # Loop through stations and invoke Pyatoa workflow
-            for network in inv:
-                for station in network:
+            for net in inv:
+                for sta in net:
                     logger.info(f"{net.code}.{sta.code}")
                     try:
                         processed += mgmt.flow(

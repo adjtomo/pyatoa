@@ -10,9 +10,10 @@ import numpy as np
 from pyatoa import logger
 
 
-def zero_pad(st, pad_length_in_seconds):
+def zero_pad(st, pad_length_in_seconds, before=True, after=True):
     """
-    Zero pad the data of a stream, change the starttime to reflect the change
+    Zero pad the data of a stream, change the starttime to reflect the change.
+    Useful for if e.g. observed data starttime comes in later than synthetic.
 
     :type st: obspy.stream.Stream
     :param st: stream to be zero padded
@@ -21,12 +22,21 @@ def zero_pad(st, pad_length_in_seconds):
     :rtype st: obspy.stream.Stream
     :return st: stream with zero padded data object
     """
+    pad_before, pad_after = 0, 0
     st_pad = st.copy()
     for tr in st_pad:
         array = tr.data
         pad_width = int(pad_length_in_seconds * tr.stats.sampling_rate)
-        tr.data = np.pad(array, pad_width, mode='constant')
+        # Determine if we should pad before or after
+        if before:
+            pad_before = pad_width
+        if after:
+            pad_after = pad_width
+        logger.debug(f"zero pad {tr.id} ({pad_before}, {pad_after}) samples")
+        # Constant value is default 0
+        tr.data = np.pad(array, (pad_before, pad_after), mode='constant')
         tr.stats.starttime -= pad_length_in_seconds
+        logger.debug(f"new origin time {tr.id}: {tr.stats.starttime}")
     return st_pad
 
 

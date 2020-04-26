@@ -144,9 +144,6 @@ class Manager:
                 f"\tmisfit (adj_srcs):            {self._misfit:.2E}\n"
                 )
 
-    def __repr__(self):
-        return self.__str__()
-    
     @property
     def st(self):
         """
@@ -548,11 +545,10 @@ class Manager:
             return 1
         logger.info("standardizing streams")
 
-        # Zero pad the data if set by Config
-        if self.config.zero_pad:
-            self.st_obs = zero_pad(self.st_obs, self.config.zero_pad)
-            self.st_syn = zero_pad(self.st_syn, self.config.zero_pad)
-            logger.debug(f"zero padding front, back by {self.config.zero_pad}s")
+        # If observations starttime after synthetic, zero pad the front of obs
+        dt_st = self.st_obs[0].stats.starttime - self.st_syn[0].stats.starttime
+        if dt_st > 0:
+            self.st_obs = zero_pad(self.st_obs, dt_st, before=True, after=False)
 
         # Resample one Stream to match the other
         if standardize_to == "syn":

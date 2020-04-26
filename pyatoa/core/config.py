@@ -25,7 +25,7 @@ class Config:
                  client="IRIS", rotate_to_rtz=False, unit_output="DISP",
                  pyflex_preset="default", component_list=None,
                  adj_src_type="cc_traveltime_misfit", start_pad=20, end_pad=500,
-                 zero_pad=0, synthetic_unit="DISP", observed_tag="observed",
+                 synthetic_unit="DISP", observed_tag="observed",
                  synthetic_tag="synthetic_{m}{s}", synthetics_only=False,
                  window_amplitude_ratio=0., map_corners=None, cfgpaths=None,
                  save_to_ds=True, **kwargs):
@@ -66,11 +66,6 @@ class Config:
             for use by data gathering class
         :type end_pad: int
         :param end_pad: seconds after event origintime to grab waveform data
-        :type zero_pad: int
-        :type zero_pad: seconds to zero-pad data front and back, used by the
-            preprocess functions, useful for very small source-receiver
-            distances where there may not be much time from origin time
-            to first arrival
         :type synthetic_unit: str
         :param synthetic_unit: units of Specfem synthetics, 'DISP', 'VEL', 'ACC'
         :type synthetics_only: bool
@@ -122,7 +117,6 @@ class Config:
         self.map_corners = map_corners
         self.synthetics_only = synthetics_only
         self.window_amplitude_ratio = window_amplitude_ratio
-        self.zero_pad = int(zero_pad)
         self.start_pad = int(start_pad)
         self.end_pad = int(end_pad)
         self.component_list = component_list or ['Z', 'N', 'E']
