@@ -53,6 +53,8 @@
 - [X] Manager.load() take model number from Config if available
 - [ ] Log statement stating fid when saving figures
 - [ ] Manager.load() should allow loading misfit windows and adjoint sources as well, will need a warning statement to say waveforms are not processed
+- [ ] Functions return self to allow chaining
+- [ ] Custom error messages, or specific error messages from Manager rather than returning 0 or 1
 
 #### ASDF
 - [ ] Generate waveform plots, maps, from an ASDF dataset. As in remove the need to create a Manager just to make 
