@@ -19,6 +19,7 @@ import traceback
 import numpy as np
 
 from pyatoa import logger
+from pyatoa.utils.read import read_stations
 from pyatoa.utils.form import model_number, step_count
 from pyatoa.utils.asdf.deletions import clean_ds
 from pyatoa.visuals.statistics import plot_output_optim
@@ -257,35 +258,36 @@ class Pyaflowa:
             # Set up the manager and get station information
             config.write(write_to=ds)
             mgmt = pyatoa.Manager(config=config, ds=ds)
-            stations = np.loadtxt(ev_paths["stations"], usecols=[0, 1, 2, 3],
-                                  dtype=str)
-            coords = stations[:, 2:]
+            inv = read_stations(ev_paths["stations"])
 
             # Loop through stations and invoke Pyatoa workflow
-            for station in stations:
-                sta, net = station[:2]
-                logger.info(f"{net}.{sta}")
-                try:
-                    processed += mgmt.flow(station_code=f"{net}.{sta}.*.HH*",
-                                           preprocess_overwrite=overwrite,
-                                           fix_windows=fix_windows
-                                           )
+            for network in inv:
+                for station in network:
+                    logger.info(f"{net.code}.{sta.code}")
+                    try:
+                        processed += mgmt.flow(
+                                station_code=f"{net.code}.{sta.code}.*.HH*",
+                                preprocess_overwrite=overwrite,
+                                fix_windows=fix_windows
+                                )
 
-                    # Plot waveforms with misfit windows and adjoint sources
-                    if self.plot_waveforms:
-                        mgmt.plot(save=oj(ev_paths["figures"], f"wav_{sta}"),
-                                  show=False, return_figure=False
-                                  )
+                        # Plot waveforms with misfit windows and adjoint sources
+                        if self.plot_waveforms:
+                            mgmt.plot(
+                                save=oj(ev_paths["figures"], f"wav_{sta.code}"),
+                                show=False, return_figure=False
+                                      )
 
-                    # Only plot maps once since they won't change
-                    if self.plot_srcrcv_maps:
-                        map_fid = oj(ev_paths["maps"], f"map_{sta}.png")
-                        if not os.path.exists(map_fid):
-                            mgmt.srcrcvmap(stations=coords, show=False,
-                                           save=map_fid)
-                except Exception:
-                    traceback.print_exc()
-                    continue
+                        # Only plot maps once since they won't change
+                        if self.plot_srcrcv_maps:
+                            map_fid = oj(ev_paths["maps"], 
+                                         f"map_{sta.code}.png")
+                            if not os.path.exists(map_fid):
+                                mgmt.srcrcvmap(stations=inv, show=False,
+                                               save=map_fid)
+                    except Exception:
+                        traceback.print_exc()
+                        continue
 
             # Run finalization procedures for processing iff gathered waveforms
             if processed:
