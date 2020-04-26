@@ -436,6 +436,39 @@ class Manager:
         else:
             logger.warning(f"no data for {sta_tag} found in dataset")
 
+    def flow(self, station_code, fix_windows=False, preprocess_overwrite=None):
+        """
+        A meta function to run the full workflow from gathering to measuring
+        misfit with check stops in between each function to stop the workflow
+        if any internal function returns a negative status.
+
+        :type station_code: str
+        :param station_code: Station code following SEED naming convention.
+            This must be in the form NN.SSSS.LL.CCC (N=network, S=station,
+            L=location, C=channel). Allows for wildcard naming. By default
+            the pyatoa workflow wants three orthogonal components in the N/E/Z
+            coordinate system. Example station code: NZ.OPRZ.10.HH?
+        :type fix_windows: bool
+        :param fix_windows: do not pick new windows, but load windows from the
+            given dataset
+        :type preprocess_overwrite: function
+        :param preprocess_overwrite: overwrite the core preprocess functionality
+        """
+        measured = 0
+        self.reset(hard_reset=False)
+        gathered = self.gather(station_code=station_code)
+        if gathered:
+            standardized = self.standardize()
+            if standardized:
+                preprocessed = self.preprocess(
+                    overwrite=preprocess_overwrite)
+                if preprocessed:
+                    windowed = self.window(fix_windows=fix_windows)
+                    if windowed:
+                        measured = self.measure()
+        # 1 if workflow finished successfully, 0 if failure
+        return measured
+
     def gather(self, station_code, choice=None):
         """
         Launch a gatherer object and gather event, station and waveform
