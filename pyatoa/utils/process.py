@@ -203,8 +203,8 @@ def preproc(mgmt, choice, water_level=60, corners=4, taper_percentage=0.05):
                                water_level=water_level,
                                plot=False)
         except ValueError:
-            logger.debug(f"Error removing response from {st[0].get_id()}")
-            return None
+            logger.warning(f"Error removing response from {st[0].get_id()}")
+            return st
         logger.debug("remove response, units of {}".format(
             mgmt.config.unit_output)
         )

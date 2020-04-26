@@ -438,6 +438,8 @@ class Manager:
             self.inv = ds.waveforms[sta_tag].StationXML
         else:
             logger.warning(f"no data for {sta_tag} found in dataset")
+        
+        return self
 
     def flow(self, station_code, fix_windows=False, preprocess_overwrite=None):
         """
