@@ -33,6 +33,12 @@ from pyatoa.visuals.maps import manager_map
 from pyatoa.visuals.waveforms import plot_wave
 
 
+class ManagerError(Exception):
+    """
+    A class-wide custom exception raised when functions fail gracefully
+    """
+    pass
+
 class Manager:
     """
     Core object within Pyatoa.
@@ -129,14 +135,14 @@ class Manager:
         Print statement shows available data detailing workflow
         """
         self._check()
-        return ("DATA\n"
+        return ("Manager Data\n"
                 f"\tdataset (ds):                 {self._dataset_id}\n"
                 f"\tevent:                        {self._event_name}\n"
                 f"\tmoment tensor (half_dur):     {self._half_dur}\n"
                 f"\tinventory (inv):              {self._inv_name}\n"
                 f"\tobserved data (st_obs):       {self._len_obs}\n"
                 f"\tsynthetic data (st_syn):      {self._len_syn}\n"
-                "WORKFLOW\n"
+                "Workflow Status\n"
                 f"\tstandardized:                 {self._standardize_flag}\n"
                 f"\tst_obs filtered:              {self._obs_filter_flag}\n"
                 f"\tst_syn filtered:              {self._syn_filter_flag}\n"
@@ -224,14 +230,14 @@ class Manager:
             self._len_syn = 0
             self._syn_filter_flag = False
 
-        # Standardized waveforms by checking npts and sampling rate.
+        # Standardized waveforms by checking npts, sampling rate, starttime
         # If any of the traces fails the check, the entire flag is False
-        # TO DO: also check start and end times?
         if (self.st_obs and self.st_syn) is not None:
             self._standardize_flag = True
             for obs, syn in zip(self.st_obs, self.st_syn):
                 if (obs.stats.sampling_rate == syn.stats.sampling_rate) and \
-                        (obs.stats.npts == syn.stats.npts):
+                   (obs.stats.npts == syn.stats.npts) and \
+                   (obs.stats.starttime == syn.stats.starttime):
                     continue
                 else:
                     self._standardize_flag = False
@@ -451,20 +457,20 @@ class Manager:
         :type preprocess_overwrite: function
         :param preprocess_overwrite: overwrite the core preprocess functionality
         """
-        measured = 0
+        processed = False
         self.reset(hard_reset=False)
-        gathered = self.gather(station_code=station_code)
-        if gathered:
-            standardized = self.standardize()
-            if standardized:
-                preprocessed = self.preprocess(
-                    overwrite=preprocess_overwrite)
-                if preprocessed:
-                    windowed = self.window(fix_windows=fix_windows)
-                    if windowed:
-                        measured = self.measure()
+        try:
+            self.gather(station_code=station_code)
+            self.standardize()
+            self.preprocess(overwrite=preprocess_overwrite)
+            self.window(fix_windows=fix_windows)
+            self.measure()
+            processed = True
+        except ManagerError as e:
+            logger.warning(e)
+
         # 1 if workflow finished successfully, 0 if failure
-        return measured
+        return int(processed)
 
     def gather(self, station_code, choice=None):
         """
@@ -510,13 +516,14 @@ class Manager:
                 if "st_syn" in choice:
                     logger.debug("gathering synthetic waveforms")
                     self.st_syn = self.gatherer.gather_synthetic(station_code)
-            return 1
+            return self
         except obspy.clients.fdsn.header.FDSNNoDataException:
-            logger.info("No data found internally or externally")
-            return 0
+            raise ManagerError("No data found internal or external")
+        # An uncontrolled error should be shown but allowed to pass
         except Exception as e:
+            logger.warning(e)
             traceback.print_exc() 
-            return 0
+            raise ManagerError("Uncontrolled error in data gathering")
 
     def standardize(self, force=False, standardize_to="syn"):
         """
@@ -538,11 +545,10 @@ class Manager:
         """
         self._check()
         if min(self._len_obs, self._len_syn) == 0:
-            logger.warning("cannot standardize, not enough waveform data")
-            return 0
+            raise ManagerError("cannot standardize, not enough waveform data")
         elif self._standardize_flag and not force:
-            logger.warning("already standardized")
-            return 1
+            logger.info("data already standardized")
+            return self
         logger.info("standardizing streams")
 
         # If observations starttime after synthetic, zero pad the front of obs
@@ -577,7 +583,7 @@ class Manager:
         logger.debug(f"time offset set to {self._time_offset_sec}s")
 
         self._standardize_flag = True
-        return 1
+        return self
 
     def preprocess(self, which="both", overwrite=None):
         """
@@ -603,8 +609,7 @@ class Manager:
         # this is a synthetic-synthetic case
         if (not isinstance(self.inv, obspy.core.inventory.Inventory)) \
                 and (not self.config.synthetics_only):
-            logger.warning("cannot preprocess, no inventory")
-            return 0
+            raise ManagerError("cannot preprocess, no inventory")
         if overwrite:
             # Ensure the overwrite call is a function
             assert(hasattr(overwrite, '__call__')), "overwrite must be function"
@@ -630,12 +635,11 @@ class Manager:
         # Check to see if preprocessing failed
         self._check()
         if not self._obs_filter_flag or not self._syn_filter_flag:
-            logger.warning("preprocessing failed")
-            return 0
+            raise ManagerError("preprocessing failed")
 
         # Convolve synthetic data with a gaussian source-time-function
         self._convolve_source_time_function(which)
-        return 1
+        return self
 
     def _convolve_source_time_function(self, which="both"):
         """
@@ -688,8 +692,7 @@ class Manager:
         # Pre-check to see if data has already been standardized
         self._check()
         if not self._standardize_flag and not force:
-            logger.warning("cannot window, waveforms not standardized")
-            return 1
+            raise ManagerError("cannot window, waveforms not standardized")
         if fix_windows and not self.ds:
             logger.warning("cannot fix window, no dataset")
             fix_windows = False
@@ -723,7 +726,7 @@ class Manager:
         self.save_windows()
         logger.info(f"{self._num_windows} window(s) total found")
 
-        return int(bool(self._num_windows))
+        return self
 
     def select_windows(self):
         """
@@ -836,16 +839,12 @@ class Manager:
 
         # Check that data has been filtered and standardized
         if not self._standardize_flag and not force:
-            logger.warning("cannot measure misfit, traces not standardized")
-            return 0
+            raise ManagerError("cannot measure misfit, not standardized")
         elif not (self._obs_filter_flag and self._syn_filter_flag) \
                 and not force:
-            logger.warning(
-                "cannot measure misfit, waveforms not filtered")
-            return 0
+            raise ManagerError("cannot measure misfit, not filtered")
         elif self._num_windows == 0 and not force:
-            logger.warning("cannot measure misfit, no windows")
-            return 0
+            raise ManagerError("cannot measure misfit, no windows")
         logger.debug(f"running Pyadjoint w/ type: {self.config.adj_src_type}")
 
         # Create list of windows needed for Pyadjoint
@@ -887,7 +886,7 @@ class Manager:
 
         # Let the User know the outcome of Pyadjoint
         logger.info(f"total misfit {self._misfit:.3f}")
-        return 1
+        return self
 
     def _format_windows(self):
         """
@@ -986,8 +985,7 @@ class Manager:
         # Precheck for waveform data
         self._check()
         if not self._standardize_flag:
-            logger.warning("cannot plot, waveforms not standardized")
-            return 0
+            raise ManagerError("cannot plot, waveforms not standardized")
         logger.info("plotting waveform")
 
         # Calculate the seismogram length based on given options
@@ -1009,6 +1007,8 @@ class Manager:
             append_title=append_title, figsize=figsize, dpi=dpi, show=show,
             save=save, normalize=normalize, **kwargs
         )
+        if save is not None:
+            logger.info("saving to '{save}'")
         if return_figure:
             return fig_window
 
@@ -1057,3 +1057,5 @@ class Manager:
                     annotate_names=annotate_names, show=show, figsize=figsize,
                     dpi=dpi, save=save, **kwargs
                     )
+        if save is not None:
+            logger.info(f"saving to '{save}'")
