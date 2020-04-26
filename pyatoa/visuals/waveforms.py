@@ -338,6 +338,17 @@ def plot_wave(st_obs_in, st_syn_in, config, time_offset_sec=0., windows=None,
     # Tell the User if the data has been normalized
     if normalize:
         title += " (normalized) "
+    title += "\n"
+    # Add information about the iteration, windowing and misfit measurement
+    if config.model is not None:
+        title += config.model
+    if config.step is not None:
+        title += config.step
+    if windows is not None:
+        title += f" pyflex={config.pyflex_preset} "
+    # If adjoint sources given, put adj_src_type and misfit in
+    if adj_srcs:
+        title += f" pyadjoint={config.adj_src_type} misfit={mgmt.misfit:.2E}"
     # User appended title information
     if append_title is not None:
         title = " ".join([title, append_title])

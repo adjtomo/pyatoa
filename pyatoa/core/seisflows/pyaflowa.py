@@ -266,25 +266,14 @@ class Pyaflowa:
                 sta, net = station[:2]
                 logger.info(f"{net}.{sta}")
                 try:
-                    mgmt.reset()
-                    mgmt.gather(station_code=f"{net}.{sta}.*.HH*")
-                    mgmt.standardize()
-                    mgmt.preprocess(overwrite=overwrite)
-                    mgmt.window(fix_windows=fix_windows)
-                    mgmt.measure()
-                    processed += 1
+                    processed += mgmt.flow(station_code=f"{net}.{sta}.*.HH*",
+                                           preprocess_overwrite=overwrite,
+                                           fix_windows=fix_windows
+                                           )
 
                     # Plot waveforms with misfit windows and adjoint sources
                     if self.plot_waveforms:
-                        # Format some strings to append to the waveform title
-                        tit = " ".join([
-                            f"\n{config.model}{self.step}",
-                            f"pyflex={config.pyflex_preset},",
-                            f"pyadjoint={config.adj_src_type},",
-                            f"misfit={mgmt.misfit:.2E}"
-                        ])
-                        mgmt.plot(append_title=tit,
-                                  save=oj(ev_paths["figures"], f"wav_{sta}"),
+                        mgmt.plot(save=oj(ev_paths["figures"], f"wav_{sta}"),
                                   show=False, return_figure=False
                                   )
 
@@ -295,7 +284,7 @@ class Pyaflowa:
                             mgmt.srcrcvmap(stations=coords, show=False,
                                            save=map_fid)
                 except Exception:
-                    logger.debug(traceback.print_exc())
+                    traceback.print_exc()
                     continue
 
             # Run finalization procedures for processing iff gathered waveforms
