@@ -6,7 +6,6 @@ from pyflex.window import Window
 from obspy import UTCDateTime
 
 
-
 def windows_from_ds(ds, net, sta, model, step):
     """
     Returns misfit windows from an ASDFDataSet for a given model, step,
@@ -159,7 +158,7 @@ def windows_from_ds(ds, net, sta, model, step):
     return window_dict, num_windows
 
 
-def sum_misfits(ds, model, step=None, station=None):
+def sum_misfits(ds, model, step):
     """
     Misfits are stored in adjoint trace dictionaries, and are needed for
     Seisflows. This will sum the misfits and place them into a specific
@@ -185,57 +184,22 @@ def sum_misfits(ds, model, step=None, station=None):
     :type step: str
     :param step: step count, e.g. 's00', if None, defaults to latest step of
         given model. if False, assumes no step information present, only model
-    :type station: str
-    :param station: station code to check, e.g. 'NZ.BFZ'
     :rtype summed_misfit: float
     :return summed_misfit: total misfit for a given dataset and model
     """
     misfits = []
-    adjoint_sources = ds.auxiliary_data.AdjointSources[model]
-    if step is not None:
-        adjoint_sources = adjoint_sources[step]
+    adjoint_sources = ds.auxiliary_data.AdjointSources[model][step]
+    windows = ds.auxiliary_data.MisfitWindows[model][step]
+    number_windows = len(windows)
 
-    # Try to access misfit windows for given model and step, if windows were 
-    # fixed, this wont be possible and a KeyError will be thrown. In that case
-    # Get the latest misfit windows, which would have been used to calculate 
-    # the adjoint sources
-    try:
-        windows = ds.auxiliary_data.MisfitWindows[model]
-        if step is not None:
-            windows = windows[step] 
-    except KeyError:
-        last_model = ds.auxiliary_data.MisfitWindows.list()[-1]
-        windows = ds.auxiliary_data.MisfitWindows[last_model]
-        if step is not None:
-            last_step = windows.list()[-1]
-            windows = windows[last_step]
-        
-    # Sum misfits only for a given station
-    if station:
-        try:
-            number_windows = count_misfit_windows(
-                                ds, model, step, True)[station]
-        except KeyError:
-            return
-        for adjsrc in adjoint_sources.list():
-            if adjoint_sources[adjsrc].parameters['station_id'] == station:
-                misfits.append(
-                    adjoint_sources[adjsrc].parameters['misfit_value']
-                )
+    # collect the total misfit calculated by Pyadjoint
+    for adjsrc in adjoint_sources.list():
+        misfits.append(adjoint_sources[adjsrc].parameters["misfit_value"])
 
-    # Sum misfits for all given adjoint sources
-    else:
-        number_windows = len(windows)
-        # collect the total misfit calculated by Pyadjoint
-        for adjsrc in adjoint_sources.list():
-            misfits.append(adjoint_sources[adjsrc].parameters["misfit_value"])
-
-    return 0.5 * sum(misfits)/number_windows
-
-    return stats
+    return 0.5 * sum(misfits) / number_windows
 
 
-def count_misfit_windows(ds, model, step=None, count_by_stations=False):
+def count_misfit_windows(ds, model, step, count_by_stations=False):
     """
     Figure out which stations contain which windows, return a dictionary
     which lists available components.
@@ -253,42 +217,33 @@ def count_misfit_windows(ds, model, step=None, count_by_stations=False):
     :rtype counted_windows: dict
     :return counted_windows: station name as key, number of windows as value
     """
-    components = []
-    # Determine where to count windows from
-    if hasattr(ds.auxiliary_data.MisfitWindows, model):
-        windows = ds.auxiliary_data.MisfitWindows[model]
-    else:
-        latest_model = ds.auxiliary_data.MisfitWindows.list()[-1] 
-        windows = ds.auxiliary_data.MisfitWindows[latest_model]
-    # Get information about step count
-    if step is None:
-        if hasattr(windows, step):
-            latest_step = step
-        else:
-            latest_step = windows.list()[-1]
-        windows = windows[latest_step]
-    else:
-        windows = windows[step]
+    assert(hasattr(ds.auxiliary_data.MisfitWindows, model)), \
+        f"dataset has no misfit windows for model {model}"
+    assert (hasattr(ds.auxiliary_data.MisfitWindows[model], step)), \
+        f"dataset has no misfit windows for step {step} in model {model} "
+
+    windows = ds.auxiliary_data.MisfitWindows[model][step]
 
     # Count up windows for each channel
+    window_list = []
     for window in windows.list():
-        components.append(windows[window].parameters['channel_id'])
+        window_list.append(windows[window].parameters['channel_id'])
 
     counted_windows = {}
-    # Count by component
+    # Count by station, not by component
     if count_by_stations:
         stations = []
         # Remove the component tag from the name
-        for comp in components:
+        for comp in window_list:
             stations.append("{net}.{sta}".format(net=comp.split(".")[0],
                                                  sta=comp.split(".")[1])
                             )
         uniqueid = set(stations)
         quantity_out = stations
-    # Count by station
+    # Count by component
     else:
-        uniqueid = set(components)
-        quantity_out = components
+        uniqueid = set(window_list)
+        quantity_out = window_list
 
     # Count up the number of unique instances
     for id_ in uniqueid:

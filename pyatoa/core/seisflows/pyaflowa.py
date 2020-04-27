@@ -16,15 +16,14 @@ import pyatoa
 import shutil
 import logging
 import traceback
-import numpy as np
 
 from pyatoa import logger
 from pyatoa.utils.read import read_stations
 from pyatoa.utils.form import model_number, step_count
 from pyatoa.utils.asdf.deletions import clean_ds
 from pyatoa.visuals.statistics import plot_output_optim
-from pyatoa.utils.write import (create_stations_adjoint, write_adj_src_to_ascii, 
-                                write_misfit_stats, tile_combine_imgs, 
+from pyatoa.utils.write import (create_stations_adjoint, write_adj_src_to_ascii,
+                                write_misfit_stats, tile_combine_imgs,
                                 src_vtk_from_specfem, rcv_vtk_from_specfem
                                 )
 

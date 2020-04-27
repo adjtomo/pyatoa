@@ -4,30 +4,6 @@ event and station information contained. The functions contained in this script
 add new auxiliary data structures to existing ASDF datasets
 """
 import numpy as np
-
-
-def write_stats_to_asdf(ds, model, step):
-    """
-    Misfit stats are useful for quickly investigating the information contained
-    in the ASDF Datasets. Calls on functions from pyatoa.utils.asdf.extraction
-    to extract misfit information and then writes it into auxiliary_data
-    The data of auxiliary_data.Statistics is the total misfit for a given
-     
-    :type ds: pyasdf.asdf_data_set.ASDFDataSet
-    :param ds: asdf dataset containing Statistics auxiliary data
-    :type model: str
-    :param model: model tag, e.g. "m00"
-    :type step: str
-    :param step: trial step count, e.g. "s00" (from Seisflows)
-    """
-    from pyatoa.utils.asdf import extractions   
- 
-    stats = extractions.misfit_stats(ds, model)
-    misfit = extractions.sum_misfits(ds, model)
-   
-    ds.add_auxiliary_data(data=np.array([misfit]), data_type="Statistics",
-                          path=f"{model}/{step}", parameters=stats
-                          )
     
 
 def write_adj_src_to_asdf(adj_src, ds, tag, time_offset):

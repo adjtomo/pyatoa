@@ -3,9 +3,6 @@ For writing various output files used by Pyatoa, Specfem and Seisflows
 """
 import os
 import glob
-import json
-import time
-import random
 import numpy as np
 from pyatoa.utils.form import event_name
 
@@ -54,12 +51,10 @@ def parse_output_optim(path_to_optim):
     return iterations, steplens, misfits
 
 
-def write_misfit_stats(ds, model, step=None, pathout="./", fidout=None):
+def write_misfit_stats(ds, model, step, pathout="./", fidout=None):
     """
-    A simpler alternative to write_misfit_json()
-
-    This function simply writes a new text file for each event, which contains 
-    the total misfit for that event.
+    This function writes a text file containing the total misfit for that event.
+    This misfit value corresponds to F_S^T of Eq 6. Tape et al. (2010)
 
     e.g. path/to/misfits/{model_number}/{event_id}
     
@@ -84,7 +79,7 @@ def write_misfit_stats(ds, model, step=None, pathout="./", fidout=None):
         fidout = os.path.join(pathout, event_name(ds=ds))
     
     # calculate misfit 
-    misfit = sum_misfits(ds, model, step=step)
+    misfit = sum_misfits(ds, model, step)
 
     # save in the same format as seisflows 
     np.savetxt(fidout, [misfit], '%11.6e')

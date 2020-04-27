@@ -23,6 +23,8 @@ import os
 import json
 import pyasdf
 import traceback
+import numpy as np
+import pandas as pd
 from glob import glob
 from obspy import UTCDateTime
 from obspy.geodetics import gps2dist_azimuth
@@ -60,8 +62,6 @@ class Inspector(Gadget):
         :param path: path to the ASDFDataSets that were outputted
             by Pyaflowa in the Seisflows workflow
         """
-        status = 0
-
         # If no tag given, create dictionaries based on datasets
         self.srcrcv = {}
         self.misfits = {}
@@ -78,18 +78,24 @@ class Inspector(Gadget):
 
         # If a tag is given, load rather than reading from datasets
         if tag is not None:
-            status = self.load(tag)
+            try:
+                self.read(tag)
+            except FileNotFoundError:
+                print("file not found")
         elif path is not None:
             dsfids = glob(os.path.join(path, "*.h5"))
             for i, dsfid in enumerate(dsfids):
                 print(f"{os.path.basename(dsfid):<25} {i:0>2}/{len(dsfids)}", 
-                      end="...") 
-                status = self.append(dsfid, windows, srcrcv, misfits)
-                if status:
+                      end="...")
+                try:
+                    self.append(dsfid, windows, srcrcv, misfits)
                     print("done")
-        if status:
-            self._get_info()
-            self._get_str()
+                except KeyError as e:
+                    print(f"error: {e}")
+                    traceback.print_exc()
+                    continue
+        self._get_info()
+        self._get_str()
     
     def _get_str(self):
         """
@@ -126,10 +132,6 @@ class Inspector(Gadget):
         Return a list of all variables and functions available for quick ref
         """
         return self._str
-
-    def __repr__(self):
-        """simple point to str"""
-        return self.__str__()
 
     @property
     def events(self):
@@ -217,6 +219,185 @@ class Inspector(Gadget):
                 continue
         return info
 
+    def to_dataframe(self, choice):
+        """
+        Convert internal nested dictionaries into a multiindex Pandas dataframe.
+        Currently not used but may be useful in the future if nested
+        dictionaries become too cumbersome.
+
+        :param choice:
+        :return:
+        """
+        mydict = self.sort_by_model(choice=choice)
+
+        return pd.DataFrame.from_dict(
+            {(model, step, event, station): mydict[model][step][event][station]
+             for model in mydict.keys() for step in mydict[model].keys()
+             for event in mydict[model][step].keys()
+             for station in mydict[model][step][event].keys()},
+            orient='index')
+
+    def event_stats(self, event, model, step):
+        """
+        Get misfit, number of stations, number of windows and total misfit
+        on an event wide basis
+        :return:
+        """
+        assert (model is not None and step is not None), \
+            "model and step must be specified for event-wise printing"
+        if model:
+            assert (model in self.models), "model not available"
+        if step:
+            assert (step in self.steps[model]), "step not available"
+
+        for e in self.misfits:
+            event_msft, nwin = 0, 0
+            event = self.misfits[e][model][step]
+            nsta = len(event.keys())
+            for sta in event:
+                event_msft += event[sta]["msft"]
+                nwin += event[sta]["nwin"]
+            event_msft /= (2 * nwin)
+            print(event_str.format(e=e, st=nsta, w=nwin,
+                                   m=event_msft))
+
+    def pprint(self, choice, model=None, step=None, event=None, station=None):
+        """
+        Pretty print misfit information for assessment of inversion behavior
+
+        By model header:
+            model: model number e.g. 'm00'
+            step: step count e.g. 's00'
+            nevt: number of events for a given model and step
+            nsta: number of stations for a given model and step
+            nwndw: number of misfit windows for a given model and step
+            dt_mu: mean time shift in units of seconds
+            dt_std: 1-sigma for time shifts in units of seconds
+            da_mu: mean amplitude anomaly dlnA
+            da_std: 1-sigma for amplitude anomaly dlna
+            sum(dt): sum of absolute values of time shifts in units of seconds
+            misfit: total misfit scaled by number of windows and events
+
+        :param model:
+        :param event:
+        :param station:
+        :return:
+        """
+        # Print statements for each model, which states the number of events,
+        # stations and windows contained for each model
+        if choice == "model":
+            misfits = self.sort_by_model(choice="misfits")
+            windows = self.sort_by_model(choice="windows")
+            # Preformatted strings
+            model_str = (
+                "{mdl:>5}{stp:>5}{evt:>5}{sta:>5}{wdw:>6}{dt_mu:6.2f}"
+                "{dt_std:7.2f}{da_mu:7.2f}{da_std:7.2f}{abs_dt:8.1f}  "
+                "{mft:6.2E}"
+            )
+            header = (
+                "model step nevt nsta nwndw dt_mu dt_std  da_mu da_std  sum(dt)" 
+                "   misfit"
+            )
+            print(header)
+            for m in misfits:
+                if model and m != model:
+                    continue
+                print("=" * len(header))
+                for i, s in enumerate(misfits[m]):
+                    if step and s != step:
+                        continue
+                    nevents = len(misfits[m][s].keys())
+                    # All information should be collected per step count
+                    stations, tshifts, dlnas = [], [], []
+                    total_windows, total_misfit = 0, 0
+                    for e in misfits[m][s]:
+                        event_misfit, event_nwin = 0, 0
+                        if event and e != event:
+                            continue
+                        stations += list(misfits[m][s][e].keys())
+                        for sta in misfits[m][s][e]:
+                            if station and sta != station:
+                                continue
+                            event_nwin += misfits[m][s][e][sta]["nwin"]
+                            event_misfit += misfits[m][s][e][sta]["msft"]
+                            # Get list of time shift and dlna vals from windows
+                            for c in windows[m][s][e][sta]:
+                                window = windows[m][s][e][sta][c]
+                                tshifts += window["cc_shift_sec"]
+                                dlnas += window["dlna"]
+                        # Event misfit: Tape et al. (2010) Eq. 6
+                        if event_nwin:
+                            total_misfit += event_misfit / (2 * event_nwin)
+                        total_windows += event_nwin
+                        assert (total_windows == len(tshifts)), \
+                            "number of windows and measurements mismatch"
+
+                    # Total misfit: Tape et al. (2010) Eq. 7
+                    total_misfit /= nevents
+                    # Only print the model once in the table
+                    if i == 0:
+                        mdl = m
+                    else:
+                        mdl = ""
+                    print(model_str.format(
+                        mdl=mdl, stp=s, evt=nevents, sta=len(set(stations)),
+                        wdw=total_windows, dt_mu=np.mean(tshifts),
+                        dt_std=np.std(tshifts), da_mu=np.mean(dlnas),
+                        da_std=np.std(dlnas), abs_dt=sum(np.abs(tshifts)),
+                        mft=total_misfit,)
+                    )
+            print("\n")
+
+        elif choice == "event":
+            assert(model is not None and step is not None), \
+                "model and step must be specified for event-wise printing"
+            if model:
+                assert(model in self.models), "model not available"
+            if step:
+                assert(step in self.steps[model]), "step not available"
+            header = "   event_id nsta nwin    misfit"
+
+            event_str = "{e:>11}{st:>5}{w:>5}{m:10.2E}"
+            print(header + "\n" + "=" * len(header))
+            for e in self.misfits:
+                event_msft, nwin = 0, 0
+                event = self.misfits[e][model][step]
+                nsta = len(event.keys())
+                for sta in event:
+                    event_msft += event[sta]["msft"]
+                    nwin += event[sta]["nwin"]
+                event_msft /= (2 * nwin)
+                print(event_str.format(e=e, st=nsta, w=nwin,
+                                       m=event_msft))
+
+        elif choice == "station":
+            if model:
+                assert(model in self.models), "model not available"
+            if step:
+                assert(step in self.steps[model]), "step not available"
+            header = " station nevents nwin    misfit"
+            station_str = "{s:>8}{e:>8}{w:>5}{m:10.2E}"
+
+            misfits = self.sort_misfits_by_station()
+            for m in misfits:
+                if model and m != model:
+                    continue
+                for s in misfits[m]:
+                    if step and s != step:
+                        continue
+                    print(f"\nModel: {m} / Step: {s}")
+                    print(header + "\n" + "=" * len(header))
+                    for st in misfits[m][s]:
+                        sta = misfits[m][s][st]
+                        print(
+                            station_str.format(s=st, e=sta["nevents"],
+                                               w=sta["nwin"],
+                                               m=sta["msft"] / (2 * sta["nwin"])
+                                               )
+                              )
+        else:
+            print("'choice' must be model, event, or station")
+
     def append(self, dsfid, windows=True, srcrcv=True, misfits=True):
         """
         Append a new pyasdf.ASDFDataSet file to the current set of internal
@@ -234,19 +415,15 @@ class Inspector(Gadget):
         try:
             with pyasdf.ASDFDataSet(dsfid) as ds:
                 if windows:
-                    self.get_windows_from_dataset(ds)
+                    self._get_windows_from_dataset(ds)
                 if srcrcv:
-                    self.get_srcrcv_from_dataset(ds)
+                    self._get_srcrcv_from_dataset(ds)
                 if misfits:
-                    self.get_misfits_from_dataset(ds)
-                return 1
+                    self._get_misfits_from_dataset(ds)
+                return
         except OSError:
             print(f"error: already open")
-            return 0
-        except KeyError as e:
-            print(f"error: {e}")
-            traceback.print_exc()
-            return 0
+            return
 
     def save(self, tag, path="./"):
         """
@@ -280,7 +457,7 @@ class Inspector(Gadget):
         """
         self.save(tag, path)
 
-    def load(self, tag, path="./"):
+    def read(self, tag, path="./"):
         """
         Load previously saved attributes to avoid re-processing data.
 
@@ -294,18 +471,13 @@ class Inspector(Gadget):
             tag = tag.split(".")[0]
 
         print(f"reading file", end="... ")
-        try:
-            with open(os.path.join(path, f"{tag}.json"), "r") as f:
-                loaded_variables = json.load(f)
-                print("found")
-                for v in variables:
-                    setattr(self, v, loaded_variables[v])
-            return 1
-        except FileNotFoundError:
-            print("not found")
-            return 0
+        with open(os.path.join(path, f"{tag}.json"), "r") as f:
+            loaded_variables = json.load(f)
+            print("found")
+            for v in variables:
+                setattr(self, v, loaded_variables[v])
 
-    def get_srcrcv_from_dataset(self, ds):
+    def _get_srcrcv_from_dataset(self, ds):
         """
         Get source receiver info including coordinates, distances and BAz
         from a given dataset. Appends to internal variable srcrcv.
@@ -355,10 +527,15 @@ class Inspector(Gadget):
                                            )
             self.srcrcv[eid][sta] = {"dist_km": gcd * 1E-3, "baz": baz}
 
-    def get_misfits_from_dataset(self, ds):
+    def _get_misfits_from_dataset(self, ds):
         """
         Get Misfit information from a dataset.
         Appends to internal variable misfit.
+
+        Note:
+            Misfit is collected unscaled, and will need to be scaled by
+            the number of windows and number of events to get values matching
+            those of the inversion.
 
         :type ds: pyasdf.ASDFDataSet
         :param ds: dataset to query for misfit
@@ -379,7 +556,8 @@ class Inspector(Gadget):
                     sta_id = station.parameters["station_id"]
                     misfit = station.parameters["misfit_value"]
 
-                    # One time initiatation of a new dictionary object
+                    # One time initiatation of a new dictionary object which
+                    # contains the number of windows for a given station
                     if sta_id not in self.misfits[eid][model][step]:
                         self.misfits[eid][model][step][sta_id] = {
                             "msft": 0, "nwin": num_win[sta_id]
@@ -388,13 +566,7 @@ class Inspector(Gadget):
                     # Append the total number of windows, and the total misfit
                     self.misfits[eid][model][step][sta_id]["msft"] += misfit
 
-                # Scale the misfit of each station by the number of windows
-                # a la Tape (2010) Eq. 6
-                for sta_id in self.misfits[eid][model][step].keys():
-                    self.misfits[eid][model][step][sta_id]["msft"] /= \
-                        2 * self.misfits[eid][model][step][sta_id]["nwin"]
-
-    def get_windows_from_dataset(self, ds):
+    def _get_windows_from_dataset(self, ds):
         """
         Get Window information from auxiliary_data.MisfitWindows
         Appends to internal variable windows.
@@ -445,66 +617,6 @@ class Inspector(Gadget):
                     win[sta_id][cha]["rel_end"].append(rel_end)
                     win[sta_id][cha]["rel_start"].append(rel_start)
                     win[sta_id][cha]["cc_shift_sec"].append(cc_shift_sec)
-
-    def event_stats(self, model, step, choice="cc_shift_sec", sta_code=None,
-                    eventid=None, print_choice=abs_max):
-        """
-        Return lists of stats for a given model. Event and station optional.
-        Useful for looking at, e.g. maximum time shift for a given model, and
-        knowing which event that corresponds to:
-
-        Prints the following return
-            > {event_id}    {number_of_measurements}    {print_choice(value)}
-
-        Returns a tuple of three lists: (event_ids, num_measurements, values)
-
-        :type model: str
-        :param model: model to query, e.g. 'm00'
-        :type step: str
-        :param step: step count to query, e.g. 's00'
-        :type choice: str
-        :param choice: choice of number of measurement to return, available
-            choices are: dlna, length_s, max_cc, rel_end, rel_start, weight
-            These are defined in get_windows()
-        :type sta_code: str
-        :param sta_code: if not None, will only query for a given station code
-        :type eventid: str
-        :param eventid: if not None, will only query for a given event id
-        :type print_choice: function
-        :param print_choice: the choice of function to query the list of misfit
-            values for a single event. Can be, e.g. abs_max, max, min, np.mean
-        :rtype: tuple of lists
-        :return: event ids, number of measurements and list of values for each
-            misfit window
-        """
-        events, msftval, nwins = [], [], []
-
-        misfits = self.sort_by_model("windows")[model][step]
-        for event in misfits.keys():
-            if eventid and event != eventid:
-                continue
-            nwin = 0
-            misfit = []
-            for sta in misfits[event].keys():
-                if sta_code and sta != sta_code:
-                    continue
-                for comp in misfits[event][sta].keys():
-                    misfit += misfits[event][sta][comp][choice]
-                    nwin += len(misfits[event][sta][comp][choice])
-
-            events.append(event)
-            msftval.append(misfit)
-            nwins.append(nwin)
-
-        # Sort and print
-        zipped = list(zip(nwins, events, msftval))
-        zipped.sort(reverse=False)
-        nwins, events, msftval = zip(*zipped)
-
-        for eid, nwin, msft in zip(events, nwins, msftval):
-            print(f"{eid:>13}{nwin:>5d}{print_choice(msft):6.2f}")
-
-        return events, nwins, msftval
 
     def window_values(self, model, step, choice="cc_shift_sec",
                       values_only=False):
@@ -612,7 +724,8 @@ class Inspector(Gadget):
     def sort_misfits_by_station(self):
         """
         Rearrage misfits so that the first dictionary layer is sorted by station
-        rather than the default sorting of by event
+        rather than the default sorting of by event. Misfit is returned scaled
+        by the number of windows collected for the given station.
 
         :rtype dict:
         :return: misfits sorted by station
@@ -632,17 +745,17 @@ class Inspector(Gadget):
 
                         # Append misfit info from each station-event 
                         misfits[model][step][sta]["msft"] += (
-                            self.misfits[event][model][sta]["msft"]
+                            self.misfits[event][model][step][sta]["msft"]
                         )
                         misfits[model][step][sta]["nwin"] += (
-                            self.misfits[event][model][sta]["nwin"]
+                            self.misfits[event][model][step][sta]["nwin"]
                         )
                         misfits[model][step][sta]["nevents"] += 1
 
-                # Scale the total misfit per station by the number of events
+                # Scale the total misfit per station by number of windows
                 for sta in misfits[model][step]:
                     misfits[model][step][sta]["msft"] /= \
-                        misfits[model][step][sta]["nevents"]
+                        2 * misfits[model][step][sta]["nwin"]
 
         return misfits
 
@@ -696,11 +809,12 @@ class Inspector(Gadget):
             for step in misfits[model]:
                 total_misfit = 0
                 for e, event in enumerate(misfits[model][step]):
-                    ev_msft = 0
+                    ev_msft, ev_nwin = 0, 0
                     for sta in misfits[model][step][event]:
-                        # already scaled like (Tape 2010 eq. 6) by get_misfit()
+                        # need to scale misfit by nwin (Tape 2010 eq. 6)
                         ev_msft += misfits[model][step][event][sta]["msft"]
-                    total_misfit += ev_msft
+                        ev_nwin += misfits[model][step][event][sta]["nwin"]
+                    total_misfit += ev_msft / (2 * ev_nwin)
                 # Divide by the number of sources (Tape 2010 eq. 7)
                 cmsft[model][step] = total_misfit / (e + 1)
 
