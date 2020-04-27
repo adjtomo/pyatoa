@@ -88,7 +88,7 @@ class Manager:
         if config:
             self.config = config
         else:
-            self.config = Config()
+            self.config = None
         self.ds = ds
         self.gatherer = None
         self.station_code = station_code
@@ -285,6 +285,10 @@ class Manager:
         :param idx: if set event given as Catalog, idx allows user to specify
             which event index in Catalog, defaults to 0.
         """
+        if self.config is None:
+            logger.info("no Config found, initiating default")
+            self.config = Config()
+
         # Launch or reset the Gatherer
         if (self.gatherer is None) or reset:
             logger.info("initiating/resetting gatherer")
@@ -392,7 +396,7 @@ class Manager:
         else:
             raise NotImplementedError
 
-    def load(self, station_code, ds=None, synthetic_tag=None,
+    def load(self, station_code, config_path=None, ds=None, synthetic_tag=None,
              observed_tag=None):
         """
         Populate the manager using a given PyASDF Dataset, based on user-defined
@@ -414,7 +418,15 @@ class Manager:
         if self.ds and ds is None:
             ds = self.ds
         else:
-            raise AttributeError("load requires a Dataset")
+            raise TypeError("load requires a Dataset")
+       
+        # If no Config object in Manager, load from dataset 
+        if self.config is None:
+            if config_path is None:
+                raise TypeError("load requires Config or config_path")
+            else:
+                self.config = Config(ds=ds, path=config_path) 
+                logger.info(f"loading config from dataset {config_path}")
 
         assert len(station_code.split('.')) == 2, \
             "station_code must be in form 'NN.SSS'"
@@ -1010,7 +1022,7 @@ class Manager:
             save=save, normalize=normalize, **kwargs
         )
         if save is not None:
-            logger.info("saving to '{save}'")
+            logger.info(f"saving to '{save}'")
         if return_figure:
             return fig_window
 

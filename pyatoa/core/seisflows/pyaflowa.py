@@ -284,6 +284,8 @@ class Pyaflowa:
                             if not os.path.exists(map_fid):
                                 mgmt.srcrcvmap(stations=inv, show=False,
                                                save=map_fid)
+                    except pyatoa.ManagerError:
+                        continue
                     except Exception:
                         traceback.print_exc()
                         continue

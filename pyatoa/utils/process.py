@@ -40,7 +40,7 @@ def zero_pad(st, pad_length_in_seconds, before=True, after=True):
     return st_pad
 
 
-def trim_streams(st_a, st_b, force=None):
+def trim_streams(st_a, st_b, precision=1E-3, force=None):
     """
     Trim two streams to common start and end times,
     Do some basic preprocessing before trimming.
@@ -52,6 +52,8 @@ def trim_streams(st_a, st_b, force=None):
     :param st_a: streams to be trimmed
     :type st_b: obspy.stream.Stream
     :param st_b: streams to be trimmed
+    :type precision: float
+    :param precision: precision to check UTCDateTime differences
     :type force: str
     :param force: "a" or "b"; force trim to the length of "st_a" or to "st_b",
         if not given, trims to the common time
@@ -59,11 +61,12 @@ def trim_streams(st_a, st_b, force=None):
     :return st_?: trimmed stream
     """
     # Check if the times are already the same
-    diff = 1E-2
-    if st_a[0].stats.starttime - st_b[0].stats.starttime < diff and \
-            st_a[0].stats.endtime - st_b[0].stats.endtime < diff:
+    if st_a[0].stats.starttime - st_b[0].stats.starttime < precision and \
+            st_a[0].stats.endtime - st_b[0].stats.endtime < precision:
+        logger.debug("start and endtimes already match to {precision}")
         return st_a, st_b
 
+    # Force the trim to the start and end times of one of the streams
     if force:
         force = force.lower()
         if force == "a":
@@ -72,8 +75,9 @@ def trim_streams(st_a, st_b, force=None):
         elif force == "b":
             start_set = st_b[0].stats.starttime
             end_set = st_b[0].stats.endtime
+    # Get starttime and endtime base on min values
     else:
-        st_trimmed = st_a.copy() + st_b.copy()
+        st_trimmed = st_a + st_b
         start_set, end_set = 0, 1E10
         for st in st_trimmed:
             start_hold = st.stats.starttime
@@ -82,14 +86,31 @@ def trim_streams(st_a, st_b, force=None):
                 start_set = start_hold
             if end_hold < end_set:
                 end_set = end_hold
-
-    for st in [st_a, st_b]:
+    
+    
+    st_a_out = st_a.copy()
+    st_b_out = st_b.copy()
+    for st in [st_a_out, st_b_out]:
         st.trim(start_set, end_set)
         st.detrend("linear")
         st.detrend("demean")
         st.taper(max_percentage=0.05)
 
-    return st_a, st_b
+    # Trimming doesn't always make the starttimes exactly equal if the precision
+    # of the UTCDateTime object is set too high. Pyatoa used to restrict 
+    # precision to 2 sigfigs but ObsPy doesn't like that anymore.
+    # Instead we will artificially shift the starttime of the streams
+    # iff the amount shifted is less than sampling rate
+    for st in [st_a_out, st_b_out]:
+        for tr in st:
+            dt = start_set - tr.stats.starttime
+            if dt > 0 and dt < tr.stats.sampling_rate:
+                logger.debug(f"shifting {tr.id} starttime by {dt}s")
+                tr.stats.starttime = start_set
+            elif dt >= tr.stats.delta:
+                logger.warning(f"{tr.id} starttime is {dt}s greater than delta")
+
+    return st_a_out, st_b_out
 
 
 def match_npts(st_a, st_b, force=None):
