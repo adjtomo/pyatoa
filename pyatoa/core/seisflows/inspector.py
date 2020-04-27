@@ -30,7 +30,6 @@ from obspy import UTCDateTime
 from obspy.geodetics import gps2dist_azimuth
 
 from pyatoa.utils.form import event_name
-from pyatoa.utils.calculate import abs_max
 from pyatoa.utils.srcrcv import lonlat_utm
 from pyatoa.utils.asdf.extractions import count_misfit_windows
 from pyatoa.visuals.gadget import Gadget
@@ -94,8 +93,11 @@ class Inspector(Gadget):
                     print(f"error: {e}")
                     traceback.print_exc()
                     continue
-        self._get_info()
-        self._get_str()
+        try:
+            self._get_info()
+            self._get_str()
+        except Exception as e:
+            pass
     
     def _get_str(self):
         """
@@ -237,29 +239,35 @@ class Inspector(Gadget):
              for station in mydict[model][step][event].keys()},
             orient='index')
 
-    def event_stats(self, event, model, step):
+    def event_stats(self, event, model=None, step=None):
         """
         Get misfit, number of stations, number of windows and total misfit
         on an event wide basis
+
+        :rtype: tuple of floats or tuple of lists
         :return:
         """
-        assert (model is not None and step is not None), \
-            "model and step must be specified for event-wise printing"
-        if model:
-            assert (model in self.models), "model not available"
-        if step:
-            assert (step in self.steps[model]), "step not available"
+        event_misfits, num_windows, num_stations = [], [], []
+        for m in self.misfits[event]:
+            if model and model != m:
+                continue
+            for s in self.misfits[event][m]:
+                if step and step != s:
+                    continue
+                event_msft, nwin = 0, 0
+                event_info = self.misfits[event][m][s]
+                nsta = len(event_info.keys())
+                for sta in event_info:
+                    event_msft += event_info[sta]["msft"]
+                    nwin += event_info[sta]["nwin"]
+                event_msft /= (2 * nwin)
+                if model and step:
+                    return event_msft, nwin, nsta
+                event_misfits.append(event_msft)
+                num_windows.append(nwin)
+                num_stations.append(nsta)
 
-        for e in self.misfits:
-            event_msft, nwin = 0, 0
-            event = self.misfits[e][model][step]
-            nsta = len(event.keys())
-            for sta in event:
-                event_msft += event[sta]["msft"]
-                nwin += event[sta]["nwin"]
-            event_msft /= (2 * nwin)
-            print(event_str.format(e=e, st=nsta, w=nwin,
-                                   m=event_msft))
+        return num_stations, num_windows, event_misfits
 
     def pprint(self, choice, model=None, step=None, event=None, station=None):
         """
@@ -278,10 +286,14 @@ class Inspector(Gadget):
             sum(dt): sum of absolute values of time shifts in units of seconds
             misfit: total misfit scaled by number of windows and events
 
-        :param model:
-        :param event:
-        :param station:
-        :return:
+        :type model: str
+        :param model: to choose specific model e.g. 'm00'
+        :type step: str
+        :param step: to choose specific step e.g. 's00'
+        :type event: str
+        :param event: to choose specific event e.g. '2018p1300'
+        :type station: str
+        :param station: to chose specific station e.g. 'NZ.BFZ'
         """
         # Print statements for each model, which states the number of events,
         # stations and windows contained for each model
@@ -356,19 +368,11 @@ class Inspector(Gadget):
             if step:
                 assert(step in self.steps[model]), "step not available"
             header = "   event_id nsta nwin    misfit"
-
             event_str = "{e:>11}{st:>5}{w:>5}{m:10.2E}"
             print(header + "\n" + "=" * len(header))
-            for e in self.misfits:
-                event_msft, nwin = 0, 0
-                event = self.misfits[e][model][step]
-                nsta = len(event.keys())
-                for sta in event:
-                    event_msft += event[sta]["msft"]
-                    nwin += event[sta]["nwin"]
-                event_msft /= (2 * nwin)
-                print(event_str.format(e=e, st=nsta, w=nwin,
-                                       m=event_msft))
+            for e in self.events:
+                msft, nwin, nsta = self.event_stats(e, model, step)
+                print(event_str.format(e=e, st=nsta, w=nwin, m=msft))
 
         elif choice == "station":
             if model:
