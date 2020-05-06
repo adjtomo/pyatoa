@@ -106,8 +106,7 @@ class Gadget:
         choices = ["cc_shift_sec", "dlna", "length_s", "max_cc", "weight"]
         assert (choice in choices), f"Choice must be in {choices}"
         assert self.srcrcv, "No distance information"
-        assert (model in self.models), (f"Model must be in "
-                                             f"{self.models}")
+        assert (model in self.models), f"Model must be in {self.models}"
         if event_id:
             assert (event_id in self.event_ids), \
                 f"event_id must be in {self.event_ids}"
@@ -955,7 +954,6 @@ def hover_on_plot(f, ax, obj, values, dissapear=True, **kwargs):
         elif isinstance(obj, mpl.collections.PathCollection):
             pos = obj.get_offsets()[ind["ind"][0]]
             anno.xy = pos
-
         text = "{}".format("\n".join([values[n] for n in ind["ind"]]))
         anno.set_text(text)
         anno.get_bbox_patch().set_facecolor("w")
