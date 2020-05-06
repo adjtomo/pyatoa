@@ -9,20 +9,25 @@ need to be called by the User.
 import obspy
 
 from pyatoa import logger
-from pyatoa.utils.gather.internal_fetcher import Fetcher
-from pyatoa.utils.gather.external_getter import Getter
-from pyatoa.utils.gather.grab_auxiliaries import grab_geonet_moment_tensor,\
-    grab_gcmt_moment_tensor
+from obspy.clients.fdsn import Client
+from pyatoa.utils.gather.internal_fetcher import InternalFetcher
+from pyatoa.utils.gather.external_getter import (ExternalGetter,
+                                                 get_gcmt_moment_tensor
+                                                 )
+from plugins.new_zealand.grab_auxiliaries import grab_geonet_moment_tensor
 from pyatoa.utils.srcrcv import generate_focal_mechanism
 
 
-class Gatherer:
+class Gatherer(InternalFetcher, ExternalGetter):
     """
-    A class used to fetch data via internal_fetcher and external_getter
-    dependent on data availability. Preferentially searches internal pathways
-    and will fall back onto external pathways if no data availability.
+    A class used to fetch data internally and externally. Inherets internal
+    and external data gathering from separate classes.
+
+    Fetch: used to denote searching local filesystems for data (internal)
+    Get: used to denote querying FDSN webservices via ObsPy (external), naming
+         *convention from the obspy.fdsn.client.Client function names
     """
-    def __init__(self, config, ds=None):
+    def __init__(self, config, ds=None, event_id=None, origintime=None):
         """
         :type config: pyatoa.core.config.Config
         :param config: configuration object that contains necessary parameters
@@ -30,11 +35,16 @@ class Gatherer:
         :type ds: pyasdf.asdf_data_set.ASDFDataSet
         :param ds: dataset for internal data searching and saving
         """
-        self.config = config
         self.ds = ds
         self.event = None
-        self.fetcher = Fetcher(config=self.config, ds=self.ds)
-        self.getter = Getter(config=self.config, client=self.config.client)
+        self.config = config
+        self.Client = Client(self.config.client)
+
+        # Event can be externally gathered by event_id or origin_time
+        self.event_id = event_id
+        if self.event_id is None and self.config.event_id is not None:
+            self.event_id = self.config.event_id
+        self.origintime = origintime
 
     def set_event(self, event):
         """
@@ -44,10 +54,7 @@ class Gatherer:
         :param: event supplied by User
         """
         self.event = event
-        # FutureWarning
-        # self.event.preferred_origin().time.precision = 2
-        self.fetcher.origintime = self.event.preferred_origin().time
-        self.getter.origintime = self.event.preferred_origin().time
+        self.origintime = self.event.preferred_origin().time
 
     def gather_event(self, append_focal_mechanism=True):
         """
@@ -67,9 +74,9 @@ class Gatherer:
         # If dataset is given, search for event
         elif self.ds:
             try:
-                self.event = self.fetcher.asdf_event_fetch()
+                self.event = self.asdf_event_fetch()
             except (AttributeError, IndexError):
-                self.event = self.getter.event_get()
+                self.event = self.event_get()
                 if append_focal_mechanism:
                     self.append_focal_mechanism()
                 if self.config.save_to_ds:
@@ -80,16 +87,10 @@ class Gatherer:
                     logger.debug("event not saved")
         # Else, query FDSN for event information
         else:
-            self.event = self.getter.event_get()
+            self.event = self.ext_getter.event_get()
             if append_focal_mechanism:
                 self.append_focal_mechanism()
             logger.debug("event got from external")
-
-        # Propogate the origin time to Fetcher and Getter classes
-        # FutureWarning
-        # self.event.preferred_origin().time.precision = 2
-        self.fetcher.origintime = self.event.preferred_origin().time
-        self.getter.origintime = self.event.preferred_origin().time
 
         return self.event
 
@@ -105,9 +106,6 @@ class Gatherer:
         This function will perform the conversions and append the necessary
         information to the event located in the dataset.
 
-        TO DO: only take focal mechanism from GCMT? Maybe centroid information
-            is not as accurate as a regional network FDSN event
-
         :type overwrite: bool
         :param overwrite: If the event already has a focal mechanism, this will
             overwrite that focal mechanism
@@ -117,12 +115,12 @@ class Gatherer:
             if hasattr(self.event, 'focal_mechanisms') and \
                     self.event.focal_mechanisms and not overwrite:
                 return
-            if self.getter.client == "GEONET":
+            if self.config.client == "GEONET":
                 # Search GeoNet moment tensor catalog, query GitHub repo
                 geonet_mtlist = grab_geonet_moment_tensor(self.config.event_id)
-                self.event, _ = generate_focal_mechanism(
-                    mtlist=geonet_mtlist, event=self.event
-                )
+                self.event, _ = generate_focal_mechanism(mtlist=geonet_mtlist,
+                                                         event=self.event
+                                                         )
                 logger.info(
                     "appending GeoNet moment tensor information to event")
             else:
@@ -150,11 +148,11 @@ class Gatherer:
         :return: inventory containing relevant network and stations
         """
         try:
-            return self.fetcher.station_fetch(station_code)
+            return self.int_fetcher.station_fetch(station_code)
         except FileNotFoundError:
             logger.debug(
                 "internal station information not found, searching ext.")
-            inv = self.getter.station_get(station_code)
+            inv = self.ext_getter.station_get(station_code)
             if self.ds is not None and self.config.save_to_ds:
                 self.ds.add_stationxml(inv)
             else:
@@ -175,11 +173,11 @@ class Gatherer:
         :return: stream object containing relevant waveforms
         """
         try:
-            st_obs = self.fetcher.obs_waveform_fetch(station_code)
+            st_obs = self.int_fetcher.obs_waveform_fetch(station_code)
         except FileNotFoundError:
             logger.debug("internal obs data unavailable, searching external")
             try:
-                st_obs = self.getter.waveform_get(station_code)
+                st_obs = self.ext_getter.waveform_get(station_code)
             # Catch all FDSN Exceptions
             except obspy.clients.fdsn.header.FDSNException:
                 logger.warning("external obs data unavailable, no observed "
@@ -208,7 +206,7 @@ class Gatherer:
         :return: stream object containing relevant waveforms
         """
         try:
-            st_syn = self.fetcher.syn_waveform_fetch(station_code)
+            st_syn = self.int_fetcher.syn_waveform_fetch(station_code)
             return st_syn
         except FileNotFoundError:
             return None

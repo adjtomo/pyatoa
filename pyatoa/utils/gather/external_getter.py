@@ -1,51 +1,48 @@
 #!/usr/bin/env python3
-
 """
 Wrapper class used to quickly interact with Obspy FDSN Client, based on Config
-"""
-from obspy.clients.fdsn import Client
 
+Attributes inhereted by the Gatherer class.
+"""
 from pyatoa import logger
 
+from obspy.clients.fdsn.header import FDSNNoDataException
 
-class Getter:
-    def __init__(self, config=None, client="GEONET", event_id=None):
-        """
-        Initiate the external getter class to retrieve objects from FDSN
 
-        :type config: pyatoa.core.config.Config
-        :param config: configuration object that contains necessary parameters
-            to run through the Pyatoa workflow
-        :type client: str
-        :param client: FDSN client for data getting
-        :type event_id: str
-        :param event_id: unique event identifier
-        """
-        # Priroritize the Config.event_id over a given id, but allow a User
-        # to set their own event id to avoid reliance on a config object
-        self.config = config
-        if self.config is not None:
-            self.event_id = self.config.event_id
-        else:
-            self.event_id = event_id
-        self.client = client
-        self.event = None
-        self.origintime = None
-
-        # Initiate Obspy FDSN client
-        if self.client:
-            self.Client = Client(self.client)
-    
+class ExternalGetter:
     def event_get(self):
         """
         return event information parameters pertaining to a given event id
+        if an event id is given
 
         :rtype event: obspy.core.event.Event
         :return event: event object
         """
+        event = None
         logger.debug(f"fetching event from {self.client}")
-        event = self.Client.get_events(eventid=self.event_id)[0]
-        self.origintime = event.origins[0].time
+        if self.event_id is not None:
+            try:
+                event = self.Client.get_events(eventid=self.config.event_id)[0]
+                self.origintime = event.origins[0].time
+            except FDSNNoDataException:
+                logger.warning(f"no event found for {self.config.event_id} "
+                               f"from {self.config.client}")
+                event = None
+
+        if self.origintime and event is None:
+            try:
+                event = self.Client.get_events(starttime=self.origintime,
+                                               endtime=self.origintime)
+            except FDSNNoDataException:
+                logger.warning(
+                    f"no event found for origin time {self.origintime}"
+                    f"from {self.config.client}"
+                )
+            if event is not None and len(event) > 1:
+                logger.warning(f"{len(event)} events found, expected only 1,"
+                               f"manual event gathering may be required."
+                               )
+
         return event
 
     def station_get(self, station_code, level='response'):
@@ -88,16 +85,17 @@ class Getter:
         :return stream: waveform contained in a stream
         """
         logger.debug(f"fetching observations from {self.client}")
+
         net, sta, loc, cha = station_code.split('.')
         st = self.Client.get_waveforms(
             network=net, station=sta, location=loc, channel=cha,
-            starttime=self.origintime-(self.config.start_pad+5),
-            endtime=self.origintime+(self.config.end_pad+5)
+            starttime=self.origintime - (self.config.start_pad + 10),
+            endtime=self.origintime + (self.config.end_pad + 10)
         )
         # Sometimes FDSN queries return improperly cut start and end times, so
         # we retrieve +/-10 seconds and then cut down
-        st.trim(starttime=self.origintime-self.config.start_pad,
-                endtime=self.origintime+self.config.end_pad)
+        st.trim(starttime=self.origintime - self.config.start_pad,
+                endtime=self.origintime + self.config.end_pad)
 
         logger.debug(f"stream got external {station_code}")
         return st
@@ -125,4 +123,68 @@ class Getter:
         return event, inv, st
 
 
+def get_gcmt_moment_tensor(origintime, magnitude, path=None,
+                           time_wiggle_sec=120, magnitude_wiggle=0.5):
+    """
+    Query GCMT moment tensor catalog for moment tensor components
+
+    :type origintime: UTCDateTime or str
+    :param origintime: event origin time
+    :type magnitude: float
+    :param magnitude: centroid moment magnitude for event lookup
+    :type path: str
+    :param path: path to the gcmt moment tensor files, separated by year
+    :type time_wiggle_sec: int
+    :param time_wiggle_sec: padding on catalog filtering criteria realted to
+        event origin time
+    :type mag_wiggle: float
+    :param mag_wiggle: padding on catalog filter for magnitude
+    :rtype event: obspy.core.event.Event
+    :return event: event object for given earthquake
+    """
+    from urllib.error import HTTPError
+    from obspy import UTCDateTime, read_events
+
+    if not isinstance(origintime, UTCDateTime):
+        datetime = UTCDateTime(origintime)
+
+    # Determine filename using datetime properties
+    month = origintime.strftime('%b').lower()  # e.g. 'jul'
+    year_short = origintime.strftime('%y')  # e.g. '19'
+    year_long = origintime.strftime('%Y')  # e.g. '2019'
+
+    fid = f"{month}{year_short}.ndk"
+    logger.info("querying GCMT database for moment tensor")
+    try:
+        cat = read_events(
+            "https://www.ldeo.columbia.edu/~gcmt/projects/CMT/"
+            f"catalog/NEW_MONTHLY/{year_long}/{fid}"
+        )
+    except HTTPError:
+        cat = read_events(
+            "http://www.ldeo.columbia.edu/~gcmt/projects/CMT/"
+            "catalog/NEW_QUICK/qcmt.ndk"
+        )
+
+    # GCMT catalogs contain all events for a span of time
+    # filter catalogs using ObsPy to find events with our specifications.
+    # Magnitudes and origintimes are not always in agreement between agents
+    # So allow fro some wiggle room
+    cat_filt = cat.filter(f"time > {str(origintime - time_wiggle_sec)}",
+                          f"time < {str(origintime + time_wiggle_sec)}",
+                          f"magnitude >= {magnitude - magnitude_wiggle}",
+                          f"magnitude <= {magnitude + mag_wiggle}",
+                          )
+    # Filtering may remove all events from catalog, return multiple events, or
+    # may return the event of choice
+    if not len(cat_filt):
+        logger.info(f"no gcmt event found for {datetime} and M{magnitude}")
+        raise FileNotFoundError("No events found")
+    elif len(cat_filt) > 1:
+        logger.info(f"multiple events found for {datetime} and M{magnitude}")
+        print(f"{len(cat_filt)} events found, choosing first")
+        return cat_filt[0]
+    else:
+        logger.info("gcmt event found matching criteria")
+        return cat_filt[0]
 

@@ -6,6 +6,8 @@ and accomodates accordingly. Also will save any fetched data into a Pyasdf
 dataset if given.
 
 Hardcoded directory structure and synthetic file name format.
+
+Attributes inhereted by the Gatherer class.
 """
 import os
 import glob
@@ -18,21 +20,7 @@ from pyatoa.utils.read import read_ascii
 from pyatoa.utils.srcrcv import merge_inventories
 
 
-class Fetcher:
-    def __init__(self, config, ds=None, origintime=None):
-        """
-        :type config: pyatoa.core.config.Config
-        :param config: configuration object that contains necessary parameters
-            to run through the Pyatoa workflow
-        :type ds: pyasdf.asdf_data_set.ASDFDataSet
-        :param ds: dataset for internal data searching and saving
-        :type origintime: obspy.core.UTCDateTime
-        :param origintime: event origin time for event picking
-        """
-        self.config = config
-        self.ds = ds
-        self.origintime = origintime
-
+class InternalFetcher:
     def asdf_event_fetch(self):
         """
         Return event information from pyasdf.
@@ -91,6 +79,9 @@ class Fetcher:
         paths given until corresponding inventories are found or until nothing
         is found.
 
+        Default path naming follows SEED convention but can be overwritten
+        by the User is custom path and file naming are used.
+
         Note: Obspy does not have any type of inventory merge property, and
             because SEED format saves response by channel, we must read
             individual stationxml files in as individual inventory objects, and
@@ -116,7 +107,7 @@ class Fetcher:
         :return inv: inventory containing relevant network and stations
         """
         if not paths_to_responses:
-            paths_to_responses = self.config.cfgpaths['responses']
+            paths_to_responses = self.config.cfgpaths["responses"]
 
         net, sta, loc, cha = station_code.split('.')
 
@@ -150,10 +141,12 @@ class Fetcher:
             dir_structure='{year}/{net}/{sta}/{cha}*',
             file_template='{net}.{sta}.{loc}.{cha}*{year}.{jday:0>3}'):
         """
-        waveform directory structure formatting is hardcoded in here, it is
-        assumed that data is saved as miniseeds in the following structure:
+        Default waveform directory structure assumed to follow SEED convention.
+        Can be overwritten by User for custom file and directory naming.
 
+        Default search path:
         path/to/data/{YEAR}/{NETWORK}/{STATION}/{CHANNEL}*/{FID}
+
         e.g. path/to/data/2017/NZ/OPRZ/HHZ.D/NZ.OPRZ.10.HHZ.D
 
         :type station_code: str
@@ -218,7 +211,7 @@ class Fetcher:
         give a hardcoded search path to get to the data.
         If data hasn't been converted to miniseed format,
         call on a conversion function to get from SPECFEM3D-native ascii to
-        an obspy stream object in miniseed format
+        an ObsPy Stream object.
 
         :type station_code: str
         :param station_code: Station code following SEED naming convention.
@@ -295,8 +288,6 @@ class Fetcher:
             L=location, C=channel). Allows for wildcard naming. By default
             the pyatoa workflow wants three orthogonal components in the N/E/Z
             coordinate system. Example station code: NZ.OPRZ.10.HH?
-        :type tag: str
-        :param tag: The tag to save the waveform by, if an ASDF dataset is given
         :rtype: obspy.core.stream.Stream
         :return: stream object containing relevant waveforms
         """

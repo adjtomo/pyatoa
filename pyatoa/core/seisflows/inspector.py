@@ -329,11 +329,10 @@ class Inspector(Gadget):
                 self.windows.to_csv(os.path.join(path, f"{tag}.csv"),
                                     index=False)
         elif fmt == "hdf":
-            s = pd.HDFStore(os.path.join(path, f"{tag}.hdf"))
-            s["sources"] = self.sources
-            s["receivers"] = self.receivers
-            s["windows"] = self.windows
-            s.close()
+            with pd.HDFStore(os.path.join(path, f"{tag}.hdf")) as s:
+                s["sources"] = self.sources
+                s["receivers"] = self.receivers
+                s["windows"] = self.windows
         else:
             raise NotImplementedError
 
@@ -370,11 +369,10 @@ class Inspector(Gadget):
 
             self.windows = pd.read_csv(os.path.join(path, f"{tag}.csv"))
         elif fmt == "hdf":
-            s = pd.HDFStore(os.path.join(path, f"{tag}.hdf"))
-            self.sources = s["sources"]
-            self.receivers = s["receivers"]
-            self.windows = s["windows"]
-            s.close()
+            with pd.HDFStore(os.path.join(path, f"{tag}.hdf")) as s:
+                self.sources = s["sources"]
+                self.receivers = s["receivers"]
+                self.windows = s["windows"]
         else:
             raise NotImplementedError
 
@@ -532,6 +530,15 @@ class Inspector(Gadget):
                     sources["time"] <= max_start].set_index("event_id")
 
         return sources
+
+    def convert_coordinates(self, utm):
+        """
+        Convert the coordinates of the sources and receivers from the default
+        latitude longitude values to a UTM projection of choice
+
+        :param utm:
+        :return:
+        """
 
 
 
