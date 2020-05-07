@@ -101,7 +101,7 @@ def mt_transform(mt, method):
         return None
 
 
-def lonlat_utm(lon_or_x, lat_or_y, utm_zone=-60, inverse=False):
+def lonlat_utm(lon_or_x, lat_or_y, utm_zone=None, inverse=False):
     """
     Convert latitude and longitude coordinates to UTM projection
 
@@ -119,6 +119,14 @@ def lonlat_utm(lon_or_x, lat_or_y, utm_zone=-60, inverse=False):
     :return y_or_lat: y coordinate in UTM or latitude in WGS84
     """
     from pyproj import Proj
+
+    # If converting latlon to utm and no utm zone given, calculate utm zone
+    if utm_zone is None and not inverse:
+        utm_zone = utm_zone_from_lat_lon(lat_or_y, lon_or_x)
+    elif utm_zone is None and inverse:
+        raise TypeError(
+            "lonlat_utm() missing 1 required positional argument: 'utm_zone'"
+        )
     # Determine if the projection is north or south
     if utm_zone < 0:
         direction = "south"
@@ -134,6 +142,25 @@ def lonlat_utm(lon_or_x, lat_or_y, utm_zone=-60, inverse=False):
     x_or_lon, y_or_lat = projection(lon_or_x, lat_or_y, inverse=inverse)
 
     return x_or_lon, y_or_lat
+
+
+def utm_zone_from_lat_lon(lat, lon):
+    """
+    Calculate the UTM zone longitude value using quick maffs.
+    Get the sign of the UTM zone based on the latitude value.
+
+    :type lat: float
+    :param lat: latitude coordinate in degrees
+    :type lon: float
+    :param lon: longitude coordinate in degrees
+    :rtype: int
+    :return: UTM zone number
+    """
+    try:
+        sign = lat / abs(lat)  # silly way to figure out if lat is +/-
+    except ZeroDivisionError as e:
+        raise Exception("latitude is 0, UTM zone is ambigious") from e
+    return sign * np.ceil((lon + 180) / 6)
 
 
 def gcd_and_baz(event, sta):
@@ -156,24 +183,6 @@ def gcd_and_baz(event, sta):
                                       lon2=sta.longitude
                                       )
     return gcdist*1E-3, baz
-
-
-def theoretical_p_arrival(source_depth_in_km, distance_in_degrees,
-                          model='iasp91'):
-    """
-    Calculate theoretical arrivals
-
-    :type source_depth_in_km: float
-    :param source_depth_in_km: source depth in units of km
-    :type distance_in_degrees: float
-    :param distance_in_degrees: distance between source and receiver in degrees
-    :type model: str
-    :param model: model to be used to get travel times from
-    """
-    from obspy.taup import TauPyModel
-    model = TauPyModel(model=model)
-    return model.get_travel_times(source_depth_in_km, distance_in_degrees,
-                                  phase_list=["P"])
 
 
 def merge_inventories(inv_a, inv_b):
@@ -268,26 +277,14 @@ def sort_by_backazimuth(ds, clockwise=True):
     :rytpe: list
     :return: list of stations in order from 0deg to 360deg in direction
     """
-    from obspy.geodetics import gps2dist_azimuth
-
-    def baz(event, sta_stats):
-        """
-        To avoid repeat imports and unnecessary returns from gcd_and_baz()
-        """
-        _, _, baz = gps2dist_azimuth(
-            lat1=event.preferred_origin().latitude,
-            lon1=event.preferred_origin().longitude,
-            lat2=sta_stats.latitude,
-            lon2=sta_stats.longitude
-            )
-        return baz
-
     station_names, list_of_baz = [], []
     event = ds.events[0]
     for sta_name in ds.waveforms.list():
         sta = ds.waveforms[sta_name].StationXML[0][0]
-        list_of_baz.append(baz(event, sta))
         station_names.append(sta_name)
+
+        _, baz = gcd_and_baz(event, sta)
+        list_of_baz.append(baz)
 
     list_of_baz, station_names = zip(*sorted(zip(list_of_baz, station_names)))
 
@@ -374,112 +371,6 @@ def event_by_distance(cat, filter_type=False, filter_bounds=None, random=False):
     # Return a new catalog
     return Catalog(events=events)
 
-
-def generate_focal_mechanism(mtlist, event=None):
-    """
-    For the New Zealand Tomography Problem
-
-    Focal mechanisms created by John Ristau are written to a .csv file
-    located on Github. This function will append information from the .csv file
-    onto the Obspy event object so that all the information can be located in a
-    single object
-
-    :type mtlist: dict
-    :param mtlist; row values from the GeoNet moment tensor csv file
-    :type event: obspy.core.event.Event
-    :param event: event to append focal mechanism to
-    :rtype focal_mechanism: obspy.core.event.FocalMechanism
-    :return focal_mechanism: generated focal mechanism
-    """
-    from obspy.core.event import source
-    from obspy.core.event.base import Comment
-
-    # Match the identifier with Goenet
-    id_template = f"smi:local/geonetcsv/{mtlist['PublicID']}/{{}}"
-
-    # Check that the input list is properly formatted
-    if len(mtlist) != 32:
-        print("geonet moment tensor list does not have the correct number"
-              "of requisite components, should have 32")
-        return
-
-    # Generate the Nodal Plane objects to append
-    nodal_plane_1 = source.NodalPlane(
-        strike=mtlist['strike1'], dip=mtlist['dip1'], rake=mtlist['rake1']
-    )
-    nodal_plane_2 = source.NodalPlane(
-        strike=mtlist['strike2'], dip=mtlist['dip2'], rake=mtlist['rake2']
-    )
-    nodal_planes = source.NodalPlanes(
-        nodal_plane_1, nodal_plane_2, preferred_plane=1
-    )
-
-    # Create the Principal Axes as Axis objects
-    tension_axis = source.Axis(
-        azimuth=mtlist['Taz'], plunge=mtlist['Tpl'], length=mtlist['Tva']
-    )
-    null_axis = source.Axis(
-        azimuth=mtlist['Naz'], plunge=mtlist['Npl'], length=mtlist['Nva']
-    )
-    pressure_axis = source.Axis(
-        azimuth=mtlist['Paz'], plunge=mtlist['Ppl'], length=mtlist['Pva']
-    )
-    principal_axes = source.PrincipalAxes(
-        t_axis=tension_axis, p_axis=pressure_axis, n_axis=null_axis
-    )
-
-    # Create the Moment Tensor object with correct units and scaling
-    cv = 1E20 * 1E-7  # convert non-units, to dyne*cm, to N*m
-    seismic_moment_in_nm = mtlist['Mo'] * 1E-7
-
-    # Convert the XYZ coordinate system of GeoNet to an RTP coordinate system
-    # expected in the CMTSOLUTION file of Specfem
-    rtp = mt_transform(mt={"m_xx": mtlist['Mxx']*cv, "m_yy": mtlist['Myy']*cv,
-                           "m_zz": mtlist['Mzz']*cv, "m_xy": mtlist['Mxy']*cv,
-                           "m_xz": mtlist['Mxz']*cv, "m_yz": mtlist['Myz']*cv
-                           },
-                       method="xyz2rtp"
-                       )
-    tensor = source.Tensor(m_rr=rtp['m_rr'], m_tt=rtp['m_tt'],
-                           m_pp=rtp['m_pp'], m_rt=rtp['m_rt'],
-                           m_rp=rtp['m_rp'], m_tp=rtp['m_tp']
-                           )
-    # Create the source time function
-    source_time_function = source.SourceTimeFunction(
-        duration=2 * half_duration_from_m0(seismic_moment_in_nm)
-    )
-
-    # Generate a comment for provenance
-    comment = Comment(force_resource_id=False,
-                      text="Automatically generated by Pyatoa via GeoNet MT CSV"
-                      )
-
-    # Fill the moment tensor object
-    moment_tensor = source.MomentTensor(
-        force_resource_id=False, tensor=tensor,
-        source_time_function=source_time_function,
-        derived_origin_id=id_template.format('origin#ristau'),
-        scalar_moment=seismic_moment_in_nm, double_couple=mtlist['DC']/100,
-        variance_reduction=mtlist['VR'], comment=comment
-        )
-
-    # Finally, assemble the Focal Mechanism. Force a resource id so that
-    # the event can identify its preferred focal mechanism
-    focal_mechanism = source.FocalMechanism(
-        force_resource_id=True, nodal_planes=nodal_planes,
-        moment_tensor=moment_tensor, principal_axes=principal_axes,
-        comments=[comment]
-        )
-
-    # Append the focal mechanisms to the event object. Set the preferred
-    # focal mechanism so that this attribute can be used in the future
-    if event:
-        event.focal_mechanisms = [focal_mechanism]
-        event.preferred_focal_mechanism_id = focal_mechanism.resource_id
-        return event, focal_mechanism
-    # If no event is given, just return the focal mechanism
-    else:
-        return None, focal_mechanism
 
 
 

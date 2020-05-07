@@ -7,13 +7,17 @@ Fed into the Manager class for workflow management, and also used for
 information sharing between objects and functions. Has the ability to read from
 and write to external files in various formats, or can be called directly
 through scripts or interactive shells.
+
+Contains non-class functions for setting Config objects of Pyflex and Pyadjoint.
 """
 import yaml
 from pyatoa import logger
 from pyatoa.utils.form import model_number, step_count
 from pyatoa.core.seisflows.pyaflowa import pyaflowa_kwargs
-from pyatoa.plugins.pyflex_config import set_pyflex_config
-from pyatoa.plugins.pyadjoint_config import set_pyadjoint_config, src_type
+from pyatoa.plugins.pyflex_presets import pyflex_presets
+
+from pyflex import Config as PyflexConfig
+from pyadjoint import Config as PyadjointConfig
 
 
 class Config:
@@ -147,11 +151,27 @@ class Config:
 
     def __str__(self):
         """
-        String representation of class Config for print statements
+        String representation of class Config for print statements.
+        Separate into similar labels for easier reading.
         """
-        str_out = "CONFIG\n"
-        for key, item in vars(self).items():
-            str_out += f"\t{key+':':<25}{item}\n"
+        key_dict = {"Config": ["model", "step", "event_id"],
+                    "Gather": ["client", "start_pad", "end_pad"],
+                    "Process": ["min_period", "max_period", "filter_corners",
+                                "unit_output", "synthetic_unit",
+                                "rotate_to_rtz", "window_amplitude_ratio",
+                                "synthetics_only"],
+                    "Labels": ["component_list", "observed_tag",
+                               "synthetic_tag", "cfgpaths"],
+                    "Misc.": ["save_to_ds", "map_corners"],
+                    "External": ["pyflex_preset", "adj_src_type",
+                                 "pyflex_config", "pyadjoint_config"
+                                 ]
+                    }
+        str_out = ""
+        for key, items in key_dict.items():
+            str_out += f"{key.upper()}\n"
+            for item in items:
+                str_out += f"{' '*4}{item+':':<25}{getattr(self, item)}\n"
         return str_out
 
     def __repr__(self):
@@ -208,7 +228,7 @@ class Config:
                 "window amplitude ratio should be < 1"
 
         # Make sure adjoint source type is formatted properly
-        self.adj_src_type = src_type(self.adj_src_type)
+        self.adj_src_type = format_adj_src_type(self.adj_src_type)
 
         # Set Pyflex confict through wrapper function
         self.pyflex_config, unused_kwargs_pf = set_pyflex_config(
@@ -472,3 +492,101 @@ class Config:
 
         self._check()
 
+
+def set_pyflex_config(min_period, max_period, choice=None, **kwargs):
+    """
+    Overwriting the default Pyflex parameters with User-defined criteria
+
+    :type choice: str or dict
+    :param choice: name of map to choose the Pyflex config options, if None,
+        default values are used. Kwargs can still overload default values.
+        Also dicts can be passed in as User-defined preset
+    :type min_period: float
+    :param min_period: min period of the data
+    :type max_period: float
+    :param max_period: max period of the data
+    :rtype: pyflex.Config
+    :return: the pyflex Config option to use when running Pyflex
+    """
+    # Instantiate the pyflex Config object
+    pfconfig = PyflexConfig(min_period=min_period, max_period=max_period)
+
+    # Set preset configuration parameters based on hard-coded presets
+    if isinstance(choice, str):
+        if choice in pyflex_presets.keys():
+            preset = pyflex_presets[choice]
+            for key, item in preset.items():
+                setattr(pfconfig, key, item)
+        else:
+            raise KeyError(f"'{choice}' does not match any available presets "
+                           f"for Pyflex. "
+                           f"Presets include {list(presets.keys())}")
+    # Allow dictionary object to be passed in as a preset
+    elif isinstance(choice, dict):
+        for key, item in choice.items():
+            setattr(pfconfig, key, item)
+
+    # Kwargs can also be passed from the pyatoa.Config object to avoid having to
+    # define pre-set values. Kwargs will override preset values
+    unused_kwargs = []
+    for key, item in kwargs.items():
+        if hasattr(pfconfig, key):
+            setattr(pfconfig, key, item)
+        else:
+            unused_kwargs.append(key)
+
+    return pfconfig, unused_kwargs
+
+
+def set_pyadjoint_config(min_period, max_period, **kwargs):
+    """
+    Set the Pyadjoint config based on Pyatoa Config parameters.
+    Kwargs can be fed to the Pyadjoint Config object. Returns unnused kwargs.
+
+    Config parameters can be found at:
+    https://github.com/krischer/pyadjoint/blob/master/src/pyadjoint/config.py
+
+    :type min_period: float
+    :param min_period: min period of the data
+    :type max_period: float
+    :param max_period: max period of the data
+    :rtype cfgout: pyadjoint.Config
+    :return cfgout: properly set pyadjoint configuration object
+    """
+    paconfig = PyadjointConfig(min_period=min_period,
+                               max_period=max_period
+                               )
+    unused_kwargs = []
+    for key, item in kwargs.items():
+        if hasattr(paconfig, key):
+            setattr(paconfig, key, item)
+        else:
+            unused_kwargs.append(key)
+
+    return paconfig, unused_kwargs
+
+
+def format_adj_src_type(choice):
+    """
+    Pyadjoint requires that a standard adjoint source type is given in the
+    calculate_adjoint_source() function. This function acts as simple dictionary
+    input to provide the correct input for that function. Allows for various
+    spellings and variations of the same name.
+
+    Throws ValueError if choice isn't in the provided lists.
+
+    :type choice: str
+    :param choice: pyatoa.Config.adj_src_type
+    :rtype: str
+    :return: pyadjoint adj_src_type
+    """
+    if choice in ["cc", "cc_traveltime_misfit", "cross_correlation"]:
+        adj_src_type = "cc_traveltime_misfit"
+    elif choice in ["mt", "mtm", "multitaper_misfit", "multitaper"]:
+        adj_src_type = "multitaper_misfit"
+    elif choice in ["wav", "wave", "waveform", "w"]:
+        adj_src_type = "waveform"
+    else:
+        raise ValueError(f"'{choice}' does not match available adjoint source "
+                         f"types, must be 'cc', 'mt', or 'wav'")
+    return adj_src_type

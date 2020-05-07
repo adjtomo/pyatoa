@@ -39,6 +39,7 @@ class ManagerError(Exception):
     """
     pass
 
+
 class Manager:
     """
     Core object within Pyatoa.
