@@ -2,9 +2,10 @@
 """
 Pyaflowa - Pyatoa's Seisflows plugin class
 
-This Seisflows plugin class that allows easy scripting of Pyatoa
-functionality into a Seisflows workflow. Pre-written functionalities simplify
-calls made in Seisflows to Pyatoa, to reduce clutter inside the workflow.
+This Seisflows plugin class that allows easy scripting of Pyatoa functionality
+into a Seisflows workflow. It takes care of input from the Seisflows master
+directory, and output into a Pyatoa-specific auxiliary directory with a
+pre-defined directory structure that allows for easy navigation of outputs.
 """
 import os
 # cheeky shorthand for cleaner calls
@@ -20,7 +21,7 @@ import traceback
 from pyatoa import logger
 from pyatoa.utils.read import read_stations
 from pyatoa.utils.form import model_number, step_count
-from pyatoa.utils.asdf.deletions import clean_ds
+from pyatoa.utils.asdf.clean import clean_ds
 from pyatoa.visuals.statistics import plot_output_optim
 from pyatoa.utils.write import (create_stations_adjoint, write_adj_src_to_ascii,
                                 write_misfit_stats, tile_combine_imgs,
@@ -32,7 +33,7 @@ from pyatoa.utils.write import (create_stations_adjoint, write_adj_src_to_ascii,
 # knows that these arguments are acceptable.
 pyaflowa_kwargs = ["set_logging", "window_amp_ratio", "fix_windows", "snapshot",
                    "write_misfit_json", "create_srcrcv_vtk", "plot_waveforms",
-                   "plot_srcrcv_maps", "combine_imgs", "inspect"]
+                   "plot_srcrcv_maps", "combine_imgs"]
 
 
 class Pyaflowa:
@@ -146,7 +147,7 @@ class Pyaflowa:
             logger.warning("Config encountered unexpected arguments... exiting")
             sys.exit(-1)
 
-    def fixwin(self, ds):
+    def check_for_fixed_windows(self, ds):
         """
         Determine if window fixing is required. This can be done by step count,
         by iteration, or not at all.
@@ -239,6 +240,9 @@ class Pyaflowa:
         :param cwd: current working directory for this instance of Pyatoa
         :type event_id: str
         :param event_id: event identifier tag for file naming etc.
+        :type overwrite: function
+        :param overwrite: a preprocessing function to overwite the default
+            Pyatoa preprocessing function. Must be specified in Seisflows.
         """
         # Run the setup and standardize some names
         config, ev_paths = self.setup(cwd, event_id)
@@ -247,11 +251,11 @@ class Pyaflowa:
         # Count number of successful processes
         processed = 0
         with pyasdf.ASDFDataSet(ds_name) as ds:
-            fix_windows = self.fixwin(ds)
+            fix_windows = self.check_for_fixed_windows(ds)
             logger.info(f"Fix windows: {fix_windows}")
 
             # Make sure the ASDFDataSet doesn't already contain auxiliary_data
-            # for the model_number/step_count
+            # for the model_number/step_count. If so, delete it in preparation
             clean_ds(ds=ds, model=self.model, step=self.step)
 
             # Set up the manager and get station information
@@ -279,7 +283,7 @@ class Pyaflowa:
 
                         # Only plot maps once since they won't change
                         if self.plot_srcrcv_maps:
-                            map_fid = oj(ev_paths["maps"], 
+                            map_fid = oj(ev_paths["maps"],
                                          f"map_{sta.code}.png")
                             if not os.path.exists(map_fid):
                                 mgmt.srcrcvmap(stations=inv, show=False,
@@ -368,20 +372,4 @@ class Pyaflowa:
         if self.create_srcrcv_vtk and self.iteration == 1:
             for func in [src_vtk_from_specfem, rcv_vtk_from_specfem]:
                 func(path_to_data=self.specfem_data, path_out=self.vtks_dir)
-
-        # Run the Inspector class to analyze the misfit behavior of inversion
-        if self.inspect:
-            insp = pyatoa.Inspector(path=self.data_dir)
-            insp.save(tag=self.title, path=self.data_dir)
-
-            # Create a misfit histogram for the initial and final model
-            for choice, binsize in zip(["cc_shift_sec", "dlna"], [0.5, 0.25]):
-                insp.misfit_histogram(model=insp.models[0], choice=choice,
-                                      model_comp=insp.models[-1], show=False,
-                                      binsize=binsize,
-                                      save=oj(
-                                          self.stats_dir,
-                                          f"misfithisto_{insp.models[-1]}.png")
-                                      )
-
 

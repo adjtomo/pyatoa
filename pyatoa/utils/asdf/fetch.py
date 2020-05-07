@@ -91,7 +91,6 @@ def windows_from_ds(ds, net, sta, model, step):
 
         return misfit_windows[model_out][step_out]
 
-
     def retrieve_windows(windows):
         """
         Pyatoa expects the Manager class windows as a dictionary with keys

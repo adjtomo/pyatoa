@@ -4,9 +4,6 @@ Basemap map making tools
 
 Functions used to produce maps using Basemap that have a standard look across
 the Pyatoa workflow. Map creation functions are located outside this toolbox
-
-TO DO:
--add colorbar functionality from personal scripts
 """
 import numpy as np
 import matplotlib as mpl

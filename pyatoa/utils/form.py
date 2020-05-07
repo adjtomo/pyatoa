@@ -70,7 +70,7 @@ def event_name(ds=None, event=None):
         return os.path.basename(ds.filename).split(".")[0]
 
 
-def channel_codes(dt):
+def channel_code(dt):
     """
     Specfem outputs seismograms with channel band codes set by IRIS. Instrument
     codes are always X for synthetics, but band code will vary with the sampling
