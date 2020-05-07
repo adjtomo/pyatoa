@@ -376,8 +376,8 @@ class Inspector(Gadget):
         else:
             raise NotImplementedError
 
-    def isolate(self, event=None, model=None, step=None, station=None,
-                network=None):
+    def isolate(self, model=None, step=None,  event=None, network=None,
+                station=None):
         """
         Returns a new dataframe that is grouped by a given index
         if variable is None, defaults to returning all available values
@@ -396,11 +396,11 @@ class Inspector(Gadget):
         :return: DataFrame with selected rows based on selected column values
         """
         df = self.windows
-        return df.loc[(df["event"] == (event or df["event"].values)) &
-                      (df["model"] == (model or df["model"].values)) &
-                      (df["step"] == (step or df["step"].values)) &
-                      (df["station"] == (station or df["station"].values)) &
-                      (df["network"] == (network or df["network"].values))
+        return df.loc[(df["event"] == (event or df["event"].to_numpy())) &
+                      (df["model"] == (model or df["model"].to_numpy())) &
+                      (df["step"] == (step or df["step"].to_numpy())) &
+                      (df["station"] == (station or df["station"].to_numpy())) &
+                      (df["network"] == (network or df["network"].to_numpy()))
                       ]
 
     def window_lengths(self, level="step"):
@@ -531,14 +531,44 @@ class Inspector(Gadget):
 
         return sources
 
-    def convert_coordinates(self, utm):
+    def get_dist_baz(self):
         """
         Convert the coordinates of the sources and receivers from the default
-        latitude longitude values to a UTM projection of choice
+        latitude longitude values to a UTM projection of choice.
+        Not saved because it can be re-calculated if Inspector.sources and
+        Inspector.receivers are present.
 
-        :param utm:
-        :return:
+        Return a DataFrame that can be used as a lookup table.
         """
+        if self.sources.empty or self.receivers.empty:
+            return []
+
+        from obspy.geodetics import gps2dist_azimuth
+        srcrcv_dict = {"event": [], "network": [], "station": [],
+                       "distance_km": [], "backazimuth": []
+                       }
+
+        for eid, elat, elon in zip(self.sources.index.to_numpy(),
+                                   self.sources.latitude.to_numpy(),
+                                   self.sources.longitude.to_numpy()
+                                   ):
+            for rid, rlat, rlon in zip(self.receivers.index,
+                                       self.receivers.latitude.to_numpy(),
+                                       self.receivers.longitude.to_numpy()
+                                       ):
+                gcd, _, baz = gps2dist_azimuth(lat1=elat, lon1=elon,
+                                               lat2=rlat, lon2=rlon,
+                                               )
+                net, sta = rid
+                srcrcv_dict["event"].append(eid)
+                srcrcv_dict["network"].append(net)
+                srcrcv_dict["station"].append(sta)
+                srcrcv_dict["distance_km"].append(gcd * 1E-3)
+                srcrcv_dict["backazimuth"].append(baz)
+
+        return pd.DataFrame(srcrcv_dict)
+
+
 
 
 
