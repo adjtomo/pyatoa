@@ -764,7 +764,7 @@ class Manager:
                         config=self.config.pyflex_config, event=self.event,
                         station=self.inv)
                 # Suppress windows that contain low-amplitude signals
-                if self.config.window_amplitude_ratio > 0:
+                if self.config.win_amp_ratio > 0:
                     window = window_by_amplitude(self, window, comp)
                 # !!! Further window filtering can be applied here !!!
                 if window:

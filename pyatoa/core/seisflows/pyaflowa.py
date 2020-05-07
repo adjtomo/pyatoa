@@ -31,9 +31,8 @@ from pyatoa.utils.write import (create_stations_adjoint, write_adj_src_to_ascii,
 # A list of key word arguments that are accepted by Pyaflowa but are only
 # listed in Seisflows' parameters.yaml file. Listed here so that Pyatoa
 # knows that these arguments are acceptable.
-pyaflowa_kwargs = ["set_logging", "window_amp_ratio", "fix_windows", "snapshot",
-                   "write_misfit_json", "create_srcrcv_vtk", "plot_waveforms",
-                   "plot_srcrcv_maps", "combine_imgs"]
+pyaflowa_kwargs = ["set_logging", "win_amp_ratio", "fix_windows", "snapshot",
+                   "srcrcv_vtk", "plot_wav", "plot_map", "make_pdf"]
 
 
 class Pyaflowa:
@@ -275,14 +274,14 @@ class Pyaflowa:
                                 )
 
                         # Plot waveforms with misfit windows and adjoint sources
-                        if self.plot_waveforms:
+                        if self.plot_wav:
                             mgmt.plot(
                                 save=oj(ev_paths["figures"], f"wav_{sta.code}"),
                                 show=False, return_figure=False
                                       )
 
                         # Only plot maps once since they won't change
-                        if self.plot_srcrcv_maps:
+                        if self.plot_map:
                             map_fid = oj(ev_paths["maps"],
                                          f"map_{sta.code}.png")
                             if not os.path.exists(map_fid):
@@ -332,7 +331,7 @@ class Pyaflowa:
         write_misfit_stats(ds, self.model, self.step, pathout=self.misfits_dir)
 
         # Combine images into a pdf for easier visualization, will delete .png's
-        if self.combine_imgs:
+        if self.make_pdf:
             logger.info("creating composite pdf")
             # path/to/figures/m??/s??/eid_m??_s??.pdf
             fig_path = oj(self.figures_dir, self.model, self.step)
@@ -371,7 +370,7 @@ class Pyaflowa:
                           )
 
         # Generate .vtk files for given source and receivers for model 0
-        if self.create_srcrcv_vtk and self.iteration == 1:
+        if self.srcrcv_vtk and self.iteration == 1:
             for func in [src_vtk_from_specfem, rcv_vtk_from_specfem]:
                 func(path_to_data=self.specfem_data, path_out=self.vtks_dir)
 

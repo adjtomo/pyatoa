@@ -31,7 +31,7 @@ class Config:
                  adj_src_type="cc_traveltime_misfit", start_pad=20, end_pad=500,
                  synthetic_unit="DISP", observed_tag="observed",
                  synthetic_tag="synthetic_{m}{s}", synthetics_only=False,
-                 window_amplitude_ratio=0., map_corners=None, cfgpaths=None,
+                 win_amp_ratio=0., map_corners=None, cfgpaths=None,
                  save_to_ds=True, **kwargs):
         """
         Allows the user to control the parameters of the workflow, including:
@@ -120,7 +120,7 @@ class Config:
         self.adj_src_type = adj_src_type
         self.map_corners = map_corners
         self.synthetics_only = synthetics_only
-        self.window_amplitude_ratio = window_amplitude_ratio
+        self.win_amp_ratio = win_amp_ratio
         self.start_pad = int(start_pad)
         self.end_pad = int(end_pad)
         self.component_list = component_list or ['Z', 'N', 'E']
@@ -158,7 +158,7 @@ class Config:
                     "Gather": ["client", "start_pad", "end_pad"],
                     "Process": ["min_period", "max_period", "filter_corners",
                                 "unit_output", "synthetic_unit",
-                                "rotate_to_rtz", "window_amplitude_ratio",
+                                "rotate_to_rtz", "win_amp_ratio",
                                 "synthetics_only"],
                     "Labels": ["component_list", "observed_tag",
                                "synthetic_tag", "cfgpaths"],
@@ -223,8 +223,8 @@ class Config:
             self.component_list = ['Z', 'R', 'T']
 
         # Check that the amplitude ratio is a reasonable number
-        if self.window_amplitude_ratio > 0:
-            assert(self.window_amplitude_ratio < 1), \
+        if self.win_amp_ratio > 0:
+            assert(self.win_amp_ratio < 1), \
                 "window amplitude ratio should be < 1"
 
         # Make sure adjoint source type is formatted properly

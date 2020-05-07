@@ -202,10 +202,8 @@ def plot_wave(st_obs_in, st_syn_in, config, time_offset_sec=0., windows=None,
         ymin, ymax = axes[i].get_ylim()
 
         # Amplitude ratio criteria
-        if config.window_amplitude_ratio > 0:
-            threshold_amp = abs(
-                config.window_amplitude_ratio * abs_max(obs.data)
-            )
+        if config.win_amp_ratio > 0:
+            threshold_amp = abs(config.win_amp_ratio * abs_max(obs.data))
             # Both negative and positive bounds
             for sign in [-1, 1]:
                 axes[i].axhline(y=sign * threshold_amp, xmin=t[0], xmax=t[-1],
@@ -215,7 +213,7 @@ def plot_wave(st_obs_in, st_syn_in, config, time_offset_sec=0., windows=None,
             if i == middle_trace:
                 axes[i].annotate(
                     s="{:.0f}% peak amp. obs.".format(
-                        config.window_amplitude_ratio * 100), alpha=0.7,
+                        config.win_amp_ratio * 100), alpha=0.7,
                     xy=(0.85 * (xmax-xmin) + xmin, threshold_amp), fontsize=8,
                 )
 

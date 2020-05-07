@@ -85,14 +85,13 @@ def window_by_amplitude(mgmt, window, comp):
             component=comp)[0].data[win_.left:win_.right]
                               )
         # Check the waveform amplitudes
-        if (abs(window_peak / waveform_peak) >
-                mgmt.config.window_amplitude_ratio):
+        if abs(window_peak / waveform_peak) > mgmt.config.win_amp_ratio:
             suppressed_windows.append(win_)
         else:
             logger.info(
                 "removing window due to global amplitude ratio: "
                 f"{ abs(window_peak / waveform_peak):.2f} < "
-                f"{mgmt.config.window_amplitude_ratio:.2f}")
+                f"{mgmt.config.win_amp_ratio:.2f}")
             continue
 
     return suppressed_windows
