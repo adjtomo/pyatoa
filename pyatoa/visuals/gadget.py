@@ -418,7 +418,7 @@ class Gadget:
         ax1.set_xticks(np.arange(0, end, 1), minor=True)
         ax1.xaxis.grid(True, which="minor", linestyle=":")
         ax1.xaxis.grid(True, which="major", linestyle="-")
-        
+
         f.tight_layout()
 
         if save:
