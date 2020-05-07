@@ -3,8 +3,13 @@
 Mid and Low level data gathering classes to retrieve data from local filesystems
 or to query data from FDSN webservices via ObsPy.
 
-Directly called by the Manager class and shouldn't need to be called by the User
-unless for bespoke data gathering functionality.
+Fetch: used to denote searching local filesystems for data (internal)
+Get: used to denote querying FDSN webservices via ObsPy (external), naming
+     *convention from the obspy.fdsn.client.Client function names
+
+
+Gatherer directly called by the Manager class and shouldn't need to be called
+by the User unless for bespoke data gathering functionality.
 """
 import os
 import glob
@@ -22,8 +27,8 @@ from pyatoa.utils.srcrcv import merge_inventories
 
 class ExternalGetter:
     """
-    Gather data externally via FDSN webservices. Calls made through ObsPy
-    Functionality is inhereted by the Gatherer class.
+    Low-level gathering classs to retrieve data via FDSN webservices.
+    Calls made through ObsPy. Functionality is inhereted by the Gatherer class.
     """
     def event_get(self):
         """
@@ -142,9 +147,9 @@ class ExternalGetter:
 
 class InternalFetcher:
     """
-    Gather data via local filesystem, either through PyASDF ASDFDataSets,
-    or through the local filestructure. Pathing defaults to SEED convention but
-    can be overwritten by the User.
+    Low-level data gatherer which searches local filesystem, either through
+    PyASDF ASDFDataSets, or through the local filestructure.
+    Filesystem pathing defaults to SEED convention but can be overwritten.
 
     Note:
         Smart enough to know if an event sits too close to a separation in files
@@ -570,12 +575,8 @@ def get_gcmt_moment_tensor(origintime, magnitude, time_wiggle_sec=120,
 
 class Gatherer(InternalFetcher, ExternalGetter):
     """
-    A class used to fetch data internally and externally. Inherets internal
-    and external data gathering from separate classes.
-
-    Fetch: used to denote searching local filesystems for data (internal)
-    Get: used to denote querying FDSN webservices via ObsPy (external), naming
-         *convention from the obspy.fdsn.client.Client function names
+    A mid-level wrapper class used to fetch data internally and externally.
+    Inherets internal and external data gathering from lower level classes.
     """
     def __init__(self, config, ds=None, event_id=None, origintime=None):
         """

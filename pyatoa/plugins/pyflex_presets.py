@@ -1,33 +1,31 @@
 """
-Pyflex requires configuration objects to run;
-the functions here will set them properly and return the necessary parameters
+Pyflex requires configuration objects to set the number of available variables
+that tune the Flexwin algorithm.
 
 For variable descriptions see:
     https://krischer.github.io/pyflex/_modules/pyflex/config.html
 
 + Descriptions of a few commonly used parameters that are not self explanatory
-    :stalta_waterlevel (float): reject windows where sta/lta waveform dips below
-        this threshold value. between 0 and 1
-Water level rejection
-    :c_0: reject if window.stalta.min() < c_0 * stalta_waterlevel
-    :c_1: min_acceptable_window_length = c_1 * T_min
-Prominence rejection
-    :c_2: reject if window.stalta.min() < c_2 * window.stalta.max()
-Separation height in phase separation
-    :c_3a: d_stlta > c_3a * d_stalta_center * f_time  
-        where d_stalta = current max height above min
-        and   d_stalta_center = central max height above min
-        and   f_time = time decay function
-Emergent start/stops and coda wave curtailing
-    :c_4a: time_decay_left = T_min * c_4a / dt
-    :c_4b: time_decay_right: T_min * c_4b / dt
+
+    1. Short Term Average Long Term Average water level
+        :stalta_waterlevel (float): reject windows where sta/lta waveform dips
+            below this threshold value. between 0 and 1
+    2. Water level rejection
+        :c_0: reject if window.stalta.min() < c_0 * stalta_waterlevel
+        :c_1: min_acceptable_window_length = c_1 * T_min
+    3. Prominence rejection
+        :c_2: reject if window.stalta.min() < c_2 * window.stalta.max()
+    4. Separation height in phase separation
+        :c_3a: d_stlta > c_3a * d_stalta_center * f_time
+            where d_stalta = current max height above min
+            and   d_stalta_center = central max height above min
+            and   f_time = time decay function
+    5. Emergent start/stops and coda wave curtailing
+        :c_4a: time_decay_left = T_min * c_4a / dt
+        :c_4b: time_decay_right: T_min * c_4b / dt
 """
-from pyflex import Config as pyflexConfig
 
-
-# Some preset Pyflex Configuration parameters based on previous work,
-# current work or literature.
-presets = {
+pyflex_presets = {
     # Empty preset to just use the default Pyflex values
     "default": {},
     # example configuration from the Pyflex website, different from default
@@ -173,50 +171,3 @@ presets = {
         "c_4b": 6.0
     },
 }
-
-
-def set_pyflex_config(min_period, max_period, choice=None, **kwargs):
-    """
-    Overwriting the default Pyflex parameters with User-defined criteria
-
-    :type choice: str or dict
-    :param choice: name of map to choose the Pyflex config options, if None,
-        default values are used. Kwargs can still overload default values.
-        Also dicts can be passed in as User-defined preset
-    :type min_period: float
-    :param min_period: min period of the data
-    :type max_period: float
-    :param max_period: max period of the data
-    :rtype: pyflex.Config
-    :return: the pyflex Config option to use when running Pyflex
-    """
-    # Instantiate the pyflex Config object
-    pfconfig = pyflexConfig(min_period=min_period, max_period=max_period)
-
-    # Set preset configuration parameters based on hard-coded presets
-    if isinstance(choice, str):
-        if choice in presets.keys():
-            preset = presets[choice]
-            for key, item in preset.items():
-                setattr(pfconfig, key, item)
-        else:
-            raise KeyError(f"'{choice}' does not match any available presets "
-                           f"for Pyflex. "
-                           f"Presets include {list(presets.keys())}")
-    # Allow dictionary object to be passed in as a preset
-    elif isinstance(choice, dict):
-        for key, item in choice.items():
-            setattr(pfconfig, key, item)
-
-    # Kwargs can also be passed from the pyatoa.Config object to avoid having to
-    # define pre-set values. Kwargs will override preset values
-    unused_kwargs = []
-    for key, item in kwargs.items():
-        if hasattr(pfconfig, key):
-            setattr(pfconfig, key, item)
-        else:
-            unused_kwargs.append(key)
-
-    return pfconfig, unused_kwargs
-
-
