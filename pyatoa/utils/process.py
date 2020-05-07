@@ -144,6 +144,7 @@ def is_preprocessed(st):
     preprocessing. Simple, as it assumes that a fresh stream will have no
     processing attribute in their stats, or if they do, will not have been
     filtered (getting cut waveforms from FDSN appends a 'trim' stat).
+
     :type st: obspy.stream.Stream
     :param st: stream to check processing on
     :rtype: bool

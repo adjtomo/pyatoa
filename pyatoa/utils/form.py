@@ -1,4 +1,6 @@
 """
+Formatting functionality
+
 Pyatoa relies on data structure being ordered and consistent throughout all the
 various bits of data required, as well as a few standardized string formatters
 to keep everything playing nice. Functions here will aid in reshaping data
@@ -60,9 +62,12 @@ def event_name(ds=None, event=None):
     """
     Formalize the defition of Event ID in Pyatoa
 
+    :type ds: pyasdf.ASDFDataSet
+    :param: get dataset event name from the filename
     :type event: obspy.core.event.Event
-    :param event: event object
-    :return:
+    :param event: get event name from the resource id
+    :rtype: str
+    :return: the event name to be used for naming schema in the workflow
     """
     if event:
         return event.resource_id.id.split('/')[-1]
@@ -112,8 +117,8 @@ def distribute_dataless(path_to_response, inv):
     :type inv: obspy.core.inventory.Inventory
     :param inv: inventory with response to be delinieated into separate objects
     """
-    inner_folder = '{STA}.{NET}'
-    fid_template = 'RESP.{NET}.{STA}.{LOC}.{CHA}'
+    inner_folder = "{STA}.{NET}"
+    fid_template = "RESP.{NET}.{STA}.{LOC}.{CHA}"
     full_template = os.path.join(path_to_response, inner_folder, fid_template)
     for net in inv:
         for sta in net:
@@ -150,14 +155,14 @@ def create_window_dictionary(window):
     win_dict = window._get_json_content()
 
     # change UTCDateTime objects into strings
-    win_dict['absolute_endtime'] = str(win_dict['absolute_endtime'])
-    win_dict['absolute_starttime'] = str(win_dict['absolute_starttime'])
-    win_dict['time_of_first_sample'] = str(win_dict['time_of_first_sample'])
+    win_dict["absolute_endtime"] = str(win_dict["absolute_endtime"])
+    win_dict["absolute_starttime"] = str(win_dict["absolute_starttime"])
+    win_dict["time_of_first_sample"] = str(win_dict["time_of_first_sample"])
 
-    phase_arrivals = win_dict['phase_arrivals']
+    phase_arrivals = win_dict["phase_arrivals"]
     for phase in phase_arrivals:
-        win_dict['phase_arrival_{}'.format(phase['name'])] = phase['time']
-    win_dict.pop('phase_arrivals')
+        win_dict["phase_arrival_{}".format(phase["name"])] = phase["time"]
+    win_dict.pop("phase_arrivals")
 
     return win_dict
 
