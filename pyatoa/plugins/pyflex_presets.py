@@ -2,6 +2,9 @@
 Pyflex requires configuration objects to set the number of available variables
 that tune the Flexwin algorithm.
 
+This file contains some preset maps for Pyflex that are mostly taken directly
+from the Flexwin publication Maggi et al. 2009.
+
 For variable descriptions see:
     https://krischer.github.io/pyflex/_modules/pyflex/config.html
 

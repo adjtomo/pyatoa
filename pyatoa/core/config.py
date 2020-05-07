@@ -151,11 +151,27 @@ class Config:
 
     def __str__(self):
         """
-        String representation of class Config for print statements
+        String representation of class Config for print statements.
+        Separate into similar labels for easier reading.
         """
-        str_out = "CONFIG\n"
-        for key, item in vars(self).items():
-            str_out += f"\t{key+':':<25}{item}\n"
+        key_dict = {"Config": ["model", "step", "event_id"],
+                    "Gather": ["client", "start_pad", "end_pad"],
+                    "Process": ["min_period", "max_period", "filter_corners",
+                                "unit_output", "synthetic_unit",
+                                "rotate_to_rtz", "window_amplitude_ratio",
+                                "synthetics_only"],
+                    "Labels": ["component_list", "observed_tag",
+                               "synthetic_tag", "cfgpaths"],
+                    "Misc.": ["save_to_ds", "map_corners"],
+                    "External": ["pyflex_preset", "adj_src_type",
+                                 "pyflex_config", "pyadjoint_config"
+                                 ]
+                    }
+        str_out = ""
+        for key, items in key_dict.items():
+            str_out += f"{key.upper()}\n"
+            for item in items:
+                str_out += f"{' '*4}{item+':':<25}{getattr(self, item)}\n"
         return str_out
 
     def __repr__(self):
