@@ -1,18 +1,16 @@
 """
-Various scripts to grab auxiliary data such as moment tensor information,
-station information, and fault information. these are all specific to the
-New Zealand tomography problem, and therefore paths are hard coded
+Gather auxiliary data specifically relevant for New Zealand seismology.
 """
-import os
 import csv
 import requests
-import warnings
-
-from obspy import UTCDateTime, read_events
+from obspy import UTCDateTime
+from obspy.core.event import source
+from obspy.core.event.base import Comment
 from pyatoa import logger
+from pyatoa.utils.srcrcv import mt_transform, half_duration_from_m0
 
 
-def grab_geonet_moment_tensor(event_id, fid=None):
+def get_geonet_moment_tensor(event_id):
     """
     Get moment tensor information from a internal csv file,
     or from an external github repository query.
@@ -21,33 +19,23 @@ def grab_geonet_moment_tensor(event_id, fid=None):
 
     :type event_id: str
     :param event_id: unique event identifier
-    :type fid: str
-    :param fid: absolute path to the geonet moment tensor file, if None,
-        search external github repository
     :rtype moment_tensor: dict
     :return moment_tensor: dictionary created from rows of csv file
     """
-    # If a csv file is given, read that, else check external
-    if fid:
-        reader = csv.reader(open(fid))
-        tag = "internal"
-    else:
-        # Request and open the CSV file. Assumed that GeoNet will keep their
-        # moment-tensor information in their GitHub repository
-        # Last accessed 23.6.19
-        geonet_mt_csv = (
-            "https://raw.githubusercontent.com/GeoNet/data/master/"
-            "moment-tensor/GeoNet_CMT_solutions.csv"
-        )
-        response = requests.get(geonet_mt_csv)
-        if not response.ok:
-            warnings.warn("Github repo request failed", UserWarning)
-            return None
+    # Request and open the CSV file. Assumed that GeoNet will keep their
+    # moment-tensor information in their GitHub repository
+    # Last accessed 23.6.19
+    geonet_mt_csv = (
+        "https://raw.githubusercontent.com/GeoNet/data/master/"
+        "moment-tensor/GeoNet_CMT_solutions.csv"
+    )
+    response = requests.get(geonet_mt_csv)
+    if not response.ok:
+        raise FileNotFoundError(f"Response from {geonet_mt_csv} not ok")
 
-        # Use CSV to parse through the returned response
-        reader = csv.reader(response.text.splitlines(), delimiter=',')
-        tag = "external"
-    
+    # Use CSV to parse through the returned response
+    reader = csv.reader(response.text.splitlines(), delimiter=',')
+
     # Parse the CSV file
     for i, row in enumerate(reader):
         # First row contains header information
@@ -66,41 +54,30 @@ def grab_geonet_moment_tensor(event_id, fid=None):
                     values.append(float(v))
 
             moment_tensor = dict(zip(tags, values))
-            logger.info(f"geonet moment tensor {tag} for event: {event_id}")
+            logger.info(f"geonet moment tensor found for: {event_id}")
             return moment_tensor
     else:
-        logger.info(f"no geonet moment tensor found for event: {event_id}")
-        raise AttributeError(f"geonet moment tensor for event {event_id}"
-                             "doesn't exist")
+        raise AttributeError(f"no geonet moment tensor found for: {event_id}")
 
 
-def generate_focal_mechanism_from_geonet(mtlist, event=None):
+def geonet_focal_mechanism(event_id, event=None):
     """
-    For the New Zealand Tomography Problem
-
     Focal mechanisms created by John Ristau are written to a .csv file
     located on Github. This function will append information from the .csv file
     onto the Obspy event object so that all the information can be located in a
     single object
 
-    :type mtlist: dict
-    :param mtlist; row values from the GeoNet moment tensor csv file
+    :type event_id: str
+    :param event_id: unique event identifier
     :type event: obspy.core.event.Event
     :param event: event to append focal mechanism to
     :rtype focal_mechanism: obspy.core.event.FocalMechanism
     :return focal_mechanism: generated focal mechanism
     """
-    from obspy.core.event import source
-    from obspy.core.event.base import Comment
+    mtlist = get_geonet_moment_tensor(event_id)
 
     # Match the identifier with Goenet
     id_template = f"smi:local/geonetcsv/{mtlist['PublicID']}/{{}}"
-
-    # Check that the input list is properly formatted
-    if len(mtlist) != 32:
-        print("geonet moment tensor list does not have the correct number"
-              "of requisite components, should have 32")
-        return
 
     # Generate the Nodal Plane objects containing strike-dip-rake
     nodal_plane_1 = source.NodalPlane(
