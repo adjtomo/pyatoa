@@ -1,6 +1,7 @@
 """
-Convenience function for editing Pyasdf ASDFDataSet objects. All functions
-work with the dataset as an input and act in-place on the dataset so no returns
+Convenience functions for removing data from Pyasdf ASDFDataSet objects. 
+All functions work with the dataset as an input and act in-place on the 
+dataset so no returns
 """
 
 

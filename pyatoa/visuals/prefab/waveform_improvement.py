@@ -17,7 +17,7 @@ import matplotlib.pyplot as plt
   
 from pyatoa import Config, Manager, logger
 from pyatoa.utils.form import event_name
-from pyatoa.utils.asdf.extractions import windows_from_ds
+from pyatoa.utils.asdf.fetch import windows_from_ds
 from pyatoa.utils.srcrcv import gcd_and_baz, seismogram_length
 
 mpl.rcParams['lines.linewidth'] = 2.

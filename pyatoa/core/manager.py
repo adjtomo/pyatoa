@@ -13,7 +13,6 @@ import obspy
 import pyflex
 import pyadjoint
 import traceback
-import numpy as np
 from os.path import basename
 from obspy.signal.filter import envelope
 
@@ -21,11 +20,10 @@ from pyatoa import logger
 from pyatoa.core.config import Config
 from pyatoa.core.gatherer import Gatherer
 
+from pyatoa.utils.asdf.fetch import windows_from_ds
 from pyatoa.utils.weights import window_by_amplitude
-from pyatoa.utils.asdf.additions import write_adj_src_to_asdf
-from pyatoa.utils.asdf.extractions import windows_from_ds
 from pyatoa.utils.srcrcv import gcd_and_baz, seismogram_length
-from pyatoa.utils.form import create_window_dictionary, channel_codes
+from pyatoa.utils.asdf.write import write_windows_to_asdf, write_adj_src_to_asdf
 from pyatoa.utils.process import (preproc, trim_streams, stf_convolve, zero_pad, 
                                   match_npts)
 
@@ -49,7 +47,7 @@ class Manager:
     """
     def __init__(self, config=None, ds=None, empty=True, station_code=None,
                  event=None, st_obs=None, st_syn=None, inv=None, windows=None,
-                 staltas=None, adj_srcs=None, gcd=None, baz=None):
+                 staltas={}, adj_srcs=None, gcd=None, baz=None):
         """
         If no pyasdf dataset is given in the initiation of the Manager, all
         data fetching will happen via given pathways in the config file,
@@ -137,19 +135,22 @@ class Manager:
         """
         self._check()
         return ("Manager Data\n"
-                f"\tdataset (ds):                 {self._dataset_id}\n"
-                f"\tevent:                        {self._event_name}\n"
-                f"\tmoment tensor (half_dur):     {self._half_dur}\n"
-                f"\tinventory (inv):              {self._inv_name}\n"
-                f"\tobserved data (st_obs):       {self._len_obs}\n"
-                f"\tsynthetic data (st_syn):      {self._len_syn}\n"
+                f"    dataset (ds):                 {self._dataset_id}\n"
+                f"    event:                        {self._event_name}\n"
+                f"    moment tensor (half_dur):     {self._half_dur}\n"
+                f"    inventory (inv):              {self._inv_name}\n"
+                f"    observed data (st_obs):       {self._len_obs}\n"
+                f"    synthetic data (st_syn):      {self._len_syn}\n"
                 "Workflow Status\n"
-                f"\tstandardized:                 {self._standardize_flag}\n"
-                f"\tst_obs filtered:              {self._obs_filter_flag}\n"
-                f"\tst_syn filtered:              {self._syn_filter_flag}\n"
-                f"\tmisfit windows (windows):     {self._num_windows}\n"
-                f"\tmisfit (adj_srcs):            {self._misfit:.2E}\n"
+                f"    standardized:                 {self._standardize_flag}\n"
+                f"    st_obs filtered:              {self._obs_filter_flag}\n"
+                f"    st_syn filtered:              {self._syn_filter_flag}\n"
+                f"    misfit windows (windows):     {self._num_windows}\n"
+                f"    misfit (adj_srcs):            {self._misfit:.2E}\n"
                 )
+
+    def __repr__(self):
+        return self.__str__()
 
     @property
     def st(self):
@@ -597,7 +598,6 @@ class Manager:
             self._time_offset_sec = 0
         logger.debug(f"time offset set to {self._time_offset_sec}s")
 
-        self._standardize_flag = True
         return self
 
     def preprocess(self, which="both", overwrite=None):
@@ -712,18 +712,17 @@ class Manager:
             logger.warning("cannot fix window, no dataset")
             fix_windows = False
 
-        # Get STA/LTA information used for plotting
-        staltas = {}
+        # Get STA/LTA applied to synthetics information for plotting
+        # same as in pyflex's WindowSelector.calculate_preliminaries()
         for comp in self.config.component_list:
             try:
-                staltas[comp] = pyflex.stalta.sta_lta(
+                self.staltas[comp] = pyflex.stalta.sta_lta(
+                    data=envelope(self.st_syn.select(component=comp)[0].data),
                     dt=self.st_syn.select(component=comp)[0].stats.delta,
-                    min_period=self.config.min_period,
-                    data=envelope(self.st_syn.select(component=comp)[0].data)
+                    min_period=self.config.min_period
                 )
             except IndexError:
                 continue
-        self.staltas = staltas
 
         # Get misfit windows from dataset or using Pyflex
         if fix_windows and (hasattr(self.ds, "auxiliary_data") and
@@ -749,7 +748,6 @@ class Manager:
         includes further window suppression introduced by Pyatoa.
         """
         logger.info(f"running Pyflex w/ map: {self.config.pyflex_preset}")
-
         nwin, windows = 0, {}
         for comp in self.config.component_list:
             # If no observed waveforms for a given component, skip over
@@ -765,17 +763,16 @@ class Manager:
                         synthetic=self.st_syn.select(component=comp),
                         config=self.config.pyflex_config, event=self.event,
                         station=self.inv)
-
                 # Suppress windows that contain low-amplitude signals
                 if self.config.window_amplitude_ratio > 0:
                     window = window_by_amplitude(self, window, comp)
-
-                # Check if amplitude windowing removed windows
+                # !!! Further window filtering can be applied here !!!
                 if window:
                     windows[comp] = window
                 _nwin = len(window)
             except IndexError:
                 _nwin = 0
+
             # Count windows and tell User
             nwin += _nwin
             logger.info(f"{_nwin} window(s) for comp {comp}")
@@ -786,7 +783,7 @@ class Manager:
     def save_windows(self):
         """
         Save the misfit windows that are calculated by Pyflex into a Dataset
-        Auxiliary data tag is hardcoded to MisfitWindows
+        Auxiliary data tag is hardcoded as 'MisfitWindows'
         """
         # Criteria to check if windows should be saved. Windows and dataset
         # should be available, and User config set to save
@@ -796,36 +793,15 @@ class Manager:
             return
         logger.debug("saving misfit windows to PyASDF")
 
-        # Determine how to name the path
+        # Determine how to name the path to the window
         if self.config.model and self.config.step:
-            # model/step/window_tag
-            path = "/".join([self.config.model,
-                             self.config.step])
+            path = "/".join([self.config.model, self.config.step])
         elif self.config.model:
-            # model/window_tag
             path = self.config.model
         else:
             path = "default"
 
-        # Save windows by component
-        for comp in self.windows.keys():
-            for i, window in enumerate(self.windows[comp]):
-                # Figure out how to tag the data in the dataset
-                # net_sta_comp_n
-                window_tag = (f"{self.st_obs[0].stats.network}_"
-                              f"{self.st_obs[0].stats.station}_{comp}_{i}")
-
-                # ASDF auxiliary_data subgroups don't play nice with nested
-                # dictionaries, which the window parameters are. Format them
-                # a bit simpler for saving into the dataset
-                window_dict = create_window_dictionary(window)
-                with warnings.catch_warnings():
-                    warnings.simplefilter("ignore")
-                    self.ds.add_auxiliary_data(data=np.array([True]),
-                                               data_type="MisfitWindows",
-                                               parameters=window_dict,
-                                               path=f"{path}/{window_tag}"
-                                               )
+        write_windows_to_asdf(self.windows, self.ds, path)
 
     def measure(self, force=False):
         """
@@ -876,7 +852,6 @@ class Manager:
                     synthetic=self.st_syn.select(component=comp)[0],
                     window=adj_win, plot=False
                     )
-
                 # Save adjoint sources in dictionary object. Sum total misfit
                 adjoint_sources[comp] = adj_src
                 logger.info(f"{adj_src.misfit:.3f} misfit for comp {comp}")
@@ -884,18 +859,17 @@ class Manager:
             except IndexError:
                 continue
 
-        # Save adjoint source internally for plotting
+        # Save adjoint source internally and to dataset
         self.adj_srcs = adjoint_sources
-
-        # Save adjoint source to dataset
         if self.ds and self.config.save_to_ds:
             self.save_adj_srcs()
+            logger.debug("adjoint sources saved to ASDFDataSet")
         else:
             logger.debug("adjoint sources are not being saved")
-        
+
         # Save total misfit, calculated a la Tape (2010) Eq. 6
         if self._num_windows:
-            self._misfit = 0.5 * total_misfit/self._num_windows
+            self._misfit = 0.5 * total_misfit / self._num_windows
         else:
             self._misfit = total_misfit
 
@@ -950,23 +924,8 @@ class Manager:
         else:
             path = "default"
 
-        # Save adjoint sources by component
-        for key, adj_src in self.adj_srcs.items():
-            with warnings.catch_warnings():
-                warnings.simplefilter("ignore")
-                logger.debug(f"saving adjoint sources {key} to PyASDF")
-
-                # The tag hardcodes an X as the second channel index
-                # to signify that these are synthetic waveforms
-                # This is required by Specfem3D
-                adj_src_tag = "{net}_{sta}_{ban}X{cmp}".format(
-                    net=adj_src.network, sta=adj_src.station,
-                    ban=channel_codes(self.st_syn[0].stats.delta),
-                    cmp=adj_src.component[-1]
-                )
-                write_adj_src_to_asdf(adj_src=adj_src, ds=self.ds,
-                                      tag=f"{path}/{adj_src_tag}",
-                                      time_offset=self._time_offset_sec)
+        write_adj_src_to_asdf(adj_src=self.adj_srcs, ds=self.ds,
+                              path=path, time_offset=self._time_offset_sec)
 
     def plot(self, save=None, show=True, append_title='', length_sec=None, 
              normalize=False, figsize=(11.69, 8.27), dpi=100,
