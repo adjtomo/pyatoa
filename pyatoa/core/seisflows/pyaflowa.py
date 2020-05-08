@@ -276,7 +276,8 @@ class Pyaflowa:
                         # Plot waveforms with misfit windows and adjoint sources
                         if self.plot_wav:
                             mgmt.plot(
-                                save=oj(ev_paths["figures"], f"wav_{sta.code}"),
+                                save=oj(ev_paths["figures"], 
+                                        f"wav_{sta.code}.png"),
                                 show=False, return_figure=False
                                       )
 

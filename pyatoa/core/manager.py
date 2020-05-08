@@ -335,7 +335,7 @@ class Manager:
         self.st_syn = None
         self.inv = None
         self.windows = None
-        self.staltas = None
+        self.staltas = {}
         self.adj_srcs = None
         self.gcd = 0
         self.baz = 0
@@ -791,7 +791,6 @@ class Manager:
                 or not self.config.save_to_ds:
             logger.debug("windows not being saved")
             return
-        logger.debug("saving misfit windows to PyASDF")
 
         # Determine how to name the path to the window
         if self.config.model and self.config.step:
@@ -801,6 +800,7 @@ class Manager:
         else:
             path = "default"
 
+        logger.debug("saving misfit windows to ASDFDataSet")
         write_windows_to_asdf(self.windows, self.ds, path)
 
     def measure(self, force=False):
@@ -861,11 +861,7 @@ class Manager:
 
         # Save adjoint source internally and to dataset
         self.adj_srcs = adjoint_sources
-        if self.ds and self.config.save_to_ds:
-            self.save_adj_srcs()
-            logger.debug("adjoint sources saved to ASDFDataSet")
-        else:
-            logger.debug("adjoint sources are not being saved")
+        self.save_adj_srcs()
 
         # Save total misfit, calculated a la Tape (2010) Eq. 6
         if self._num_windows:
@@ -912,19 +908,22 @@ class Manager:
         """
         Save adjoint sources to Pyasdf Dataset
         """
+        if self.ds is None or not self.config.save_to_ds:
+            logger.debug("adjoint sources are not being saved")
+            return 
+
         # Figure out how to tag the data in the dataset
         if self.config.model and self.config.step:
             # model/step/window_tag
-            path = "/".join([self.config.model,
-                             self.config.step]
-                            )
+            path = "/".join([self.config.model, self.config.step])
         elif self.config.model:
             # model/window_tag
             path = self.config.model
         else:
             path = "default"
 
-        write_adj_src_to_asdf(adj_src=self.adj_srcs, ds=self.ds,
+        logger.debug("saving adjoint sources to ASDFDataSet")
+        write_adj_src_to_asdf(adj_srcs=self.adj_srcs, ds=self.ds,
                               path=path, time_offset=self._time_offset_sec)
 
     def plot(self, save=None, show=True, append_title='', length_sec=None, 
@@ -981,8 +980,6 @@ class Manager:
             append_title=append_title, figsize=figsize, dpi=dpi, show=show,
             save=save, normalize=normalize, **kwargs
         )
-        if save is not None:
-            logger.info(f"saving to '{save}'")
         if return_figure:
             return fig_window
 
@@ -1031,5 +1028,3 @@ class Manager:
                     annotate_names=annotate_names, show=show, figsize=figsize,
                     dpi=dpi, save=save, **kwargs
                     )
-        if save is not None:
-            logger.info(f"saving to '{save}'")

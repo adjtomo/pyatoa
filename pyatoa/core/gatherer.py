@@ -39,7 +39,7 @@ class ExternalGetter:
         :return event: event object
         """
         event = None
-        logger.debug(f"fetching event from {self.client}")
+        logger.debug(f"fetching event from {self.config.client}")
         if self.event_id is not None:
             try:
                 event = self.Client.get_events(eventid=self.config.event_id)[0]
@@ -83,7 +83,7 @@ class ExternalGetter:
         :rtype: obspy.core.inventory.Inventory
         :return: inventory containing relevant network and stations
         """
-        logger.debug(f"fetching station from {self.client}")
+        logger.debug(f"fetching station from {self.config.client}")
         net, sta, loc, cha = station_code.split('.')
         return self.Client.get_stations(
             network=net, station=sta, location=loc, channel=cha,
@@ -106,7 +106,7 @@ class ExternalGetter:
         :rtype stream: obspy.core.stream.Stream
         :return stream: waveform contained in a stream
         """
-        logger.debug(f"fetching observations from {self.client}")
+        logger.debug(f"fetching observations from {self.config.client}")
 
         net, sta, loc, cha = station_code.split('.')
         st = self.Client.get_waveforms(
@@ -633,7 +633,7 @@ class Gatherer(InternalFetcher, ExternalGetter):
                 if self.config.save_to_ds:
                     self.ds.add_quakeml(self.event)
                     logger.debug(
-                        f"event retrieved from client {self.config.client}",
+                        f"event retrieved from client {self.config.client} "
                         f"added to pyasdf dataset"
                     )
                 else:
@@ -670,7 +670,8 @@ class Gatherer(InternalFetcher, ExternalGetter):
                 return
             if self.config.client.upper() == "GEONET":
                 # Query GeoNet moment tensor catalog
-                from plugins.new_zealand.gather import geonet_focal_mechanism
+                from pyatoa.plugins.new_zealand.gather import \
+                                                    geonet_focal_mechanism
                 self.event, _ = geonet_focal_mechanism(
                     event_id=self.config.event_id, event=self.event
                 )
