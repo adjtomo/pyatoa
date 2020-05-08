@@ -72,7 +72,7 @@ def write_misfit_stats(ds, model, step, pathout="./", fidout=None):
     :param fidout: allow user defined filename, otherwise default to name of ds
         note: if given, var 'pathout' is not used, this must be a full path
     """
-    from pyatoa.utils.asdf.extractions import sum_misfits
+    from pyatoa.utils.asdf.fetch import sum_misfits
 
     # By default, name the file after the event id
     if fidout is None:

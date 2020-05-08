@@ -363,4 +363,5 @@ def plot_wave(st_obs_in, st_syn_in, config, time_offset_sec=0., windows=None,
             return f
         else:
             plt.show()
-    return f
+    else:
+        plt.close()

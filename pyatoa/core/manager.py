@@ -927,8 +927,7 @@ class Manager:
                               path=path, time_offset=self._time_offset_sec)
 
     def plot(self, save=None, show=True, append_title='', length_sec=None, 
-             normalize=False, figsize=(11.69, 8.27), dpi=100,
-             return_figure=False, **kwargs):
+             normalize=False, figsize=(11.69, 8.27), dpi=100, **kwargs):
         """
         Waveform plots for all given components.
         If specific components are not given they are omitted from the plot.
@@ -973,15 +972,14 @@ class Manager:
             length_sec = None
 
         # Call on window making function to produce waveform plots
-        fig_window = plot_wave(
+        f = plot_wave(
             st_obs_in=self.st_obs, st_syn_in=self.st_syn, config=self.config,
             time_offset_sec=self._time_offset_sec, windows=self.windows,
             staltas=self.staltas, adj_srcs=self.adj_srcs, length_sec=length_sec,
             append_title=append_title, figsize=figsize, dpi=dpi, show=show,
             save=save, normalize=normalize, **kwargs
         )
-        if return_figure:
-            return fig_window
+        return f
 
     def srcrcvmap(self, save=None, show=True, map_corners=None, stations=None, 
                   annotate_names=False, color_by_network=False,
@@ -1023,8 +1021,10 @@ class Manager:
             map_corners = self.config.map_corners
 
         # Call external function to generate map
-        manager_map(map_corners=map_corners, inv=self.inv, event=self.event,
-                    stations=stations, color_by_network=color_by_network,
-                    annotate_names=annotate_names, show=show, figsize=figsize,
-                    dpi=dpi, save=save, **kwargs
-                    )
+        f = manager_map(map_corners=map_corners, inv=self.inv, 
+                        event=self.event, stations=stations, 
+                        color_by_network=color_by_network,
+                        annotate_names=annotate_names, show=show, 
+                        figsize=figsize, dpi=dpi, save=save, **kwargs
+                        )
+        return f
