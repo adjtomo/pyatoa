@@ -139,13 +139,11 @@ def manager_map(map_corners, inv=None, event=None, stations=None,
     f.tight_layout()
     if save:
         plt.savefig(save, figsize=figsize, dpi=dpi)
-
     if show:
         if show == "hold":
-            return f, m
+            return (f, m)
         else:
-            f.tight_layout()
             plt.show()
-    plt.close()
+    else:
+        plt.close()
 
-    return f, m
