@@ -329,13 +329,12 @@ class Pyaflowa:
                             preprocess_overwrite=overwrite,
                             fix_windows=fix_windows
                             )
-                    # Plot waveforms with misfit windows and adjoint sources
                     if self.plot_wav:
                         mgmt.plot(save=oj(paths["figures"], f"wav_{sta.code}"),
                                   show=False, return_figure=False
                                   )
-                    # Only plot maps once since they won't change
                     if self.plot_map:
+                        # Only plot maps once since they won't change
                         map_fid = oj(paths["maps"], f"map_{sta.code}.png")
                         if not os.path.exists(map_fid):
                             mgmt.srcrcvmap(stations=inv, show=False,
@@ -382,9 +381,11 @@ class Pyaflowa:
         :param paths: event-specific paths used for I/O
         :type purge: bool
         :param purge: delete the orginal waveform and intermediate tile .png
-            files and only retain the resultant PDF
+            files and only retain the resultant PDF. Optional but hidden as
+            purging is preferable to avoid too many files.
         """
         event_id = event_name(ds)
+
         # Establish correct directory and file name
         # path/to/figures/m??/s??/eid_m??_s??.pdf
         outfile = oj(self.figures_dir, self.model, self.step,
@@ -393,11 +394,10 @@ class Pyaflowa:
         if not os.path.exists(os.path.dirname(outfile)):
             os.makedirs(os.path.dirname(outfile))
 
-        tile_combine_imgs(ds=ds, save_pdf_to=outfile,
-                          wavs_path=paths["figures"],
-                          maps_path=paths["maps"],
-                          purge_wavs=purge, purge_tiles=purge
-                          )
+        tile_combine_imgs(
+            ds=ds, save_pdf_to=outfile, wavs_path=paths["figures"],
+            maps_path=paths["maps"], purge_wavs=purge, purge_tiles=purge
+        )
 
         # if purged, remove the empty event directory
         if not glob.glob(oj(paths["figures"], "*")):
