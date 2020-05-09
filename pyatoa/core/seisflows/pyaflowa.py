@@ -213,7 +213,7 @@ class Pyaflowa:
         with pyasdf.ASDFDataSet(paths["dataset"]) as ds:
             status = self.process_event(ds, config, paths, overwrite)
             if status:
-                self.prepare_eval_grad(ds)
+                self.prepare_eval_grad(ds, paths)
 
                 if self.make_pdf:
                     self.make_event_pdf(ds, paths)
