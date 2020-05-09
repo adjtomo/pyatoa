@@ -83,15 +83,6 @@ class Pyaflowa:
         self.step_count = 0
         self.synthetics_only = bool(par["CASE"].lower() == "synthetic")
 
-        # Set logging output level for all packages within Pyatoa
-        for log, level in self.set_logging.items():
-            if level:
-                logger_ = logging.getLogger(log)
-                if level == "info":
-                    logger_.setLevel(logging.INFO)
-                elif level == "debug":
-                    logger_.setLevel(logging.DEBUG)
-
         self._check_parameters(par)
 
     def __str__(self):
@@ -124,6 +115,15 @@ class Pyaflowa:
         Formatted step count, e.g. 's00'
         """
         return step_count(self.step_count)
+
+    def _set_logging(self):
+        """
+        Set logging output level for all packages within Pyatoa
+        """
+        for log, level in self.set_logging.items():
+            if level:
+                logger_ = logging.getLogger(log)
+                logger_.setLevel(level.upper())
 
     def _check_parameters(self, ext_par):
         """
@@ -208,6 +208,8 @@ class Pyaflowa:
         :param overwrite: preprocessing overwrite function that can be passed
             from Seisflows, if None, default Pyatoa preproc function used.
         """
+        self._set_logging()
+
         # Set up the machinery for a single workflow instnace
         config, paths = self.prepare_event(cwd, event_id)
         with pyasdf.ASDFDataSet(paths["dataset"]) as ds:
