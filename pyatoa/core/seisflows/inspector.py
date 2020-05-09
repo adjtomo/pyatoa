@@ -238,9 +238,11 @@ class Inspector(Gadget):
                   "station": [], "channel": [], "component": [], "misfit": [],
                   "length_s": [],
                   }
+        # These are direct parameter names of the MisfitWindow aux data objects
         winfo = {"dlnA": [], "window_weight": [], "max_cc_value": [],
                  "relative_endtime": [], "relative_starttime": [],
-                 "cc_shift_in_seconds": []
+                 "cc_shift_in_seconds": [], "absolute_starttime": [],
+                 "absolute_endtime": [],
                  }
 
         misfit_windows = ds.auxiliary_data.MisfitWindows
@@ -403,7 +405,7 @@ class Inspector(Gadget):
                       (df["network"] == (network or df["network"].to_numpy()))
                       ]
 
-    def window_lengths(self, level="step"):
+    def nwin(self, level="step"):
         """
         Find the cumulative length of misfit windows for a given model/step,
         or the number of misfit windows for a given model/step.
@@ -422,6 +424,11 @@ class Inspector(Gadget):
         group_list = ["model", "step", "length_s"]
         if level == "station":
             group_list.insert(2, "station")
+        elif level == "step":
+            pass
+        else:
+            raise TypeError(
+                "nwin() argument 'level' must be 'station' or 'step'")
 
         windows = self.windows.loc[:, tuple(group_list)]
         windows.sort_values(group_list, inplace=True)

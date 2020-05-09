@@ -358,7 +358,7 @@ class Gadget:
 
         # Get misfit information and window lengths together
         df = self.misfits()
-        df = df.merge(self.window_lengths(), on=["model", "step"])
+        df = df.merge(self.nwin(), on=["model", "step"])
         df.drop(["n_event", "summed_misfit"], axis=1, inplace=True)
         models = df.index.get_level_values("model").unique().to_numpy()
 
