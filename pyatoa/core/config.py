@@ -1,13 +1,6 @@
 #!/usr/bin/env python3
 """
-Configuration object for Pyatoa.
-
-The Config class is the main interaction object between the User and workflow.
-Fed into the Manager class for workflow management, and also used for
-information sharing between objects and functions. Has the ability to read from
-and write to external files in various formats, or can be called directly
-through scripts or interactive shells.
-
+Configuration class that controls User-set parameters within the package.
 Contains non-class functions for setting Config objects of Pyflex and Pyadjoint.
 """
 import yaml
@@ -22,7 +15,11 @@ from pyadjoint import Config as PyadjointConfig
 
 class Config:
     """
-    Configuration class that controls functionalities inside Pyatoa
+    The Config class is the main interaction object between the User and
+    workflow. Fed into the Manager class for workflow management, and also used
+    for information sharing between objects and functions. Has the ability to
+    read from and write to external files in various formats, or explicitely
+    defined through scripts or interactive shells.
     """
     def __init__(self, yaml_fid=None, ds=None, path=None, model=None, step=None,
                  event_id=None, min_period=10, max_period=30, filter_corners=4,
@@ -250,6 +247,36 @@ class Config:
             raise ValueError(f"{unused_kwargs} are not keyword arguments in "
                              f"Pyatoa, Pyflex or Pyadjoint.")
 
+    @staticmethod
+    def _check_io_format(fid, fmt=None):
+        """
+        A simple check before reading or writing the config to determine what
+        file format to use.
+
+        :type fmt: str
+        :param fmt: format specified by the User
+        :rtype: str
+        :return: format string to be understood by the calling function
+        """
+        acceptable_formats = ["yaml", "asdf", "ascii"]
+        if fmt not in acceptable_formats:
+            # If no format given, try to guess the format based on file ending
+            from pyasdf.asdf_data_set import ASDFDataSet
+            if isinstance(fid, str):
+                if ("yaml" or "yml") in fid:
+                    return "yaml"
+                elif ("txt" or "ascii") in fid:
+                    return "ascii"
+                else:
+                    raise TypeError(
+                        "format must be given in {acceptable_formats}")
+            elif isinstance(fid, ASDFDataSet):
+                return "asdf"
+            else:
+                raise TypeError("file must be given in {acceptable_formats}")
+        else:
+            return fmt
+
     def write(self, write_to, fmt=None):
         """
         Wrapper for write functions
@@ -260,25 +287,7 @@ class Config:
         :type write_to: str or pyasdf.ASDFDataSet
         :param write_to: filename to save config to, or dataset to save to
         """
-        # If no format given, try to guess the format
-        acceptable_formats = ["yaml", "asdf", "ascii"]
-        if fmt not in acceptable_formats:
-            from pyasdf.asdf_data_set import ASDFDataSet
-
-            if isinstance(write_to, str):
-                if ("yaml" or "yml") in write_to:
-                    fmt = "yaml"
-                elif ("txt" or "ascii") in write_to:
-                    fmt = "ascii"
-                else:
-                    logger.warning(
-                        f"format must be given in {acceptable_formats}")
-                    return
-            elif isinstance(write_to, ASDFDataSet):
-                fmt = "asdf"
-            else:
-                logger.warning(f"format must be given in {acceptable_formats}")
-                return
+        fmt = self._check_io_format(write_to, fmt)
 
         if fmt.lower() == "ascii":
             self._write_ascii(write_to)
@@ -299,25 +308,7 @@ class Config:
         :param fmt: file format to read parameters from, will be guessed but
             can also be explicitely set (available: 'yaml', 'ascii', 'asdf')
         """
-        # If no format given, try to guess the format
-        acceptable_formats = ["yaml", "asdf"]
-        if fmt not in acceptable_formats:
-            from pyasdf.asdf_data_set import ASDFDataSet
-
-            if isinstance(read_from, str):
-                if ("yaml" or "yml") in read_from:
-                    fmt = "yaml"
-                elif ("txt" or "ascii") in read_from:
-                    fmt = "ascii"
-                else:
-                    logger.warning(
-                        f"format must be given in {acceptable_formats}")
-                    return
-            elif isinstance(read_from, ASDFDataSet):
-                fmt = "asdf"
-            else:
-                logger.warning(f"format must be given in {acceptable_formats}")
-                return
+        fmt = self._check_io_format(read_from, fmt)
 
         if fmt.lower() == "yaml":
             self._read_yaml(read_from)
@@ -518,9 +509,10 @@ def set_pyflex_config(min_period, max_period, choice=None, **kwargs):
             for key, item in preset.items():
                 setattr(pfconfig, key, item)
         else:
-            raise KeyError(f"'{choice}' does not match any available presets "
-                           f"for Pyflex. "
-                           f"Presets include {list(presets.keys())}")
+            raise KeyError(
+                f"'{choice}' does not match any available presets for Pyflex. "
+                f"Presets include {list(pyflex_presets.keys())}"
+            )
     # Allow dictionary object to be passed in as a preset
     elif isinstance(choice, dict):
         for key, item in choice.items():

@@ -37,8 +37,10 @@ pyaflowa_kwargs = ["set_logging", "win_amp_ratio", "fix_windows", "snapshot",
 
 class Pyaflowa:
     """
-    The plugin object that is created to exist within Seisflows, keep track of
-    the Seisflows workflow, and create the necessary outputs when requested
+    An abstraction class that allows Seisflows to call on the pyatoa workflow
+    in a clean, abstractable manner. Pyaflowa contains routines to parse and
+    distribute information from the Seisflows workflow into Pyatoa. It takes
+    care of directory structures, data processing and I/O.
     """
     def __init__(self, par, paths):
         """

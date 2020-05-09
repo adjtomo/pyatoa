@@ -1,11 +1,6 @@
 #!/usr/bin/env python3
 """
-Main workflow components of Pyatoa
-
-Manager is the central workflow control object. It calls on mid and low level
-classes to gather data; it measures two Obspy stream objects using Pyflex to
-generate misfit windows based on parameters set by the Config, and it calculates
-adjoint sources using Pyadjoint for misfit quantification.
+A class to control workflow and temporarily store and manipulate data
 """
 import warnings
 
@@ -40,14 +35,17 @@ class ManagerError(Exception):
 
 class Manager:
     """
-    Core object within Pyatoa.
+    Pyatoas core workflow object.
 
-    Workflow management function that internally calls on all other objects
-    within the package in order to gather, process and analyze waveform data.
+    Manager is the central workflow control object. It calls on mid and
+    low level classes to gather data, standardize and preprocess stream objects,
+    generate misfit windows, and calculate adjoint sources. Has a variety of
+    internal sanity checks to ensure that the workflow stays on the rails.
     """
     def __init__(self, config=None, ds=None, empty=True, station_code=None,
                  event=None, st_obs=None, st_syn=None, inv=None, windows=None,
-                 staltas={}, adj_srcs=None, gcd=None, baz=None):
+                 staltas=None, adj_srcs=None, gcd=None, baz=None,
+                 gatherer=None):
         """
         If no pyasdf dataset is given in the initiation of the Manager, all
         data fetching will happen via given pathways in the config file,
@@ -82,6 +80,9 @@ class Manager:
         :param gcd: great circle distance between source and receiver in km
         :type baz: float
         :param baz: Backazimuth between source and receiver in units of degrees
+        :type gatherer: pyatoa.core.gatherer.Gatherer
+        :param gatherer: A previously instantiated Gatherer class.
+            Should not have to be passed in by User, but is used for reset()
         """
         # Main workflow requirements
         if config:
@@ -89,7 +90,7 @@ class Manager:
         else:
             self.config = None
         self.ds = ds
-        self.gatherer = None
+        self.gatherer = gatherer
         self.station_code = station_code
         self.inv = inv
         # Copy Streams to avoid affecting original data
@@ -105,7 +106,7 @@ class Manager:
         self.gcd = gcd
         self.baz = baz
         self.windows = windows
-        self.staltas = staltas
+        self.staltas = staltas or {}
         self.adj_srcs = adj_srcs
         # Internal statistics
         self._num_windows = 0
@@ -206,31 +207,20 @@ class Manager:
                 isinstance(self.event, obspy.core.event.Event):
             self._event_name = self.event.resource_id
 
-        # Observed waveforms as Stream objects, and preprocessed
-        if isinstance(self.st_obs, obspy.Stream) and len(self.st_obs):
-            self._len_obs = len(self.st_obs)
-            # Check if a filter has been applied in the processing
-            self._obs_filter_flag = (
-                    hasattr(self.st_obs[0].stats, "processing") and
-                    ("filter(options" in
-                     "".join(self.st_obs[0].stats.processing))
-            )
-        else:
-            self._len_obs = 0
-            self._obs_filter_flag = False
+        def check_streams(st_):
+            """Check if waveforms are stream objects, and if preprocessed"""
+            len_, filt_ = 0, False
+            if isinstance(st_, obspy.Stream) and len(st_):
+                len_ = len(st_)
+                filt_ = (
+                        hasattr(self.st_obs[0].stats, "processing") and
+                        ("filter(options" in "".join(st_[0].stats.processing))
+                )
+            return len_, filt_
 
-        # Synthetic waveforms as Stream objects and preprocessed
-        if isinstance(self.st_syn, obspy.Stream) and len(self.st_syn):
-            self._len_syn = len(self.st_syn)
-            # Check if a filter has been applied in the processing
-            self._syn_filter_flag = (
-                    hasattr(self.st_syn[0].stats, "processing") and
-                    ("filter(options" in
-                     "".join(self.st_syn[0].stats.processing))
-            )
-        else:
-            self._len_syn = 0
-            self._syn_filter_flag = False
+        # Check if waveforms are Stream objects, and if preprocessed
+        self._len_obs, self._obs_filter_flag = check_streams(self.st_obs)
+        self._len_syn, self._syn_filter_flag = check_streams(self.st_syn)
 
         # Standardized waveforms by checking npts, sampling rate, starttime
         # If any of the traces fails the check, the entire flag is False
@@ -269,13 +259,9 @@ class Manager:
 
     def _launch(self, reset=False, event=None, idx=0):
         """
-        Appends an event to the Manager class, instantiates low-level Gatherer.
-
+        Appends an event to the Manager class, instantiates mid-level Gatherer.
         If an Event or Catalog object is given, passes that to both Manager and
-        Gatherer classes.
-
-        If no Event given, queries FDSN via the Gatherer class to search for
-        an event.
+        Gatherer classes. If no Event given, queries FDSN to search for an event
 
         :type reset: bool
         :param reset: Reset the Gatherer class for a new run
@@ -307,7 +293,7 @@ class Manager:
                 # Populate the Gatherer and Manager with event object
                 self.gatherer.set_event(event)
                 self.event = self.gatherer.event
-            # If no event given by User, turn to Gatherer
+            # If no event given by User, use Gatherer to get eveht data
             else:
                 # If Gatherer has an event, have Manager copy it
                 if self.gatherer.event:
@@ -318,8 +304,8 @@ class Manager:
 
     def reset(self, hard_reset=False):
         """
-        Delete all collected data in the Manager, to restart workflow.
-        Retains Config, dataset.
+        Restart workflow by delete all collected data in the Manager, except for
+        Config, dataset, gatherer and event.
 
         Soft reset retains event information so that another Station can be
         gathered for the same event, without needing to relaunch Gatherer and
@@ -330,30 +316,9 @@ class Manager:
             gatherer class, and leaves the same event, useful for repeating
             workflow. Hard reset re-initites. default soft
         """
-        self.station_code = None
-        self.st_obs = None
-        self.st_syn = None
-        self.inv = None
-        self.windows = None
-        self.staltas = {}
-        self.adj_srcs = None
-        self.gcd = 0
-        self.baz = 0
-        self._num_windows = 0
-        self._len_obs = 0
-        self._len_syn = 0
-        self._misfit = 0
-        self._time_offset_sec = 0
-        self._half_dur = 0
-        self._dataset_id = None
-        self._event_name = None
-        self._inv_name = None
-        self._standardize_flag = False
-        self._obs_filter_flag = False
-        self._syn_filter_flag = False
-
-        if hard_reset:
-            self._launch(reset=True)
+        self.__init__(ds=self.ds, event=self.event, config=self.config,
+                      gatherer=self.gatherer)
+        self._launch(reset=hard_reset)
         self._check()
 
     def write(self, write_to="ds"):
@@ -407,6 +372,10 @@ class Manager:
 
         :type station_code: str
         :param station_code: SEED conv. code, e.g. NZ.BFZ.10.HHZ
+        :type config_path: str
+        :param config_path: if no Config object is given during init, the User
+            can specify the config path here to load data from the dataset.
+            This skips the need to initiate a separate Config object.
         :type ds: None or pyasdf.ASDFDataSet
         :param ds: dataset can be given to load from, will not set the ds
         :type synthetic_tag: str

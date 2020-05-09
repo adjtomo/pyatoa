@@ -7,7 +7,6 @@ Fetch: used to denote searching local filesystems for data (internal)
 Get: used to denote querying FDSN webservices via ObsPy (external), naming
      *convention from the obspy.fdsn.client.Client function names
 
-
 Gatherer directly called by the Manager class and shouldn't need to be called
 by the User unless for bespoke data gathering functionality.
 """
@@ -32,7 +31,7 @@ class ExternalGetter:
     """
     def event_get(self):
         """
-        return event information parameters pertaining to a given event id
+        Return event information parameters pertaining to a given event id
         if an event id is given
 
         :rtype event: obspy.core.event.Event
@@ -148,13 +147,8 @@ class ExternalGetter:
 class InternalFetcher:
     """
     Low-level data gatherer which searches local filesystem, either through
-    PyASDF ASDFDataSets, or through the local filestructure.
-    Filesystem pathing defaults to SEED convention but can be overwritten.
-
-    Note:
-        Smart enough to know if an event sits too close to a separation in files
-        (i.e. midnight for waveforms) and accomodates accordingly.
-        Also will save any fetched data into a Pyasdf dataset if given.
+    ASDFDataSets, or through the local directories.
+    Defaults directory structure follows SEED convention but can be overwritten.
 
     Class attributes inhereted by the Gatherer class.
     """
@@ -509,70 +503,6 @@ class InternalFetcher:
             return self.fetch_resp_by_dir(station_code)
 
 
-def get_gcmt_moment_tensor(origintime, magnitude, time_wiggle_sec=120,
-                           magnitude_wiggle=0.5):
-    """
-    Query GCMT moment tensor catalog for moment tensor components
-
-    :type origintime: UTCDateTime or str
-    :param origintime: event origin time
-    :type magnitude: float
-    :param magnitude: centroid moment magnitude for event lookup
-    :type time_wiggle_sec: int
-    :param time_wiggle_sec: padding on catalog filtering criteria realted to
-        event origin time
-    :type magnitude_wiggle: float
-    :param magnitude_wiggle: padding on catalog filter for magnitude
-    :rtype event: obspy.core.event.Event
-    :return event: event object for given earthquake
-    """
-    from urllib.error import HTTPError
-    from obspy import UTCDateTime, read_events
-
-    if not isinstance(origintime, UTCDateTime):
-        datetime = UTCDateTime(origintime)
-
-    # Determine filename using datetime properties
-    month = origintime.strftime('%b').lower()  # e.g. 'jul'
-    year_short = origintime.strftime('%y')  # e.g. '19'
-    year_long = origintime.strftime('%Y')  # e.g. '2019'
-
-    fid = f"{month}{year_short}.ndk"
-    logger.info("querying GCMT database for moment tensor")
-    try:
-        cat = read_events(
-            "https://www.ldeo.columbia.edu/~gcmt/projects/CMT/"
-            f"catalog/NEW_MONTHLY/{year_long}/{fid}"
-        )
-    except HTTPError:
-        cat = read_events(
-            "http://www.ldeo.columbia.edu/~gcmt/projects/CMT/"
-            "catalog/NEW_QUICK/qcmt.ndk"
-        )
-
-    # GCMT catalogs contain all events for a span of time
-    # filter catalogs using ObsPy to find events with our specifications.
-    # Magnitudes and origintimes are not always in agreement between agencies
-    # So allow fro some wiggle room
-    cat_filt = cat.filter(f"time > {str(origintime - time_wiggle_sec)}",
-                          f"time < {str(origintime + time_wiggle_sec)}",
-                          f"magnitude >= {magnitude - magnitude_wiggle}",
-                          f"magnitude <= {magnitude + mag_wiggle}",
-                          )
-    # Filtering may remove all events from catalog, return multiple events, or
-    # may return the event of choice
-    if not len(cat_filt):
-        logger.info(f"no gcmt event found for {datetime} and M{magnitude}")
-        raise FileNotFoundError("No events found")
-    elif len(cat_filt) > 1:
-        logger.info(f"multiple events found for {datetime} and M{magnitude}")
-        print(f"{len(cat_filt)} events found, choosing first")
-        return cat_filt[0]
-    else:
-        logger.info("gcmt event found matching criteria")
-        return cat_filt[0]
-
-
 class Gatherer(InternalFetcher, ExternalGetter):
     """
     A mid-level wrapper class used to fetch data internally and externally.
@@ -680,7 +610,7 @@ class Gatherer(InternalFetcher, ExternalGetter):
                 # Try to query GCMT for matching event
                 try:
                     self.event = get_gcmt_moment_tensor(
-                        datetime=self.event.preferred_origin().time,
+                        origintime=self.event.preferred_origin().time,
                         magnitude=self.event.preferred_magnitude().mag
                     )
                 except FileNotFoundError:
@@ -714,7 +644,7 @@ class Gatherer(InternalFetcher, ExternalGetter):
 
     def gather_observed(self, station_code):
         """
-        get waveform as obspy streams, check internally first.
+        Get waveform as obspy streams, check internally first.
 
         :type station_code: str
         :param station_code: Station code following SEED naming convention.
@@ -762,3 +692,67 @@ class Gatherer(InternalFetcher, ExternalGetter):
             return st_syn
         except FileNotFoundError:
             return None
+
+
+def get_gcmt_moment_tensor(origintime, magnitude, time_wiggle_sec=120,
+                           magnitude_wiggle=0.5):
+    """
+    Query GCMT moment tensor catalog for moment tensor components
+
+    :type origintime: UTCDateTime or str
+    :param origintime: event origin time
+    :type magnitude: float
+    :param magnitude: centroid moment magnitude for event lookup
+    :type time_wiggle_sec: int
+    :param time_wiggle_sec: padding on catalog filtering criteria realted to
+        event origin time
+    :type magnitude_wiggle: float
+    :param magnitude_wiggle: padding on catalog filter for magnitude
+    :rtype event: obspy.core.event.Event
+    :return event: event object for given earthquake
+    """
+    from urllib.error import HTTPError
+    from obspy import UTCDateTime, read_events
+
+    if not isinstance(origintime, UTCDateTime):
+        datetime = UTCDateTime(origintime)
+
+    # Determine filename using datetime properties
+    month = origintime.strftime('%b').lower()  # e.g. 'jul'
+    year_short = origintime.strftime('%y')  # e.g. '19'
+    year_long = origintime.strftime('%Y')  # e.g. '2019'
+
+    fid = f"{month}{year_short}.ndk"
+    logger.info("querying GCMT database for moment tensor")
+    try:
+        cat = read_events(
+            "https://www.ldeo.columbia.edu/~gcmt/projects/CMT/"
+            f"catalog/NEW_MONTHLY/{year_long}/{fid}"
+        )
+    except HTTPError:
+        cat = read_events(
+            "http://www.ldeo.columbia.edu/~gcmt/projects/CMT/"
+            "catalog/NEW_QUICK/qcmt.ndk"
+        )
+
+    # GCMT catalogs contain all events for a span of time
+    # filter catalogs using ObsPy to find events with our specifications.
+    # Magnitudes and origintimes are not always in agreement between agencies
+    # So allow fro some wiggle room
+    cat_filt = cat.filter(f"time > {str(origintime - time_wiggle_sec)}",
+                          f"time < {str(origintime + time_wiggle_sec)}",
+                          f"magnitude >= {magnitude - magnitude_wiggle}",
+                          f"magnitude <= {magnitude + magnitude_wiggle}",
+                          )
+    # Filtering may remove all events from catalog, return multiple events, or
+    # may return the event of choice
+    if not len(cat_filt):
+        logger.info(f"no gcmt event found for {datetime} and M{magnitude}")
+        raise FileNotFoundError("No events found")
+    elif len(cat_filt) > 1:
+        logger.info(f"multiple events found for {datetime} and M{magnitude}")
+        print(f"{len(cat_filt)} events found, choosing first")
+        return cat_filt[0]
+    else:
+        logger.info("gcmt event found matching criteria")
+        return cat_filt[0]
