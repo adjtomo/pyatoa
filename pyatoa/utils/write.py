@@ -51,9 +51,9 @@ def parse_output_optim(path_to_optim):
     return iterations, steplens, misfits
 
 
-def write_misfit_stats(ds, model, step, pathout="./", fidout=None):
+def write_misfit(ds, model, step, path="./", fidout=None):
     """
-    This function writes a text file containing the total misfit for that event.
+    This function writes a text file containing event misfit.
     This misfit value corresponds to F_S^T of Eq 6. Tape et al. (2010)
 
     e.g. path/to/misfits/{model_number}/{event_id}
@@ -66,8 +66,8 @@ def write_misfit_stats(ds, model, step, pathout="./", fidout=None):
     :param model: model number, e.g. "m00"
     :type step: str
     :param step: step count, e.g. "s00"
-    :type pathout: str
-    :param pathout: output path to write the misfit. fid will be the event name
+    :type path: str
+    :param path: output path to write the misfit. fid will be the event name
     :type fidout: str
     :param fidout: allow user defined filename, otherwise default to name of ds
         note: if given, var 'pathout' is not used, this must be a full path
@@ -76,7 +76,7 @@ def write_misfit_stats(ds, model, step, pathout="./", fidout=None):
 
     # By default, name the file after the event id
     if fidout is None:
-        fidout = os.path.join(pathout, event_name(ds=ds))
+        fidout = os.path.join(path, event_name(ds=ds))
     
     # calculate misfit 
     misfit = sum_misfits(ds, model, step)
@@ -216,8 +216,8 @@ def src_vtk_from_specfem(path_to_data, path_out="./", utm_zone=-60, cx=None,
             continue
 
 
-def create_stations_adjoint(ds, model, specfem_station_file, step=None,
-                            pathout=None):
+def write_stations_adjoint(ds, model, specfem_station_file, step=None,
+                           pathout=None):
     """
     Generate the STATIONS_ADJOINT file for Specfem input by reading in the
     STATIONS file and cross-checking which adjoint sources are available in the
@@ -280,21 +280,23 @@ def write_adj_src_to_ascii(ds, model, step=None, pathout=None,
     :param ds: dataset containing adjoint sources
     :type model: str
     :param model: model number, e.g. "m00"
+    :type step: str
+    :param step: step count e.g. "s00"
     :type pathout: str
     :param pathout: path to write the adjoint sources to
     :type comp_list: list of str
     :param comp_list: component list to check when writing blank adjoint sources
         defaults to N, E, Z, but can also be e.g. R, T, Z
     """
-    def write_to_ascii(f, array):
+    def write_to_ascii(f_, array):
         """
         Function used to write the ascii in the correct format.
         Columns are formatted like the ASCII outputs of Specfem, two columns
         times written as float, amplitudes written in E notation, 6 spaces
         between.
 
-        :type f: _io.TextIO
-        :param f: the open file to write to
+        :type f_: _io.TextIO
+        :param f_: the open file to write to
         :type array: numpy.ndarray
         :param array: array of data from obspy stream
         """
@@ -308,7 +310,7 @@ def write_adj_src_to_ascii(ds, model, step=None, pathout=None,
             else:
                 adj_formatter = "{dt:13.6f}      {amp:13.6E}\n"
 
-            f.write(adj_formatter.format(dt=dt, amp=amp))
+            f_.write(adj_formatter.format(dt=dt, amp=amp))
 
     # Shortcuts
     adjsrcs = ds.auxiliary_data.AdjointSources[model]

@@ -20,11 +20,11 @@ import traceback
 
 from pyatoa import logger
 from pyatoa.utils.read import read_stations
-from pyatoa.utils.form import model_number, step_count
+from pyatoa.utils.form import model_number, step_count, event_name
 from pyatoa.utils.asdf.clean import clean_ds
 from pyatoa.visuals.statistics import plot_output_optim
-from pyatoa.utils.write import (create_stations_adjoint, write_adj_src_to_ascii,
-                                write_misfit_stats, tile_combine_imgs,
+from pyatoa.utils.write import (write_stations_adjoint, write_adj_src_to_ascii,
+                                write_misfit, tile_combine_imgs,
                                 src_vtk_from_specfem, rcv_vtk_from_specfem
                                 )
 
@@ -71,7 +71,6 @@ class Pyaflowa:
         self.figures_dir = oj(pyatoa_io, "figures")
         self.maps_dir = oj(pyatoa_io, "figures", "maps")
         self.vtks_dir = oj(pyatoa_io, "figures", "vtks")
-        self.stats_dir = oj(pyatoa_io, "figures", "stats")
 
         # Create Pyatoa directory structure
         for fid in [self.figures_dir, self.data_dir, self.misfits_dir,
@@ -84,7 +83,16 @@ class Pyaflowa:
         self.step_count = 0
         self.synthetics_only = bool(par["CASE"].lower() == "synthetic")
 
-        self._check(par)
+        # Set logging output level for all packages within Pyatoa
+        for log, level in self.set_logging.items():
+            if level:
+                logger_ = logging.getLogger(log)
+                if level == "info":
+                    logger_.setLevel(logging.INFO)
+                elif level == "debug":
+                    logger_.setLevel(logging.DEBUG)
+
+        self._check_parameters(par)
 
     def __str__(self):
         """
@@ -117,7 +125,7 @@ class Pyaflowa:
         """
         return step_count(self.step_count)
 
-    def _check(self, ext_par):
+    def _check_parameters(self, ext_par):
         """
         Perform some sanity checks upon initialization. If they fail, hard exit
         so that Seisflows crashes, that way things don't crash after jobs have
@@ -146,7 +154,7 @@ class Pyaflowa:
             logger.warning("Config encountered unexpected arguments... exiting")
             sys.exit(-1)
 
-    def check_for_fixed_windows(self, ds):
+    def _check_for_fixed_windows(self, ds):
         """
         Determine if window fixing is required. This can be done by step count,
         by iteration, or not at all.
@@ -172,8 +180,10 @@ class Pyaflowa:
 
     def set(self, **kwargs):
         """
-        Convenience function to easily set multiple parameters before calling
-        other functions.
+        High level function to interact with Seisflows.
+
+        Set internal parameters before calling other functions. Allows Seisflows
+        to communicate where in the inversion it is before calling Pyaflowa.
 
         Overwrite internally used attributes using kwargs. Ensure that
         attributes other than the ones set in __init__ are allowed.
@@ -184,172 +194,41 @@ class Pyaflowa:
                 del kwargs[key]
         self.__dict__.update(kwargs)
 
-    def setup(self, cwd, event_id=None):
+    def eval_func(self, cwd, event_id, overwrite=None):
         """
-        Set up one embarassingly parallelizable workflow by creating individual
-        process dependent pathways, and creating indvidual Pyatoa Config objects
-        that will control the worklow.
+        High level function to interact with Seisflows.
+
+        Reads data, applies preprocessing, writes residuals and adjoint sources.
 
         :type cwd: str
-        :param cwd: current working directory for this instance of Pyatoa
+        :param cwd: path to the seisflows Solver current working directory
         :type event_id: str
-        :param event_id: event identifier tag for file naming etc.
-        """
-        # Default event id is the name of the current working directory
-        if event_id is None:
-            event_id = os.path.basename(cwd)
-
-        # Process specific internal directories for the processing
-        ev_paths = {"stations": oj(cwd, "DATA", "STATIONS"),
-                    "maps": oj(self.maps_dir, event_id),
-                    "figures": oj(self.figures_dir, self.model, event_id),
-                    }
-
-        # Create the process specific event directories
-        for key, item in ev_paths.items():
-            if not os.path.exists(item):
-                os.makedirs(item)
-
-        # Set logging output level for all packages
-        for log, level in self.set_logging.items():
-            if level:
-                logger_ = logging.getLogger(log)
-                if level == "info":
-                    logger_.setLevel(logging.INFO)
-                elif level == "debug":
-                    logger_.setLevel(logging.DEBUG)
-
-        # Read in the Pyatoa Config object from the .yaml file, with
-        # additional parameter set by the individual process
-        config = pyatoa.Config(
-            yaml_fid=self.config_file, event_id=event_id, model=self.model,
-            step=self.step, synthetics_only=self.synthetics_only,
-            cfgpaths={"synthetics": oj(cwd, "traces", "syn"),
-                      "waveforms": oj(cwd, "traces", "obs")}
-        )
-
-        return config, ev_paths
-
-    def process(self, cwd, event_id=None, overwrite=None):
-        """
-        Main workflow calling on the core functionality of Pyatoa to process
-        observed and synthetic waveforms and perform misfit quantification.
-
-        :type cwd: str
-        :param cwd: current working directory for this instance of Pyatoa
-        :type event_id: str
-        :param event_id: event identifier tag for file naming etc.
+        :param event_id: source name used for labelling data from `cwd`
         :type overwrite: function
-        :param overwrite: a preprocessing function to overwite the default
-            Pyatoa preprocessing function. Must be specified in Seisflows.
+        :param overwrite: preprocessing overwrite function that can be passed
+            from Seisflows, if None, default Pyatoa preproc function used.
         """
-        # Run the setup and standardize some names
-        config, ev_paths = self.setup(cwd, event_id)
-        ds_name = oj(self.data_dir, f"{config.event_id}.h5")
+        # Set up the machinery for a single workflow instnace
+        config, paths = self.prepare_event(cwd, event_id)
+        with pyasdf.ASDFDataSet(paths["dataset"]) as ds:
+            status = self.process_event(ds, config, paths, overwrite)
+            if status:
+                self.prepare_eval_grad(ds)
 
-        # Count number of successful processes
-        processed = 0
-        with pyasdf.ASDFDataSet(ds_name) as ds:
-            fix_windows = self.check_for_fixed_windows(ds)
-            logger.info(f"Fix windows: {fix_windows}")
+                if self.make_pdf:
+                    self.make_event_pdf(ds, paths)
 
-            # Make sure the ASDFDataSet doesn't already contain auxiliary_data
-            # for the model_number/step_count. If so, delete it in preparation
-            clean_ds(ds=ds, model=self.model, step=self.step)
-
-            # Set up the manager and get station information
-            config.write(write_to=ds)
-            mgmt = pyatoa.Manager(config=config, ds=ds)
-            inv = read_stations(ev_paths["stations"])
-
-            # Loop through stations and invoke Pyatoa workflow
-            for net in inv:
-                for sta in net:
-                    logger.info(f"{net.code}.{sta.code}")
-                    try:
-                        processed += mgmt.flow(
-                                station_code=f"{net.code}.{sta.code}.*.HH*",
-                                preprocess_overwrite=overwrite,
-                                fix_windows=fix_windows
-                                )
-
-                        # Plot waveforms with misfit windows and adjoint sources
-                        if self.plot_wav:
-                            mgmt.plot(
-                                save=oj(ev_paths["figures"], 
-                                        f"wav_{sta.code}.png"),
-                                show=False, return_figure=False
-                                      )
-
-                        # Only plot maps once since they won't change
-                        if self.plot_map:
-                            map_fid = oj(ev_paths["maps"],
-                                         f"map_{sta.code}.png")
-                            if not os.path.exists(map_fid):
-                                mgmt.srcrcvmap(stations=inv, show=False,
-                                               save=map_fid)
-                    except pyatoa.ManagerError:
-                        continue
-                    except Exception:
-                        traceback.print_exc()
-                        continue
-
-            # Run finalization procedures for processing iff gathered waveforms
-            if processed:
-                logger.info(f"Pyaflowa processed {processed} stations")
-                self.finalize_process(ds=ds, cwd=cwd, ev_paths=ev_paths,
-                                      config=config)
-            else:
-                logger.info("Pyaflowa processed 0 stations, skipping finalize")
-
-    def finalize_process(self, cwd, ds, ev_paths, config):
-        """
-        After all waveforms have been windowed and measured, run some functions
-        that create output files useful for Specfem, or for the User.
-
-        :type cwd: str
-        :param cwd: current working directory of solver
-        :type ds: pyasdf.ASDFDataSet
-        :param ds: dataset contianing the waveforms and misfit for this solver
-        :type ev_paths: dict
-        :param ev_paths: dictionary of event/solver specific paths
-        :type config: pyatoa.core.config.Config
-        :param config: Pyatoa config object containing parameters needed for
-            finalization of workflow
-        """
-        logger.info("writing adjoint sources")
-        write_adj_src_to_ascii(ds, self.model, self.step,
-                               oj(cwd, "traces", "adj"))
-
-        logger.info("creating STATIONS_ADJOINT")
-        create_stations_adjoint(ds, model=self.model, 
-                                step=self.step,
-                                specfem_station_file=ev_paths["stations"],
-                                pathout=oj(cwd, "DATA")
-                                )
-
-        logger.info("writing event misfit to disk")
-        write_misfit_stats(ds, self.model, self.step, pathout=self.misfits_dir)
-
-        # Combine images into a pdf for easier visualization, will delete .png's
-        if self.make_pdf:
-            logger.info("creating composite pdf")
-            # path/to/figures/m??/s??/eid_m??_s??.pdf
-            fig_path = oj(self.figures_dir, self.model, self.step)
-            fid = f"{config.event_id}_{self.model}{self.step}.pdf"
-            if not os.path.exists(fig_path):
-                os.makedirs(fig_path)
-            tile_combine_imgs(ds=ds, save_pdf_to=oj(fig_path, fid),
-                              wavs_path=ev_paths["figures"],
-                              maps_path=ev_paths["maps"],
-                              purge_wavs=True, purge_tiles=True
-                              )
-            # remove the empty event directory which has been purged
-            if not glob.glob(oj(ev_paths["figures"], "*")):
-                os.rmdir(ev_paths["figures"])
+                logger.info("writing event misfit to disk")
+                write_misfit(ds, self.model, self.step, path=self.misfits_dir)
 
     def finalize(self):
         """
+        High level function to interact with Seisflows.
+
+        Finalization function to be run after each iteration to allow
+        Pyaflowa to clean up intermediate files and create any optional
+        output files
+
         At the end of an iteration, clean up working directory and create final
         objects if requested by the User. This includes statistical plots
         VTK files for model visualizations, and backups of the data.
@@ -374,4 +253,153 @@ class Pyaflowa:
         if self.srcrcv_vtk and self.iteration == 1:
             for func in [src_vtk_from_specfem, rcv_vtk_from_specfem]:
                 func(path_to_data=self.specfem_data, path_out=self.vtks_dir)
+
+    def prepare_event(self, cwd, event_id):
+        """
+        Mid level function to set up an embarassingly parallelizable workflow
+        instance by establishing event-dependent directory structure.
+        Creating matching Pyatoa Config object.
+
+        :type cwd: str
+        :param cwd: current working directory for this instance of Pyatoa
+        :type event_id: str
+        :param event_id: event identifier tag for file naming etc.
+        :rtype config: pyatoa.core.Config
+        :return config: Configuration object to control the workflow
+        :rtype paths: dict
+        :return paths: event-specific paths used for I/O
+        """
+        # Process specific internal directories for the processing
+        paths = {"cwd": cwd,
+                 "dataset": oj(self.data_dir, f"{event_id}.h5"),
+                 "maps": oj(self.maps_dir, event_id),
+                 "figures": oj(self.figures_dir, self.model, event_id),
+                 }
+        for key in ["maps", "figures"]:
+            if not os.path.exists(paths[key]):
+                os.makedirs(paths[key])
+
+        # Config object from .yaml file, event specific trace directories
+        config = pyatoa.Config(
+            yaml_fid=self.config_file, event_id=event_id, model=self.model,
+            step=self.step, synthetics_only=self.synthetics_only,
+            cfgpaths={"synthetics": oj(cwd, "traces", "syn"),
+                      "waveforms": oj(cwd, "traces", "obs")}
+        )
+
+        return config, paths
+
+    def process_event(self, ds, config, paths, overwrite=None):
+        """
+        Mid-level functionality to gather, preprocess data for a given dataset
+
+        Main workflow calling on the core functionality of Pyatoa to process
+        observed and synthetic waveforms and perform misfit quantification.
+
+        :type ds: pyasdf.ASDFDataSet
+        :param ds: the dataset that will be used for collecting and storing data
+        :type config: pyatoa.core.Config
+        :param config: Configuration object to control the workflow
+        :type paths: dict
+        :param paths: event-specific paths used for I/O
+        :type overwrite: function
+        :param overwrite: a preprocessing function to overwite the default
+            Pyatoa preprocessing function. Must be specified in Seisflows.
+        """
+        # Count number of successful processes
+        processed = 0
+        fix_windows = self._check_for_fixed_windows(ds)
+        logger.info(f"Fix windows: {fix_windows}")
+
+        # Make sure the ASDFDataSet doesn't already contain auxiliary_data
+        clean_ds(ds=ds, model=self.model, step=self.step)
+
+        # Set up the Manager and get station information
+        config.write(write_to=ds)
+        mgmt = pyatoa.Manager(config=config, ds=ds)
+        inv = read_stations(oj(paths["cwd"], "DATA", "STATIONS"))
+
+        # Loop through stations and invoke Pyatoa workflow
+        for net in inv:
+            for sta in net:
+                logger.info(f"{net.code}.{sta.code}")
+                try:
+                    processed += mgmt.flow(
+                            station_code=f"{net.code}.{sta.code}.*.HH*",
+                            preprocess_overwrite=overwrite,
+                            fix_windows=fix_windows
+                            )
+                    if self.plot_wav:
+                        mgmt.plot(save=oj(paths["figures"], f"wav_{sta.code}"),
+                                  show=False, return_figure=False
+                                  )
+                    if self.plot_map:
+                        # Only plot maps once since they won't change
+                        map_fid = oj(paths["maps"], f"map_{sta.code}.png")
+                        if not os.path.exists(map_fid):
+                            mgmt.srcrcvmap(stations=inv, show=False,
+                                           save=map_fid)
+                except pyatoa.ManagerError:
+                    continue
+                except Exception:
+                    traceback.print_exc()
+                    continue
+        logger.info(f"Pyaflowa processed {processed} stations")
+        return bool(processed)
+
+    def prepare_eval_grad(self, ds, paths):
+        """
+        Prepare for gradient evaluation by exporting the adjoint traces from the
+        ASDFDataSet and generating a stations file required for Specfem's
+        adjoint simulations
+
+        :type ds: pyasdf.ASDFDataSet
+        :param ds: the dataset that will be used for collecting and storing data
+        :type paths: dict
+        :param paths: event-specific paths used for I/O
+        """
+        logger.info("writing adjoint sources")
+        write_adj_src_to_ascii(ds=ds, model=self.model, step=self.step,
+                               pathout=oj(paths["cwd"], "traces", "adj")
+                               )
+
+        logger.info("creating STATIONS_ADJOINT")
+        write_stations_adjoint(
+            ds=ds, model=self.model, step=self.step,
+            specfem_station_file=oj(paths["cwd"], "DATA", "STATIONS"),
+            pathout=oj(paths["cwd"], "DATA")
+        )
+
+    def make_event_pdf(self, ds, paths, purge=True):
+        """
+        Make a PDF of waveforms and maps tiled together for easy analysis of
+        waveform fits, default purge the original files for space-saving
+
+        :type ds: pyasdf.ASDFDataSet
+        :param ds: the dataset that will be used for collecting and storing data
+        :type paths: dict
+        :param paths: event-specific paths used for I/O
+        :type purge: bool
+        :param purge: delete the orginal waveform and intermediate tile .png
+            files and only retain the resultant PDF. Optional but hidden as
+            purging is preferable to avoid too many files.
+        """
+        event_id = event_name(ds)
+
+        # Establish correct directory and file name
+        # path/to/figures/m??/s??/eid_m??_s??.pdf
+        outfile = oj(self.figures_dir, self.model, self.step,
+                     f"{event_id}_{self.model}{self.step}.pdf")
+
+        if not os.path.exists(os.path.dirname(outfile)):
+            os.makedirs(os.path.dirname(outfile))
+
+        tile_combine_imgs(
+            ds=ds, save_pdf_to=outfile, wavs_path=paths["figures"],
+            maps_path=paths["maps"], purge_wavs=purge, purge_tiles=purge
+        )
+
+        # if purged, remove the empty event directory
+        if not glob.glob(oj(paths["figures"], "*")):
+            os.rmdir(paths["figures"])
 
