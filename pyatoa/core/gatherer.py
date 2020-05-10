@@ -31,7 +31,7 @@ class ExternalGetter:
     Low-level gathering classs to retrieve data via FDSN webservices.
     Calls made through ObsPy. Functionality is inhereted by the Gatherer class.
     """
-    def event_get(self, event_id=None):
+    def event_get(self):
         """
         Return event information parameters pertaining to a given event id
         if an event id is given
@@ -41,8 +41,8 @@ class ExternalGetter:
         """
         event = None
         logger.debug(f"fetching event from {self.config.client}")
-        if event_id is not None:
-            # Get events via event id, only availablel through certain clients
+        if self.config.event_id is not None:
+            # Get events via event id, only available through certain clients
             try:
                 event = self.Client.get_events(eventid=self.config.event_id)[0]
                 self.origintime = event.origins[0].time

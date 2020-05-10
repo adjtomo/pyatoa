@@ -468,6 +468,7 @@ class Manager:
         except obspy.clients.fdsn.header.FDSNNoDataException:
             raise ManagerError("No data found internal or external")
         except Exception as e:
+            traceback.print_exc()
             raise ManagerError("Uncontrolled error in data gathering") from e
 
     def standardize(self, force=False, standardize_to="syn"):
