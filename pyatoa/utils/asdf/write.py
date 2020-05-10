@@ -1,119 +1,135 @@
 """
-ASDF Datasets can be given auxiliary data to supplement the existing waveform,
-event and station information contained. The functions contained in this script
-add new auxiliary data structures to existing ASDF datasets
+Functions to convert ASDFDataSet into individual data files that can be 
+stored in a directory structure. Not very smart, just dumps all data into a 
+given path. 
 """
-import warnings
+import os
+import json
 import numpy as np
-from pyatoa.utils.form import create_window_dictionary, channel_code
+from pyatoa.utils.form import event_name
+from pyatoa.utils.write import write_adj_src_to_ascii
 
 
-def write_windows_to_asdf(windows, ds, path):
+def write_all(ds, path="./"):
     """
-    Write Pyflex misfit windows into the auxiliary data of an ASDFDataSet
+    Convenience function to dump everything inside a dataset
 
-    :type windows: dict of list of pyflex.Window
-    :param windows: dictionary of lists of window objects with keys
-        corresponding to components related to each window
     :type ds: pyasdf.ASDFDataSet
-    :param ds: ASDF data set to save windows to
+    :param ds: Dataset containing info the write
     :type path: str
-    :param path: internal pathing to save location of auxiliary data
+    :param path: path to save data to
     """
-    # Save windows by component
-    for comp in windows.keys():
-        for i, window in enumerate(windows[comp]):
-            # Figure out how to tag the data in the dataset
-            net, sta, loc, cha = window.channel_id.split(".")
-
-            # net_sta_comp_i: e.g. NZ_BFZ_Z_0
-            window_tag = "_".join([net, sta, cha[-1], str(i)])
-
-            # ASDF auxiliary_data subgroups don't play nice with nested
-            # dictionaries, which the window parameters are. Format them
-            # a bit simpler for saving into the dataset
-            window_dict = create_window_dictionary(window)
-            with warnings.catch_warnings():
-                warnings.simplefilter("ignore")
-                ds.add_auxiliary_data(data=np.array([True]),
-                                      data_type="MisfitWindows",
-                                      parameters=window_dict,
-                                      path=f"{path}/{window_tag}"
-                                      )
+    write_events(ds, path)
+    write_stations(ds, path)
+    write_waveforms(ds, path)
+    write_windows(ds, path)
+    write_adjoint_sources(ds, path)
 
 
-def write_adj_src_to_asdf(adj_srcs, ds, path, time_offset):
+def write_events(ds, path="./"):
     """
-    NOTE: Borrowed and modified from Pyadjoint source code:
-          pyadjoint.adjoint_source.write_to_asdf()
+    Write Event object as a QuakeML file.
 
-    Writes the adjoint source to an ASDF file.
-    Note: For now it is assumed SPECFEM will be using the adjoint source
-
-    :type adj_srcs: list of pyadjoint.asdf_data_set.ASDFDataSet
-    :param adj_srcs: adjoint source to save
-    :type ds: pyasdf.asdf_data_set.ASDFDataSet
-    :type path: str
-    :param path: internal pathing for save location in the auxiliary data attr.
     :type ds: pyasdf.ASDFDataSet
-    :param ds: The ASDF data structure read in using pyasdf.
-    :type time_offset: float
-    :param time_offset: The temporal offset of the first sample in seconds.
-        This is required if using the adjoint source as input to SPECFEM.
-    .. rubric:: SPECFEM
-    SPECFEM requires one additional parameter: the temporal offset of the
-    first sample in seconds. The following example sets the time of the
-    first sample in the adjoint source to ``-10``.
-    >>> adj_src.write_to_asdf(ds, time_offset=-10,
-    ...               coordinates={'latitude':19.2,
-    ...                            'longitude':13.4,
-    ...                            'elevation_in_m':2.0})
+    :param ds: Dataset containing info the write
+    :type path: str
+    :param path: path to save data to
     """
-    # Save adjoint sources per component
-    for key, adj_src in adj_srcs.items():
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
+    for event in ds.events:
+        event.write(os.path.join(path, f"{event_name(event=event)}.xml"),
+                    format="QUAKEML"
+                    )
 
-            # The tag hardcodes an X as the second channel index
-            # to signify that these are synthetic, required by Specfem3D
-            adj_src_tag = "{net}_{sta}_{ban}X{cmp}".format(
-                net=adj_src.network, sta=adj_src.station,
-                ban=channel_code(adj_src.dt),
-                cmp=adj_src.component[-1]
-            )
+def write_stations(ds, path="./"):
+    """
+    Write Stations dataless files as STATIONXML files
 
-            # Convert the adjoint source to SPECFEM format
-            srclen = len(adj_src.adjoint_source)
-            specfem_adj_source = np.empty((srclen, 2))
-            # Create the time axis in the 0th column
-            specfem_adj_source[:, 0] = np.linspace(0, (srclen - 1) * adj_src.dt,
-                                                   srclen)
-            specfem_adj_source[:, 0] += time_offset
-            # Time-reverse waveform
-            specfem_adj_source[:, 1] = adj_src.adjoint_source[::-1]
+    :type ds: pyasdf.ASDFDataSet
+    :param ds: Dataset containing info the write
+    :type path: str
+    :param path: path to save data to
+    """
+    for sta_name in ds.waveforms.list():
+        ds.waveforms[sta_name].StationXML.write(
+            os.path.join(path, f"{sta_name.replace('.','_')}.xml"), 
+            format="STATIONXML")
 
-            station_id = f"{adj_src.network}.{adj_src.station}"
-            coordinates = ds.waveforms[
-                f"{adj_src.network}.{adj_src.station}"].coordinates
+def write_waveforms(ds, path="./"):
+    """
+    Write waveforms as MSEED files
 
-            # Safeguard against funny types in the coordinates dictionary
-            latitude = float(coordinates["latitude"])
-            longitude = float(coordinates["longitude"])
-            elevation_in_m = float(coordinates["elevation_in_m"])
+    :type ds: pyasdf.ASDFDataSet
+    :param ds: Dataset containing info the write
+    :type path: str
+    :param path: path to save data to
+    """
+    # Set up the directory structure
+    for sta in ds.waveforms.list():
+        for tag in ds.waveforms[sta].get_waveform_tags():
+            st = ds.waveforms[sta][tag]
+            st.write(os.path.join(path, f"{sta.replace('.','_')}_{tag}.ms"), 
+                     format="MSEED")
 
-            parameters = {
-                "dt": adj_src.dt, "misfit_value": adj_src.misfit,
-                "adjoint_source_type": adj_src.adj_src_type,
-                "min_period": adj_src.min_period,
-                "max_period": adj_src.max_period,
-                "latitude": latitude, "longitude": longitude,
-                "elevation_in_m": elevation_in_m, "station_id": station_id,
-                "component": adj_src.component, "units": "m"
-            }
 
-            ds.add_auxiliary_data(data=specfem_adj_source,
-                                  data_type="AdjointSources",
-                                  path=f"{path}/{adj_src_tag}",
-                                  parameters=parameters
-                                  )
+def write_windows(ds, path="./"):
+    """
+    Write MisfitWindows as .JSON files
+
+    :type ds: pyasdf.ASDFDataSet
+    :param ds: Dataset containing info the write
+    :type path: str
+    :param path: path to save data to
+    """
+    class WindowEncoder(json.JSONEncoder):
+        """
+        So that JSON plays nice with numpy objects, UTCDateTimes are already str
+        taken from Pyflex.window_selector.write()
+        """
+        def default(self, obj):
+            # Numpy objects also require explicit handling.
+            if isinstance(obj, np.int64):
+                return int(obj)
+            elif isinstance(obj, np.int32):
+                return int(obj)
+            elif isinstance(obj, np.float64):
+                return float(obj)
+            elif isinstance(obj, np.float32):
+                return float(obj)
+            # Let the base class default method raise the TypeError
+            return json.JSONEncoder.default(self, obj)
+
+    windows = ds.auxiliary_data.MisfitWindows
+    for model in windows.list():
+        for step in windows[model].list():
+            window_dict = {}
+            for win in windows[model][step].list():
+                window_dict[win] = windows[model][step][win].parameters
+            with open(os.path.join(path, 
+                      f"windows_{model}{step}.json"), "w") as f:
+                json.dump(window_dict, f, cls=WindowEncoder, indent=4, 
+                          separators=(',', ':')
+                          )   
+
+def write_adjoint_sources(ds, path="./"):
+    """
+    Write AdjointSources as ASCII files in directories corresponding to model
+    number and step count.
+
+    :type ds: pyasdf.ASDFDataSet
+    :param ds: Dataset containing info the write
+    :type path: str
+    :param path: path to save data to
+    """
+    adjsrcs = ds.auxiliary_data.AdjointSources
+    for model in adjsrcs.list():
+        for step in adjsrcs[model].list():
+            pathout = os.path.join(path, f"{model}{step}")
+            if not os.path.exists(pathout):
+                os.makedirs(pathout)
+            write_adj_src_to_ascii(ds, model, step, pathout)
+
+
+
+
+
 

@@ -642,7 +642,7 @@ class Gatherer(InternalFetcher, ExternalGetter):
                 st_obs is not None):
             # Ignore the ASDFWarning that occurs if data exists in dataset
             with warnings.catch_warnings():
-                warnings.simplefilter("ignore", ASDFWarning):
+                warnings.simplefilter("ignore", ASDFWarning)
                 self.ds.add_waveforms(waveform=st_obs,
                                       tag=self.config.observed_tag)
         else:
@@ -670,7 +670,7 @@ class Gatherer(InternalFetcher, ExternalGetter):
                 st_syn is not None):
                 # Ignore the ASDFWarning that occurs if data exists in dataset
                 with warnings.catch_warnings():
-                    warnings.simplefilter("ignore", ASDFWarning):
+                    warnings.simplefilter("ignore", ASDFWarning)
                     self.ds.add_waveforms(waveform=st_syn,
                                           tag=self.config.synthetic_tag)
             return st_syn

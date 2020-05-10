@@ -18,7 +18,7 @@ from pyatoa.core.gatherer import Gatherer
 from pyatoa.utils.asdf.fetch import windows_from_ds
 from pyatoa.utils.weights import window_by_amplitude
 from pyatoa.utils.srcrcv import gcd_and_baz, seismogram_length
-from pyatoa.utils.asdf.write import write_windows_to_asdf, write_adj_src_to_asdf
+from pyatoa.utils.asdf.add import add_misfit_windows, add_adjoint_sources
 from pyatoa.utils.process import (preproc, trim_streams, stf_convolve, zero_pad, 
                                   match_npts)
 
@@ -728,7 +728,7 @@ class Manager:
             path = "default"
 
         logger.debug("saving misfit windows to ASDFDataSet")
-        write_windows_to_asdf(self.windows, self.ds, path)
+        add_misfit_windows(self.windows, self.ds, path)
 
     def measure(self, force=False):
         """
@@ -853,8 +853,8 @@ class Manager:
             path = "default"
 
         logger.debug("saving adjoint sources to ASDFDataSet")
-        write_adj_src_to_asdf(adj_srcs=self.adj_srcs, ds=self.ds,
-                              path=path, time_offset=self._time_offset_sec)
+        add_adjoint_sources(adj_srcs=self.adj_srcs, ds=self.ds,
+                            path=path, time_offset=self._time_offset_sec)
 
     def plot(self, save=None, show=True, append_title='', length_sec=None, 
              normalize=False, figsize=(11.69, 8.27), dpi=100, **kwargs):
