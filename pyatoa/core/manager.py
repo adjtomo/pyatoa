@@ -125,7 +125,7 @@ class Manager:
 
         # If event ID set, launch gatherer, gather an event
         if not empty or event is not None:
-            self._launch(event=event)
+            self.setup(event=event)
         else:
             # If 'empty' or no event, dont launch gatherer, event is None
             self.event = None
@@ -188,15 +188,10 @@ class Manager:
 
     def _check(self):
         """
-        Update flag information for the User to know location in the workflow.
+        Check the status of the workflow and data contained within the Manager.
 
-        NOTE:
-        This function rechecks conditions whenever called. This is a safeguard
-        incase something has gone awry mid-workflow. Flags could be set and
-        forget but that could lead to trouble somewhere down the line.
-
-        Flags should only ever be set by _check() or by the individual functions
-        that are allowed to set their own flags, never User.
+        Rechecks conditions whenever called, incase something has gone awry
+        mid-workflow. Flags should only ever be set by _check().
         """
         # Give dataset filename if available
         if (self.ds is not None) and (self._dataset_id is None):
@@ -257,74 +252,55 @@ class Manager:
                 total_misfit += adj_src.misfit
             self._misfit = 0.5 * total_misfit / self._num_windows
 
-    def _launch(self, reset=False, event=None, idx=0):
+    def setup(self, event=None, idx=0):
         """
-        Appends an event to the Manager class, instantiates mid-level Gatherer.
-        If an Event or Catalog object is given, passes that to both Manager and
-        Gatherer classes. If no Event given, queries FDSN to search for an event
+        One-time setup of the Manager class.
 
-        :type reset: bool
-        :param reset: Reset the Gatherer class for a new run
-        :type event: str or obspy.core.event.Event or
-            obspy.core.event.catalog.Catalog
-        :param event: either an event object to manually set event, or an ID
-            to use when searching FDSN for event objects
+        Assigns or instantiates required auxiliary classes necessary for the
+        Manger to function, including the Config, Gatherer and Event attributes.
+
+        :type event: obspy.core.event.Event or obspy.core.event.catalog.Catalog
+        :param event: event or Catalog to use for the central event attribute
         :type idx: int
-        :param idx: if set event given as Catalog, idx allows user to specify
-            which event index in Catalog, defaults to 0.
+        :param idx: if `event` is a Catalog, idx allows user to specify
+            which index in Catalog to choose event from. Default is 0.
         """
         if self.config is None:
             logger.info("no Config found, initiating default")
             self.config = Config()
 
         # Launch or reset the Gatherer
-        if (self.gatherer is None) or reset:
-            logger.info("initiating/resetting gatherer")
+        if self.gatherer is None:
+            logger.info("initiating Gatherer")
             self.gatherer = Gatherer(config=self.config, ds=self.ds)
 
-        # If no Event ID is specified in Config, do nothing.
-        if self.config.event_id is not None:
-            # If the User provides their own Obspy Event or Catalog object
-            if event and not isinstance(event, str):
-                # If catalog given, take the `idx` entry
-                if isinstance(event, obspy.core.event.catalog.Catalog):
-                    logger.info(f"event given as catalog, taking entry {idx}")
-                    event = event[idx]
-                # Populate the Gatherer and Manager with event object
-                self.gatherer.set_event(event)
-                self.event = self.gatherer.event
-            # If no event given by User, use Gatherer to get eveht data
-            else:
-                # If Gatherer has an event, have Manager copy it
-                if self.gatherer.event:
-                    self.event = self.gatherer.event
-                # If Gatherer empty, try gather event
-                else:
-                    self.event = self.gatherer.gather_event()
+        # Determine event information
+        if event is not None:
+            # User provided Event/Catalog object should be distributed
+            if isinstance(event, obspy.core.event.catalog.Catalog):
+                logger.info(f"event given as catalog, taking entry {idx}")
+                event = event[idx]
+            self.event = event
+            self.gatherer.origintime = event.preferred_origin().time
+        else:
+            # No User provided event, gather based on event id
+            if self.config.event_id is not None:
+                self.event = self.gatherer.gather_event()
 
-    def reset(self, hard_reset=False):
+    def reset(self):
         """
-        Restart workflow by delete all collected data in the Manager, except for
-        Config, dataset, gatherer and event.
-
-        Soft reset retains event information so that another Station can be
-        gathered for the same event, without needing to relaunch Gatherer and
-        gather the same event.
-
-        :type hard_reset: bool
-        :param hard_reset: hard or soft reset, soft reset doesnt re-instantiate
-            gatherer class, and leaves the same event, useful for repeating
-            workflow. Hard reset re-initites. default soft
+        Restart workflow by deleting all collected data in the Manager, but
+        retain dataset, event, config, and gatherer so a new station can be
+        processed with the same configuration as the previous workflow.
         """
         self.__init__(ds=self.ds, event=self.event, config=self.config,
                       gatherer=self.gatherer)
-        self._launch(reset=hard_reset)
         self._check()
 
     def write(self, write_to="ds"):
         """
         Write the data collected inside Manager to either a Pyasdf Dataset,
-        or to individual files
+        or to individual files (not implemented).
 
         :type write_to: str
         :param write_to: choice to write data to, if "ds" writes to
@@ -366,9 +342,9 @@ class Manager:
     def load(self, station_code, config_path=None, ds=None, synthetic_tag=None,
              observed_tag=None):
         """
-        Populate the manager using a given PyASDF Dataset, based on user-defined
-        station code. Useful for re-instantiating an existing workflow that
-        has already gathered data and saved it to a dataset.
+        Populate the manager using a previously populated ASDFDataSet.
+        Useful for re-instantiating an existing workflow that has already 
+        gathered data and saved it to an ASDFDataSet.
 
         :type station_code: str
         :param station_code: SEED conv. code, e.g. NZ.BFZ.10.HHZ
@@ -402,33 +378,28 @@ class Manager:
         assert len(station_code.split('.')) == 2, \
             "station_code must be in form 'NN.SSS'"
 
-        # Hard reset the Manager incase it was used previously
-        self.reset(hard_reset=True)
-
-        # Populate using the dataset
+        # Reset and populate using the dataset
+        self.__init__(empty=True)
         self.event = ds.events[0]
         net, sta = station_code.split('.')
         sta_tag = f"{net}.{sta}"
         if sta_tag in ds.waveforms.list():
+            self.inv = ds.waveforms[sta_tag].StationXML
             if synthetic_tag is None:
                 synthetic_tag = self.config.synthetic_tag
             self.st_syn = ds.waveforms[sta_tag][synthetic_tag]
-
             if observed_tag is None:
                 observed_tag = self.config.observed_tag
             self.st_obs = ds.waveforms[sta_tag][observed_tag]
-
-            self.inv = ds.waveforms[sta_tag].StationXML
         else:
             logger.warning(f"no data for {sta_tag} found in dataset")
-        
         return self
 
     def flow(self, station_code, fix_windows=False, preprocess_overwrite=None):
         """
-        A meta function to run the full workflow from gathering to measuring
-        misfit with check stops in between each function to stop the workflow
-        if any internal function returns a negative status.
+        A convenience function to run the full workflow with check stops in 
+        between each function to stop the workflow if any internal function 
+        returns a negative status.
 
         :type station_code: str
         :param station_code: Station code following SEED naming convention.
@@ -443,7 +414,7 @@ class Manager:
         :param preprocess_overwrite: overwrite the core preprocess functionality
         """
         processed = False
-        self.reset(hard_reset=False)
+        self.reset()
         try:
             self.gather(station_code=station_code)
             self.standardize()
@@ -459,11 +430,7 @@ class Manager:
 
     def gather(self, station_code, choice=None):
         """
-        Launch a gatherer object and gather event, station and waveform
-        information given a station code. Fills the manager based on information
-        most likely to be available (we expect an event to be available more
-        often than waveform data).
-        Catches general exceptions along the way, stops gathering if errors.
+        Gather station dataless and waveform data using the Gatherer class.
 
         :type station_code: str
         :param station_code: Station code following SEED naming convention.
@@ -477,45 +444,36 @@ class Manager:
         :rtype: bool
         :return: status of the function, 1: successful / 0: failed
         """
+        # Default to gathering all data.
+        if choice is None:
+            choice = ["inv", "st_obs", "st_syn"]
         if self.gatherer is None:
-            self._launch()
+            self.setup()
         try:
             self.station_code = station_code
             logger.info(f"gathering {station_code} for {self.config.event_id}")
             # Gather all data
-            if choice is None:
+            if "inv" in choice:
                 logger.debug("gathering station information")
                 self.inv = self.gatherer.gather_station(station_code)
+            if "st_obs" in choice:
                 logger.debug("gathering observation waveforms")
                 self.st_obs = self.gatherer.gather_observed(station_code)
+            if "st_syn" in choice:
                 logger.debug("gathering synthetic waveforms")
                 self.st_syn = self.gatherer.gather_synthetic(station_code)
-            # Gather specific data based on user defined choice
-            else:
-                if "inv" in choice:
-                    logger.debug("gathering station information")
-                    self.inv = self.gatherer.gather_station(station_code)
-                if "st_obs" in choice:
-                    logger.debug("gathering observation waveforms")
-                    self.st_obs = self.gatherer.gather_observed(station_code)
-                if "st_syn" in choice:
-                    logger.debug("gathering synthetic waveforms")
-                    self.st_syn = self.gatherer.gather_synthetic(station_code)
             return self
+        # This exception is thrown if no Obsered data can be found, which means
+        # the workflow cannot proceed
         except obspy.clients.fdsn.header.FDSNNoDataException:
             raise ManagerError("No data found internal or external")
-        # An uncontrolled error should be shown but allowed to pass
         except Exception as e:
-            logger.warning(e)
-            traceback.print_exc() 
-            raise ManagerError("Uncontrolled error in data gathering")
+            raise ManagerError("Uncontrolled error in data gathering") from e
 
     def standardize(self, force=False, standardize_to="syn"):
         """
-        Standardize the observed and synthetic traces in place. Ensure that the
-        data streams have the same start and endtimes, and sampling rate, so
-        that data comparisons can be made; all preprocessing related to timing
-        and sampling rate.
+        Standardize the observed and synthetic traces in place. 
+        Ensures Streams have the same starttime, endtime, sampling rate, npts.
 
         :type force: bool
         :param force: allow the User to force the functino to run even if checks
@@ -541,24 +499,25 @@ class Manager:
         if dt_st > 0:
             self.st_obs = zero_pad(self.st_obs, dt_st, before=True, after=False)
 
-        # Resample one Stream to match the other
+        # Match sampling rates
         if standardize_to == "syn":
             self.st_obs.resample(self.st_syn[0].stats.sampling_rate)
         else:
             self.st_syn.resample(self.st_obs[0].stats.sampling_rate)
 
-        # Trim observations and synthetics to the length of chosen
-        trim_to = {"obs": "a", "syn": "b"}
+        # Match start and endtimes
         self.st_obs, self.st_syn = trim_streams(
-            st_a=self.st_obs, st_b=self.st_syn, force=trim_to[standardize_to])
+            st_a=self.st_obs, st_b=self.st_syn, 
+            force={"obs": "a", "syn": "b"}[standardize_to]
+            )
 
-        # Match the number of samples between the streams
+        # Match the number of samples 
         self.st_obs, self.st_syn = match_npts(st_a=self.st_obs,
                                               st_b=self.st_syn,
                                               force=trim_to[standardize_to]
                                               )
 
-        # Retrieve the first timestamp in the .sem? file from Specfem
+        # Determine if syntheitcs start before the origintime
         if self.event is not None:
             self._time_offset_sec = (self.st_syn[0].stats.starttime -
                                      self.event.preferred_origin().time
@@ -571,11 +530,13 @@ class Manager:
 
     def preprocess(self, which="both", overwrite=None):
         """
-        Standard preprocessing of observed and synthetic data in place.
-        Called in identical manner for observation and synthetic waveforms.
-        Synthetic waveform is convolved with a source time function.
+        Preprocessing of observed and synthetic data in place.
 
-        This function can of course be overwritten by a User defined function
+        Remove response (observed), rotate, filter, convolve with source time
+        functin (synthetic).
+
+        Can be overwritten by a User defined function that takes the Manager
+        as an input variable.
 
         :type which: str
         :param which: "obs", "syn" or "both" to choose which stream to process
@@ -589,24 +550,21 @@ class Manager:
         :return: status of the function, 1: successful / 0: failed
         """
         self._check()
-        # Make sure an instrument response is available for removal, or that
-        # this is a synthetic-synthetic case
         if (not isinstance(self.inv, obspy.core.inventory.Inventory)) \
                 and (not self.config.synthetics_only):
             raise ManagerError("cannot preprocess, no inventory")
         if overwrite:
-            # Ensure the overwrite call is a function
             assert(hasattr(overwrite, '__call__')), "overwrite must be function"
             preproc_fx = overwrite
         else:
             preproc_fx = preproc
 
-        # If required, rotate based on source receiver lat/lon values
+        # If required, will rotate based on source receiver lat/lon values
         if self.config.rotate_to_rtz:
             self.gcd, self.baz = gcd_and_baz(event=self.event,
                                              sta=self.inv[0][0])
 
-        # Preprocess observation and synthetic data the same
+        # Preprocess observation and synthetic data identically
         if self.st_obs is not None and not self._obs_filter_flag and \
                 which.lower() in ["obs", "both"]:
             logger.info("preprocessing observation data")
@@ -627,11 +585,8 @@ class Manager:
 
     def _convolve_source_time_function(self, which="both"):
         """
-        Convolve synthetic data with a gaussian source time function, time
-        shift by a given half duration.
-
-        TO DO:
-            check if time_offset is doing what I want it to do
+        Convolve synthetic data with a Gaussian source time function, time
+        shift by a given half duration. Apply to observed if syn-syn inversion.
 
         :type which: str
         :param which: "obs", "syn" or "both" to choose which stream to process
@@ -657,12 +612,13 @@ class Manager:
 
     def window(self, fix_windows=False, force=False):
         """
-        The main windowing function. Windows can either be collected from
-        a given pyasdf ASDFDataset, or picked from the waveforms available.
+        Evaluate misfit windows using Pyflex. Save windows to ASDFDataSet.
+        Allows previously defined windows to be retrieved from ASDFDataSet.
 
-        STA/LTA information is collected and stored regardless of pick method.
-        Windows are stored as dictionaries of pyflex.Window objects.
-        New windows are saved into the pyasdf Dataset if given.
+        Note:
+            -Windows are stored as dictionaries of pyflex.Window objects.
+            -All windows are saved into the ASDFDataSet, even if retrieved.
+            -STA/LTA information is collected and stored internally.
 
         :type fix_windows: bool
         :param fix_windows: do not pick new windows, but load windows from the
@@ -713,8 +669,8 @@ class Manager:
 
     def select_windows(self):
         """
-        Custom window selection function that calls Pyflex select windows, but
-        includes further window suppression introduced by Pyatoa.
+        Mid-level custom window selection function that calls Pyflex select 
+        windows, but includes additional window suppression functionality.
         """
         logger.info(f"running Pyflex w/ map: {self.config.pyflex_preset}")
         nwin, windows = 0, {}
@@ -751,7 +707,9 @@ class Manager:
 
     def save_windows(self):
         """
-        Save the misfit windows that are calculated by Pyflex into a Dataset
+        Mid-level window saving function that creates custom path naming based
+        on the model number and step count.
+
         Auxiliary data tag is hardcoded as 'MisfitWindows'
         """
         # Criteria to check if windows should be saved. Windows and dataset
@@ -774,7 +732,7 @@ class Manager:
 
     def measure(self, force=False):
         """
-        Run Pyadjoint on Obs and Syn data for misfit windows or on full trace.
+        Measure misfit and calculate adjoint sources using PyAdjoint.
 
         Method for caluculating misfit set in Config, Pyadjoint expects
         standardized traces with the same spectral content, so this function
@@ -785,9 +743,9 @@ class Manager:
 
         Note:
             Pyadjoint returns an unscaled misfit value for an entire set of
-            windows. If one wants to return a "total misfit" value as defined
-            by Tape (2010) Eq. 6, the total summed misfit will need to be
-            scaled by the number of misfit windows chosen in window().
+            windows. To return a "total misfit" value as defined by 
+            Tape (2010) Eq. 6, the total summed misfit will need to be scaled by 
+            the number of misfit windows chosen in Manager.window().
 
         :type force: bool
         :param force: ignore flag checks and run function, useful if e.g.
@@ -844,11 +802,11 @@ class Manager:
 
     def _format_windows(self):
         """
-        Note:
-            In `pyadjoint.calculate_adjoint_source`, the window needs to be a
-            list of lists, with each list containing the
-            [left_window, right_window]; each window argument should be given
-            in units of time (seconds). This is not in the PyAdjoint docs
+        In `pyadjoint.calculate_adjoint_source`, the window needs to be a list 
+        of lists, with each list containing the [left_window, right_window]; 
+        each window argument should be given in units of time (seconds). 
+
+        This is not in the PyAdjoint docs
 
         :rtype: dict of list of lists
         :return: dictionary with key related to individual components,
@@ -875,7 +833,10 @@ class Manager:
 
     def save_adj_srcs(self):
         """
-        Save adjoint sources to Pyasdf Dataset
+        Mid-level adjoint source saving function that creates custom path naming 
+        based on the model number and step count.
+
+        Auxiliary data tag is hardcoded as 'AdjointSources'        
         """
         if self.ds is None or not self.config.save_to_ds:
             logger.debug("adjoint sources are not being saved")
@@ -898,10 +859,9 @@ class Manager:
     def plot(self, save=None, show=True, append_title='', length_sec=None, 
              normalize=False, figsize=(11.69, 8.27), dpi=100, **kwargs):
         """
-        Waveform plots for all given components.
-        If specific components are not given they are omitted from the plot.
-        Plotting should be dynamic, i.e. if only 2 components are present in the
-        streams, only two subplots should be generated in the figure.
+        Plot observed and synthetics waveforms, misfit windows, STA/LTA and
+        adjoint sources for all available components. Append information
+        about misfit, windows and window selection.
 
         :type append_title: str
         :param append_title: any string to append the title of the plot
@@ -954,18 +914,14 @@ class Manager:
                   annotate_names=False, color_by_network=False,
                   figsize=(8, 8.27), dpi=100, **kwargs):
         """
-        Map plot showing a map of the given target region. All stations that
-        show data availability (according to the station master list) are
-        plotted as open markers. Event is plotted as a beachball if a moment
-        tensor is given, station of interest highlighted, both are connected
-        with a dashed line.
-        Source receier information plotted in lower right hand corner of map.
+        Generate a basemap for a given target region. Plot station and receiver
+        stored internally. Annotate source-receiver information. 
 
         :type map_corners: dict
         :param map_corners: {lat_min, lat_max, lon_min, lon_max}
         :type stations: obspy.core.inventory.Inventory
         :param stations: background stations to plot on the map that will
-        not interact with the source
+            not interact with the source
         :type annotate_names: bool
         :param annotate_names: annotate station names
         :type color_by_network: bool

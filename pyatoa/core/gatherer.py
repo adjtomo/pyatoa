@@ -12,7 +12,9 @@ by the User unless for bespoke data gathering functionality.
 """
 import os
 import glob
+import warnings
 
+from pyasdf import ASDFWarning
 from obspy.core.event import Event
 from obspy.clients.fdsn import Client
 from obspy import Stream, read, read_inventory
@@ -29,7 +31,7 @@ class ExternalGetter:
     Low-level gathering classs to retrieve data via FDSN webservices.
     Calls made through ObsPy. Functionality is inhereted by the Gatherer class.
     """
-    def event_get(self):
+    def event_get(self, event_id=None):
         """
         Return event information parameters pertaining to a given event id
         if an event id is given
@@ -39,7 +41,8 @@ class ExternalGetter:
         """
         event = None
         logger.debug(f"fetching event from {self.config.client}")
-        if self.event_id is not None:
+        if event_id is not None:
+            # Get events via event id, only availablel through certain clients
             try:
                 event = self.Client.get_events(eventid=self.config.event_id)[0]
                 self.origintime = event.origins[0].time
@@ -47,8 +50,8 @@ class ExternalGetter:
                 logger.warning(f"no event found for {self.config.event_id} "
                                f"from {self.config.client}")
                 event = None
-
         if self.origintime and event is None:
+            # If getting by event id doesn't work, try based on origintime
             try:
                 event = self.Client.get_events(starttime=self.origintime,
                                                endtime=self.origintime)
@@ -63,13 +66,12 @@ class ExternalGetter:
                                f"may be required."
                                )
                 event = event[0]
-
         return event
 
-    def station_get(self, station_code, level='response'):
+    def station_get(self, station_code, level="response"):
         """
-        return station information with level dependent on call, defaults to
-        retrieving response information
+        Call for ObsPy FDSN client to download station dataless information.
+        Defaults to retrieving response information.
 
         :type station_code: str
         :param station_code: Station code following SEED naming convention.
@@ -92,9 +94,12 @@ class ExternalGetter:
 
     def waveform_get(self, station_code):
         """
-        Call for obspy to download data. For some reason obspy can return traces
-        with varying sample lengths, so 10 second cushion and then trim after
-        retrieval to make sure traces are the same length
+        Call for ObsPy FDSN client to download waveform data.
+
+        Note:
+            ObsPy sometimes returns traces with varying sample lengths,
+            so we use a 10 second cushion on start and end time and trim after
+            retrieval to make sure traces are the same length.
 
         :type station_code: str
         :param station_code: Station code following SEED naming convention.
@@ -121,40 +126,21 @@ class ExternalGetter:
         logger.debug(f"stream got external {station_code}")
         return st
 
-    def get_all(self, station_code):
-        """
-        Convenience function for retrieving station, inventory and receiver
-
-        :type station_code: str
-        :param station_code: Station code following SEED naming convention.
-            This must be in the form NN.SSSS.LL.CCC (N=network, S=station,
-            L=location, C=channel). Allows for wildcard naming. By default
-            the pyatoa workflow wants three orthogonal components in the N/E/Z
-            coordinate system. Example station code: NZ.OPRZ.10.HH?
-        :rtype event: obspy.core.event.Event
-        :return event: event object
-        :rtype: obspy.core.inventory.Inventory
-        :return: inventory containing relevant network and stations
-        :rtype stream: obspy.core.stream.Stream
-        :return stream: waveform contained in a stream
-        """
-        event = self.event_get()
-        inv = self.station_get(station_code)
-        st = self.waveform_get(station_code)
-        return event, inv, st
-
 
 class InternalFetcher:
     """
-    Low-level data gatherer which searches local filesystem, either through
-    ASDFDataSets, or through the local directories.
+    Low-level data gatherer to search for data on disk.
+    
+    Initially looks through User provided ASDFDataSets, if not available or no
+    data locatable, search through the local directories.
+
     Defaults directory structure follows SEED convention but can be overwritten.
 
     Class attributes inhereted by the Gatherer class.
     """
     def asdf_event_fetch(self):
         """
-        Return event information from pyasdf.
+        Return Event information from ASDFDataSet.
 
         Assumes that the ASDF Dataset will only contain one event, which is
         dictated by the structure of Pyatoa.
@@ -168,7 +154,7 @@ class InternalFetcher:
 
     def asdf_station_fetch(self, station_code):
         """
-        return station information from pyasdf based on station tag
+        Return station dataless from ASDFDataSet based on station code.
 
         :type station_code: str
         :param station_code: Station code following SEED naming convention.
@@ -184,9 +170,14 @@ class InternalFetcher:
 
     def asdf_waveform_fetch(self, station_code, tag):
         """
-        Return stream based on tags from pyasdf. Allows for wildcard selection
-        of component. Does not select by channel because synthetic channels
-        will differ from observation channels. Select only by component.
+        Return waveforms as Stream objects based from ASDFDataSet.
+
+        Note:
+            -Allows for wildcard selection of component (? or *)
+            -Selects by component because synthetic channel naming may differ
+            from observation channels.
+            -Component is assumed to be the last index in the channel, following
+            SEED convention.
 
         :type station_code: str
         :param station_code: Station code following SEED naming convention.
@@ -200,25 +191,20 @@ class InternalFetcher:
         :return: waveform contained in a stream
         """
         net, sta, loc, cha = station_code.split('.')
-        return self.ds.waveforms[f"{net}_{sta}"][tag].select(component=cha[2:])
+        return self.ds.waveforms[f"{net}_{sta}"][tag].select(component=cha[-1])
 
     def fetch_resp_by_dir(self, station_code, paths_to_responses=None,
-                          dir_structure='{sta}.{net}',
-                          file_template='RESP.{net}.{sta}.{loc}.{cha}'):
+                          dir_structure="{sta}.{net}",
+                          file_template="RESP.{net}.{sta}.{loc}.{cha}"):
         """
-        Fetch station xml from given internal pathing. Search through all
-        paths given until corresponding inventories are found or until nothing
-        is found.
+        Fetch station dataless via directory structure on disk.
 
-        Default path naming follows SEED convention but can be overwritten
-        by the User is custom path and file naming are used.
+        Will search through all paths given until corresponding inventories are
+        found else raises a FileNotFoundError.
 
-        Note: Obspy does not have any type of inventory merge property, and
-            because SEED format saves response by channel, we must read
-            individual stationxml files in as individual inventory objects, and
-            add them together. This means that the output inventory has multiple
-            networks that are essentially the same. It works, but be careful
-            when looping through an inventory object.
+        Default path naming follows SEED convention, that is:
+            path/to/dataless/{NET}.{STA}/RESP.{NET}.{STA}.{LOC}.{CHA}
+            e.g. path/to/dataless/NZ.BFZ/RESP.NZ.BFZ.10.HHZ
 
         :type station_code: str
         :param station_code: Station code following SEED naming convention.
@@ -240,9 +226,8 @@ class InternalFetcher:
         if not paths_to_responses:
             paths_to_responses = self.config.cfgpaths["responses"]
 
-        net, sta, loc, cha = station_code.split('.')
-
         inv = None
+        net, sta, loc, cha = station_code.split('.')
         for path_ in paths_to_responses:
             if not os.path.exists(path_):
                 continue
@@ -250,17 +235,16 @@ class InternalFetcher:
             fid = os.path.join(path_, dir_structure, file_template).format(
                 net=net, sta=sta, cha=cha, loc=loc)
             for filepath in glob.glob(fid):
-                # The first inventory becomes the main inv to return
                 if inv is None:
+                    # The first inventory becomes the main inv to return
                     inv = read_inventory(filepath)
-                # All other inventories are appended to the original
                 else:
+                    # All other inventories are appended to the original
                     inv_append = read_inventory(filepath)
+                    # Merge inventories to remove repeated networks
                     inv = merge_inventories(inv, inv_append)
 
                 logger.debug(f"response found at {filepath}")
-
-        # Merge inventory objects
         if inv is None:
             logger.debug("no response found for given paths")
             raise FileNotFoundError()
@@ -269,16 +253,15 @@ class InternalFetcher:
 
     def fetch_obs_by_dir(
             self, station_code, paths_to_waveforms=None,
-            dir_structure='{year}/{net}/{sta}/{cha}*',
-            file_template='{net}.{sta}.{loc}.{cha}*{year}.{jday:0>3}'):
+            dir_structure="{year}/{net}/{sta}/{cha}*",
+            file_template="{net}.{sta}.{loc}.{cha}*{year}.{jday:0>3}"):
         """
+        Fetch observation waveforms via directory structure on disk.
+
         Default waveform directory structure assumed to follow SEED convention.
-        Can be overwritten by User for custom file and directory naming.
-
-        Default search path:
-        path/to/data/{YEAR}/{NETWORK}/{STATION}/{CHANNEL}*/{FID}
-
-        e.g. path/to/data/2017/NZ/OPRZ/HHZ.D/NZ.OPRZ.10.HHZ.D
+        That is:
+            path/to/data/{YEAR}/{NETWORK}/{STATION}/{CHANNEL}*/{FID}
+            e.g. path/to/data/2017/NZ/OPRZ/HHZ.D/NZ.OPRZ.10.HHZ.D
 
         :type station_code: str
         :param station_code: Station code following SEED naming convention.
@@ -303,6 +286,7 @@ class InternalFetcher:
             paths_to_waveforms = self.config.cfgpaths['waveforms']
 
         net, sta, loc, cha = station_code.split('.')
+        # If waveforms contain midnight, multiple files need to be read
         jdays = overlapping_days(origin_time=self.origintime,
                                  start_pad=self.config.start_pad,
                                  end_pad=self.config.end_pad
@@ -323,7 +307,8 @@ class InternalFetcher:
                 for filepath in glob.glob(fid):
                     st += read(filepath)
                     logger.debug(f"stream fetched from directory {filepath}")
-            if len(st) > 0:  # is this necessary?
+            if len(st) > 0:
+                # Take care of gaps in data by converting to masked data
                 st.merge()
                 st.trim(starttime=self.origintime-self.config.start_pad,
                         endtime=self.origintime+self.config.end_pad
@@ -335,14 +320,11 @@ class InternalFetcher:
             )
             raise FileNotFoundError()
 
-    def fetch_syn_by_dir(self, station_code, event_id='', pathname='synthetics',
-                         specfem_fid_template='{net}.{sta}.*{cmp}.sem{dva}'):
+    def fetch_syn_by_dir(self, station_code, event_id="", pathname="synthetics",
+                         specfem_fid_template="{net}.{sta}.*{cmp}.sem{dva}"):
         """
-        Synthetic data is saved by event id and model number,
-        give a hardcoded search path to get to the data.
-        If data hasn't been converted to miniseed format,
-        call on a conversion function to get from SPECFEM3D-native ascii to
-        an ObsPy Stream object.
+        Fetch synthetic waveforms from Specfem3D via directory structure on
+        disk, if necessary convert native ASCII format to Stream object.
 
         :type station_code: str
         :param station_code: Station code following SEED naming convention.
@@ -393,7 +375,6 @@ class InternalFetcher:
                 logger.debug(
                     f"stream fetched by event {os.path.basename(filepath)}"
                 )
-
             if len(st) > 0:
                 st.merge()
                 st.trim(starttime=self.origintime - self.config.start_pad,
@@ -410,7 +391,7 @@ class InternalFetcher:
 
     def obs_waveform_fetch(self, station_code):
         """
-        Main waveform fetching function for observation data.
+        Low-level internal fetching function for observation waveform data.
         Will return a FileNotFoundError if no internal data is found.
 
         :type station_code: str
@@ -430,28 +411,28 @@ class InternalFetcher:
                                                 tag=self.config.observed_tag)
             except KeyError:
                 logger.debug("obs internal asdf failed, fetching by dir")
-                # If asdf dataset does not contain data, search internal
+                # If ADSFDataSet does not contain data, search internal
                 # If this is a synthetic-synthetic example, search the waveforms
-                # directory, using the synthetic search
+                # directory, using the synthetic search function
                 if self.config.synthetics_only:
                     logger.debug("synthetics only case, searching for syn data")
                     st_obs = self.fetch_syn_by_dir(station_code,
-                                                   pathname='waveforms'
+                                                   pathname="waveforms"
                                                    )
                 # Else look for observations using SEED convention
                 else:
                     st_obs = self.fetch_obs_by_dir(station_code)
-                self.ds.add_waveforms(waveform=st_obs,
-                                      tag=self.config.observed_tag)
                 return st_obs
         else:
             return self.fetch_obs_by_dir(station_code)
 
     def syn_waveform_fetch(self, station_code):
         """
-        If synthetics are freshly generated from specfem, they should
-        be placed into a folders separated by event id and model iteration.
-        Check if they are already saved into a pyasdf dataset first
+        Low-level internal fetching function for synthetic waveform data.
+
+        Checks if synthetics are already saved into a ASDFDataSet first.
+        If synthetics are freshly generated from Specfem3D, they should have
+        been placed into folders separated by event id and model iteration.
 
         :type station_code: str
         :param station_code: Station code following SEED naming convention.
@@ -470,15 +451,15 @@ class InternalFetcher:
             except KeyError:
                 logger.debug("syn internal asdf failed, fetching by dir")
                 st_syn = self.fetch_syn_by_dir(station_code)
-                self.ds.add_waveforms(waveform=st_syn,
-                                      tag=self.config.synthetic_tag)
                 return st_syn
         else:
             return self.fetch_syn_by_dir(station_code)
 
     def station_fetch(self, station_code):
         """
-        Main station fetching function for observation data.
+        Low-level internal fetching function for station dataless information.
+
+        Search ASDFDataSet for corresponding dataless, else look on disk.
         Will raise a FileNotFoundError if no internal station data is found
 
         :type station_code: str
@@ -497,7 +478,6 @@ class InternalFetcher:
             except (KeyError, AttributeError):
                 logger.debug("internal asdf station ")
                 inv = self.fetch_resp_by_dir(station_code)
-                self.ds.add_stationxml(inv)
                 return inv
         else:
             return self.fetch_resp_by_dir(station_code)
@@ -506,9 +486,12 @@ class InternalFetcher:
 class Gatherer(InternalFetcher, ExternalGetter):
     """
     A mid-level wrapper class used to fetch data internally and externally.
-    Inherets internal and external data gathering from lower level classes.
+    Inherets internal and external data gathering from lower level
+    InternalFetcher and ExternalGetter classes. 
+
+    All saving to ASDFDataSet taken care of by the Gatherer class.
     """
-    def __init__(self, config, ds=None, event_id=None, origintime=None):
+    def __init__(self, config, ds=None, origintime=None):
         """
         :type config: pyatoa.core.config.Config
         :param config: configuration object that contains necessary parameters
@@ -517,51 +500,31 @@ class Gatherer(InternalFetcher, ExternalGetter):
         :param ds: dataset for internal data searching and saving
         """
         self.ds = ds
-        self.event = None
         self.config = config
-        self.Client = Client(self.config.client)
-
-        # Event can be externally gathered by event_id or origin_time
-        self.event_id = event_id
-        if self.event_id is None and self.config.event_id is not None:
-            self.event_id = self.config.event_id
         self.origintime = origintime
-
-    def set_event(self, event):
-        """
-        If event is provided by User, propogate origintime to fetcher and
-        getter classes so they can look for the correct data
-        :type: obspy.core.event.Event
-        :param: event supplied by User
-        """
-        self.event = event
-        self.origintime = self.event.preferred_origin().time
+        self.Client = Client(self.config.client)
 
     def gather_event(self, append_focal_mechanism=True):
         """
-        Get event information, check internally first. Keep the event as an
-        attribute and check if the event has already be retrieved as this
-        only needs to be done once per Pyatoa workflow.
-        Set the event time precision equal to 2 points after the decimal to keep
-        the origin time the same as that saved into the CMTSOLUTION file.
+        Gather an ObsPy Event object by searching disk then querying webservices
+
+        Event need only be retrieved once per Pyatoa workflow.
+
         :type append_focal_mechanism: bool
-        :param append_focal_mechanism: will also run append_focal_mechanism()
+        :param append_focal_mechanism: try to find correspondig focal mechanism.
         :rtype: obspy.core.event.Event
         :return: event retrieved either via internal or external methods
         """
-        # If Gatherer has previously found an event, do nothing
-        if self.event:
-            return self.event
         # If dataset is given, search for event
-        elif self.ds:
+        if self.ds:
             try:
-                self.event = self.asdf_event_fetch()
+                event = self.asdf_event_fetch()
             except (AttributeError, IndexError):
-                self.event = self.event_get()
+                event = self.event_get()
                 if append_focal_mechanism:
-                    self.append_focal_mechanism()
+                    event = self.append_focal_mechanism(event)
                 if self.config.save_to_ds:
-                    self.ds.add_quakeml(self.event)
+                    self.ds.add_quakeml(event)
                     logger.debug(
                         f"event retrieved from client {self.config.client} "
                         f"added to pyasdf dataset"
@@ -570,15 +533,17 @@ class Gatherer(InternalFetcher, ExternalGetter):
                     logger.debug("event not saved")
         # Else, query FDSN for event information
         else:
-            self.event = self.event_get()
+            event = self.event_get()
             if append_focal_mechanism:
-                self.append_focal_mechanism()
+                event = self.append_focal_mechanism(event)
             logger.debug(f"event retrieved from client {self.config.client}")
 
-        return self.event
+        return event
 
-    def append_focal_mechanism(self, overwrite=False):
+    def append_focal_mechanism(self, event, overwrite=False):
         """
+        Attempt to find focal mechanism information with a given Event object.
+
         Focal mechanisms are unforunately not something that is standard to
         store, as calculations differ between regions and agencies.
 
@@ -589,37 +554,43 @@ class Gatherer(InternalFetcher, ExternalGetter):
         This function will perform the conversions and append the necessary
         information to the event located in the dataset.
 
+        :type event: obspy.core.event.Event
+        :param event: Event object to append a focal mechanism to.
         :type overwrite: bool
         :param overwrite: If the event already has a focal mechanism, this will
             overwrite that focal mechanism
         """
-        if isinstance(self.event, Event):
+        if isinstance(event, Event):
             # If the event already has a focal mechanism attribute, don't gather
-            if hasattr(self.event, 'focal_mechanisms') and \
-                    self.event.focal_mechanisms and not overwrite:
-                return
+            if hasattr(event, 'focal_mechanisms') and \
+                    event.focal_mechanisms and not overwrite:
+                return event
             if self.config.client.upper() == "GEONET":
                 # Query GeoNet moment tensor catalog
                 from pyatoa.plugins.new_zealand.gather import \
                                                     geonet_focal_mechanism
-                self.event, _ = geonet_focal_mechanism(
-                    event_id=self.config.event_id, event=self.event
-                )
+                event, _ = geonet_focal_mechanism(event_id=self.config.event_id,
+                                                  event=event
+                                                  )
                 logger.info("appending GeoNet moment tensor to event")
             else:
-                # Try to query GCMT for matching event
                 try:
-                    self.event = get_gcmt_moment_tensor(
-                        origintime=self.event.preferred_origin().time,
-                        magnitude=self.event.preferred_magnitude().mag
+                    # Try to query GCMT web-based catalog for matching event
+                    event = get_gcmt_moment_tensor(
+                        origintime=event.preferred_origin().time,
+                        magnitude=event.preferred_magnitude().mag
                     )
                 except FileNotFoundError:
                     logger.info("No GCMT event found")
+        else:
+            raise NotImplementedError("`event` must be an obspy Event object")
+
+        return event
 
     def gather_station(self, station_code):
         """
-        Get station information, check internally in pyasdf dataset. If empty
-        pyasdf dataset, save station if found
+        Gather station dataless information. Check disk then query webservices.
+        Save station information to ASDFDataSet if requested.
 
         :type station_code: str
         :param station_code: Station code following SEED naming convention.
@@ -644,7 +615,8 @@ class Gatherer(InternalFetcher, ExternalGetter):
 
     def gather_observed(self, station_code):
         """
-        Get waveform as obspy streams, check internally first.
+        Gather observed waveforms as ObsPy streams.
+        Check disk, else query webservice. Save to ASDFDataSet if requested.
 
         :type station_code: str
         :param station_code: Station code following SEED naming convention.
@@ -665,18 +637,23 @@ class Gatherer(InternalFetcher, ExternalGetter):
             except FDSNException:
                 logger.warning("no obs stream can be returned")
                 st_obs = None
-            if (self.ds is not None) and self.config.save_to_ds and (
-                    st_obs is not None):
+        # Save waveforms to ASDFDataSet
+        if (self.ds is not None) and self.config.save_to_ds and (
+                st_obs is not None):
+            # Ignore the ASDFWarning that occurs if data exists in dataset
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore", ASDFWarning):
                 self.ds.add_waveforms(waveform=st_obs,
                                       tag=self.config.observed_tag)
-            else:
-                logger.debug("observed waveforms not being saved")
+        else:
+            logger.debug("observed waveforms not being saved")
 
         return st_obs
 
     def gather_synthetic(self, station_code):
         """
-        Gather synthetic data. Can only be provided internally via fetcher
+        Gather synthetic waveforms as ObsPy streams.
+        Check disk, else query webservice. Save to ASDFDataSet if requested.
 
         :type station_code: str
         :param station_code: Station code following SEED naming convention.
@@ -689,6 +666,13 @@ class Gatherer(InternalFetcher, ExternalGetter):
         """
         try:
             st_syn = self.syn_waveform_fetch(station_code)
+            if (self.ds is not None) and self.config.save_to_ds and (
+                st_syn is not None):
+                # Ignore the ASDFWarning that occurs if data exists in dataset
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore", ASDFWarning):
+                    self.ds.add_waveforms(waveform=st_syn,
+                                          tag=self.config.synthetic_tag)
             return st_syn
         except FileNotFoundError:
             return None
@@ -756,3 +740,4 @@ def get_gcmt_moment_tensor(origintime, magnitude, time_wiggle_sec=120,
     else:
         logger.info("gcmt event found matching criteria")
         return cat_filt[0]
+
