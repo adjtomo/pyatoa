@@ -512,10 +512,10 @@ class Manager:
             )
 
         # Match the number of samples 
-        self.st_obs, self.st_syn = match_npts(st_a=self.st_obs,
-                                              st_b=self.st_syn,
-                                              force=trim_to[standardize_to]
-                                              )
+        self.st_obs, self.st_syn = match_npts(
+            st_a=self.st_obs, st_b=self.st_syn, 
+            force={"obs": "a", "syn": "b"}[standardize_to]
+            )
 
         # Determine if syntheitcs start before the origintime
         if self.event is not None:
