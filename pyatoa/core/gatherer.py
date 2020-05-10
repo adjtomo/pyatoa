@@ -372,9 +372,7 @@ class InternalFetcher:
                 except UnicodeDecodeError:
                     # If the data file is for some reason already in miniseed
                     st += read(filepath)
-                logger.debug(
-                    f"stream fetched by event {os.path.basename(filepath)}"
-                )
+                logger.debug(f"stream fetched by event {filepath}")
             if len(st) > 0:
                 st.merge()
                 st.trim(starttime=self.origintime - self.config.start_pad,
@@ -584,7 +582,6 @@ class Gatherer(InternalFetcher, ExternalGetter):
                     logger.info("No GCMT event found")
         else:
             raise NotImplementedError("`event` must be an obspy Event object")
-
         return event
 
     def gather_station(self, station_code):
@@ -602,16 +599,16 @@ class Gatherer(InternalFetcher, ExternalGetter):
         :return: inventory containing relevant network and stations
         """
         try:
-            return self.station_fetch(station_code)
+            inv = self.station_fetch(station_code)
         except FileNotFoundError:
             logger.debug(
                 "internal station information not found, searching ext.")
             inv = self.station_get(station_code)
-            if self.ds is not None and self.config.save_to_ds:
-                self.ds.add_stationxml(inv)
-            else:
-                logger.debug("station information is not being saved")
-            return inv
+        if (self.ds is not None) and self.config.save_to_ds:
+            self.ds.add_stationxml(inv)
+        else:
+            logger.debug("station information is not being saved")
+        return inv
 
     def gather_observed(self, station_code):
         """
@@ -647,7 +644,6 @@ class Gatherer(InternalFetcher, ExternalGetter):
                                       tag=self.config.observed_tag)
         else:
             logger.debug("observed waveforms not being saved")
-
         return st_obs
 
     def gather_synthetic(self, station_code):
