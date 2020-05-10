@@ -208,7 +208,7 @@ class Manager:
             if isinstance(st_, obspy.Stream) and len(st_):
                 len_ = len(st_)
                 filt_ = (
-                        hasattr(self.st_obs[0].stats, "processing") and
+                        hasattr(st_[0].stats, "processing") and
                         ("filter(options" in "".join(st_[0].stats.processing))
                 )
             return len_, filt_
