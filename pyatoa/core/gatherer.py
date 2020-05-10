@@ -604,6 +604,7 @@ class Gatherer(InternalFetcher, ExternalGetter):
             logger.debug(
                 "internal station information not found, searching ext.")
             inv = self.station_get(station_code)
+
         if (self.ds is not None) and self.config.save_to_ds:
             self.ds.add_stationxml(inv)
         else:

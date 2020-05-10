@@ -27,7 +27,7 @@ class Config:
                  pyflex_preset="default", component_list=None,
                  adj_src_type="cc_traveltime_misfit", start_pad=20, end_pad=500,
                  synthetic_unit="DISP", observed_tag="observed",
-                 synthetic_tag="synthetic_{m}{s}", synthetics_only=False,
+                 synthetic_tag="synthetic", synthetics_only=False,
                  win_amp_ratio=0., map_corners=None, cfgpaths=None,
                  save_to_ds=True, **kwargs):
         """
@@ -110,8 +110,9 @@ class Config:
         self.observed_tag = observed_tag
 
         # Tag synthetics based on model number and step count if given
-        self.synthetic_tag = synthetic_tag.format(m=self.model or "default",
-                                                  s=self.step or "")
+        self.synthetic_tag = synthetic_tag
+        if self.model:
+            self.synthetic_tag += f"_{self.model}{self.step or ''}"
 
         self.pyflex_preset = pyflex_preset
         self.adj_src_type = adj_src_type
