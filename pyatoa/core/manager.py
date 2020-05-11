@@ -594,7 +594,7 @@ class Manager:
             defaults to both
         """
         try:
-            moment_tensor = self.event.focal_mechanisms[0].moment_tensor
+            moment_tensor = self.event.preferred_focal_mechanism().moment_tensor
             self._half_dur = moment_tensor.source_time_function.duration / 2
             if which.lower() in ["syn", "both"]:
                 self.st_syn = stf_convolve(st=self.st_syn,

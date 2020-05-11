@@ -422,13 +422,13 @@ class Inspector(Gadget):
             length of windows in seconds (length_s)
         """
         group_list = ["model", "step", "length_s"]
-        if level == "station":
-            group_list.insert(2, "station")
+        if level in ["station", "event"]:
+            group_list.insert(2, level)
         elif level == "step":
             pass
         else:
             raise TypeError(
-                "nwin() argument 'level' must be 'station' or 'step'")
+                "nwin() argument 'level' must be 'station', 'event', 'step'")
 
         windows = self.windows.loc[:, tuple(group_list)]
         windows.sort_values(group_list, inplace=True)
@@ -449,32 +449,49 @@ class Inspector(Gadget):
         :rtype: dict
         :return: total misfit for each model in the class
         """
-        group_list = ["model", "step", "event", "misfit"]
-
+        # Various levels to sort the misfit by
+        group_list = ["model", "step", "event", "station", "component", 
+                      "misfit"]
         misfits = self.windows.loc[:, tuple(group_list)]
-        group = misfits.groupby(group_list[:-1]).misfit
-        df = pd.concat([group.sum().rename("unscaled_misfit"),
-                        group.apply(len).rename("n_win")], axis=1)
 
-        # Event misfit function a la Tape et al. (2010) Eq. 6
-        df["misfit"] = df.apply(
-            lambda row: row.unscaled_misfit / (2 * row.n_win), axis=1
-        )
-        if level == "event":
+        # Count the number of windows on a per station basis
+        nwin = misfits.groupby(
+                group_list[:-1]).misfit.apply(len).rename("n_win")
+
+        # Misfit is unique per component, not window, drop repeat components
+        misfits.drop_duplicates(subset=group_list[:-1], keep="first", 
+                                inplace=True)
+
+        # Group misfit and window on a per station basis, collect together
+        nwin = nwin.groupby(group_list[:-2]).sum()
+        misfits = misfits.groupby(
+                group_list[:-2]).misfit.sum().rename("unscaled_misfit")
+        df = pd.concat([misfits, nwin], axis=1)
+
+        # No formal definition of station misfit (?), return unscaled misfit
+        if level == "station":
             pass
-        elif level == "step":
-            # Sum the event misfits if step-wise misfit is requested
-            misfits = df.loc[:, "misfit"]
-            group = misfits.groupby(["model", "step"])
-            df = pd.concat([group.apply(len).rename("n_event"),
-                            group.sum().rename("summed_misfit")], axis=1)
-            # Misfit function a la Tape et al. (2010) Eq. 7
+        # Event misfit function defined by Tape et al. (2010) Eq. 6
+        elif level in ["event", "step"]:
+            # Group misfits to the event level and sum together windows, misfit
+            df = df.groupby(group_list[:3]).sum() 
             df["misfit"] = df.apply(
-                lambda row: row.summed_misfit / row.n_event, axis=1
+                lambda row: row.unscaled_misfit / (2 * row.n_win), axis=1
             )
-            df.drop(labels="summed_misfit", axis=1)
+            if level == "step":
+                # Sum the event misfits if step-wise misfit is requested
+                misfits = df.loc[:, "misfit"]
+                group = misfits.groupby(["model", "step"])
+                df = pd.concat([group.apply(len).rename("n_event"),
+                                group.sum().rename("summed_misfit")], axis=1)
+                # Misfit function a la Tape et al. (2010) Eq. 7
+                df["misfit"] = df.apply(
+                    lambda row: row.summed_misfit / row.n_event, axis=1
+                )
+                df.drop(labels="summed_misfit", axis=1)
         else:
-            raise NotImplementedError("level must be 'event' or 'step'")
+            raise NotImplementedError(
+                "level must be 'station', 'event' or 'step'")
 
         return df
 
