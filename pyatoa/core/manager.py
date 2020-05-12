@@ -13,7 +13,7 @@ from obspy.signal.filter import envelope
 
 from pyatoa import logger
 from pyatoa.core.config import Config
-from pyatoa.core.gatherer import Gatherer, NoDataException
+from pyatoa.core.gatherer import Gatherer, GathererNoDataException
 
 from pyatoa.utils.asdf.fetch import windows_from_ds
 from pyatoa.utils.weights import window_by_amplitude
@@ -91,7 +91,6 @@ class Manager:
             self.config = None
         self.ds = ds
         self.gatherer = gatherer
-        self.station_code = station_code
         self.inv = inv
         # Copy Streams to avoid affecting original data
         if st_obs is not None:
@@ -314,17 +313,16 @@ class Manager:
             write out all the internal data of the manager to a path
         """
         if write_to == "ds":
-            # Only populate if all requisite parts are given
             if self.event:
                 try:
                     self.ds.add_quakeml(self.event)
                 except ValueError:
-                    logger.warning("event already present, not added")
+                    logger.warning("Event already present, not added")
             if self.inv:
                 try:
                     self.ds.add_stationxml(self.inv)
                 except TypeError:
-                    logger.warning("inv already present, not added")
+                    logger.warning("StationXML already present, not added")
             # PyASDF has its own warnings if waveform data already present
             if self.st_obs:
                 self.ds.add_waveforms(waveform=self.st_obs,
@@ -450,29 +448,29 @@ class Manager:
         # Default to gathering all data.
         if choice is None:
             choice = ["st_obs", "inv", "st_syn"]
-        if self.gatherer is None:
-            self.setup()
         try:
-            self.station_code = station_code
+            if self.gatherer is None:
+                # Instantiate Gatherer and retrieve Event information
+                self.setup()
+
             logger.info(f"gathering {station_code} for {self.config.event_id}")
-            # Gather all data
             if "st_obs" in choice:
-                logger.debug("gathering observation waveforms")
+                # Ensure observed waveforms gathered first, as if this fails
+                # then there is no point to gathering the rest
                 self.st_obs = self.gatherer.gather_observed(station_code)
-            if self.st_obs is not None:
-                if "inv" in choice:
-                    logger.debug("gathering station information")
-                    self.inv = self.gatherer.gather_station(station_code)
-                if "st_syn" in choice:
-                    logger.debug("gathering synthetic waveforms")
-                    self.st_syn = self.gatherer.gather_synthetic(station_code)
-                return self 
-            else:
-                raise ManagerError("No observation data")
-        # Catch any general GathererErrors, redirect as ManagerError
-        except NoDataException as e:
-            raise ManagerError("No data found internal or external") from e
+            if "inv" in choice:
+                self.inv = self.gatherer.gather_station(station_code)
+            if "st_syn" in choice:
+                self.st_syn = self.gatherer.gather_synthetic(station_code)
+                
+            return self 
+        except GathererNoDataException as e:
+            # Catch the Gatherer exception and redirect as ManagerError 
+            # so that it can be caught by flow()
+            raise ManagerError("Data gatherer could not find some data") from e
         except Exception as e:
+            # Gathering should be robust, but if something slips through, dont
+            # let it kill a workflow, display and raise ManagerError
             traceback.print_exc()
             raise ManagerError("Uncontrolled error in data gathering") from e
 

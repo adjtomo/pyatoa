@@ -380,8 +380,9 @@ class Gadget:
                          linewidth=2, markersize=8, zorder=100
                          )
                 start = end
-
             ax1.set_xlabel("Iteration", fontsize=fontsize)
+            ax1.set_xticks(np.arange(0, end, 5))
+            ax1.set_xticks(np.arange(0, end, 1), minor=True)
 
         # Plot by the final accepted misfit per model
         elif choice == "by_model":
@@ -414,8 +415,6 @@ class Gadget:
         ax2.ticklabel_format(style="sci", axis="y", scilimits=(0, 0))
 
         # Only set ticks on the x-axis
-        ax1.set_xticks(np.arange(0, end, 5))
-        ax1.set_xticks(np.arange(0, end, 1), minor=True)
         ax1.xaxis.grid(True, which="minor", linestyle=":")
         ax1.xaxis.grid(True, which="major", linestyle="-")
 
