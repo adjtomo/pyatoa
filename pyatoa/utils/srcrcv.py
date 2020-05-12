@@ -2,6 +2,7 @@
 Functions used in determining information related to sources and receivers,
 or their corresponding representations in ObsPy
 """
+import warnings
 import numpy as np
 from obspy.geodetics import gps2dist_azimuth
 from obspy.core.event.source import Tensor
@@ -280,7 +281,12 @@ def sort_by_backazimuth(ds, clockwise=True):
     station_names, list_of_baz = [], []
     event = ds.events[0]
     for sta_name in ds.waveforms.list():
-        sta = ds.waveforms[sta_name].StationXML[0][0]
+        try:
+            sta = ds.waveforms[sta_name].StationXML[0][0]
+        except AttributeError:
+            warnings.warn(f"station {sta_name} has no attribute StationXML",
+                          UserWarning)
+            continue
         station_names.append(sta_name)
 
         _, baz = gcd_and_baz(event, sta)
