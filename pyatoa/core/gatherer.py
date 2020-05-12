@@ -26,6 +26,14 @@ from pyatoa.utils.calculate import overlapping_days
 from pyatoa.utils.srcrcv import merge_inventories
 
 
+class NoDataException(Exception):
+    """
+    Custom exception to be thrown generally to Manager class in the case that
+    gathering of any data fails.
+    """
+    pass
+
+
 class ExternalGetter:
     """
     Low-level gathering classs to retrieve data via FDSN webservices.
@@ -40,7 +48,7 @@ class ExternalGetter:
         :return event: event object
         """
         event = None
-        logger.debug(f"fetching event from {self.config.client}")
+        logger.debug(f"querying event from {self.config.client}")
         if self.config.event_id is not None:
             # Get events via event id, only available through certain clients
             try:
@@ -66,6 +74,7 @@ class ExternalGetter:
                                f"may be required."
                                )
                 event = event[0]
+        logger.debug("event retrieved from {self.config.client}")
         return event
 
     def station_get(self, station_code, level="response"):
@@ -84,17 +93,21 @@ class ExternalGetter:
         :rtype: obspy.core.inventory.Inventory
         :return: inventory containing relevant network and stations
         """
-        logger.debug(f"fetching station from {self.config.client}")
+        logger.debug(f"querying StationXML from {self.config.client}")
         net, sta, loc, cha = station_code.split('.')
-        return self.Client.get_stations(
+        inv = self.Client.get_stations(
             network=net, station=sta, location=loc, channel=cha,
             starttime=self.origintime - self.config.start_pad,
             endtime=self.origintime + self.config.end_pad, level=level
         )
+        logger.debug("StationXML retrieved from {self.config.client}")
+        return inv
 
     def waveform_get(self, station_code):
         """
         Call for ObsPy FDSN client to download waveform data.
+        
+        raises FDSNException if no data found.
 
         Note:
             ObsPy sometimes returns traces with varying sample lengths,
@@ -110,7 +123,7 @@ class ExternalGetter:
         :rtype stream: obspy.core.stream.Stream
         :return stream: waveform contained in a stream
         """
-        logger.debug(f"fetching observations from {self.config.client}")
+        logger.debug(f"querying obs data from {self.config.client}")
 
         net, sta, loc, cha = station_code.split('.')
         st = self.Client.get_waveforms(
@@ -123,7 +136,7 @@ class ExternalGetter:
         st.trim(starttime=self.origintime - self.config.start_pad,
                 endtime=self.origintime + self.config.end_pad)
 
-        logger.debug(f"stream got external {station_code}")
+        logger.debug(f"obs data retrieved from {self.config.client}")
         return st
 
 
@@ -306,7 +319,7 @@ class InternalFetcher:
             for fid in pathlist:
                 for filepath in glob.glob(fid):
                     st += read(filepath)
-                    logger.debug(f"stream fetched from directory {filepath}")
+                    logger.debug(f"obs data found at {filepath}")
             if len(st) > 0:
                 # Take care of gaps in data by converting to masked data
                 st.merge()
@@ -316,7 +329,7 @@ class InternalFetcher:
                 return st
         else:
             logger.debug(
-                f"no waveforms found for {station_code} for given directories"
+                f"no obs data for {station_code} in local filesystem"
             )
             raise FileNotFoundError()
 
@@ -404,16 +417,15 @@ class InternalFetcher:
         if self.ds:
             try:
                 # Search the given asdf dataset first
-                logger.debug("fetching obs internal asdf")
+                logger.debug("searching for obs streams in ASDFDataSet")
                 return self.asdf_waveform_fetch(station_code,
                                                 tag=self.config.observed_tag)
             except KeyError:
-                logger.debug("obs internal asdf failed, fetching by dir")
+                logger.debug("nothing in dataset, searching local filesystem")
                 # If ADSFDataSet does not contain data, search internal
                 # If this is a synthetic-synthetic example, search the waveforms
                 # directory, using the synthetic search function
                 if self.config.synthetics_only:
-                    logger.debug("synthetics only case, searching for syn data")
                     st_obs = self.fetch_syn_by_dir(station_code,
                                                    pathname="waveforms"
                                                    )
@@ -519,16 +531,14 @@ class Gatherer(InternalFetcher, ExternalGetter):
                 event = self.asdf_event_fetch()
             except (AttributeError, IndexError):
                 event = self.event_get()
+
                 if append_focal_mechanism:
                     event = self.append_focal_mechanism(event)
                 if self.config.save_to_ds:
                     self.ds.add_quakeml(event)
                     logger.debug(
-                        f"event retrieved from client {self.config.client} "
                         f"added to pyasdf dataset"
                     )
-                else:
-                    logger.debug("event not saved")
         # Else, query FDSN for event information
         else:
             event = self.event_get()
@@ -603,12 +613,14 @@ class Gatherer(InternalFetcher, ExternalGetter):
         except FileNotFoundError:
             logger.debug(
                 "internal station information not found, searching ext.")
-            inv = self.station_get(station_code)
+            try:
+                inv = self.station_get(station_code)
+            except FDSNException:
+                logger.warning("no StationXML for {station_code} found")
 
         if (self.ds is not None) and self.config.save_to_ds:
+            logger.debug("saving StationXML to ASDFDataSet")
             self.ds.add_stationxml(inv)
-        else:
-            logger.debug("station information is not being saved")
         return inv
 
     def gather_observed(self, station_code):
@@ -628,23 +640,22 @@ class Gatherer(InternalFetcher, ExternalGetter):
         try:
             st_obs = self.obs_waveform_fetch(station_code)
         except FileNotFoundError:
-            logger.debug("no internal obs data, searching external")
             try:
                 st_obs = self.waveform_get(station_code)
             # Catch all FDSN Exceptions
             except FDSNException:
-                logger.warning("no obs stream can be returned")
+                logger.warning("no obs data for {station_code} found")
                 st_obs = None
+
         # Save waveforms to ASDFDataSet
         if (self.ds is not None) and self.config.save_to_ds and (
                 st_obs is not None):
+            logger.debug("saving obs stream to ASDFDataSet")
             # Ignore the ASDFWarning that occurs if data exists in dataset
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore", ASDFWarning)
                 self.ds.add_waveforms(waveform=st_obs,
                                       tag=self.config.observed_tag)
-        else:
-            logger.debug("observed waveforms not being saved")
         return st_obs
 
     def gather_synthetic(self, station_code):

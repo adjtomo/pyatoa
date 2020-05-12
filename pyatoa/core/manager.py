@@ -13,7 +13,7 @@ from obspy.signal.filter import envelope
 
 from pyatoa import logger
 from pyatoa.core.config import Config
-from pyatoa.core.gatherer import Gatherer
+from pyatoa.core.gatherer import Gatherer, NoDataException
 
 from pyatoa.utils.asdf.fetch import windows_from_ds
 from pyatoa.utils.weights import window_by_amplitude
@@ -431,6 +431,9 @@ class Manager:
     def gather(self, station_code, choice=None):
         """
         Gather station dataless and waveform data using the Gatherer class.
+        In order collect observed waveforms, dataless, and finally synthetics.
+
+        If any part of gathering fails, raise ManagerError
 
         :type station_code: str
         :param station_code: Station code following SEED naming convention.
@@ -446,27 +449,29 @@ class Manager:
         """
         # Default to gathering all data.
         if choice is None:
-            choice = ["inv", "st_obs", "st_syn"]
+            choice = ["st_obs", "inv", "st_syn"]
         if self.gatherer is None:
             self.setup()
         try:
             self.station_code = station_code
             logger.info(f"gathering {station_code} for {self.config.event_id}")
             # Gather all data
-            if "inv" in choice:
-                logger.debug("gathering station information")
-                self.inv = self.gatherer.gather_station(station_code)
             if "st_obs" in choice:
                 logger.debug("gathering observation waveforms")
                 self.st_obs = self.gatherer.gather_observed(station_code)
-            if "st_syn" in choice:
-                logger.debug("gathering synthetic waveforms")
-                self.st_syn = self.gatherer.gather_synthetic(station_code)
-            return self
-        # This exception is thrown if no Obsered data can be found, which means
-        # the workflow cannot proceed
-        except obspy.clients.fdsn.header.FDSNNoDataException:
-            raise ManagerError("No data found internal or external")
+            if self.st_obs is not None:
+                if "inv" in choice:
+                    logger.debug("gathering station information")
+                    self.inv = self.gatherer.gather_station(station_code)
+                if "st_syn" in choice:
+                    logger.debug("gathering synthetic waveforms")
+                    self.st_syn = self.gatherer.gather_synthetic(station_code)
+                return self 
+            else:
+                raise ManagerError("No observation data")
+        # Catch any general GathererErrors, redirect as ManagerError
+        except NoDataException as e:
+            raise ManagerError("No data found internal or external") from e
         except Exception as e:
             traceback.print_exc()
             raise ManagerError("Uncontrolled error in data gathering") from e
