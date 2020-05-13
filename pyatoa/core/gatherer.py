@@ -22,6 +22,7 @@ from obspy.clients.fdsn.header import FDSNException
 
 from pyatoa import logger
 from pyatoa.utils.read import read_ascii
+from pyatoa.utils.form import event_name
 from pyatoa.utils.calculate import overlapping_days
 from pyatoa.utils.srcrcv import merge_inventories
 
@@ -103,7 +104,6 @@ class ExternalGetter:
                 starttime=self.origintime - self.config.start_pad,
                 endtime=self.origintime + self.config.end_pad, level=level
             )
-            logger.debug(f"retrieved from {self.config.client}")
             return inv
         except FDSNException:
             return None
@@ -140,7 +140,6 @@ class ExternalGetter:
             # we retrieve +/-10 seconds and then cut down
             st.trim(starttime=self.origintime - self.config.start_pad,
                     endtime=self.origintime + self.config.end_pad)
-            logger.debug(f"retrieved from {self.config.client}")
             return st
         except FDSNException:
             return None
@@ -166,11 +165,16 @@ class InternalFetcher:
 
         Raises AttributeError if no Event attribute in ASDFDataSet
 
+        TO DO: Remove the logger statement, and write corresponding functions
+            1) fetch_event_by_dir: search for QuakeML or CMTSOLUTION files
+            2) event_fetch: calls this function and (1) in succession 
+
         :rtype event: obspy.core.event.Event
         :return event: event object
         """
         event = self.ds.events[0]
         self.origintime = event.preferred_origin().time
+        logger.debug(f"matching event found: {event_name(event=event)}")
         return event
 
     def asdf_station_fetch(self, station_code):
@@ -537,7 +541,7 @@ class Gatherer(InternalFetcher, ExternalGetter):
             raise GathererNoDataException(f"no Event information found for "
                                           f"{self.config.event_id}")
         else:
-            logger.debug("matching event found")
+            logger.debug(f"matching event found: {event_name(event=event)}")
             # Append extra information and save event before returning
             if append_focal_mechanism:
                 event = self.append_focal_mechanism(event)
@@ -604,18 +608,24 @@ class Gatherer(InternalFetcher, ExternalGetter):
         :rtype: obspy.core.inventory.Inventory
         :return: inventory containing relevant network and stations
         """
-        logger.debug("gathering StationXML")
+        logger.info("gathering StationXML")
         inv = self.station_fetch(station_code)
         if inv is None:
             inv = self.station_get(station_code)
+            new_data = True
             if inv is None:
                 raise GathererNoDataException(
                     f"no StationXML for {station_code} found"
                     )
-        logger.debug("matching StationXML found")
+        logger.info("matching StationXML found")
         if (self.ds is not None) and self.config.save_to_ds:
-            self.ds.add_stationxml(inv)
-            logger.debug("saved StationXML into ASDFDataSet")
+            # !!! This is a temp fix for PyASDF 0.6.1 where re-adding StationXML 
+            # !!! that contains comments throws a TypeError. Will raise an issue
+            try: 
+                self.ds.add_stationxml(inv)
+                logger.info("saved to ASDFDataSet")
+            except TypeError:
+                pass
 
         return inv
 
@@ -633,7 +643,7 @@ class Gatherer(InternalFetcher, ExternalGetter):
         :rtype: obspy.core.stream.Stream
         :return: stream object containing relevant waveforms
         """
-        logger.debug("gathering observed waveforms")
+        logger.info("gathering observed waveforms")
         st_obs = self.obs_waveform_fetch(station_code)
         if st_obs is None:
             st_obs = self.obs_waveform_get(station_code)
@@ -641,15 +651,18 @@ class Gatherer(InternalFetcher, ExternalGetter):
                 raise GathererNoDataException(
                     f"no observed waveforms for {station_code} found"
                     )
-        logger.debug("matching observed waveforms found")
+        logger.info("matching observed waveforms found")
         if (self.ds is not None) and self.config.save_to_ds:
-            # Ignore the ASDFWarning that occurs if data exists in dataset
+            # Catch ASDFWarning that occurs when data already exists
             with warnings.catch_warnings():
-                warnings.simplefilter("ignore", ASDFWarning)
-                self.ds.add_waveforms(waveform=st_obs,
-                                      tag=self.config.observed_tag)
-            logger.debug(f"saved to ASDFDataSet with tag "
-                         f"'{self.config.observed_tag}")
+                warnings.filterwarnings("error")
+                try:
+                    self.ds.add_waveforms(waveform=st_obs,
+                                          tag=self.config.observed_tag)
+                    logger.info(f"saved to ASDFDataSet with tag "
+                                 f"'{self.config.observed_tag}'")
+                except ASDFWarning:
+                    pass
 
         return st_obs
 
@@ -669,21 +682,25 @@ class Gatherer(InternalFetcher, ExternalGetter):
         :rtype: obspy.core.stream.Stream
         :return: stream object containing relevant waveforms
         """
-        logger.debug("gathering synthetic waveforms")
+        logger.info("gathering synthetic waveforms")
         st_syn = self.syn_waveform_fetch(station_code)
         if st_syn is None:
             raise GathererNoDataException(f"no synthetic waveforms found "
                                           f"for {station_code}"
                                           )
-        logger.debug("matching synthetic waveforms found")
+        logger.info("matching synthetic waveforms found")
         if (self.ds is not None) and self.config.save_to_ds:
-            # Ignore the ASDFWarning that occurs if data exists in dataset
+            # Catch ASDFWarning that occurs when data already exists
             with warnings.catch_warnings():
-                warnings.simplefilter("ignore", ASDFWarning)
-                self.ds.add_waveforms(waveform=st_syn,
-                                      tag=self.config.synthetic_tag)
-            logger.debug(f"saved to ASDFDataSet with tag "
-                         f"'{self.config.synthetic_tag}")               
+                warnings.filterwarnings("error")
+                try:
+                    self.ds.add_waveforms(waveform=st_syn,
+                                          tag=self.config.synthetic_tag)
+                    logger.info(f"saved to ASDFDataSet with tag "
+                                 f"'{self.config.synthetic_tag}'")               
+                except ASDFWarning:
+                    pass
+
         return st_syn
 
 
