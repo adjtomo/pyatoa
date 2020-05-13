@@ -326,7 +326,6 @@ class Pyaflowa:
         # Loop through stations and invoke Pyatoa workflow
         for net in inv:
             for sta in net:
-                logger.info(f"{net.code}.{sta.code}")
                 try:
                     processed += mgmt.flow(
                             station_code=f"{net.code}.{sta.code}.*.HH*",

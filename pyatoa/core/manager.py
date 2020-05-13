@@ -270,7 +270,6 @@ class Manager:
 
         # Launch or reset the Gatherer
         if self.gatherer is None:
-            logger.info("initiating Gatherer")
             self.gatherer = Gatherer(config=self.config, ds=self.ds)
 
         # Determine event information
@@ -421,6 +420,7 @@ class Manager:
             self.measure()
             processed = True
         except ManagerError as e:
+            # Catch general warnings and print to log with trace stack
             logger.warning(e)
 
         # 1 if workflow finished successfully, 0 if failure
@@ -452,8 +452,8 @@ class Manager:
             if self.gatherer is None:
                 # Instantiate Gatherer and retrieve Event information
                 self.setup()
-
-            logger.info(f"gathering {station_code} for {self.config.event_id}")
+            net, sta, loc, cha = station_code.split(".")
+            logger.info(f"gathering data for {station_code}")
             if "st_obs" in choice:
                 # Ensure observed waveforms gathered first, as if this fails
                 # then there is no point to gathering the rest
@@ -467,11 +467,11 @@ class Manager:
         except GathererNoDataException as e:
             # Catch the Gatherer exception and redirect as ManagerError 
             # so that it can be caught by flow()
-            raise ManagerError("Data gatherer could not find some data") from e
+            raise ManagerError("data gatherer could not find some data") from e
         except Exception as e:
             # Gathering should be robust, but if something slips through, dont
             # let it kill a workflow, display and raise ManagerError
-            traceback.print_exc()
+            logger.warning(e, exc_info=True)
             raise ManagerError("Uncontrolled error in data gathering") from e
 
     def standardize(self, force=False, standardize_to="syn"):
