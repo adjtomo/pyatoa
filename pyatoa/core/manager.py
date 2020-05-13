@@ -394,9 +394,10 @@ class Manager:
 
     def flow(self, station_code, fix_windows=False, preprocess_overwrite=None):
         """
-        A convenience function to run the full workflow with check stops in 
-        between each function to stop the workflow if any internal function 
-        returns a negative status.
+        A convenience function to run the full workflow with a single command.
+
+        Will raise ManagerError for controlled exceptions meaning workflow 
+        cannot continue. Sucessful workflow returns 1.
 
         :type station_code: str
         :param station_code: Station code following SEED naming convention.
@@ -410,21 +411,15 @@ class Manager:
         :type preprocess_overwrite: function
         :param preprocess_overwrite: overwrite the core preprocess functionality
         """
-        processed = False
         self.reset()
-        try:
-            self.gather(station_code=station_code)
-            self.standardize()
-            self.preprocess(overwrite=preprocess_overwrite)
-            self.window(fix_windows=fix_windows)
-            self.measure()
-            processed = True
-        except ManagerError as e:
-            # Catch general warnings and print to log with trace stack
-            logger.warning(e)
-
-        # 1 if workflow finished successfully, 0 if failure
-        return int(processed)
+        self.gather(station_code=station_code)
+        self.standardize()
+        self.preprocess(overwrite=preprocess_overwrite)
+        self.window(fix_windows=fix_windows)
+        self.measure()
+        
+        # Sucessful workflow
+        return 1
 
     def gather(self, station_code, choice=None):
         """

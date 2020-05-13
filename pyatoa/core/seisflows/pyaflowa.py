@@ -332,21 +332,25 @@ class Pyaflowa:
                             preprocess_overwrite=overwrite,
                             fix_windows=fix_windows
                             )
-                    if self.plot_wav:
-                        mgmt.plot(save=oj(paths["figures"], f"wav_{sta.code}"),
-                                  show=False, return_figure=False
-                                  )
-                    if self.plot_map:
-                        # Only plot maps once since they won't change
-                        map_fid = oj(paths["maps"], f"map_{sta.code}.png")
-                        if not os.path.exists(map_fid):
-                            mgmt.srcrcvmap(stations=inv, show=False,
-                                           save=map_fid)
-                except pyatoa.ManagerError:
+                except pyatoa.ManagerError as e:
+                    logger.warning(e)
                     continue
-                except Exception:
-                    traceback.print_exc()
+                except Exception as e:
+                    logger.warning(e, exc_info=True)
                     continue
+
+                # Only make plots if the full processing was completed
+                if self.plot_wav:
+                    mgmt.plot(save=oj(paths["figures"], f"wav_{sta.code}"),
+                              show=False, return_figure=False
+                              )
+                if self.plot_map:
+                    # Only plot maps once since they won't change
+                    map_fid = oj(paths["maps"], f"map_{sta.code}.png")
+                    if not os.path.exists(map_fid):
+                        mgmt.srcrcvmap(stations=inv, show=False,
+                                       save=map_fid)
+
         logger.info(f"Pyaflowa processed {processed} stations")
         return bool(processed)
 
