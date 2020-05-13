@@ -270,7 +270,6 @@ class Manager:
 
         # Launch or reset the Gatherer
         if self.gatherer is None:
-            logger.info("initiating Gatherer")
             self.gatherer = Gatherer(config=self.config, ds=self.ds)
 
         # Determine event information
@@ -421,7 +420,8 @@ class Manager:
             self.measure()
             processed = True
         except ManagerError as e:
-            logger.warning(e)
+            # Catch general warnings and print to log with trace stack
+            logger.warning(e, exc_info=True)
 
         # 1 if workflow finished successfully, 0 if failure
         return int(processed)
@@ -467,7 +467,7 @@ class Manager:
         except GathererNoDataException as e:
             # Catch the Gatherer exception and redirect as ManagerError 
             # so that it can be caught by flow()
-            raise ManagerError("Data gatherer could not find some data") from e
+            raise ManagerError("data gatherer could not find some data") from e
         except Exception as e:
             # Gathering should be robust, but if something slips through, dont
             # let it kill a workflow, display and raise ManagerError
