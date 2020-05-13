@@ -941,9 +941,6 @@ class Manager:
         if not isinstance(self.inv, obspy.Inventory):
             logger.warning("no inventory given, plotting blank map")
 
-        if map_corners is None:
-            map_corners = self.config.map_corners
-
         # Call external function to generate map
         f = manager_map(map_corners=map_corners, inv=self.inv, 
                         event=self.event, stations=stations, 

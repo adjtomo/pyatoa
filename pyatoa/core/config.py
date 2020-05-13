@@ -28,8 +28,7 @@ class Config:
                  adj_src_type="cc_traveltime_misfit", start_pad=20, end_pad=500,
                  synthetic_unit="DISP", observed_tag="observed",
                  synthetic_tag="synthetic", synthetics_only=False,
-                 win_amp_ratio=0., map_corners=None, cfgpaths=None,
-                 save_to_ds=True, **kwargs):
+                 win_amp_ratio=0., cfgpaths=None, save_to_ds=True, **kwargs):
         """
         Allows the user to control the parameters of the workflow, including:
         setting the Config objects for Pyflex and Pyadjoint, and the paths for
@@ -116,7 +115,6 @@ class Config:
 
         self.pyflex_preset = pyflex_preset
         self.adj_src_type = adj_src_type
-        self.map_corners = map_corners
         self.synthetics_only = synthetics_only
         self.win_amp_ratio = win_amp_ratio
         self.start_pad = int(start_pad)
@@ -153,14 +151,13 @@ class Config:
         Separate into similar labels for easier reading.
         """
         key_dict = {"Config": ["model", "step", "event_id"],
-                    "Gather": ["client", "start_pad", "end_pad"],
+                    "Gather": ["client", "start_pad", "end_pad", "save_to_ds"],
                     "Process": ["min_period", "max_period", "filter_corners",
                                 "unit_output", "synthetic_unit",
                                 "rotate_to_rtz", "win_amp_ratio",
                                 "synthetics_only"],
                     "Labels": ["component_list", "observed_tag",
                                "synthetic_tag", "cfgpaths"],
-                    "Misc.": ["save_to_ds", "map_corners"],
                     "External": ["pyflex_preset", "adj_src_type",
                                  "pyflex_config", "pyadjoint_config"
                                  ]
@@ -184,17 +181,6 @@ class Config:
         # Check period range is acceptable
         assert(self.min_period < self.max_period), \
             "min_period must be less than max_period"
-
-        # Check that the map corners is a dict and contains proper keys
-        if self.map_corners is not None:
-            assert(isinstance(self.map_corners, dict)), \
-                "map_corners must be a dictionary object"
-            acceptable_keys = ['lat_min', 'lat_max', 'lon_min', 'lon_max']
-            for key in self.map_corners.keys():
-                assert(key in acceptable_keys), "key should be in {}".format(
-                    acceptable_keys)
-        else:
-            self.map_corners = None
 
         # Check if unit output properly set, dictated by ObsPy units
         acceptable_units = ['DISP', 'VEL', 'ACC']
@@ -353,14 +339,6 @@ class Config:
                 attrs[key] = ''
 
         attrs["creation_time"] = str(UTCDateTime())
-
-        # Auxiliary data can't take dictionaries so convert to lists, variables
-        attrs["map_corners"] = [self.map_corners['lat_min'],
-                                self.map_corners['lat_max'],
-                                self.map_corners['lon_min'],
-                                self.map_corners['lon_max']
-                                ]
-
         attrs["cfgpaths_waveforms"] = self.cfgpaths["waveforms"]
         attrs["cfgpaths_synthetics"] = self.cfgpaths["synthetics"]
         attrs["cfgpaths_responses"] = self.cfgpaths["responses"]
@@ -464,13 +442,6 @@ class Config:
         for key, item in cfgin.items():
             if "cfgpaths" in key:
                 cfgpaths[key.split('_')[1]] = item.any() or []
-            elif key == "map_corners":
-                map_corners = {'lat_min': item[0].item(),
-                               'lat_max': item[1].item(),
-                               'lon_min': item[2].item(),
-                               'lon_max': item[3].item()
-                               }
-                setattr(self, key, map_corners)
             else:
                 # Convert numpy objects into native python objects to avoid
                 # any confusion when reading from ASDF format
