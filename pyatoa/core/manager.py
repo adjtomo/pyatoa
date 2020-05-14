@@ -116,7 +116,7 @@ class Manager:
         self._half_dur = 0
         # Internal flags for workflow status
         self._dataset_id = None
-        self._event_name = None
+        self._event_resource_id = None
         self._inv_name = None
         self._standardize_flag = False
         self._obs_filter_flag = False
@@ -128,6 +128,8 @@ class Manager:
         else:
             # If 'empty' or no event, dont launch gatherer, event is None
             self.event = None
+        # Run internal checks on data
+        self._check()
 
     def __str__(self):
         """
@@ -136,7 +138,7 @@ class Manager:
         self._check()
         return ("Manager Data\n"
                 f"    dataset (ds):                 {self._dataset_id}\n"
-                f"    event:                        {self._event_name}\n"
+                f"    event:                        {self._event_resource_id}\n"
                 f"    moment tensor (half_dur):     {self._half_dur}\n"
                 f"    inventory (inv):              {self._inv_name}\n"
                 f"    observed data (st_obs):       {self._len_obs}\n"
@@ -197,9 +199,9 @@ class Manager:
             self._dataset_id = basename(self.ds.filename)
 
         # Event as object check, set until reset()
-        if (self._event_name is None) and \
+        if (self._event_resource_id is None) and \
                 isinstance(self.event, obspy.core.event.Event):
-            self._event_name = self.event.resource_id
+            self._event_resource_id = self.event.resource_id
 
         def check_streams(st_):
             """Check if waveforms are stream objects, and if preprocessed"""

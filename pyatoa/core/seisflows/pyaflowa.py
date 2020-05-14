@@ -32,7 +32,8 @@ from pyatoa.utils.write import (write_stations_adjoint, write_adj_src_to_ascii,
 # listed in Seisflows' parameters.yaml file. Listed here so that Pyatoa
 # knows that these arguments are acceptable.
 pyaflowa_kwargs = ["set_logging", "win_amp_ratio", "fix_windows", "snapshot",
-                   "srcrcv_vtk", "plot_wav", "plot_map", "make_pdf"]
+                   "srcrcv_vtk", "plot_wav", "plot_map", "make_pdf", 
+                   "map_corners"]
 
 
 class Pyaflowa:
@@ -196,7 +197,7 @@ class Pyaflowa:
                 del kwargs[key]
         self.__dict__.update(kwargs)
 
-    def eval_func(self, cwd, event_id, overwrite=None, map_corners=None):
+    def eval_func(self, cwd, event_id, overwrite=None):
         """
         High level function to interact with Seisflows.
 
@@ -215,8 +216,7 @@ class Pyaflowa:
         # Set up the machinery for a single workflow instnace
         config, paths = self.prepare_event(cwd, event_id)
         with pyasdf.ASDFDataSet(paths["dataset"]) as ds:
-            status = self.process_event(ds, config, paths, overwrite, 
-                                        map_corners)
+            status = self.process_event(ds, config, paths, overwrite)
             if status:
                 self.prepare_eval_grad(ds, paths)
 
@@ -349,7 +349,8 @@ class Pyaflowa:
                     # Only plot maps once since they won't change
                     map_fid = oj(paths["maps"], f"map_{sta.code}.png")
                     if not os.path.exists(map_fid):
-                        mgmt.srcrcvmap(stations=inv, map_corners=map_corners,
+                        mgmt.srcrcvmap(stations=inv, 
+                                       map_corners=self.map_corners,
                                        show=False, save=map_fid)
 
         logger.info(f"Pyaflowa processed {processed} stations")

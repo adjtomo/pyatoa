@@ -1,5 +1,5 @@
 """
-Test the pyatoa
+Test the I/O and sanity checks of the Config object
 """
 import os
 import pytest
@@ -11,7 +11,7 @@ def test_read_config_from_yaml():
     """
     Test that reading from an external YAML file works
     """
-    cfg = Config(yaml_fid="./test_data/seisflows/parameters.yaml")
+    cfg = Config(yaml_fid="./test_data/test_seisflows_parameters.yaml")
     assert(cfg.client == "TEST_CLIENT")  # Check a random variable
 
 
@@ -24,9 +24,7 @@ def test_read_write_from_ASDFDataSet(tmpdir):
     with ASDFDataSet(os.path.join(tmpdir, "test_dataset.h5")) as ds:
         cfg.write(write_to=ds)
         cfg_check = Config(ds=ds, path="default")
-        assert cfg == cfg_check
-
-
+        assert(cfg.client == cfg_check.client)
 
 def test_incorrect_parameter_check():
     """
@@ -48,7 +46,7 @@ def test_incorrect_parameter_check():
                       "win_amp_ratio": 1.5
                       }
     with pytest.raises(AssertionError):
-        for key, value in incorrect_data:
+        for key, value in incorrect_data.items():
             cfg = Config()
             setattr(cfg, key, value)
             cfg._check()

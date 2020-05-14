@@ -87,16 +87,12 @@ SOLVERIO: fortran_binary
 # 
 # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 PYATOA:
-    set_logging:  
-        pyatoa: debug
-        pyflex: debug 
-        pyadjoint: debug
     cfgpaths:  
         waveforms: []
         responses: []
         synthetics: []
 
-    # OBSPY 
+    # PREPROCESSING  
     unit_output: DISP       
     synthetic_unit: DISP    
     min_period: 10.         
@@ -105,24 +101,26 @@ PYATOA:
     rotate_to_rtz: False    
     client: TEST_CLIENT          
     start_pad: 20           
-    end_pad: 350           
-
-    # PYFLEX, PYADJOINT
-    pyflex_preset: example
-    adj_src_type: cc               
+    end_pad: 350 
 
     # PYATOA WINDOWING
     win_amp_ratio: 0.2 
-    fix_windows: iter
 
-    # OUTPUT FILES
+    # EXTERNAL CONFIGS
+    pyflex_preset: example
+    adj_src_type: cc               
+
+    # PYAFLOWA SPECIFIC
+    fix_windows: iter       
     snapshot: True     
     srcrcv_vtk: True   
-
-    # PLOTTING
     plot_wav: True     
-    plot_map: True     
     make_pdf: True     
+    set_logging:  
+        pyatoa: debug
+        pyflex: debug 
+        pyadjoint: debug
+    plot_map: True     
     map_corners:       
         lat_min: -42.5 
         lat_max: -37.0 
