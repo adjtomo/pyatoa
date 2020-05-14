@@ -22,7 +22,7 @@ from obspy.clients.fdsn.header import FDSNException
 
 from pyatoa import logger
 from pyatoa.utils.read import read_ascii
-from pyatoa.utils.form import event_name
+from pyatoa.utils.form import format_event_name
 from pyatoa.utils.calculate import overlapping_days
 from pyatoa.utils.srcrcv import merge_inventories
 
@@ -174,7 +174,7 @@ class InternalFetcher:
         """
         event = self.ds.events[0]
         self.origintime = event.preferred_origin().time
-        logger.debug(f"matching event found: {event_name(event=event)}")
+        logger.debug(f"matching event found: {format_event_name(event=event)}")
         return event
 
     def asdf_station_fetch(self, station_code):
@@ -541,7 +541,9 @@ class Gatherer(InternalFetcher, ExternalGetter):
             raise GathererNoDataException(f"no Event information found for "
                                           f"{self.config.event_id}")
         else:
-            logger.debug(f"matching event found: {event_name(event=event)}")
+            logger.debug("matching event found: "
+                         f"{format_event_name(event=event)}"
+                         )
             # Append extra information and save event before returning
             if append_focal_mechanism:
                 event = self.append_focal_mechanism(event)

@@ -5,7 +5,7 @@ Contains non-class functions for setting Config objects of Pyflex and Pyadjoint.
 """
 import yaml
 from pyatoa import logger
-from pyatoa.utils.form import model_number, step_count
+from pyatoa.utils.form import format_model_number, format_step_count
 from pyatoa.core.seisflows.pyaflowa import pyaflowa_kwargs
 from pyatoa.plugins.pyflex_presets import pyflex_presets
 
@@ -40,8 +40,10 @@ class Config:
 
         :type yaml_fid: str
         :param yaml_fid: id for .yaml file if config is to be loaded externally
-        :type model_number: int or str
-        :param model_number: model iteration number for annotations and tags
+        :type model: int
+        :param model: model number, will be formatted for use in tags 
+        :type step: int
+        :param step: step count, will be formatted for use in tags
         :type event_id: str
         :param event_id: unique event identifier for data gathering, annotations
         :type: min_period: float
@@ -94,10 +96,8 @@ class Config:
             contains data is passed to the Manager, but you don't want to
             overwrite the data inside while you do some temporary processing.
         """
-        # Format the model number and step count to Pyatoa standard
-        self.model = model_number(model)
-        self.step = step_count(step)
-
+        self.model = model
+        self.step = step
         self.event_id = event_id
         self.min_period = float(min_period)
         self.max_period = float(max_period)
@@ -108,10 +108,12 @@ class Config:
         self.synthetic_unit = synthetic_unit.upper()
         self.observed_tag = observed_tag
 
-        # Tag synthetics based on model number and step count if given
         self.synthetic_tag = synthetic_tag
         if self.model:
-            self.synthetic_tag += f"_{self.model}{self.step or ''}"
+            # Tag based on model number and step count, e.g. synthetic_m00s00
+            self.synthetic_tag += (f"_{format_model_number(self.model)}"
+                                   f"{format_step_count(self.step) or ''}"
+                                   )
 
         self.pyflex_preset = pyflex_preset
         self.adj_src_type = adj_src_type
@@ -119,7 +121,7 @@ class Config:
         self.win_amp_ratio = win_amp_ratio
         self.start_pad = int(start_pad)
         self.end_pad = int(end_pad)
-        self.component_list = component_list or ['Z', 'N', 'E']
+        self.component_list = component_list or ["Z", "N", "E"]
         self.save_to_ds = save_to_ds
 
         # These are filled in with actual Config objects by _check()
@@ -150,8 +152,14 @@ class Config:
         String representation of class Config for print statements.
         Separate into similar labels for easier reading.
         """
-        key_dict = {"Config": ["model", "step", "event_id"],
-                    "Gather": ["client", "start_pad", "end_pad", "save_to_ds"],
+        # Model and step need to be formatted before printing
+        str_out = ("Config\n"
+                   f"    {'model:':<25}{format_model_number(self.model)}"
+                   f"    {'step:':<25}{format_step_count(self.step)}"
+                   f"    {'event:':<25}{self.event_id}"
+                   )
+        # Format the remainder of the keys identically
+        key_dict = {"Gather": ["client", "start_pad", "end_pad", "save_to_ds"],
                     "Process": ["min_period", "max_period", "filter_corners",
                                 "unit_output", "synthetic_unit",
                                 "rotate_to_rtz", "win_amp_ratio",
@@ -162,11 +170,10 @@ class Config:
                                  "pyflex_config", "pyadjoint_config"
                                  ]
                     }
-        str_out = ""
         for key, items in key_dict.items():
             str_out += f"{key.upper()}\n"
             for item in items:
-                str_out += f"{' '*4}{item+':':<25}{getattr(self, item)}\n"
+                str_out += f"    {item+':':<25}{getattr(self, item)}\n"
         return str_out
 
     def __repr__(self):

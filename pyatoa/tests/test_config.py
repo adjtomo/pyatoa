@@ -15,7 +15,7 @@ def test_read_config_from_yaml():
     assert(cfg.client == "TEST_CLIENT")  # Check a random variable
 
 
-def test_read_write_from_ASDFDataSet(tmpdir):
+def test_read_write_from_asdfdataset(tmpdir):
     """
     Initiate a dataset, write the Config in with unique parameters, then read
     it back from the same dataset. Also tests _check_io_format()

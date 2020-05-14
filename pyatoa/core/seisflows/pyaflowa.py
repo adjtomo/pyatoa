@@ -20,7 +20,8 @@ import traceback
 
 from pyatoa import logger
 from pyatoa.utils.read import read_stations
-from pyatoa.utils.form import model_number, step_count, event_name
+from pyatoa.utils.form import (format_model_number, format_step_count, 
+                               format_event_name)
 from pyatoa.utils.asdf.clean import clean_ds
 from pyatoa.visuals.statistics import plot_output_optim
 from pyatoa.utils.write import (write_stations_adjoint, write_adj_src_to_ascii,
@@ -393,7 +394,7 @@ class Pyaflowa:
             files and only retain the resultant PDF. Optional but hidden as
             purging is preferable to avoid too many files.
         """
-        event_id = event_name(ds)
+        event_id = format_event_name(ds)
 
         # Establish correct directory and file name
         # path/to/figures/m??/s??/eid_m??_s??.pdf

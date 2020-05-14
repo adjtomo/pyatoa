@@ -12,6 +12,7 @@ import matplotlib.pyplot as plt
 
 from matplotlib.patches import Rectangle
 
+from pyatoa.utils.form import format_model_number, format_step_count
 from pyatoa.utils.calculate import normalize_a_to_b, abs_max
 from pyatoa.visuals.plot_tools import align_yaxis, pretty_grids, format_axis
 
@@ -339,9 +340,9 @@ def plot_wave(st_obs_in, st_syn_in, config, time_offset_sec=0., windows=None,
     title += "\n"
     # Add information about the iteration, windowing and misfit measurement
     if config.model is not None:
-        title += config.model
+        title += format_model_number(config.model)
     if config.step is not None:
-        title += config.step
+        title += format_step_count(config.step)
     if windows is not None:
         title += f" pyflex={config.pyflex_preset} "
     # If adjoint sources given, put adj_src_type and misfit in

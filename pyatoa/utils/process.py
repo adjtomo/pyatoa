@@ -251,8 +251,8 @@ def preproc(mgmt, choice, water_level=60, corners=4, taper_percentage=0.05):
 
     # Rotate the given stream from standard NEZ to RTZ
     if mgmt.baz:
-        st.rotate(method="NE->RT", back_azimuth=baz)
-        logger.debug(f"rotating NE->RT by {baz} degrees")
+        st.rotate(method="NE->RT", back_azimuth=mgmt.baz)
+        logger.debug(f"rotating NE->RT by {mgmt.baz} degrees")
 
     # Filter data using ObsPy Butterworth filters. Zerophase avoids phase shift
     # Bandpass filter
@@ -276,6 +276,8 @@ def preproc(mgmt, choice, water_level=60, corners=4, taper_percentage=0.05):
         logger.debug(f"lowpass {mgmt.config.max_period}s")
 
     return st
+
+
 
 
 def change_syn_units(st, current, desired):
@@ -312,12 +314,11 @@ def change_syn_units(st, current, desired):
 
     return st_diff
 
-
 def stf_convolve(st, half_duration, source_decay=4., time_shift=None,
                  time_offset=None):
     """
-    Convolve function with a Gaussian window.
-    Following taken from specfem "comp_source_time_function.f90"
+    Convolve function with a Gaussian window source time function.
+    Following borrowed from Specfem3D Cartesian "comp_source_time_function.f90"
 
     hdur given is hdur_Gaussian = hdur/SOURCE_DECAY_MIMIC_TRIANGLE
     with SOURCE_DECAY_MIMIC_TRIANGLE ~ 1.68
@@ -342,8 +343,6 @@ def stf_convolve(st, half_duration, source_decay=4., time_shift=None,
     :rtype: obspy.stream.Stream
     :return: stream object which has been convolved with a source time function
     """
-    logger.debug(f"convolve w/ gaussian half-dur={half_duration:.2f}s")
-
     sampling_rate = st[0].stats.sampling_rate
     half_duration_in_samples = round(half_duration * sampling_rate)
 
@@ -362,22 +361,9 @@ def stf_convolve(st, half_duration, source_decay=4., time_shift=None,
     for tr in st_out:
         if time_shift:
             tr.stats.starttime += time_shift
-        # if time offset is given, split the trace into before and after origin
-        # only convolve after zero time
-
-        # This doesn't actually work? It just adds more samples to the trace
-        # which is not what we want
-        # if time_offset:
-        #     after_origin = np.convolve(tr.data[time_offset_in_samp:],
-        #                                gaussian_stf, mode="same"
-        #                                )
-        #     data_out = np.concatenate([tr.data[:time_offset_in_samp],
-        #                                after_origin])
-        #     tr.data = data_out
-        # else:
-        #     data_out = np.convolve(tr.data, gaussian_stf, mode="same")
-        #     tr.data = data_out
         data_out = np.convolve(tr.data, gaussian_stf, mode="same")
         tr.data = data_out
+
+    logger.debug(f"convolved data w/ Gaussian (t/2={half_duration:.2f}s)")
 
     return st_out

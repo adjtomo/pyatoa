@@ -7,9 +7,11 @@ to keep everything playing nice. Functions here will aid in reshaping data
 into the correct formats.
 """
 import os
+from pyasdf import ASDFDataSet
+from obspy.core.event import Event
 
 
-def model_number(iteration):
+def format_model_number(iteration):
     """
     The model number is based on the current iteration and should be formatted
     with a leading 'm' character and two digits. Inputs can be strings or
@@ -36,7 +38,7 @@ def model_number(iteration):
     return mdlnmbr
 
 
-def step_count(count):
+def format_step_count(count):
     """
     Same as for model number but step count is formatted with a leading 's'
 
@@ -58,21 +60,24 @@ def step_count(count):
     return stpcnt
 
 
-def event_name(ds=None, event=None):
+def format_event_name(ds_or_event):
     """
     Formalize the defition of Event ID in Pyatoa
 
-    :type ds: pyasdf.ASDFDataSet
-    :param: get dataset event name from the filename
+    :type ds_or_event: pyasdf.ASDFDataSet or obspy.core.event.Event
+    :param ds_or_event: get dataset event name from the filename
     :type event: obspy.core.event.Event
     :param event: get event name from the resource id
     :rtype: str
     :return: the event name to be used for naming schema in the workflow
     """
-    if event:
+    if isinstance(ds_or_event, Event):
         return event.resource_id.id.split('/')[-1]
-    elif ds:
+    elif isinstance(ds_or_event, ASDFDataSet):
         return os.path.basename(ds.filename).split(".")[0]
+    else:
+        raise TypeError("format_event_name() only accepts pyasdf.ASDFDataSet "
+                        "or obspy.core.event.Event objects")
 
 
 def channel_code(dt):

@@ -18,6 +18,7 @@ from pyatoa.core.gatherer import Gatherer, GathererNoDataException
 from pyatoa.utils.asdf.fetch import windows_from_ds
 from pyatoa.utils.weights import window_by_amplitude
 from pyatoa.utils.srcrcv import gcd_and_baz, seismogram_length
+from pyatoa.utils.form import format_model_number, format_step_count
 from pyatoa.utils.asdf.add import add_misfit_windows, add_adjoint_sources
 from pyatoa.utils.process import (preproc, trim_streams, stf_convolve, zero_pad, 
                                   match_npts)
@@ -184,11 +185,6 @@ class Manager:
         else:
             return None
 
-    def check_status(self):
-        """
-        To be used as a 
-        """
-
     def _check(self):
         """
         (Re)check the stats of the workflow and data within the Manager.
@@ -242,6 +238,16 @@ class Manager:
                 )
         else:
             self.stats.station_name = None
+
+        # Check for half duration used for source-time-function with synthetics
+        self.stats.half_dur = 0
+        if isinstance(self.event, obspy.core.event.Event):
+            if hasattr(self.event, "focal_mechanisms"):
+                try:
+                    mt = self.event.preferred_focal_mechanism().moment_tensor
+                    self.stats.half_dur = mt.source_time_function.duration / 2
+                except AttributeError:
+                    pass
 
         # Pyflex check if run, return the number of windows made
         self.stats.num_windows = 0
@@ -572,57 +578,30 @@ class Manager:
             self.gcd, self.baz = gcd_and_baz(event=self.event,
                                              sta=self.inv[0][0])
 
-        # Preprocess observation and synthetic data identically
+        # Preprocess observation waveforms
         if self.st_obs is not None and not self.stats.obs_filtered and \
                 which.lower() in ["obs", "both"]:
             logger.info("preprocessing observation data")
             self.st_obs = preproc_fx(self, choice="obs")
+            if self.config.synthetics_only and self.stats.half_dur:
+                # A synthetic-synthetic case means observed needs STF too
+                self.st_obs = stf_convolve(st=self.st_obs,
+                                           half_duration=self.stats.half_dur
+                                           )
+
+        # Preprocess synthetic waveforms
         if self.st_syn is not None and not self.stats.syn_filtered and \
                 which.lower() in ["syn", "both"]:
             logger.info("preprocessing synthetic data")
             self.st_syn = preproc_fx(self, choice="syn")
-
-        # Convolve synthetic data with a gaussian source-time-function
-        self._convolve_source_time_function(which)
+            if self.stats.half_dur:
+                # Convolve synthetics with a Gaussian source time function
+                self.st_syn = stf_convolve(st=self.st_syn, 
+                                           half_duration=self.stats.half_dur
+                                           )
 
         self._check()
         return self
-
-    def _convolve_source_time_function(self, which="both"):
-        """
-        Convolve synthetic data with a Gaussian source time function, time
-        shift by a given half duration. Apply to observed if syn-syn inversion.
-
-        :type which: str
-        :param which: "obs", "syn" or "both" to choose which stream to process
-            defaults to both
-        """
-        try:
-            moment_tensor = self.event.preferred_focal_mechanism().moment_tensor
-            self.stats.half_dur = (
-                moment_tensor.source_time_function.duration / 2
-                )
-            if which.lower() in ["syn", "both"]:
-
-                self.st_syn = stf_convolve(st=self.st_syn,
-                                           half_duration=self.stats.half_dur,
-                                           time_shift=False,
-                                           # timde_offset=self.stats_time_offset_sec
-                                           )
-                logger.debug(f"convolved synthetic data w/ gaussian "
-                             f"(t/2={self.stats.half_dur:.2f}s)"
-                             )
-            # If a synthetic-synthetic case, convolve observations too
-            if self.config.synthetics_only and which in ["obs", "both"]:
-                self.st_obs = stf_convolve(st=self.st_obs,
-                                           half_duration=self.stats.half_dur,
-                                           time_shift=False,
-                                           )
-                logger.debug(f"convolved observed data w/ gaussian "
-                             f"(t/2={self.stats.half_dur:.2f}s)"
-                             )
-        except (AttributeError, IndexError):
-            logger.info("moment tensor not found for event, cannot convolve")
 
     def window(self, fix_windows=False, force=False):
         """
@@ -673,7 +652,7 @@ class Manager:
                 model=self.config.model, step=self.config.step)
         else:
             # If not fixed windows, or m00s00, calculate windows using Pyflex
-            self.select_windows()
+            self.select_windows_plus()
 
         # Let the User know the outcomes of Pyflex
         self.save_windows()
@@ -682,7 +661,7 @@ class Manager:
         self._check()
         return self
 
-    def select_windows(self):
+    def select_windows_plus(self):
         """
         Mid-level custom window selection function that calls Pyflex select 
         windows, but includes additional window suppression functionality.
@@ -720,30 +699,6 @@ class Manager:
         self.windows = windows
         self.stats.num_windows = nwin
 
-    def save_windows(self):
-        """
-        Mid-level window saving function that creates custom path naming based
-        on the model number and step count.
-
-        Auxiliary data tag is hardcoded as 'MisfitWindows'
-        """
-        # Criteria to check if windows should be saved. Windows and dataset
-        # should be available, and User config set to save
-        if self.ds is None or self.stats.num_windows == 0 \
-                or not self.config.save_to_ds:
-            logger.debug("windows not being saved")
-            return
-
-        # Determine how to name the path to the window
-        if self.config.model and self.config.step:
-            path = "/".join([self.config.model, self.config.step])
-        elif self.config.model:
-            path = self.config.model
-        else:
-            path = "default"
-
-        logger.debug("saving misfit windows to ASDFDataSet")
-        add_misfit_windows(self.windows, self.ds, path)
 
     def measure(self, force=False):
         """
@@ -807,8 +762,8 @@ class Manager:
 
         # Save total misfit, calculated a la Tape (2010) Eq. 6
         if self.stats.num_windows:
-            logger.debug("scaling misfit {total_misfit:.2E} by number of "
-                         "windows {self.stats.num_windows}")
+            logger.debug(f"scaling misfit {total_misfit:.2E} by number of "
+                         f"windows {self.stats.num_windows}")
             self.stats.misfit = 0.5 * total_misfit / self.stats.num_windows
         else:
             logger.warning("no windows found, misfit is not being scaled")
@@ -819,6 +774,68 @@ class Manager:
 
         self._check()
         return self
+
+    def save_windows(self):
+        """
+        Convenience function to save collected misfit windows into an 
+        ASDFDataSet with some preliminary checks
+
+        Auxiliary data tag is hardcoded as 'MisfitWindows'
+        """
+        if self.ds is None:
+            logger.warning("Manager has no ASDFDataSet, cannot save windows") 
+        elif not self.windows == 0:
+            logger.warning("Manager has no windows to save")
+        elif self.config.save_to_ds:
+            logger.warning("config parameter save_to_ds is set False, "
+                           "will not save windows")
+        else:
+            logger.debug("saving misfit windows to ASDFDataSet")
+            add_misfit_windows(self.windows, self.ds, 
+                               path=_get_path_for_aux_data(self)
+                               )
+
+    def save_adj_srcs(self):
+        """
+        Convenience function to save collected adjoint sources into an 
+        ASDFDataSet with some preliminary checks
+
+        Auxiliary data tag is hardcoded as 'AdjointSources'        
+        """
+        if self.ds is None:
+            logger.warning("Manager has no ASDFDataSet, cannot save "
+                           "adjoint sources") 
+        elif not self.adjsrcs:
+            logger.warning("Manager has no adjoint sources to save")
+        elif self.config.save_to_ds:
+            logger.warning("config parameter save_to_ds is set False, "
+                           "will not save adjoint sources")
+        else:
+            logger.debug("saving adjoint sources to ASDFDataSet")
+            add_adjoint_sources(adj_srcs=self.adj_srcs, ds=self.ds, 
+                                path=_get_path_for_aux_data(self), 
+                                time_offset=self.stats_time_offset_sec)
+
+    def _get_path_for_aux_data(self):
+        """
+        Determine the path to save MisfitWindows and AdjointSources auxiliary 
+        data based on model number and step count if available
+
+        :rtype: str
+        :return: path for auxiliary data saving
+        """
+        if self.config.model and self.config.step:
+            # model/step/window_tag
+            path = "/".join([format_model_number(self.config.model), 
+                             format_step_count(self.config.step)
+                             ])
+        elif self.config.model:
+            # model/window_tag
+            path = format_model_number(self.config.model)
+        else:
+            path = "default"
+
+        return path
 
     def _format_windows(self):
         """
@@ -851,30 +868,6 @@ class Manager:
 
         return adjoint_windows
 
-    def save_adj_srcs(self):
-        """
-        Mid-level adjoint source saving function that creates custom path naming 
-        based on the model number and step count.
-
-        Auxiliary data tag is hardcoded as 'AdjointSources'        
-        """
-        if self.ds is None or not self.config.save_to_ds:
-            logger.debug("adjoint sources are not being saved")
-            return 
-
-        # Figure out how to tag the data in the dataset
-        if self.config.model and self.config.step:
-            # model/step/window_tag
-            path = "/".join([self.config.model, self.config.step])
-        elif self.config.model:
-            # model/window_tag
-            path = self.config.model
-        else:
-            path = "default"
-
-        logger.debug("saving adjoint sources to ASDFDataSet")
-        add_adjoint_sources(adj_srcs=self.adj_srcs, ds=self.ds,
-                            path=path, time_offset=self.stats_time_offset_sec)
 
     def plot(self, save=None, show=True, append_title='', length_sec=None, 
              normalize=False, figsize=(11.69, 8.27), dpi=100, **kwargs):

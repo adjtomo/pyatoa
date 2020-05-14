@@ -2,6 +2,7 @@
 Functions for extracting information from a Pyasdf ASDFDataSet object
 """
 from pyatoa import logger
+from pyatoa.utils.form import format_model_number, format_step_count
 from pyflex.window import Window
 from obspy import UTCDateTime
 
@@ -34,16 +35,19 @@ def windows_from_ds(ds, net, sta, model, step):
     :param net: network code used to find the name of the misfit window
     :type sta: str
     :param sta: station code used to find the name of the misfit window
-    :type model: str or None
-    :param model: model number, e.g. "m00". If None, most recent windows used
-    :type step: str
-    :param step: step count, e.g. "s00"
+    :type model: int or str
+    :param model: model number, will be formatted by the function
+    :type step: int or str
+    :param step: step count, will be formatted by the function
     :rtype window_dict: dict
     :return window_dict: dictionary containing misfit windows, in a format
         expected by Pyatoa Manager class
     :rtype num_windows: int
     :return num_windows: number of windows
     """
+    model = format_model_number(model)
+    step = format_step_count(step)
+    
     def previous_windows():
         """
         Retrieve the windows from the previous step.

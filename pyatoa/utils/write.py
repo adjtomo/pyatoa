@@ -4,7 +4,7 @@ For writing various output files used by Pyatoa, Specfem and Seisflows
 import os
 import glob
 import numpy as np
-from pyatoa.utils.form import event_name
+from pyatoa.utils.form import format_event_name
 
 
 def parse_output_optim(path_to_optim):

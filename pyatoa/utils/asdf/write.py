@@ -6,7 +6,7 @@ given path.
 import os
 import json
 import numpy as np
-from pyatoa.utils.form import event_name
+from pyatoa.utils.form import format_event_name
 from pyatoa.utils.write import write_adj_src_to_ascii
 
 
@@ -36,7 +36,7 @@ def write_events(ds, path="./"):
     :param path: path to save data to
     """
     for event in ds.events:
-        event.write(os.path.join(path, f"{event_name(event=event)}.xml"),
+        event.write(os.path.join(path, f"{format_event_name(event)}.xml"),
                     format="QUAKEML"
                     )
 

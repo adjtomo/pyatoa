@@ -8,7 +8,7 @@ import traceback
 import pandas as pd
 from glob import glob
 
-from pyatoa.utils.form import event_name
+from pyatoa.utils.form import format_event_name
 from pyatoa.visuals.gadget import Gadget
 
 
@@ -176,10 +176,10 @@ class Inspector(Gadget):
         :rtype receivers: multiindexed dataframe containing unique station info
         """
         # Create a dataframe with source information
-        event_id = event_name(ds)
+        event_id = format_event_name(ds)
         if event_id not in self.sources.index:
             src = {
-                "event_id": event_name(ds),
+                "event_id": format_event_name(ds),
                 "time": str(ds.events[0].preferred_origin().time),
                 "magnitude": ds.events[0].preferred_magnitude().mag,
                 "depth_km": ds.events[0].preferred_origin().depth * 1E-3,
@@ -230,7 +230,7 @@ class Inspector(Gadget):
         :rtype: pandas.DataFrame
         :return: a dataframe object containing information per misfit window
         """
-        eid = event_name(ds=ds)
+        eid = format_event_name(ds=ds)
 
         # Initialize an empty dictionary that will be used to initalize
         # a Pandas DataFrame
