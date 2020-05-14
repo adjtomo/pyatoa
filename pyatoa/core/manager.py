@@ -33,6 +33,25 @@ class ManagerError(Exception):
     pass
 
 
+class Stats(dict):
+    """
+    A simple dictionary that can get and set keys as attributes and has a 
+    cleaner looking print statement, used for storing internal statistics
+    in the Manager class
+    """
+    def __setattr__(self, key, value):
+        self[key] = value
+
+    def __getattr__(self, key):
+        return self[key]    
+
+    def __str__(self):
+        str_ = ""
+        for key, value in self.items():
+            str_ += f"{key:>15}: {value}\n"
+        return str_[:-1]
+
+
 class Manager:
     """
     Pyatoas core workflow object.
@@ -107,20 +126,13 @@ class Manager:
         self.windows = windows
         self.staltas = staltas or {}
         self.adj_srcs = adj_srcs
-        # Internal statistics
-        self._num_windows = 0
-        self._len_obs = 0
-        self._len_syn = 0
-        self._misfit = 0
-        self._time_offset_sec = 0
-        self._half_dur = 0
-        # Internal flags for workflow status
-        self._dataset_id = None
-        self._event_resource_id = None
-        self._inv_name = None
-        self._standardize_flag = False
-        self._obs_filter_flag = False
-        self._syn_filter_flag = False
+
+        # Internal statistics to keep track of the workflow progress
+        self.stats = Stats(num_windows=0, len_obs=0, len_syn=0, misfit=0,
+                           time_offset_sec=0, half_dur=0, dataset_id=None,
+                           event_id=None, inv_name=None, standardized=False, 
+                           obs_filtered=False, syn_filtered=False
+                           )
 
         # If event ID set, launch gatherer, gather an event
         if not empty or event is not None:
@@ -128,6 +140,7 @@ class Manager:
         else:
             # If 'empty' or no event, dont launch gatherer, event is None
             self.event = None
+
         # Run internal checks on data
         self._check()
 
@@ -137,18 +150,18 @@ class Manager:
         """
         self._check()
         return ("Manager Data\n"
-                f"    dataset (ds):                 {self._dataset_id}\n"
-                f"    event:                        {self._event_resource_id}\n"
-                f"    moment tensor (half_dur):     {self._half_dur}\n"
-                f"    inventory (inv):              {self._inv_name}\n"
-                f"    observed data (st_obs):       {self._len_obs}\n"
-                f"    synthetic data (st_syn):      {self._len_syn}\n"
+                f"    dataset (ds):            {self.stats.dataset_id}\n"
+                f"    event:                   {self.stats.event_id}\n"
+                f"    half_dur:                {self.stats.half_dur}\n"
+                f"    inventory (inv):         {self.stats.station_name}\n"
+                f"    observed data (st_obs):  {self.stats.len_obs}\n"
+                f"    synthetic data (st_syn): {self.stats.len_syn}\n"
                 "Workflow Status\n"
-                f"    standardized:                 {self._standardize_flag}\n"
-                f"    st_obs filtered:              {self._obs_filter_flag}\n"
-                f"    st_syn filtered:              {self._syn_filter_flag}\n"
-                f"    misfit windows (windows):     {self._num_windows}\n"
-                f"    misfit (adj_srcs):            {self._misfit:.2E}\n"
+                f"    standardized:            {self.stats.standardized}\n"
+                f"    st_obs filtered:         {self.stats.obs_filtered}\n"
+                f"    st_syn filtered:         {self.stats.syn_filtered}\n"
+                f"    windows:                 {self.stats.num_windows}\n"
+                f"    misfit (adj_srcs):       {self.stats.misfit:.2E}\n"
                 )
 
     def __repr__(self):
@@ -171,37 +184,26 @@ class Manager:
         else:
             return None
 
-    @property
-    def num_windows(self):
-        return self._num_windows
-
-    @property
-    def misfit(self):
-        return self._misfit
-
-    @property
-    def time_offset_sec(self):
-        return self._time_offset_sec
-
-    @property
-    def half_dur(self):
-        return self._half_dur
+    def check_status(self):
+        """
+        To be used as a 
+        """
 
     def _check(self):
         """
-        Check the status of the workflow and data contained within the Manager.
+        (Re)check the stats of the workflow and data within the Manager.
 
         Rechecks conditions whenever called, incase something has gone awry
-        mid-workflow. Flags should only ever be set by _check().
+        mid-workflow. Stats should only be set by this function.
         """
         # Give dataset filename if available
-        if (self.ds is not None) and (self._dataset_id is None):
-            self._dataset_id = basename(self.ds.filename)
+        if (self.ds is not None) and (self.stats.dataset_id is None):
+            self.stats.dataset_id = basename(self.ds.filename)
 
         # Event as object check, set until reset()
-        if (self._event_resource_id is None) and \
+        if (self.stats.event_id is None) and \
                 isinstance(self.event, obspy.core.event.Event):
-            self._event_resource_id = self.event.resource_id
+            self.stats.event_id = self.event.resource_id
 
         def check_streams(st_):
             """Check if waveforms are stream objects, and if preprocessed"""
@@ -215,45 +217,47 @@ class Manager:
             return len_, filt_
 
         # Check if waveforms are Stream objects, and if preprocessed
-        self._len_obs, self._obs_filter_flag = check_streams(self.st_obs)
-        self._len_syn, self._syn_filter_flag = check_streams(self.st_syn)
+        self.stats.len_obs, self.stats.obs_filtered = check_streams(self.st_obs)
+        self.stats.len_syn, self.stats.syn_filtered = check_streams(self.st_syn)
 
         # Standardized waveforms by checking npts, sampling rate, starttime
         # If any of the traces fails the check, the entire flag is False
         if (self.st_obs and self.st_syn) is not None:
-            self._standardize_flag = True
+            self.stats.standardized = True
             for obs, syn in zip(self.st_obs, self.st_syn):
                 if (obs.stats.sampling_rate == syn.stats.sampling_rate) and \
                    (obs.stats.npts == syn.stats.npts) and \
                    (obs.stats.starttime == syn.stats.starttime):
                     continue
                 else:
-                    self._standardize_flag = False
+                    self.stats.standardized = False
                     break
         else:
-            self._standardize_flag = False
+            self.stats.standardized = False
 
-        # Inventory station check
+        # Inventory station check, assume only one station in Inventory
         if isinstance(self.inv, obspy.Inventory):
-            self._inv_name = f"{self.inv[0].code}.{self.inv[0][0].code}"
+            self.stats.station_name = (
+                f"{self.inv[0].code}.{self.inv[0][0].code}"
+                )
         else:
-            self._inv_name = None
+            self.stats.station_name = None
 
         # Pyflex check if run, return the number of windows made
-        self._num_windows = 0
+        self.stats.num_windows = 0
         if isinstance(self.windows, dict):
             for key, win in self.windows.items():
-                self._num_windows += len(win)
+                self.stats.num_windows += len(win)
 
         # Pyadjoint check if adj_srcs and calculate total misfit
-        self._misfit = 0
+        self.stats.misfit = 0
         if isinstance(self.adj_srcs, dict):
             total_misfit = 0
             for key, adj_src in self.adj_srcs.items():
                 total_misfit += adj_src.misfit
-            self._misfit = 0.5 * total_misfit / self._num_windows
+            self.stats.misfit = 0.5 * total_misfit / self.stats.num_windows
 
-    def setup(self, event=None, idx=0):
+    def setup(self, event=None, idx=0, append_focal_mechanism=True):
         """
         One-time setup of the Manager class.
 
@@ -285,7 +289,9 @@ class Manager:
         else:
             # No User provided event, gather based on event id
             if self.config.event_id is not None:
-                self.event = self.gatherer.gather_event()
+                self.event = self.gatherer.gather_event(
+                    append_focal_mechanism=append_focal_mechanism
+                    )
 
     def reset(self):
         """
@@ -378,20 +384,20 @@ class Manager:
             "station_code must be in form 'NN.SSS'"
 
         # Reset and populate using the dataset
-        self.__init__(empty=True)
+        self.__init__(config=self.config, ds=ds, empty=True)
         self.event = ds.events[0]
         net, sta = station_code.split('.')
         sta_tag = f"{net}.{sta}"
         if sta_tag in ds.waveforms.list():
             self.inv = ds.waveforms[sta_tag].StationXML
-            if synthetic_tag is None:
-                synthetic_tag = self.config.synthetic_tag
-            self.st_syn = ds.waveforms[sta_tag][synthetic_tag]
-            if observed_tag is None:
-                observed_tag = self.config.observed_tag
-            self.st_obs = ds.waveforms[sta_tag][observed_tag]
+            self.st_syn = ds.waveforms[sta_tag][synthetic_tag or 
+                                                self.config.synthetic_tag]
+            self.st_obs = ds.waveforms[sta_tag][observed_tag or 
+                                                self.config.observed_tag]
         else:
             logger.warning(f"no data for {sta_tag} found in dataset")
+
+        self._check()
         return self
 
     def flow(self, station_code, fix_windows=False, preprocess_overwrite=None):
@@ -488,9 +494,9 @@ class Manager:
         :return: status of the function, 1: successful / 0: failed
         """
         self._check()
-        if min(self._len_obs, self._len_syn) == 0:
+        if min(self.stats.len_obs, self.stats.len_syn) == 0:
             raise ManagerError("cannot standardize, not enough waveform data")
-        elif self._standardize_flag and not force:
+        elif self.stats.standardized and not force:
             logger.info("data already standardized")
             return self
         logger.info("standardizing streams")
@@ -520,13 +526,14 @@ class Manager:
 
         # Determine if syntheitcs start before the origintime
         if self.event is not None:
-            self._time_offset_sec = (self.st_syn[0].stats.starttime -
-                                     self.event.preferred_origin().time
-                                     )
+            self.stats_time_offset_sec = (self.st_syn[0].stats.starttime -
+                                          self.event.preferred_origin().time
+                                          )
         else:
-            self._time_offset_sec = 0
-        logger.debug(f"time offset set to {self._time_offset_sec}s")
+            self.stats_time_offset_sec = 0
+        logger.debug(f"time offset set to {self.stats_time_offset_sec}s")
 
+        self._check()
         return self
 
     def preprocess(self, which="both", overwrite=None):
@@ -566,22 +573,19 @@ class Manager:
                                              sta=self.inv[0][0])
 
         # Preprocess observation and synthetic data identically
-        if self.st_obs is not None and not self._obs_filter_flag and \
+        if self.st_obs is not None and not self.stats.obs_filtered and \
                 which.lower() in ["obs", "both"]:
             logger.info("preprocessing observation data")
             self.st_obs = preproc_fx(self, choice="obs")
-        if self.st_syn is not None and not self._syn_filter_flag and \
+        if self.st_syn is not None and not self.stats.syn_filtered and \
                 which.lower() in ["syn", "both"]:
             logger.info("preprocessing synthetic data")
             self.st_syn = preproc_fx(self, choice="syn")
 
-        # Check to see if preprocessing failed
-        self._check()
-        if not self._obs_filter_flag or not self._syn_filter_flag:
-            raise ManagerError("preprocessing failed")
-
         # Convolve synthetic data with a gaussian source-time-function
         self._convolve_source_time_function(which)
+
+        self._check()
         return self
 
     def _convolve_source_time_function(self, which="both"):
@@ -595,19 +599,28 @@ class Manager:
         """
         try:
             moment_tensor = self.event.preferred_focal_mechanism().moment_tensor
-            self._half_dur = moment_tensor.source_time_function.duration / 2
+            self.stats.half_dur = (
+                moment_tensor.source_time_function.duration / 2
+                )
             if which.lower() in ["syn", "both"]:
+
                 self.st_syn = stf_convolve(st=self.st_syn,
-                                           half_duration=self._half_dur,
+                                           half_duration=self.stats.half_dur,
                                            time_shift=False,
-                                           # time_offset=self._time_offset_sec
+                                           # timde_offset=self.stats_time_offset_sec
                                            )
+                logger.debug(f"convolved synthetic data w/ gaussian "
+                             f"(t/2={self.stats.half_dur:.2f}s)"
+                             )
             # If a synthetic-synthetic case, convolve observations too
             if self.config.synthetics_only and which in ["obs", "both"]:
                 self.st_obs = stf_convolve(st=self.st_obs,
-                                           half_duration=self._half_dur,
+                                           half_duration=self.stats.half_dur,
                                            time_shift=False,
                                            )
+                logger.debug(f"convolved observed data w/ gaussian "
+                             f"(t/2={self.stats.half_dur:.2f}s)"
+                             )
         except (AttributeError, IndexError):
             logger.info("moment tensor not found for event, cannot convolve")
 
@@ -632,7 +645,7 @@ class Manager:
         """
         # Pre-check to see if data has already been standardized
         self._check()
-        if not self._standardize_flag and not force:
+        if not self.stats.standardized and not force:
             raise ManagerError("cannot window, waveforms not standardized")
         if fix_windows and not self.ds:
             logger.warning("cannot fix window, no dataset")
@@ -655,7 +668,7 @@ class Manager:
                             hasattr(self.ds.auxiliary_data, "MisfitWindows")):
             # If fixed windows, attempt to retrieve them from the dataset
             net, sta, _, _ = self.st_obs[0].get_id().split(".")
-            self.windows, self._num_windows = windows_from_ds(
+            self.windows, self.stats.num_windows = windows_from_ds(
                 ds=self.ds, net=net, sta= sta,
                 model=self.config.model, step=self.config.step)
         else:
@@ -664,8 +677,9 @@ class Manager:
 
         # Let the User know the outcomes of Pyflex
         self.save_windows()
-        logger.info(f"{self._num_windows} window(s) total found")
+        logger.info(f"{self.stats.num_windows} window(s) total found")
 
+        self._check()
         return self
 
     def select_windows(self):
@@ -704,7 +718,7 @@ class Manager:
             logger.info(f"{_nwin} window(s) for comp {comp}")
 
         self.windows = windows
-        self._num_windows = nwin
+        self.stats.num_windows = nwin
 
     def save_windows(self):
         """
@@ -715,7 +729,7 @@ class Manager:
         """
         # Criteria to check if windows should be saved. Windows and dataset
         # should be available, and User config set to save
-        if self.ds is None or self._num_windows == 0 \
+        if self.ds is None or self.stats.num_windows == 0 \
                 or not self.config.save_to_ds:
             logger.debug("windows not being saved")
             return
@@ -757,12 +771,12 @@ class Manager:
         self._check()
 
         # Check that data has been filtered and standardized
-        if not self._standardize_flag and not force:
+        if not self.stats.standardized and not force:
             raise ManagerError("cannot measure misfit, not standardized")
-        elif not (self._obs_filter_flag and self._syn_filter_flag) \
+        elif not (self.stats.obs_filtered and self.stats.syn_filtered) \
                 and not force:
             raise ManagerError("cannot measure misfit, not filtered")
-        elif self._num_windows == 0 and not force:
+        elif self.stats.num_windows == 0 and not force:
             raise ManagerError("cannot measure misfit, no windows")
         logger.debug(f"running Pyadjoint w/ type: {self.config.adj_src_type}")
 
@@ -792,13 +806,18 @@ class Manager:
         self.save_adj_srcs()
 
         # Save total misfit, calculated a la Tape (2010) Eq. 6
-        if self._num_windows:
-            self._misfit = 0.5 * total_misfit / self._num_windows
+        if self.stats.num_windows:
+            logger.debug("scaling misfit {total_misfit:.2E} by number of "
+                         "windows {self.stats.num_windows}")
+            self.stats.misfit = 0.5 * total_misfit / self.stats.num_windows
         else:
-            self._misfit = total_misfit
+            logger.warning("no windows found, misfit is not being scaled")
+            self.stats.misfit = total_misfit
 
         # Let the User know the outcome of Pyadjoint
-        logger.info(f"total misfit {self._misfit:.3f}")
+        logger.info(f"total misfit {self.stats.misfit:.3f}")
+
+        self._check()
         return self
 
     def _format_windows(self):
@@ -855,7 +874,7 @@ class Manager:
 
         logger.debug("saving adjoint sources to ASDFDataSet")
         add_adjoint_sources(adj_srcs=self.adj_srcs, ds=self.ds,
-                            path=path, time_offset=self._time_offset_sec)
+                            path=path, time_offset=self.stats_time_offset_sec)
 
     def plot(self, save=None, show=True, append_title='', length_sec=None, 
              normalize=False, figsize=(11.69, 8.27), dpi=100, **kwargs):
@@ -886,7 +905,7 @@ class Manager:
         """
         # Precheck for waveform data
         self._check()
-        if not self._standardize_flag:
+        if not self.stats.standardized:
             raise ManagerError("cannot plot, waveforms not standardized")
         logger.info("plotting waveform")
 
@@ -904,7 +923,7 @@ class Manager:
         # Call on window making function to produce waveform plots
         f = plot_wave(
             st_obs_in=self.st_obs, st_syn_in=self.st_syn, config=self.config,
-            time_offset_sec=self._time_offset_sec, windows=self.windows,
+            time_offset_sec=self.stats_time_offset_sec, windows=self.windows,
             staltas=self.staltas, adj_srcs=self.adj_srcs, length_sec=length_sec,
             append_title=append_title, figsize=figsize, dpi=dpi, show=show,
             save=save, normalize=normalize, **kwargs
