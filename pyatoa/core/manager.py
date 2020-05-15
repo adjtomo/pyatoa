@@ -15,10 +15,9 @@ from pyatoa import logger
 from pyatoa.core.config import Config
 from pyatoa.core.gatherer import Gatherer, GathererNoDataException
 
-from pyatoa.utils.asdf.fetch import windows_from_ds
+from pyatoa.utils.asdf.fetch import windows_from_dataset
 from pyatoa.utils.weights import window_by_amplitude
 from pyatoa.utils.srcrcv import gcd_and_baz, seismogram_length
-from pyatoa.utils.form import format_model_number, format_step_count
 from pyatoa.utils.asdf.add import add_misfit_windows, add_adjoint_sources
 from pyatoa.utils.process import (preproc, trim_streams, stf_convolve, zero_pad, 
                                   match_npts)
@@ -261,7 +260,11 @@ class Manager:
             total_misfit = 0
             for key, adj_src in self.adj_srcs.items():
                 total_misfit += adj_src.misfit
-            self.stats.misfit = 0.5 * total_misfit / self.stats.num_windows
+            if self.stats.num_windows:
+                self.stats.misfit = 0.5 * total_misfit / self.stats.num_windows
+            else:
+                self.stats.misfit = total_misfit
+
 
     def setup(self, event=None, idx=0, append_focal_mechanism=True):
         """
@@ -645,20 +648,20 @@ class Manager:
         # Get misfit windows from dataset or using Pyflex
         if fix_windows and (hasattr(self.ds, "auxiliary_data") and
                             hasattr(self.ds.auxiliary_data, "MisfitWindows")):
-            # If fixed windows, attempt to retrieve them from the dataset
+            # Attempt to retrieve MisfitWindow from the Dataset
             net, sta, _, _ = self.st_obs[0].get_id().split(".")
-            self.windows, self.stats.num_windows = windows_from_ds(
-                ds=self.ds, net=net, sta= sta,
-                model=self.config.model, step=self.config.step)
+            self.windows = windows_from_dataset(ds=self.ds, net=net, sta=sta,
+                                                model=self.config.model, 
+                                                step=self.config.step
+                                                )
+            self.stats.num_windows = sum(len(_) for _ in self.windows.values())
         else:
-            # If not fixed windows, or m00s00, calculate windows using Pyflex
             self.select_windows_plus()
 
-        # Let the User know the outcomes of Pyflex
         self.save_windows()
         logger.info(f"{self.stats.num_windows} window(s) total found")
-
         self._check()
+        
         return self
 
     def select_windows_plus(self):
@@ -826,12 +829,10 @@ class Manager:
         """
         if self.config.model and self.config.step:
             # model/step/window_tag
-            path = "/".join([format_model_number(self.config.model), 
-                             format_step_count(self.config.step)
-                             ])
+            path = "/".join([self.config.model_number, self.config.step_count])
         elif self.config.model:
             # model/window_tag
-            path = format_model_number(self.config.model)
+            path = self.config.model_number
         else:
             path = "default"
 

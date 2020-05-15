@@ -622,7 +622,7 @@ class Gatherer(InternalFetcher, ExternalGetter):
         logger.info("matching StationXML found")
         if (self.ds is not None) and self.config.save_to_ds:
             # !!! This is a temp fix for PyASDF 0.6.1 where re-adding StationXML 
-            # !!! that contains comments throws a TypeError. Will raise an issue
+            # !!! that contains comments throws a TypeError. Issue #59
             try: 
                 self.ds.add_stationxml(inv)
                 logger.info("saved to ASDFDataSet")

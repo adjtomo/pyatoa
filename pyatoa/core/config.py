@@ -111,8 +111,8 @@ class Config:
         self.synthetic_tag = synthetic_tag
         if self.model:
             # Tag based on model number and step count, e.g. synthetic_m00s00
-            self.synthetic_tag += (f"_{format_model_number(self.model)}"
-                                   f"{format_step_count(self.step) or ''}"
+            self.synthetic_tag += (f"_{self.model_number}"
+                                   f"{self.step_count or ''}"
                                    )
 
         self.pyflex_preset = pyflex_preset
@@ -154,9 +154,9 @@ class Config:
         """
         # Model and step need to be formatted before printing
         str_out = ("Config\n"
-                   f"    {'model:':<25}{format_model_number(self.model)}"
-                   f"    {'step:':<25}{format_step_count(self.step)}"
-                   f"    {'event:':<25}{self.event_id}"
+                   f"    {'model:':<25}{self.model_number}\n"
+                   f"    {'step:':<25}{self.step_count}\n"
+                   f"    {'event:':<25}{self.event_id}\n"
                    )
         # Format the remainder of the keys identically
         key_dict = {"Gather": ["client", "start_pad", "end_pad", "save_to_ds"],
@@ -179,6 +179,16 @@ class Config:
     def __repr__(self):
         """Simply call string representation"""
         return self.__str__()
+
+    @property
+    def model_number(self):
+        """string formatted version of model, e.g. 'm00'"""
+        return format_model_number(self.model)
+
+    @property
+    def step_count(self):
+        """string formatted version of step, e.g. 's00'"""
+        return format_step_count(self.step)
 
     def _check(self, **kwargs):
         """

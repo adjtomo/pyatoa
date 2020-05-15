@@ -255,25 +255,26 @@ def preproc(mgmt, choice, water_level=60, corners=4, taper_percentage=0.05):
         logger.debug(f"rotating NE->RT by {mgmt.baz} degrees")
 
     # Filter data using ObsPy Butterworth filters. Zerophase avoids phase shift
-    # Bandpass filter
     if mgmt.config.min_period and mgmt.config.max_period:
-        st.filter("bandpass",
-                  freqmin=1/mgmt.config.max_period,
-                  freqmax=1/mgmt.config.min_period, corners=corners,
-                  zerophase=True
+        st.filter("bandpass", corners=corners, zerophase=True,
+                  freqmin=1/mgmt.config.max_period, 
+                  freqmax=1/mgmt.config.min_period, 
                   )
         logger.debug(
-            f"bandpass {mgmt.config.min_period}-{mgmt.config.max_period}s")
+            f"bandpass filter "
+            f"{mgmt.config.min_period}-{mgmt.config.max_period}s w/ "
+            f"{corners} corners"
+            )
     # Highpass if only minimum period given
     elif mgmt.config.min_period:
         st.filter("highpass", freq=mgmt.config.min_period, corners=corners,
                   zerophase=True)
-        logger.debug(f"highpass {mgmt.config.min_period}s")
+        logger.debug(f"highpass {mgmt.config.min_period}s w/ {corners} corners")
     # Highpass if only minimum period given
     elif mgmt.config.max_period:
         st.filter("lowpass", freq=mgmt.config.max_period, corners=corners,
                   zerophase=True)
-        logger.debug(f"lowpass {mgmt.config.max_period}s")
+        logger.debug(f"lowpass {mgmt.config.max_period}s w/ {corners} corners")
 
     return st
 

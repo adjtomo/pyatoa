@@ -272,14 +272,14 @@ def test_fixed_windows(tmpdir, mgmt_post):
     with ASDFDataSet(os.path.join(tmpdir, "test_dataset.h5")) as ds:
         mgmt_post.ds = ds
         # Explicitely set the model and step count
-        mgmt_post.config.model = "m00"
-        mgmt_post.config.step = "s00"
+        mgmt_post.config.model = 0
+        mgmt_post.config.step = 0
         saved_windows = mgmt_post.windows
         # Save windows to path "m00/s00"
         mgmt_post.save_windows()
         # Delete windows, set step to s01 (next step) and retrieved windows
         mgmt_post.windows = None
-        mgmt_post.config.step = "s01"
+        mgmt_post.config.step += 1
         embed(colors="neutral")
 
         mgmt_post.window(fix_windows=True)
