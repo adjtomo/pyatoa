@@ -75,12 +75,12 @@ pyflex_presets = {
     },
     # North Island, 6-30s
     "nznorth_6-30s": {
-        "stalta_waterlevel": 0.12,
+        "stalta_waterlevel": 0.08,
         "tshift_acceptance_level": 8.0,  # based on sign-flip
         "dlna_acceptance_level": 1.5,
-        "cc_acceptance_level": 0.7,
+        "cc_acceptance_level": 0.6,
         "s2n_limit": 3.,
-        "max_time_before_first_arrival": 10.,  # minimum starting before P-wave
+        "max_time_before_first_arrival": 0.,  # minimum starting before P-wave
         "c_0": 0.7,
         "c_1": 2.5,  # min_win_len = c_1 * min_period
         "c_3a": 3.0,
