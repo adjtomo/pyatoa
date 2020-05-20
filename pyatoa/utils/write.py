@@ -76,7 +76,7 @@ def write_misfit(ds, model, step, path="./", fidout=None):
 
     # By default, name the file after the event id
     if fidout is None:
-        fidout = os.path.join(path, event_name(ds=ds))
+        fidout = os.path.join(path, format_event_name(ds))
     
     # calculate misfit 
     misfit = sum_misfits(ds, model, step)
@@ -234,7 +234,7 @@ def write_stations_adjoint(ds, model, specfem_station_file, step=None,
     :type pathout: str
     :param pathout: path to save file 'STATIONS_ADJOINT'
     """
-    eid = event_name(ds=ds)
+    eid = format_event_name(ds)
 
     # Check which stations have adjoint sources
     stas_with_adjsrcs = []
@@ -317,7 +317,7 @@ def write_adj_src_to_ascii(ds, model, step=None, pathout=None,
     if step:
         adjsrcs = adjsrcs[step]
 
-    eid = event_name(ds=ds)
+    eid = format_event_name(ds)
 
     # Set the path to write the data to.
     # If no path is given, default to current working directory
@@ -381,7 +381,7 @@ def tile_combine_imgs(ds, wavs_path, maps_path, save_pdf_to,
     :return:
     """
     # Intra-function imports because this is usually only called once in a while
-    from pyatoa.visuals.plot_tools import tile_imgs, imgs_to_pdf
+    from pyatoa.utils.images import tile_imgs, imgs_to_pdf
     from pyatoa.utils.srcrcv import sort_by_backazimuth
 
     # Set the template filenames to look for/ use

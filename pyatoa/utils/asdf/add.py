@@ -5,6 +5,7 @@ add new auxiliary data structures to existing ASDF datasets
 """
 import warnings
 import numpy as np
+from pyatoa import logger
 from pyatoa.utils.form import create_window_dictionary, channel_code
 
 
@@ -93,14 +94,19 @@ def add_adjoint_sources(adj_srcs, ds, path, time_offset):
             specfem_adj_source[:, 1] = adj_src.adjoint_source[::-1]
 
             station_id = f"{adj_src.network}.{adj_src.station}"
-            coordinates = ds.waveforms[
-                f"{adj_src.network}.{adj_src.station}"].coordinates
-
-            # Safeguard against funny types in the coordinates dictionary
-            latitude = float(coordinates["latitude"])
-            longitude = float(coordinates["longitude"])
-            elevation_in_m = float(coordinates["elevation_in_m"])
-
+            try:
+                coordinates = ds.waveforms[station_id].coordinates
+                # Safeguard against funny types in the coordinates dictionary
+                latitude = float(coordinates["latitude"])
+                longitude = float(coordinates["longitude"])
+                elevation_in_m = float(coordinates["elevation_in_m"])
+            except KeyError:
+                latitude = longitude = elevation_in_m = 0
+                logger.warning(
+                    f"cannot find matching StationXML for {station_id} "
+                    "coordinate information will be set to 0"
+                    )
+            # Parameters saved as a dictionary object
             parameters = {
                 "dt": adj_src.dt, "misfit_value": adj_src.misfit,
                 "adjoint_source_type": adj_src.adj_src_type,

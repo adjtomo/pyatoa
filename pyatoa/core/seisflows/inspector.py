@@ -5,14 +5,15 @@ A class to analyze misfit windows using Pandas.
 import os
 import pyasdf
 import traceback
+import numpy as np
 import pandas as pd
 from glob import glob
 
 from pyatoa.utils.form import format_event_name
-from pyatoa.visuals.gadget import Gadget
+from pyatoa.visuals.inspector_plotter import InspectorPlotter
 
 
-class Inspector(Gadget):
+class Inspector(InspectorPlotter):
     """
     This plugin object will collect information from a Pyatoa run folder and
     allow the User to easily understand statistical information or generate
@@ -230,7 +231,7 @@ class Inspector(Gadget):
         :rtype: pandas.DataFrame
         :return: a dataframe object containing information per misfit window
         """
-        eid = format_event_name(ds=ds)
+        eid = format_event_name(ds)
 
         # Initialize an empty dictionary that will be used to initalize
         # a Pandas DataFrame
@@ -379,7 +380,8 @@ class Inspector(Gadget):
             raise NotImplementedError
 
     def isolate(self, model=None, step=None,  event=None, network=None,
-                station=None):
+                station=None, channel=None, comp=None, keys=None, 
+                exclude=None, unique_key=None):
         """
         Returns a new dataframe that is grouped by a given index
         if variable is None, defaults to returning all available values
@@ -394,21 +396,58 @@ class Inspector(Gadget):
         :param station: station name e.g. 'BKZ' (optional)
         :type network: str
         :param network: network name e.g. 'NZ' (optional)
+        :type channel: str
+        :param channel: channel name e.g. 'HHE' (optional)
+        :type comp: str
+        :param comp: component name e.g. 'Z' (optional)
+        :type unique_key: str
+        :param unique_key: isolates model, event and station information, 
+            alongside a single info key, such as dlnA.
+            Useful for looking at one variable without have to write out long 
+            lists to 'exclude' or 'keys'
+        :type keys: list
+        :param keys: list of keys to retain in returned dataset, 'exclude'
+            will override this variable, best to use them separately
+        :type exclude: list
+        :param exclude: list of keys to remove from returned dataset
         :rtype: pandas.DataFrame
         :return: DataFrame with selected rows based on selected column values
         """
         df = self.windows
-        return df.loc[(df["event"] == (event or df["event"].to_numpy())) &
-                      (df["model"] == (model or df["model"].to_numpy())) &
-                      (df["step"] == (step or df["step"].to_numpy())) &
-                      (df["station"] == (station or df["station"].to_numpy())) &
-                      (df["network"] == (network or df["network"].to_numpy()))
-                      ]
+        df = df.loc[(df["event"] == (event or df["event"].to_numpy())) &
+                    (df["model"] == (model or df["model"].to_numpy())) &
+                    (df["step"] == (step or df["step"].to_numpy())) &
+                    (df["station"] == (station or df["station"].to_numpy())) &
+                    (df["network"] == (network or df["network"].to_numpy())) &
+                    (df["channel"] == (channel or df["channel"].to_numpy())) &
+                    (df["component"] == (comp or df["component"].to_numpy())) 
+                    ]
+        if unique_key is not None:
+            # return the unique key alongside identifying information
+            unique_keys = ["event", "model", "step", "network", "station", 
+                           "channel", "comp", unique_key]
+            df = df.loc[:, df.columns.intersection(unique_keys)]
+        if exclude is not None:
+            # delete excluded keys from key list one by one
+            df_keys = df.keys().to_numpy()
+            for e in exclude:
+                df_keys = df_keys[df_keys != e]
+            if keys is not None:
+                keys = np.append(df_keys, keys)
+            else:
+                keys = df_keys
+        if keys is not None:
+            # 'exclude' may produce repeat keys so run unique beforehand
+            df = df.loc[:, df.columns.intersection(np.unique(keys))]
+        return df
 
     def nwin(self, level="step"):
         """
         Find the cumulative length of misfit windows for a given model/step,
         or the number of misfit windows for a given model/step.
+
+        Neat trick to select just by station:
+            insp.windows(level='station').query("station == 'BFZ'")
 
         :type level: str
         :param level: Default is 'step'
@@ -442,8 +481,13 @@ class Inspector(Gadget):
         Sum the total misfit for a given model based on the individual
         misfits for each misfit window, and the number of sources used.
 
+        To get per-station misfit on a per-step basis
+            df = insp.misfits(level="station").query("station == 'TOZ'")
+            df.groupby(['model', 'step']).sum()
+
         :type level: str
         :param level:  Default is 'step'
+            'station': unscaled misfit on a per-station basis
             'step': to get total misfit for a given step count.
             'event': to get this on a per-event misfit.
         :rtype: dict

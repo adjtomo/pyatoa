@@ -183,12 +183,18 @@ class Config:
     @property
     def model_number(self):
         """string formatted version of model, e.g. 'm00'"""
-        return format_model_number(self.model)
+        if self.model is not None:
+            return format_model_number(self.model)
+        else:
+            return None
 
     @property
     def step_count(self):
         """string formatted version of step, e.g. 's00'"""
-        return format_step_count(self.step)
+        if self.step is not None:
+            return format_step_count(self.step)
+        else:
+            return None
 
     def _check(self, **kwargs):
         """

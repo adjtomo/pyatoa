@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 from pyatoa.utils.calculate import normalize_a_to_b
 
 
-class Gadget:
+class InspectorPlotter:
     """
     A class of methods for plotting statistics from an Inspector.
     Should not be called on its own, these functions will be inherited by
@@ -131,7 +131,7 @@ class Gadget:
         :type step_comp: str
         :param step_comp: step to compare with
         :type choice: str
-        :param choice: choice of 'cc_shift_s' for time shift, or 'dlna' as
+        :param choice: choice of 'cc_shift_s' for time shift, or 'dlnA' as
             amplitude
         :type binsize: float
         :param binsize: size of the histogram bins
@@ -163,7 +163,7 @@ class Gadget:
         def get_stats(n_, bins_):
             """get stats from a histogram"""
             mids = 0.5 * (bins_[1:] + bins_[:-1])
-            mean = np.average(mids, weights=n)
+            mean = np.average(mids, weights=n_)
             var = np.average((mids - mean)**2, weights=n_)
             std = np.sqrt(var)
 
@@ -172,7 +172,10 @@ class Gadget:
         def get_values(m, s):
             """short hand to get the data, and the maximum value in DataFrame"""
             df_a = self.isolate(model=m, step=s)
-            val_ = df_a.loc[:, choice].to_numpy()
+            try:
+                val_ = df_a.loc[:, choice].to_numpy()
+            except KeyError as e:
+                raise KeyError(f"Inspector.windows has no key {choice}") from e
             lim_ = max(abs(np.floor(min(val_))), abs(np.ceil(max(val_))))
             return val_, lim_
 
@@ -328,7 +331,7 @@ class Gadget:
 
         plt.show()
 
-    def convergence(self, choice, windows_by="length_s", fontsize=15,
+    def convergence(self, by, windows_by="length_s", fontsize=15,
                     show=True, save=None):
         """
         Plot the convergence rate over the course of an inversion.
@@ -348,8 +351,6 @@ class Gadget:
         :type save: str
         :param save: file id to save the figure to
         """
-        assert(choice in ["by_iteration", "by_model"]), \
-            "choice must be: 'by_iteration' or 'by_model'"
         assert(windows_by in ["n_win", "length_s"]), \
             "windows_by must be: 'n_win; or 'length_s'"
 
@@ -366,7 +367,7 @@ class Gadget:
         ax2 = ax1.twinx()
         # Plot each iteration and every step count, not as intuitive but shows
         # the behavior of the inversion better
-        if choice == "by_iteration":
+        if by == "iteration":
             # Color by unique model names
             start = 0
             for model in models:
@@ -385,17 +386,18 @@ class Gadget:
             ax1.set_xticks(np.arange(0, end, 1), minor=True)
 
         # Plot by the final accepted misfit per model
-        elif choice == "by_model":
+        elif by == "model":
             xlabels, misfits, windows = [], [], []
             for m, model in enumerate(models):
                 try:
                     # Try to access model as the first step
                     df_temp = df.loc[model, "s00"]
-                    xlbl = f"{model}s00"
+                    # xlbl = f"{model}s00"
                 except KeyError:
                     # If first step not available, search last step last model
                     df_temp = df.loc[models[m - 1]].iloc[-1]
-                    xlbl = f"{models[m - 1]}{df_temp.name}"
+                    # xlbl = f"{models[m - 1]}{df_temp.name}"
+                xlbl = model
                 misfit, window = df_temp.loc[["misfit", windows_by]].to_numpy()
 
                 xlabels.append(xlbl)
@@ -407,6 +409,8 @@ class Gadget:
             ax1.set_xlabel("Model number", fontsize=fontsize)
             ax1.xaxis.set_ticks(np.arange(0, len(models)), 1)
             ax1.set_xticklabels(xlabels, rotation=45, ha="right")
+        else:
+            raise ValueError("'by' must be 'model' or 'iteration")
 
         # Shared formatting
         ax1.set_ylabel("Total Normalized Misfit (solid)", fontsize=fontsize)

@@ -74,7 +74,7 @@ def format_event_name(ds_or_event):
     if isinstance(ds_or_event, Event):
         return event.resource_id.id.split('/')[-1]
     elif isinstance(ds_or_event, ASDFDataSet):
-        return os.path.basename(ds.filename).split(".")[0]
+        return os.path.basename(ds_or_event.filename).split(".")[0]
     else:
         raise TypeError("format_event_name() only accepts pyasdf.ASDFDataSet "
                         "or obspy.core.event.Event objects")

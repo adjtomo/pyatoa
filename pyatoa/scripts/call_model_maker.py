@@ -13,7 +13,7 @@ Note:
 import os
 from glob import glob
 from pyatoa.visuals.model import Model
-from pyatoa.visuals.plot_tools import imgs_to_pdf
+from pyatoa.utils.images import imgs_to_pdf
 
 
 def save_pdf(pngs, tag):
@@ -28,7 +28,7 @@ def save_pdf(pngs, tag):
         os.remove(png)
 
 
-def call_models(fid, path_out="./figures"):
+def call_models(fid, path_out="./figures", make_pdf=True):
     """
     Set the parameters in this function, which will then be passed to Model
 
@@ -84,11 +84,14 @@ def call_models(fid, path_out="./figures"):
     par = {"font_factor": 1.1,
            "convert": 1E-3,
            "zero_origin": True,
-           "min_max": None,
+           "min_max": [],
            "num_colors": 51,
            "num_clabels": 5,
            "round_to": None,
-           "show": False
+           "show": False,
+           "xlabel": "E (km)",
+           "ylabel": "N (km)",
+           "zlabel": "Z (km)",
            }
 
 
@@ -132,7 +135,8 @@ def call_models(fid, path_out="./figures"):
             model.startup()
             fid_out = model.plot_model_topdown(depth_km=z, **par)
             z_fids.append(fid_out)
-        save_pdf(z_fids, save_fid_z)
+        if make_pdf:
+            save_pdf(z_fids, save_fid_z)
     if x_slices:
         par["save"] = save_fid_x
         x_fids = []
@@ -141,7 +145,8 @@ def call_models(fid, path_out="./figures"):
             fid_out = model.plot_depth_cross_section(choice="X",
                                                      slice_at=x, **par)
             x_fids.append(fid_out)
-        save_pdf(x_fids, save_fid_x)
+        if make_pdf:
+            save_pdf(x_fids, save_fid_x)
     if y_slices:
         par["save"] = save_fid_y
         y_fids = []
@@ -150,7 +155,8 @@ def call_models(fid, path_out="./figures"):
             fid_out = model.plot_depth_cross_section(choice="Y",
                                                      slice_at=y, **par)
             y_fids.append(fid_out)
-        save_pdf(y_fids, save_fid_y)
+        if make_pdf:
+            save_pdf(y_fids, save_fid_y)
 
 
 def user_input():
@@ -162,19 +168,24 @@ def user_input():
     """
     fids = []
     model = f"{input('Choose model number (wildcards okay): '):0>4}"
+    fids += glob("model_{model}_*.vtk")
+    fids += glob(f"log_model_{model}_??.vtk")
+    fids += glob(f"gradient_{model}_*.vtk")
+    fids += glob(f"model_{model}_poissons.vtk")
 
-    add_mods = input("Make models for 'models'?: [y]/n")
-    add_logs = input("Make models for 'log differences'?: [y]/n")
-    add_grads = input("Make models for 'gradients'?: [y]/n")
-    add_pois = input("Make models for 'Poissons ratios'?: [y]/n")
-    if add_mods != "n":
-        fids += glob("model_{model}_*.vtk")
-    if add_logs != "n":
-        fids += glob(f"log_model_{model}_??.vtk")
-    if add_grads != "n":
-        fids += glob(f"gradient_{model}_*.vtk")
-    if add_pois != "n":
-        fids += glob(f"model_{model}_poissons.vtk")
+    if False:
+        add_mods = input("Make models for 'models'?: [y]/n ")
+        add_logs = input("Make models for 'log differences'?: [y]/n ")
+        add_grads = input("Make models for 'gradients'?: [y]/n ")
+        add_pois = input("Make models for 'Poissons ratios'?: [y]/n ")
+        if add_mods != "n":
+            fids += glob("model_{model}_*.vtk")
+        if add_logs != "n":
+            fids += glob(f"log_model_{model}_??.vtk")
+        if add_grads != "n":
+            fids += glob(f"gradient_{model}_*.vtk")
+        if add_pois != "n":
+            fids += glob(f"model_{model}_poissons.vtk")
 
     print(f"{len(fids)} file(s) found")
     return fids
@@ -185,5 +196,5 @@ if __name__ == "__main__":
     for fid in filenames:
         if "rcvs" in fid or "srcs" in fid:
             continue
-        call_models(fid)
+        call_models(fid, make_pdf=False)
 

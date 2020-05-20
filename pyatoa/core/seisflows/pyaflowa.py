@@ -23,11 +23,11 @@ from pyatoa.utils.read import read_stations
 from pyatoa.utils.form import (format_model_number, format_step_count, 
                                format_event_name)
 from pyatoa.utils.asdf.clean import clean_ds
-from pyatoa.visuals.statistics import plot_output_optim
 from pyatoa.utils.write import (write_stations_adjoint, write_adj_src_to_ascii,
                                 write_misfit, tile_combine_imgs,
                                 src_vtk_from_specfem, rcv_vtk_from_specfem
                                 )
+from pyatoa.visuals.seisflows_plotting import plot_output_optim
 
 # A list of key word arguments that are accepted by Pyaflowa but are only
 # listed in Seisflows' parameters.yaml file. Listed here so that Pyatoa

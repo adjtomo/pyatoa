@@ -16,14 +16,14 @@ from pyatoa.core.config import Config
 from pyatoa.core.gatherer import Gatherer, GathererNoDataException
 
 from pyatoa.utils.asdf.fetch import windows_from_dataset
-from pyatoa.utils.weights import window_by_amplitude
+from pyatoa.utils.window import reject_on_global_amplitude_ratio
 from pyatoa.utils.srcrcv import gcd_and_baz, seismogram_length
 from pyatoa.utils.asdf.add import add_misfit_windows, add_adjoint_sources
 from pyatoa.utils.process import (preproc, trim_streams, stf_convolve, zero_pad, 
                                   match_npts)
 
-from pyatoa.visuals.maps import manager_map
-from pyatoa.visuals.waveforms import plot_wave
+from pyatoa.visuals.map_maker import manager_map
+from pyatoa.visuals.manager_plotter import ManagerPlotter
 
 
 class ManagerError(Exception):
@@ -126,6 +126,7 @@ class Manager:
         self.windows = windows
         self.staltas = staltas or {}
         self.adj_srcs = adj_srcs
+        self._rej_win = {}
 
         # Internal statistics to keep track of the workflow progress
         self.stats = Stats(num_windows=0, len_obs=0, len_syn=0, misfit=0,
@@ -661,45 +662,56 @@ class Manager:
         self.save_windows()
         logger.info(f"{self.stats.num_windows} window(s) total found")
         self._check()
-        
+
         return self
 
     def select_windows_plus(self):
         """
         Mid-level custom window selection function that calls Pyflex select 
         windows, but includes additional window suppression functionality.
+        Includes custom Pyflex addition of outputting rejected windows, which
+        will be used internally for plotting.
         """
         logger.info(f"running Pyflex w/ map: {self.config.pyflex_preset}")
-        nwin, windows = 0, {}
+        nwin, window_dict, reject_dict = 0, {}, {}
         for comp in self.config.component_list:
-            # If no observed waveforms for a given component, skip over
-            if not self.st_obs.select(component=comp):
-                continue
             try:
-                # Pyflex throws a TauP warning from ObsPy #2280, ignore that
-                with warnings.catch_warnings():
-                    warnings.simplefilter("ignore", UserWarning) 
-                    # Run Pyflex to select misfit windows as list of Window obj
-                    window = pyflex.select_windows(
-                        observed=self.st_obs.select(component=comp),
-                        synthetic=self.st_syn.select(component=comp),
-                        config=self.config.pyflex_config, event=self.event,
-                        station=self.inv)
-                # Suppress windows that contain low-amplitude signals
-                if self.config.win_amp_ratio > 0:
-                    window = window_by_amplitude(self, window, comp)
-                # !!! Further window filtering can be applied here !!!
-                if window:
-                    windows[comp] = window
-                _nwin = len(window)
+                obs = self.st_obs.select(component=comp)[0]
+                syn = self.st_syn.select(component=comp)[0]
+            # IndexError thrown when trying to access an empty Stream
             except IndexError:
-                _nwin = 0
+                continue
+
+            # Pyflex throws a TauP warning from ObsPy #2280, ignore that
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore", UserWarning) 
+                ws = pyflex.WindowSelector(observed=obs, synthetic=syn,
+                                           config=self.config.pyflex_config, 
+                                           event=self.event,
+                                           station=self.inv)
+                windows = ws.select_windows()
+
+            # vvv Further window filtering can be applied here vvv
+            # Suppress windows that contain low-amplitude signals
+            if self.config.win_amp_ratio > 0:
+                windows, ws.rejects["amplitude"] = \
+                       reject_on_global_amplitude_ratio(
+                                            data=obs.data, windows=windows, 
+                                            ratio=self.config.win_amp_ratio
+                                            )
+            # ^^^ Further window filtering can be applied here ^^^
+            if windows:
+                window_dict[comp] = windows
+            if ws.rejects:
+                reject_dict[comp] = ws.rejects
 
             # Count windows and tell User
-            nwin += _nwin
-            logger.info(f"{_nwin} window(s) for comp {comp}")
+            logger.info(f"{len(windows)} window(s) selected for comp {comp}")
+            nwin += len(windows)
+            
 
-        self.windows = windows
+        self.windows = window_dict
+        self._rej_win = reject_dict
         self.stats.num_windows = nwin
 
 
@@ -787,15 +799,15 @@ class Manager:
         """
         if self.ds is None:
             logger.warning("Manager has no ASDFDataSet, cannot save windows") 
-        elif not self.windows == 0:
+        elif not self.windows:
             logger.warning("Manager has no windows to save")
-        elif self.config.save_to_ds:
+        elif not self.config.save_to_ds:
             logger.warning("config parameter save_to_ds is set False, "
                            "will not save windows")
         else:
             logger.debug("saving misfit windows to ASDFDataSet")
             add_misfit_windows(self.windows, self.ds, 
-                               path=_get_path_for_aux_data(self)
+                               path=self._get_path_for_aux_data()
                                )
 
     def save_adj_srcs(self):
@@ -808,15 +820,15 @@ class Manager:
         if self.ds is None:
             logger.warning("Manager has no ASDFDataSet, cannot save "
                            "adjoint sources") 
-        elif not self.adjsrcs:
+        elif not self.adj_srcs:
             logger.warning("Manager has no adjoint sources to save")
-        elif self.config.save_to_ds:
+        elif not self.config.save_to_ds:
             logger.warning("config parameter save_to_ds is set False, "
                            "will not save adjoint sources")
         else:
             logger.debug("saving adjoint sources to ASDFDataSet")
             add_adjoint_sources(adj_srcs=self.adj_srcs, ds=self.ds, 
-                                path=_get_path_for_aux_data(self), 
+                                path=self._get_path_for_aux_data(), 
                                 time_offset=self.stats_time_offset_sec)
 
     def _get_path_for_aux_data(self):
@@ -827,10 +839,10 @@ class Manager:
         :rtype: str
         :return: path for auxiliary data saving
         """
-        if self.config.model and self.config.step:
+        if self.config.model_number and self.config.step_count:
             # model/step/window_tag
             path = "/".join([self.config.model_number, self.config.step_count])
-        elif self.config.model:
+        elif self.config.model_number:
             # model/window_tag
             path = self.config.model_number
         else:
@@ -870,8 +882,7 @@ class Manager:
         return adjoint_windows
 
 
-    def plot(self, save=None, show=True, append_title='', length_sec=None, 
-             normalize=False, figsize=(11.69, 8.27), dpi=100, **kwargs):
+    def plot(self, save=None, show=True, **kwargs):
         """
         Plot observed and synthetics waveforms, misfit windows, STA/LTA and
         adjoint sources for all available components. Append information
@@ -879,10 +890,6 @@ class Manager:
 
         :type append_title: str
         :param append_title: any string to append the title of the plot
-        :type length_sec: str or int or float or None
-        :param length_sec: if "dynamic", dynamically determine length of wav 
-            based on src rcv distance. If type float or type int, User defined
-            waveform length in seconds. If None, default to full trace length
         :type normalize: bool
         :param normalize: normalize obs and syn waveforms, e.g. to make it 
             easier to look at phase matching
@@ -903,26 +910,10 @@ class Manager:
             raise ManagerError("cannot plot, waveforms not standardized")
         logger.info("plotting waveform")
 
-        # Calculate the seismogram length based on given options
-        # Dynamically find length based on src rcv distanc
-        if isinstance(length_sec, str) and (length_sec == "dynamic"):
-            length_sec = seismogram_length(
-                    slow_wavespeed_km_s=1, binsize=50, minimum_length=100,
-                    distance_km=gcd_and_baz(event=self.event,
-                                            sta=self.inv[0][0])[0])
-        # If not int or not float, then default to showing full trace
-        elif not (isinstance(length_sec, int) or isinstance(length_sec, float)):
-            length_sec = None
-
         # Call on window making function to produce waveform plots
-        f = plot_wave(
-            st_obs_in=self.st_obs, st_syn_in=self.st_syn, config=self.config,
-            time_offset_sec=self.stats_time_offset_sec, windows=self.windows,
-            staltas=self.staltas, adj_srcs=self.adj_srcs, length_sec=length_sec,
-            append_title=append_title, figsize=figsize, dpi=dpi, show=show,
-            save=save, normalize=normalize, **kwargs
-        )
-        return f
+        mp = ManagerPlotter(mgmt=self, show=show, save=save, **kwargs)
+        mp.plot()
+        return mp
 
     def srcrcvmap(self, save=None, show=True, map_corners=None, stations=None, 
                   annotate_names=False, color_by_network=False,

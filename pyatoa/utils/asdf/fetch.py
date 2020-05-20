@@ -80,7 +80,7 @@ def _return_windows_from_previous_step(windows, model, step):
 
     # Get a flattened list of models and steps as unique tuples of integers
     iters = []
-    steps = {m: misfit_windows[m].list() for m in misfit_windows.list()}
+    steps = {m: windows[m].list() for m in windows.list()}
     for m, s in steps.items():
         for s_ in s:
             iters.append((int(m[1:]), int(s_[1:])))

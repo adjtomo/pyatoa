@@ -1,4 +1,6 @@
 """
+Make figures of models from .vtk files using Mayavi.
+
 A class used to plot model visualizations of .vtk files in an automatable
 fashion, using the Mayavi library. Standard figure templates include horizontal
 and vertical cross sections which show depth slices of the model.
@@ -15,7 +17,7 @@ from pyatoa.visuals.model_tools import (logger, get_coordinates, set_axes,
                                         srcrcv, colors, get_ranges)
 
 
-class Model:
+class ModelMaker:
     """
     A Class to automatically visualize slices of a model saved in .vtk
     """

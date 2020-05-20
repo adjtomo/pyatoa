@@ -5,6 +5,7 @@ import pytest
 import os
 import json
 import logging
+import numpy as np
 from IPython import embed
 from pyasdf import ASDFDataSet
 from pyatoa import Config, Manager, logger
@@ -75,6 +76,15 @@ def window():
     return json.load(open(
         "./test_data/test_window_NZ_BFZ_N_0_2018p130600.json"))["windows"][0]
 
+@pytest.fixture
+def adjoint_source():
+    """
+    Pre-gathered adjoint source for specific configuration to be compared with 
+    calculated adjoint source
+    """
+    return np.loadtxt(
+        "./test_data/test_adjoint_source_NZ_BFZ_N_2018p130600.adj", unpack=True
+        )
 
 @pytest.fixture
 def mgmt_pre(config, event, st_obs, st_syn, inv):
@@ -264,35 +274,49 @@ def test_window(mgmt_pre, window):
     assert(win_check.cc_shift == window["cc_shift_in_samples"])
     assert(win_check.dlnA == window["dlnA"])
 
-def test_fixed_windows(tmpdir, mgmt_post):
+def test_save_windows_and_use_fixed_windows_from_dataset(tmpdir, mgmt_post):
     """
     Test fixed windowing by adding a set of windows to a temp dataset and then
-    retrieving them and comparing.
+    retrieving them and comparing. Also test save_windows() at the same time
     """
     with ASDFDataSet(os.path.join(tmpdir, "test_dataset.h5")) as ds:
         mgmt_post.ds = ds
         # Explicitely set the model and step count
         mgmt_post.config.model = 0
         mgmt_post.config.step = 0
+        mgmt_post.config.save_to_ds = True
         saved_windows = mgmt_post.windows
-        # Save windows to path "m00/s00"
-        mgmt_post.save_windows()
-        # Delete windows, set step to s01 (next step) and retrieved windows
+        mgmt_post.save_windows()  # saved to path 'm00/s00'
+
+        # Delete windows, iterate step, retrieve fixed windows
         mgmt_post.windows = None
         mgmt_post.config.step += 1
-        embed(colors="neutral")
-
         mgmt_post.window(fix_windows=True)
 
-        retrieved_windows = mgmt_post.windows
+        # Just check some parameter for each window to make sure all goods
+        for comp in mgmt_post.windows:
+            for w, window in enumerate(mgmt_post.windows[comp]):
+                for attr in ["left", "right", "cc_shift"]:
+                    assert(getattr(window, attr) == 
+                                getattr(saved_windows[comp][w], attr))
 
-        assert(saved_windows == retrieved_windows)
+def test_save_adj_srcs(tmpdir, mgmt_post, adjoint_source):
+    """
+    Checks that adjoint sources can be written to dataset and will match the 
+    formatting required by Specfem3D
+    """
+    t_check, data_check = adjoint_source
+    with ASDFDataSet(os.path.join(tmpdir, "test_dataset.h5")) as ds:
+        mgmt_post.ds = ds
+        mgmt_post.save_adj_srcs()
 
+        assert(hasattr(ds.auxiliary_data.AdjointSources.default, "NZ_BFZ_BXN"))
+        adj_src = ds.auxiliary_data.AdjointSources.default.NZ_BFZ_BXN.data
+        t, data = adj_src.value.T
 
-
-
-def test_select_windows():
-    pass
+        # Ensure the data and time arrays are as expected
+        assert((t == t_check).all())
+        assert((data == data_check).all())
 
 def test_save_windows_to_asdfdataset():
     pass
