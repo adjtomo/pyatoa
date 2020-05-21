@@ -43,7 +43,7 @@ def add_misfit_windows(windows, ds, path):
                                       )
 
 
-def add_adjoint_sources(adj_srcs, ds, path, time_offset):
+def add_adjoint_sources(adjsrcs, ds, path, time_offset):
     """
     NOTE: Borrowed and modified from Pyadjoint source code:
           pyadjoint.adjoint_source.write_to_asdf()
@@ -51,8 +51,8 @@ def add_adjoint_sources(adj_srcs, ds, path, time_offset):
     Writes the adjoint source to an ASDF file.
     Note: For now it is assumed SPECFEM will be using the adjoint source
 
-    :type adj_srcs: list of pyadjoint.asdf_data_set.ASDFDataSet
-    :param adj_srcs: adjoint source to save
+    :type adjsrcs: list of pyadjoint.asdf_data_set.ASDFDataSet
+    :param adjsrcs: adjoint source to save
     :type ds: pyasdf.asdf_data_set.ASDFDataSet
     :type path: str
     :param path: internal pathing for save location in the auxiliary data attr.
@@ -71,7 +71,7 @@ def add_adjoint_sources(adj_srcs, ds, path, time_offset):
     ...                            'elevation_in_m':2.0})
     """
     # Save adjoint sources per component
-    for key, adj_src in adj_srcs.items():
+    for key, adj_src in adjsrcs.items():
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
 

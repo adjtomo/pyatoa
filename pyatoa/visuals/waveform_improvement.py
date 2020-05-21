@@ -25,10 +25,11 @@ class WaveformImprovement:
     A class to plot waveform improvement for a given ASDFDataSet
 
     Use case:
-    ds = pyasdf.ASDFDataSet("dataset.h5")
-    wi = WaveformImprovement(ds)
-    wi.gather("NZ.BFZ", 10, 30)
-    wi.plot()
+        ds = pyasdf.ASDFDataSet("dataset.h5")
+        wi = WaveformImprovement(ds)
+        wi.gather("NZ.BFZ", 10, 30)
+        wi.plot()
+        wi.plot("NZ.KNZ", 8, 30)
     """
     def __init__(self, ds):
         """

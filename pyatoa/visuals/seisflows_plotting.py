@@ -12,6 +12,50 @@ mpl.rcParams['lines.markersize'] = 5
 mpl.rcParams['axes.linewidth'] = 2
 
 
+def parse_output_optim(path_to_optim):
+    """
+    Seisflows creates a file 'output.optim' which provides a log of the
+    optimization procedures, including trial step lengths, associated misfits.
+    This function parses that file into a few arrays for use in the workflow.
+
+    :type path_to_optim: str
+    :param path_to_optim: path to 'output.optim' created by Seisflows
+    :rtype: np.arrays
+    :return: numpy arrays which define the iterations, steplengths and misfits
+    """
+    with open(path_to_optim, 'r') as f:
+        lines = f.readlines()
+
+    # Parse the file, skip the header, ignore any tail
+    iterations, steplens, misfits = [], [], []
+    for line in lines[2:]:
+        line = line.strip().split()
+        # Each iteration will have an integer to represent the iter number
+        if len(line) == 3:
+            iteration = line[0]
+            iterations.append(int(iteration))
+            steplens.append(float(line[1]))
+            misfits.append(float(line[2]))
+        # Each trial step length will follow and will carry the same iteration
+        elif len(line) == 2:
+            iterations.append(int(iteration))
+            steplens.append(float(line[0]))
+            misfits.append(float(line[1]))
+        elif len(line) == 0:
+            continue
+        else:
+            print(line)
+            print("invalid line length encountered in output.optim")
+            return
+
+    # Set the lists as numpy arrays for easier manipulation
+    iterations = np.asarray(iterations)
+    steplens = np.asarray(steplens)
+    misfits = np.asarray(misfits)
+
+    return iterations, steplens, misfits
+
+
 def plot_output_optim(path_to_optim, show=False, save=''):
     """
     Sesiflows specific function
@@ -29,8 +73,6 @@ def plot_output_optim(path_to_optim, show=False, save=''):
     :type save: str
     :param save: output filename to save the figure
     """
-    from pyatoa.utils.write import parse_output_optim
-
     # read in the values of the file
     iterations, steplens, misfits = parse_output_optim(path_to_optim)
 

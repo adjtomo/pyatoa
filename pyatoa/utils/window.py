@@ -52,7 +52,7 @@ def category_weights(windows):
     raise NotImplementedError
 
 
-def reject_on_global_amplitude_ratio(array, windows, ratio=0.2):
+def reject_on_global_amplitude_ratio(data, windows, ratio=0.2):
     """
     Reject windows where peak amplitude falls below some threshold value. 
 

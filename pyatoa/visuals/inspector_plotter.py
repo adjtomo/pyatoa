@@ -44,7 +44,7 @@ class InspectorPlotter:
                 sc_receivers = plt.scatter(
                     self.receivers.loc[net].longitude.to_numpy(),
                     self.receivers.loc[net].latitude.to_numpy(),
-                    marker="v", edgecolors="k", s=10, zorder=100, label=net
+                    marker="v", s=10, zorder=100, label=net
                 )
                 sc_receiver_list.append(sc_receivers)
                 sc_receiver_names.append(
@@ -159,6 +159,7 @@ class InspectorPlotter:
         legend = kwargs.get("legend", True)
         label_range = kwargs.get("label_range", False)
         xstep = kwargs.get("xstep", 2)
+        ymax = kwargs.get("ymax", None)
 
         def get_stats(n_, bins_):
             """get stats from a histogram"""
@@ -232,6 +233,8 @@ class InspectorPlotter:
         else:
             if choice == "dlna":
                 plt.xlim([-1.75, 1.75])
+        if ymax:
+            plt.ylim([0, ymax])
 
         # Stats in the title by default
         if not title:

@@ -126,7 +126,7 @@ def test_internal_flag_checks(mgmt_pre):
     assert(mgmt_pre.stats.event_id == "smi:nz.org.geonet/2018p130600")
     assert(mgmt_pre.stats.len_obs == mgmt_pre.stats.len_syn == 3)
     assert(mgmt_pre.stats.standardized == False)
-    assert(mgmt_pre.station_name == "NZ.BFZ")
+    assert(mgmt_pre.stats.inv_name == "NZ.BFZ")
 
 def test_gather_pass_exception():
     """
@@ -152,7 +152,7 @@ def test_read_write_from_asdfdataset(tmpdir, mgmt_pre, config):
         assert(mgmt_pre.stats.event_id == mgmt_loaded.stats.event_id)
         assert(mgmt_pre.stats.len_obs == mgmt_loaded.stats.len_obs)
         assert(mgmt_pre.stats.len_syn == mgmt_loaded.stats.len_syn)
-        assert(mgmt_pre.stats.station_name == mgmt_loaded.stats.station_name)
+        assert(mgmt_pre.stats.inv_name == mgmt_loaded.stats.inv_name)
 
 
 def test_standardize_to_synthetics(mgmt_pre):
@@ -211,41 +211,41 @@ def test_preprocess_rotate_to_rtz(mgmt_pre):
     assert(float(f"{mgmt_pre.baz:.2f}") == 3.21)
 
 
-def test_convolve_source_time_function(mgmt_pre):
-    """
-    Ensure that convolution with the source time function works by checking the 
-    data is changed when running stf_convolve
+# def test_convolve_source_time_function(mgmt_pre):
+#     """
+#     Ensure that convolution with the source time function works by checking the 
+#     data is changed when running stf_convolve
 
-    TO DO:
-        de-convolve the STF signal and test against original data?
-    """
-    st_obs_data = {tr.id: tr.data for tr in mgmt_pre.st_obs}
-    st_syn_data = {tr.id: tr.data for tr in mgmt_pre.st_syn}
+#     TO DO:
+#         de-convolve the STF signal and test against original data?
+#     """
+#     st_obs_data = {tr.id: tr.data for tr in mgmt_pre.st_obs}
+#     st_syn_data = {tr.id: tr.data for tr in mgmt_pre.st_syn}
 
-    mgmt_pre._convolve_source_time_function()
+#     mgmt_pre._convolve_source_time_function()
 
-    # Ensure the synthetic data has been convolved
-    with pytest.raises(AssertionError):
-        for tr in mgmt_pre.st_syn:
-            assert((st_syn_data[tr.id] != tr.data).all())
-    # Ensure observed data remains the same
-    for tr in mgmt_pre.st_obs:
-        assert((st_obs_data[tr.id] == tr.data).all())
+#     # Ensure the synthetic data has been convolved
+#     with pytest.raises(AssertionError):
+#         for tr in mgmt_pre.st_syn:
+#             assert((st_syn_data[tr.id] != tr.data).all())
+#     # Ensure observed data remains the same
+#     for tr in mgmt_pre.st_obs:
+#         assert((st_obs_data[tr.id] == tr.data).all())
 
 
-def test_convolve_source_time_function_synthetic_synthetic_case(mgmt_pre):
-    """
-    Ensure that the synthetic-synthetic case convolves both streams
-    """
-    st_data = {tr.id: tr.data for tr in mgmt_pre.st}
+# def test_convolve_source_time_function_synthetic_synthetic_case(mgmt_pre):
+#     """
+#     Ensure that the synthetic-synthetic case convolves both streams
+#     """
+#     st_data = {tr.id: tr.data for tr in mgmt_pre.st}
 
-    mgmt_pre.config.synthetics_only = True
-    mgmt_pre._convolve_source_time_function()
+#     mgmt_pre.config.synthetics_only = True
+#     mgmt_pre._convolve_source_time_function()
 
-    # Ensure the synthetic data has been convolved
-    with pytest.raises(AssertionError):
-        for tr in mgmt_pre.st:
-            assert((tr.data == st_data[tr.id]).all())
+#     # Ensure the synthetic data has been convolved
+#     with pytest.raises(AssertionError):
+#         for tr in mgmt_pre.st:
+#             assert((tr.data == st_data[tr.id]).all())
 
 
 def test_window(mgmt_pre, window):
@@ -300,7 +300,7 @@ def test_save_windows_and_use_fixed_windows_from_dataset(tmpdir, mgmt_post):
                     assert(getattr(window, attr) == 
                                 getattr(saved_windows[comp][w], attr))
 
-def test_save_adj_srcs(tmpdir, mgmt_post, adjoint_source):
+def test_save_adjsrcs(tmpdir, mgmt_post, adjoint_source):
     """
     Checks that adjoint sources can be written to dataset and will match the 
     formatting required by Specfem3D
@@ -308,7 +308,7 @@ def test_save_adj_srcs(tmpdir, mgmt_post, adjoint_source):
     t_check, data_check = adjoint_source
     with ASDFDataSet(os.path.join(tmpdir, "test_dataset.h5")) as ds:
         mgmt_post.ds = ds
-        mgmt_post.save_adj_srcs()
+        mgmt_post.save_adjsrcs()
 
         assert(hasattr(ds.auxiliary_data.AdjointSources.default, "NZ_BFZ_BXN"))
         adj_src = ds.auxiliary_data.AdjointSources.default.NZ_BFZ_BXN.data

@@ -19,7 +19,7 @@ class Inspector(InspectorPlotter):
     allow the User to easily understand statistical information or generate
     statistical plots to help understand a seismic inversion
 
-    Inherits plotting capabilities from the Gadget class to reduce clutter.
+    Inherits plotting capabilities from InspectorPlotter class to reduce clutter
     """
 
     def __init__(self, tag=None, path=None):
@@ -356,6 +356,7 @@ class Inspector(InspectorPlotter):
         """
         # Dynamically determine file format
         if not fmt:
+            tag = tag.split(".")[0]  # remove extension if there is one
             if os.path.exists(os.path.join(path, f"{tag}.csv")):
                 fmt = "csv"
             elif os.path.exists(os.path.join(path, f"{tag}.hdf")):

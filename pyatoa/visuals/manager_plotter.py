@@ -26,7 +26,7 @@ rejected_window_colors = {
     "data_fit": "C6",   # Pink: reject_based_on_data_fit_criteria()
     "s2n": "C7",  # Gray: reject_based_on_signal_to_noise_ratio()
     "traveltimes":"C8",  # Olive: reject_on_traveltimes()
-    "amplitude": "C9"  # Cyan: Pyatoa.utils.window.reject_on_global_amplitude_ratio()
+    "amplitude": "C9"  # Cyan: pyatoa reject_on_global_amplitude_ratio()
     }
 
 
@@ -76,7 +76,7 @@ class ManagerPlotter:
         self.config = mgmt.config
         self.windows = mgmt.windows
         self.staltas = mgmt.staltas
-        self.adjsrcs = mgmt.adj_srcs
+        self.adjsrcs = mgmt.adjsrcs
         self.rejected_windows = mgmt._rej_win
 
         self.show = show

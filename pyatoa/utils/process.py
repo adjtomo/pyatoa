@@ -172,14 +172,12 @@ def is_preprocessed(st):
     :return: if preprocessing has occurred
     """
     for tr in st:
-        if hasattr(tr.stats, 'processing'):
+        if hasattr(tr.stats, "processing"):
             for processing in tr.stats.processing:
                 # A little hacky, but processing flag will have the str
                 # ..': filter(options'... to signify that a filter is applied
-                if 'filter(' in processing:
-                    warnings.warn("stream already preprocessed", UserWarning)
+                if "filter(options" in processing:
                     return True
-
     # If nothing found, return False
     return False
 
