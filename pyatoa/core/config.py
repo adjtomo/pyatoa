@@ -227,7 +227,9 @@ class Config:
         # Rotate component list if necessary
         if self.rotate_to_rtz:
             logger.debug("Components changed ZNE -> ZRT")
-            self.component_list = ['Z', 'R', 'T']
+            for comp in ["N", "E"]:
+                assert(comp not in self.component_list), \
+                        f"rotated component list cannot include '{comp}'"
 
         # Check that the amplitude ratio is a reasonable number
         if self.win_amp_ratio > 0:
