@@ -490,7 +490,6 @@ class Manager:
         :return: status of the function, 1: successful / 0: failed
         """
         self._check()
-
         if not self.stats.len_obs or not self.stats.len_syn:
             raise ManagerError("cannot standardize, not enough waveform data")
         elif self.stats.standardized and not force:

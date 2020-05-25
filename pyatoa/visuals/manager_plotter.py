@@ -23,10 +23,12 @@ rejected_window_colors = {
     "phase_sep": "C3",   # Red: reject_on_phase_separation()
     "curtail": "C4",   # Violet: curtail_length_of_windows()
     "min_length": "C5",  # Brown: reject_windows_based_on_minimum_length()
-    "data_fit": "C6",   # Pink: reject_based_on_data_fit_criteria()
-    "s2n": "C7",  # Gray: reject_based_on_signal_to_noise_ratio()
-    "traveltimes":"C8",  # Olive: reject_on_traveltimes()
-    "amplitude": "C9"  # Cyan: pyatoa reject_on_global_amplitude_ratio()
+    "cc": "C6",   # Pink: reject_based_on_data_fit_criteria()
+    "tshift": "C7",   # Pink: reject_based_on_data_fit_criteria()
+    "dlna": "C8",   # Pink: reject_based_on_data_fit_criteria()
+    "s2n": "C9",  # Gray: reject_based_on_signal_to_noise_ratio()
+    "traveltimes":"C10",  # Olive: reject_on_traveltimes()
+    "amplitude": "C11"  # Cyan: pyatoa reject_on_global_amplitude_ratio()
     }
 
 
@@ -475,15 +477,14 @@ class ManagerPlotter:
                     plot_amplitude_threshold(ax=ax, obs=obs)
 
             # Finish with axes formatting
+            ax.set_ylabel(comp.upper())
             if i == len(self.st_obs) // 2:
                 # Middle trace will carry the units of the waveforms
                 units = {"DISP": "displacement [m]", 
                          "VEL": "velocity [m/s]",
                          "ACC": "acceleration [m/s^2]",
                          "none": ""}[self.config.unit_output]
-                ax.set_ylabel(f"{units}\n{comp}")
-            else:
-                ax.set_ylabel(comp)
+                ax.set_ylabel(f"{units}\n{ax.get_ylabel()}")
 
             if plot_legend:
                 labels = [l.get_label() for l in lines]
