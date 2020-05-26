@@ -247,6 +247,15 @@ class ManagerPlotter:
 
         ymin, ymax = ax.get_ylim()
 
+        # Default window annotation string
+        if window_anno is None:
+            window_anno = ("max_cc={max_cc:.2f}\n"
+                           "cc_shift={cc_shift:.2f}s\n"
+                           "dlnA={dlnA:.3f}\n"
+                           "left={left:.1f}s\n"
+                           "length={length:.1f}s\n"
+                           )
+
         for j, window in enumerate(windows):
             tleft = window.left * window.dt + self.time_axis[0]
             tright = window.right * window.dt + self.time_axis[0]
@@ -262,23 +271,14 @@ class ManagerPlotter:
                 # Annotate window information into each window
                 t_anno = (tright - tleft) * 0.025 + tleft
                 y_anno = window_anno_height * (ymax - ymin) + ymin
-                if window_anno is None:
-                    # Default window annotation string
-                    window_anno = ("max_cc={max_cc:.2f}\n"
-                                   "cc_shift={cc_shift:.2f}s\n"
-                                   "dlnA={dlnA:.3f}\n"
-                                   "left={left:.1f}s\n"
-                                   "length={length:.1f}s\n"
-                                   )
+                s_anno = window_anno.format(
+                                max_cc=window.max_cc_value,
+                                cc_shift=window.cc_shift * window.dt,
+                                dlnA=window.dlnA,
+                                left=tleft,
+                                length=tright - tleft)
 
-                window_anno = window_anno.format(
-                            max_cc=window.max_cc_value,
-                            cc_shift=window.cc_shift * window.dt,
-                            dlnA=window.dlnA,
-                            left=tleft,
-                            length=tright - tleft)
-
-                ax.annotate(s=window_anno, xy=(t_anno, y_anno), zorder=11, 
+                ax.annotate(s=s_anno, xy=(t_anno, y_anno), zorder=11, 
                             fontsize=window_anno_fontsize,
                             rotation=window_anno_rotation, 
                             color=window_anno_fontcolor,
@@ -309,16 +309,19 @@ class ManagerPlotter:
         :param windows: list of windows to plot
         """
         ymin, ymax = ax.get_ylim()
-        dy = 0.025 * (ymax - ymin)  # increment for window location
+        dy = 0.03 * (ymax - ymin)  # increment for window location
 
         for tag, window in windows.items():
             for win in window:
                 tleft = win.left * win.dt + self.time_axis[0]
                 tright = win.right * win.dt + self.time_axis[0]
-                ax.hlines(y=ymin, xmin=tleft, xmax=tright, linewidth=1.75,
-                          colors=rejected_window_colors[tag], alpha=1.)
-                # ax.annotate(xy=(tleft, ymin), s=tag, fontsize=3)
-                ymin -= dy
+                ax.hlines(y=ymin, xmin=tleft, xmax=tright, linewidth=3.5,
+                          colors=rejected_window_colors[tag], alpha=0.25
+                          )
+            # Find the leftmost for annotation
+            lft = min([win.left * win.dt for win in window]) + self.time_axis[0]
+            ax.annotate(xy=(lft, ymin), s=tag.replace("_", " "), fontsize=5)
+            ymin -= dy
 
     def plot_adjsrcs(self, ax, adjsrc):
         """
