@@ -111,10 +111,12 @@ class InspectorPlotter:
             plt.savefig(save)
         if show:
             plt.show
+        else:
+            plt.close()
 
-    def hist(self, model, step, model_comp=None, step_comp=None,
-             choice="cc_shift_in_seconds", binsize=1., show=True, save=None,
-             **kwargs):
+    def hist(self, model, step, model_comp=None, step_comp=None, event=None,
+             station=None, choice="cc_shift_in_seconds", binsize=1., show=True, 
+             save=None, **kwargs):
         """
         Create a histogram of misfit information for either time shift or
         amplitude differences. Option to compare against different models,
@@ -170,9 +172,9 @@ class InspectorPlotter:
 
             return mean, var, std
 
-        def get_values(m, s):
+        def get_values(m, s, e, sta):
             """short hand to get the data, and the maximum value in DataFrame"""
-            df_a = self.isolate(model=m, step=s)
+            df_a = self.isolate(model=m, step=s, event=e, station=sta)
             try:
                 val_ = df_a.loc[:, choice].to_numpy()
             except KeyError as e:
@@ -184,14 +186,16 @@ class InspectorPlotter:
         label_dict = {"cc_shift_in_seconds": "Time Shift (s)",
                       "dlnA": "$\Delta\ln$(A)",
                       "misfit": "misfit",
-                      "length_s": "Window Length (s)"
+                      "length_s": "Window Length (s)",
+                      "max_cc_value": "Peak Cross Correlation"
                       }
 
         f, ax = plt.subplots(figsize=figsize)
-        val, lim = get_values(model, step)
+        val, lim = get_values(model, step, event, station)
 
         if model_comp:
-            val_comp, lim_comp = get_values(model_comp, step_comp)
+            val_comp, lim_comp = get_values(model_comp, step_comp, event, 
+                                            station)
 
             # Reset the limit to be the greater of the two
             lim = max(lim, lim_comp)
@@ -245,7 +249,10 @@ class InspectorPlotter:
                           )
 
         # Finalize plot details
-        plt.xlabel(label_dict[choice], fontsize=fontsize)
+        try:
+            plt.xlabel(label_dict[choice], fontsize=fontsize)
+        except Keyerror:
+            plt.xlabel(choice, fontsize=fontsize)
         plt.ylabel("Count", fontsize=fontsize)
         plt.title(title, fontsize=fontsize)
         plt.tick_params(which='both', direction='in', top=True, right=True,
@@ -263,6 +270,8 @@ class InspectorPlotter:
             plt.savefig(save)
         if show:
             plt.show()
+        else:
+            plt.close()
     
         return f, ax
 
@@ -281,12 +290,15 @@ class InspectorPlotter:
         :type component: str
         :param component: choose a specific component to analyze
         """
+        assert(model in self.models and step in self.steps[model]), \
+            f"{model}{step} does not exist in Inspector"
+
         comp_dict = {"Z": "orangered",
                      "N": "forestgreen", "R": "forestgreen",
                      "E": "royalblue", "T": "royalblue"
                      }
 
-        srcrcv = self.get_dist_baz()
+        srcrcv = self.calculate_srcrcv()
         windows = self.isolate(model=model, step=step, event=event,
                                network=network, station=station
                                )
@@ -304,7 +316,6 @@ class InspectorPlotter:
             (df["station"] == (station or df["station"].to_numpy())) &
             (df["network"] == (network or df["network"].to_numpy())) &
             (df["component"] == (component or df["component"].to_numpy()))
-
             ]
 
         # Drop unnecessary information from dataframe
@@ -321,7 +332,7 @@ class InspectorPlotter:
                       )
 
         # Empty lines for legend
-        for comp in windows.component.unique():
+        for comp in sorted(windows.component.unique()):
             ax.hlines(y=0, xmin=0, xmax=0.1, color=comp_dict[comp], label=comp)
 
         plt.title(f"{len(df)} misfit windows")
@@ -333,6 +344,48 @@ class InspectorPlotter:
         plt.ylim([min(df.distance_km) - 10, max(df.distance_km) + 10])
 
         plt.show()
+
+    def plot_window_differences(model_a, step_a, model_b, step_b):
+        """
+        """
+        srcrcv = self.calculate_srcrcv()
+        windows_a = self.isolate(model=model_a, step=step_a)
+        windows_b = self.isolate(model=model_b, step=step_b)
+        df_a = windows_a.loc[:, ["event", "network", "station", "component",
+                                 "relative_starttime", "relative_endtime"]]
+        df_a.rename(columns={"relative_starttime": "start_a",
+                             "relative_endtime": "end_a"}, inplace=True)
+        df_b = windows_b.loc[:, ["event", "network", "station", "component",
+                                 "relative_starttime", "relative_endtime"]]
+        df_b.rename(columns={"relative_starttime": "start_b",
+                             "relative_endtime": "end_b"}, inplace=True)
+
+        # Comparison dataframe
+        df_c = df_a.merge(df_b)
+        df_c = df_c.merge(srcrcv.drop("backazimuth", axis=1),
+                          on=["event", "network", "station"])
+        df_c.drop(["event", "network", "station"], axis=1, inplace=True)
+
+        f, ax = plt.subplots(figsize=(8, 6))
+        for window in df_c.to_numpy()[:100]:
+            comp, start_a, end_a, start_b, end_b, dist = window
+            # short time windows show on top
+            if start_a - start_b:
+                if start_a < start_b:
+                    c = "orangered"
+                else:
+                    c = "forestgreen"
+                ax.hlines(y=dist, xmin=start_a, xmax=start_b, colors=c, 
+                          alpha=0.4)
+            if end_a - end_b:
+                if end_a < end_b:
+                    c = "orangered"
+                else:
+                    c = "forestgreen"
+                ax.hlines(y=dist, xmin=end_a, xmax=end_b, colors=c, alpha=0.4)
+            ax.hlines(y=dist, xmin=0, xmax=300, colors="k", alpha=0.1,
+                      linewidth=0.1
+                      )
 
     def convergence(self, by, windows_by="length_s", fontsize=15,
                     show=True, save=None):

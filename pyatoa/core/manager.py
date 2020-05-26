@@ -340,7 +340,7 @@ class Manager:
         else:
             raise NotImplementedError
 
-    def load(self, station_code, config_path=None, ds=None, synthetic_tag=None,
+    def load(self, station_code, path=None, ds=None, synthetic_tag=None,
              observed_tag=None):
         """
         Populate the manager using a previously populated ASDFDataSet.
@@ -349,8 +349,8 @@ class Manager:
 
         :type station_code: str
         :param station_code: SEED conv. code, e.g. NZ.BFZ.10.HHZ
-        :type config_path: str
-        :param config_path: if no Config object is given during init, the User
+        :type path: str
+        :param path: if no Config object is given during init, the User
             can specify the config path here to load data from the dataset.
             This skips the need to initiate a separate Config object.
         :type ds: None or pyasdf.ASDFDataSet
@@ -370,11 +370,11 @@ class Manager:
        
         # If no Config object in Manager, load from dataset 
         if self.config is None:
-            if config_path is None:
-                raise TypeError("load requires Config or config_path")
+            if path is None:
+                raise TypeError("load requires Config or 'path'")
             else:
-                self.config = Config(ds=ds, path=config_path) 
-                logger.info(f"loading config from dataset {config_path}")
+                self.config = Config(ds=ds, path=path) 
+                logger.info(f"loading config from dataset {path}")
 
         assert len(station_code.split('.')) == 2, \
             "station_code must be in form 'NN.SSS'"

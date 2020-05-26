@@ -2,15 +2,15 @@
     "windows": [
         {
             "absolute_endtime": "2018-02-18T07:44:45.197644Z",
-            "absolute_starttime": "2018-02-18T07:43:44.057644Z",
-            "cc_shift_in_samples": 63,
-            "cc_shift_in_seconds": 1.89,
-            "center_index": 1550,
+            "absolute_starttime": "2018-02-18T07:43:44.027644Z",
+            "cc_shift_in_samples": 64,
+            "cc_shift_in_seconds": 1.92,
+            "center_index": 1549,
             "channel_id": "NZ.BFZ.10.HHN",
-            "dlnA": -0.8287736261573173,
+            "dlnA": -0.8300579007511061,
             "dt": 0.03,
-            "left_index": 531,
-            "max_cc_value": 0.991649432899143,
+            "left_index": 530,
+            "max_cc_value": 0.9916806316486033,
             "min_period": 10.0,
             "phase_arrivals": [
                 {
@@ -51,10 +51,10 @@
                 }
             ],
             "relative_endtime": 77.07,
-            "relative_starttime": 15.93,
+            "relative_starttime": 15.899999999999999,
             "right_index": 2569,
             "time_of_first_sample": "2018-02-18T07:43:28.127644Z",
-            "window_weight": 6.06294463274536
+            "window_weight": 6.066110423794505
         }
     ]
 }

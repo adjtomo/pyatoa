@@ -8,7 +8,7 @@ import traceback
 import numpy as np
 import pandas as pd
 from glob import glob
-
+from obspy.geodetics import gps2dist_azimuth
 from pyatoa.utils.form import format_event_name
 from pyatoa.visuals.inspector_plotter import InspectorPlotter
 
@@ -600,27 +600,28 @@ class Inspector(InspectorPlotter):
 
         return sources
 
-    def get_dist_baz(self):
+    def calculate_srcrcv(self):
         """
-        Convert the coordinates of the sources and receivers from the default
-        latitude longitude values to a UTM projection of choice.
-        Not saved because it can be re-calculated if Inspector.sources and
-        Inspector.receivers are present.
+        Retrieve information regarding source-receiver pairs including distance,
+        backazimuth and theoretical traveltimes for a 1D Earth model.
 
         Return a DataFrame that can be used as a lookup table.
+
+        :type taupy_model_name: str
+        :param taupy_model_name: 1D model for obspy.taupy.TauPyModel
         """
         if self.sources.empty or self.receivers.empty:
             return []
 
-        from obspy.geodetics import gps2dist_azimuth
         srcrcv_dict = {"event": [], "network": [], "station": [],
                        "distance_km": [], "backazimuth": []
                        }
 
-        for eid, elat, elon in zip(self.sources.index.to_numpy(),
-                                   self.sources.latitude.to_numpy(),
-                                   self.sources.longitude.to_numpy()
-                                   ):
+        for eid, elat, elon, edpth in zip(self.sources.index.to_numpy(),
+                                          self.sources.latitude.to_numpy(),
+                                          self.sources.longitude.to_numpy(),
+                                          self.sources.depth_km.to_numpy()
+                                          ):
             for rid, rlat, rlon in zip(self.receivers.index,
                                        self.receivers.latitude.to_numpy(),
                                        self.receivers.longitude.to_numpy()
@@ -636,6 +637,7 @@ class Inspector(InspectorPlotter):
                 srcrcv_dict["backazimuth"].append(baz)
 
         return pd.DataFrame(srcrcv_dict)
+
 
 
 

@@ -181,11 +181,16 @@ def test_standardize_to_synthetics(mgmt_pre):
         assert(tr.stats.sampling_rate == syn_samp_rate)
         assert(tr.stats.npts == syn_npts)
 
+
+def test_standardize_raises_manager_error(mgmt_pre):
+    """
+    Manager will raise manager error if no traces present
+    """
     # Make sure Manager won't standardize if waveforms don't match
     mgmt_pre.st_syn = None
+    mgmt_pre.stats.len_syn = 0
     with pytest.raises(ManagerError):
         mgmt_pre.standardize()
-
 
 def test_preprocess_dont_rotate(mgmt_pre):
     """
@@ -259,7 +264,7 @@ def test_window(mgmt_pre, window):
         mgmt_pre.window()
     mgmt_pre.standardize().preprocess().window()
 
-    # Ensure the correct number of windows are chosen, no windows for "Z" component
+    # Ensure the correct number of windows are chosen
     for comp, nwin in {"N": 1, "E": 1}.items():
         assert(len(mgmt_pre.windows[comp]) == nwin)
     with pytest.raises(KeyError):
@@ -268,6 +273,7 @@ def test_window(mgmt_pre, window):
     # Assert that the gathered window matches the test data window that was
     # saved from Pyflex. Names will be different
     win_check = mgmt_pre.windows["N"][0]
+
     assert(win_check.left == window["left_index"])
     assert(win_check.right == window["right_index"])
     assert(win_check.max_cc_value == window["max_cc_value"])
@@ -318,17 +324,24 @@ def test_save_adjsrcs(tmpdir, mgmt_post, adjoint_source):
         assert((t == t_check).all())
         assert((data == data_check).all())
 
-def test_save_windows_to_asdfdataset():
-    pass
 
-def test_save_adj_srcs_to_asdfdataset():
-    pass
+def test_get_path_for_aux_data(mgmt_pre):
+    """
+    Ensure that path naming works as advertised
+    """
+    assert(mgmt_pre._get_path_for_aux_data() == "default")        
+    mgmt_pre.config.model = "m00"
+    assert(mgmt_pre._get_path_for_aux_data() == "m00")  
+    mgmt_pre.config.step = "s00"
+    assert(mgmt_pre._get_path_for_aux_data() == "m00/s00")  
 
-def test_measure():
-    pass
 
 def test_format_windows():
+    """
+    """
     pass
+
+
 
 
 
