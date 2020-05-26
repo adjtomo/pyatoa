@@ -21,7 +21,7 @@ from obspy import Stream, read, read_inventory
 from obspy.clients.fdsn.header import FDSNException
 
 from pyatoa import logger
-from pyatoa.utils.read import read_ascii
+from pyatoa.utils.read import read_sem
 from pyatoa.utils.form import format_event_name
 from pyatoa.utils.calculate import overlapping_days
 from pyatoa.utils.srcrcv import merge_inventories
@@ -393,7 +393,7 @@ class InternalFetcher:
                     net=net, sta=sta, cmp=cha[2:], dva=specfem_id)):
                 try:
                     # Convert the ASCII file to a miniseed
-                    st += read_ascii(filepath, self.origintime)
+                    st += read_sem(filepath, self.origintime)
                 except UnicodeDecodeError:
                     # If the data file is for some reason already in miniseed
                     st += read(filepath)
