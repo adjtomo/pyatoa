@@ -87,14 +87,11 @@ def trim_streams(st_a, st_b, precision=1E-3, force=None):
             if end_hold < end_set:
                 end_set = end_hold
     
-    
+    # Trim to common start and end times    
     st_a_out = st_a.copy()
     st_b_out = st_b.copy()
     for st in [st_a_out, st_b_out]:
         st.trim(start_set, end_set)
-        st.detrend("linear")
-        st.detrend("demean")
-        st.taper(max_percentage=0.05)
 
     # Trimming doesn't always make the starttimes exactly equal if the precision
     # of the UTCDateTime object is set too high. Pyatoa used to restrict 
@@ -150,7 +147,6 @@ def match_npts(st_a, st_b, force=None):
         if diff:
             logger.debug(f"appending {diff} zeros to {tr.get_id()}")
             tr.data = np.append(tr.data, np.zeros(diff))
-            tr.taper(0.025)
 
     # Ensure streams are returned in the correct order
     if not force or force == "a":
@@ -208,44 +204,37 @@ def preproc(mgmt, choice, water_level=60, corners=4, taper_percentage=0.05):
     if is_preprocessed(st):
         return st
 
-    # Standard preprocessing before specific preprocessing
-    st.detrend("linear")
-    st.detrend("demean")
-    st.taper(max_percentage=taper_percentage)
+    # Get rid of extra long period signals which may adversely affect processing
+    st.detrend("simple").taper(taper_percentage)
+    st.filter("highpass", freq=1/(mgmt.config.max_period * 2))
 
     # Observed specific data preprocessing includes response and rotating to ZNE
     if choice == "obs" and not mgmt.config.synthetics_only:
-        # Occasionally, inventory issues arise, as ValueErrors due to
-        # station availability, e.g. NZ.COVZ. Try/except to catch these.
         try:
-            st.attach_response(mgmt.inv)
-            st.remove_response(output=mgmt.config.unit_output,
+            st.remove_response(inventory=mgmt.inv, 
+                               output=mgmt.config.unit_output,
                                water_level=water_level,
                                plot=False)
+            logger.debug(f"remove response, units of {mgmt.config.unit_output}")
         except ValueError:
-            logger.warning(f"Error removing response from {st[0].get_id()}")
+            # ValueErrors may occur due to mismatched codes in stream and inv
+            logger.warning(f"error removing response from {st[0].get_id()}")
             return st
-        logger.debug("remove response, units of {}".format(
-            mgmt.config.unit_output)
-        )
 
-        # Clean up streams after response removal
-        st.detrend("linear")
-        st.detrend("demean")
-        st.taper(max_percentage=taper_percentage)
-
-        # Rotate streams if they are not in the ZNE coordinate system, e.g. Z12
+        # Rotate streams if not in ZNE, e.g. Z12
         st.rotate(method="->ZNE", inventory=mgmt.inv)
-    # Synthetic specific data processing includes changing units
+
+    # Synthetic specific data processing
     else:
+        # Change units of synthetics if necessary
         if mgmt.config.unit_output != mgmt.config.synthetic_unit:
             logger.debug("unit output and synthetic output do not match, "
                          "adjusting")
             st = change_syn_units(st, current=mgmt.config.unit_output,
                                   desired=mgmt.config.synthetic_unit)
-            st.detrend("linear")
-            st.detrend("demean")
-            st.taper(max_percentage=taper_percentage)
+
+    # Try to ensure that end points touch 0 before filtering
+    st.detrend("simple").detrend("demean").taper(taper_percentage)
 
     # Rotate the given stream from standard NEZ to RTZ
     if mgmt.baz:
