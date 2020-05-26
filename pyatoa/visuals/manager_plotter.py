@@ -17,18 +17,17 @@ from pyatoa.utils.calculate import normalize_a_to_b, abs_max
 # Hardcoded colors that represent rejected misfit windows. Description from 
 # pyflex.WindowSelector function that rejected the window
 rejected_window_colors = {
-    "schedule": "C0",  # Blue: schedule_weighted_interval()
-    "water_level": "C1",  # Orange: reject_on_minima_water_level()
-    "prominence": "C2",   # Green: reject_on_prominence_of_central_peak()
-    "phase_sep": "C3",   # Red: reject_on_phase_separation()
-    "curtail": "C4",   # Violet: curtail_length_of_windows()
-    "min_length": "C5",  # Brown: reject_windows_based_on_minimum_length()
-    "cc": "C6",   # Pink: reject_based_on_data_fit_criteria()
-    "tshift": "C7",   # Pink: reject_based_on_data_fit_criteria()
-    "dlna": "C8",   # Pink: reject_based_on_data_fit_criteria()
-    "s2n": "C9",  # Gray: reject_based_on_signal_to_noise_ratio()
-    "traveltimes":"C10",  # Olive: reject_on_traveltimes()
-    "amplitude": "C11"  # Cyan: pyatoa reject_on_global_amplitude_ratio()
+    "water_level": "C0",  # reject_on_minima_water_level()
+    "prominence": "C1",   # reject_on_prominence_of_central_peak()
+    "phase_sep": "C2",   # reject_on_phase_separation()
+    "curtail": "C3",   # curtail_length_of_windows()
+    "min_length": "C4",  # reject_windows_based_on_minimum_length()
+    "cc": "C5",   # reject_based_on_data_fit_criteria()
+    "tshift": "C6",   # reject_based_on_data_fit_criteria()
+    "dlna": "C7",   # reject_based_on_data_fit_criteria()
+    "s2n": "C8",  # reject_based_on_signal_to_noise_ratio()
+    "traveltimes":"C9",  # reject_on_traveltimes()
+    "amplitude": "C10"  # pyatoa reject_on_global_amplitude_ratio()
     }
 
 
@@ -53,7 +52,10 @@ class ManagerPlotter:
             stalta_color (str): color of stalta waveform, default 'gray'
             window_color (str): color for misfit windows, default 'orange'
             adj_src_color (str): color for adjoint sources, default 'g'
-
+            
+            window_anno (str): a custom string which can contain the optional 
+                format arguemnts: [max_cc, cc_shift, dlnA, left, length]. None,
+                defaults to formatting all arguments
             window_anno_fontsize (str): fontsize for window annotation, def 8
             window_anno_height (float): annotation height, percentage of y axis,
                 default 0.7
@@ -234,6 +236,7 @@ class ManagerPlotter:
         :param plot_phase_arrivals: make small tick mark if P or S phase arrival
             within the window
         """
+        window_anno = self.kwargs.get("window_anno", None)
         window_color = self.kwargs.get("window_color", "orange")
         window_anno_fontsize = self.kwargs.get("window_anno_fontsize", 8)
         window_anno_height = self.kwargs.get("window_anno_height", 0.65)  
@@ -259,14 +262,22 @@ class ManagerPlotter:
                 # Annotate window information into each window
                 t_anno = (tright - tleft) * 0.025 + tleft
                 y_anno = window_anno_height * (ymax - ymin) + ymin
+                if window_anno is None:
+                    # Default window annotation string
+                    window_anno = ("max_cc={max_cc:.2f}\n"
+                                   "cc_shift={cc_shift:.2f}s\n"
+                                   "dlnA={dlnA:.3f}\n"
+                                   "left={left:.1f}s\n"
+                                   "length={length:.1f}s\n"
+                                   )
 
-                window_anno = (
-                    f"max_cc={window.max_cc_value:.2f}\n"
-                    f"cc_shift={window.cc_shift * window.dt:.2f}s\n"
-                    f"dlnA={window.dlnA:.3f}\n"
-                    f"left={tleft:.1f}s\n"
-                    f"length={tright - tleft:.1f}s\n"
-                    )
+                window_anno = window_anno.format(
+                            max_cc=window.max_cc_value,
+                            cc_shift=window.cc_shift * window.dt,
+                            dlnA=window.dlnA,
+                            left=tleft,
+                            length=tright - tleft)
+
                 ax.annotate(s=window_anno, xy=(t_anno, y_anno), zorder=11, 
                             fontsize=window_anno_fontsize,
                             rotation=window_anno_rotation, 
