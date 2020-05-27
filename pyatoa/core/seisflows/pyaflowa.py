@@ -112,14 +112,14 @@ class Pyaflowa:
         The model number is based on the current iteration, which starts at 1
         so model number, starting from 0, lags behind by 1. Formatted like 'm00'
         """
-        return model_number(max(self.iteration - 1, 0))
+        return format_model_number(max(self.iteration - 1, 0))
 
     @property
     def step(self):
         """
         Formatted step count, e.g. 's00'
         """
-        return step_count(self.step_count)
+        return format_step_count(self.step_count)
 
     def _set_logging(self):
         """

@@ -174,7 +174,7 @@ class InternalFetcher:
         """
         event = self.ds.events[0]
         self.origintime = event.preferred_origin().time
-        logger.debug(f"matching event found: {format_event_name(event=event)}")
+        logger.debug(f"matching event found: {format_event_name(event)}")
         return event
 
     def asdf_station_fetch(self, station_code):
@@ -542,7 +542,7 @@ class Gatherer(InternalFetcher, ExternalGetter):
                                           f"{self.config.event_id}")
         else:
             logger.debug("matching event found: "
-                         f"{format_event_name(event=event)}"
+                         f"{format_event_name(event)}"
                          )
             # Append extra information and save event before returning
             if append_focal_mechanism:
