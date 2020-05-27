@@ -448,7 +448,7 @@ class ManagerPlotter:
         # Plot per component in the same fashion, only if observed data exists
         f, axes, twaxes = self.setup_plot()
         for i, obs in enumerate(self.st_obs):
-            comp = obs.stats.component
+            comp = obs.stats.channel[-1]
 
             # Try to retrieve auxiliary data by component name
             syn = self.st_syn.select(component=comp)[0]

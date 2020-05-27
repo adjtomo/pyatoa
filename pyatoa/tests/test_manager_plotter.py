@@ -99,7 +99,7 @@ def test_plot_waveforms(mgmt):
     mp = ManagerPlotter(mgmt=mgmt)
     _, axes, _ = mp.setup_plot()
     for i, obs in enumerate(mp.st_obs):
-        comp = obs.stats.component
+        comp = obs.stats.channel[-1]
         syn = mp.st_syn.select(component=comp)[0]
         mp.plot_waveforms(ax=axes[i], obs=obs, syn=syn)
         mp.plot_amplitude_threshold(ax=axes[i], obs=obs)

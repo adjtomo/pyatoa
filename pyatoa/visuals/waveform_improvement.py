@@ -206,7 +206,7 @@ class WaveformImprovement:
             ylab = syn_key.split('_')[-1]  # e.g. 'm00'
 
             # Plot each component in a different column
-            component_list = [_.stats.component for _ in self.st_obs]
+            component_list = [_.stats.channel[-1] for _ in self.st_obs]
             for col, comp in enumerate(component_list):
                 obs = self.st_obs.select(component=comp)[0]
                 syn = self.synthetics[syn_key].select(component=comp)[0]
