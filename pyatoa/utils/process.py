@@ -36,7 +36,7 @@ def zero_pad(st, pad_length_in_seconds, before=True, after=True):
         # Constant value is default 0
         tr.data = np.pad(array, (pad_before, pad_after), mode='constant')
         tr.stats.starttime -= pad_length_in_seconds
-        logger.debug(f"new origin time {tr.id}: {tr.stats.starttime}")
+        logger.debug(f"new starttime {tr.id}: {tr.stats.starttime}")
     return st_pad
 
 
@@ -178,7 +178,7 @@ def is_preprocessed(st):
     return False
 
 
-def preproc(mgmt, choice, water_level=60, corners=4, taper_percentage=0.05):
+def preproc(mgmt, choice, water_level=60, taper_percentage=0.05):
     """
     Preprocess waveform data from a Manager class given a few extra processing
     parameters.
@@ -203,6 +203,15 @@ def preproc(mgmt, choice, water_level=60, corners=4, taper_percentage=0.05):
         st = mgmt.st_obs.copy()
     if is_preprocessed(st):
         return st
+
+    taper_amount = st[0].stats.npts * taper_percentage * st[0].stats.delta
+    if taper_amount > abs(mgmt.stats.time_offset_sec):
+        logger.warning("taper amount exceeds time offset, taper may affect "
+                       "data if source receiver distance is short")
+    elif taper_amount < abs(mgmt.stats.time_offset_sec):
+        logger.info("adjusting taper to cover time offset")
+        taper_percentage = (abs(mgmt.stats.time_offset_sec) / 
+                                    st[0].stats.npts * st[0].stats.delta)
 
     # Get rid of extra long period signals which may adversely affect processing
     st.detrend("simple").taper(taper_percentage)
@@ -234,8 +243,8 @@ def preproc(mgmt, choice, water_level=60, corners=4, taper_percentage=0.05):
                                   desired=mgmt.config.synthetic_unit)
 
     # Try to ensure that end points touch 0 before filtering
-    st.detrend("simple").detrend("demean").taper(taper_percentage)
-
+    st.detrend("simple").detrend("demean").taper(0.05)
+    
     # Rotate the given stream from standard NEZ to RTZ
     if mgmt.baz:
         st.rotate(method="NE->RT", back_azimuth=mgmt.baz)
@@ -243,29 +252,33 @@ def preproc(mgmt, choice, water_level=60, corners=4, taper_percentage=0.05):
 
     # Filter data using ObsPy Butterworth filters. Zerophase avoids phase shift
     if mgmt.config.min_period and mgmt.config.max_period:
-        st.filter("bandpass", corners=corners, zerophase=True,
+        st.filter("bandpass", corners=mgmt.config.filter_corners, 
+                  zerophase=True,
                   freqmin=1/mgmt.config.max_period, 
                   freqmax=1/mgmt.config.min_period, 
                   )
         logger.debug(
             f"bandpass filter "
             f"{mgmt.config.min_period}-{mgmt.config.max_period}s w/ "
-            f"{corners} corners"
+            f"{mgmt.config.filter_corners} corners"
             )
     # Highpass if only minimum period given
     elif mgmt.config.min_period:
-        st.filter("highpass", freq=mgmt.config.min_period, corners=corners,
-                  zerophase=True)
-        logger.debug(f"highpass {mgmt.config.min_period}s w/ {corners} corners")
+        st.filter("highpass", freq=mgmt.config.min_period, 
+                  corners=mgmt.config.filter_corners, zerophase=True)
+        logger.debug(f"highpass {mgmt.config.min_period}s w/ "
+                     f"{mgmt.config.filter_corners} corners")
     # Highpass if only minimum period given
     elif mgmt.config.max_period:
-        st.filter("lowpass", freq=mgmt.config.max_period, corners=corners,
-                  zerophase=True)
-        logger.debug(f"lowpass {mgmt.config.max_period}s w/ {corners} corners")
+        st.filter("lowpass", freq=mgmt.config.max_period, 
+                  corners=mgmt.config.filter_corners, zerophase=True)
+        logger.debug(f"lowpass {mgmt.config.max_period}s w/ "
+                     f"{mgmt.config.filter_corners} corners")
+    
+    # Taper again to ensure final waveforms are clean
+    st.detrend("simple").detrend("demean").taper(0.1)
 
     return st
-
-
 
 
 def change_syn_units(st, current, desired):

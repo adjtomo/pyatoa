@@ -66,7 +66,7 @@ def reject_on_global_amplitude_ratio(data, windows, ratio=0.2):
     :rtype: tuple of lists of pyflex.window.Window
     :return: lists of accepted and rejected windows
     """
-    accepted, rejected_windows = []
+    accepted_windows, rejected_windows = [], []
     for win in windows:
         waveform_peak = abs_max(data)
         window_peak = abs_max(data[win.left:win.right])

@@ -288,12 +288,12 @@ class ManagerPlotter:
             if plot_phase_arrivals:
                 for phase_arrivals in window.phase_arrivals:
                     if phase_arrivals["name"] in ["p", "s"]:
-                        ax.axvline(x=phase_arrivals["time"], ymin=0, ymax=0.15,
-                                   color='b', alpha=0.2
+                        ax.axvline(x=phase_arrivals["time"], ymin=0, ymax=0.05,
+                                   color='b', alpha=0.5
                                    )
                         ax.annotate(s=phase_arrivals["name"],
                                     xy=(0.975 * phase_arrivals["time"], 
-                                        0.10 * (ymax-ymin) + ymin),
+                                        0.05 * (ymax-ymin) + ymin),
                                     fontsize=8
                                     )
 
@@ -309,19 +309,21 @@ class ManagerPlotter:
         :param windows: list of windows to plot
         """
         ymin, ymax = ax.get_ylim()
-        dy = 0.03 * (ymax - ymin)  # increment for window location
+        dy = 0.04 * (ymax - ymin)  # increment for window location
 
         for tag, window in windows.items():
-            for win in window:
-                tleft = win.left * win.dt + self.time_axis[0]
-                tright = win.right * win.dt + self.time_axis[0]
-                ax.hlines(y=ymin, xmin=tleft, xmax=tright, linewidth=3.5,
-                          colors=rejected_window_colors[tag], alpha=0.25
-                          )
-            # Find the leftmost for annotation
-            lft = min([win.left * win.dt for win in window]) + self.time_axis[0]
-            ax.annotate(xy=(lft, ymin), s=tag.replace("_", " "), fontsize=5)
-            ymin -= dy
+            if window:
+                for win in window:
+                    tleft = win.left * win.dt + self.time_axis[0]
+                    tright = win.right * win.dt + self.time_axis[0]
+                    ax.hlines(y=ymin, xmin=tleft, xmax=tright, linewidth=3.5,
+                              colors=rejected_window_colors[tag], alpha=0.25
+                              )
+                # Find the leftmost for annotation
+                lft = min([win.left * win.dt for win in window]) 
+                lft += self.time_axis[0]
+                ax.annotate(xy=(lft, ymin), s=tag.replace("_", " "), fontsize=7)
+                ymin -= dy
 
     def plot_adjsrcs(self, ax, adjsrc):
         """
@@ -374,7 +376,7 @@ class ManagerPlotter:
                        linewidth=1.25, c='k', linestyle=':')
 
         # Annotate window amplitude ratio
-        ax.annotate(s=f"{config.win_amp_ratio * 100:.0f}% peak amp. obs.", 
+        ax.annotate(s=f"{self.config.win_amp_ratio * 100:.0f}% peak amp. obs.", 
                     alpha=0.7, xy=(0.85 * (xmax-xmin) + xmin, threshold_amp), 
                     fontsize=8)
 
@@ -488,7 +490,7 @@ class ManagerPlotter:
             if stalta is not None and plot_staltas:
                 lines += self.plot_stalta(ax=twax, stalta=stalta)
                 if self.config.win_amp_ratio > 0:
-                    plot_amplitude_threshold(ax=ax, obs=obs)
+                    self.plot_amplitude_threshold(ax=ax, obs=obs)
 
             # Finish with axes formatting
             ax.set_ylabel(comp.upper())
