@@ -5,20 +5,21 @@ A class to analyze misfit windows using Pandas.
 import os
 import pyasdf
 import traceback
+import numpy as np
 import pandas as pd
 from glob import glob
+from obspy.geodetics import gps2dist_azimuth
+from pyatoa.utils.form import format_event_name
+from pyatoa.visuals.inspector_plotter import InspectorPlotter
 
-from pyatoa.utils.form import event_name
-from pyatoa.visuals.gadget import Gadget
 
-
-class Inspector(Gadget):
+class Inspector(InspectorPlotter):
     """
     This plugin object will collect information from a Pyatoa run folder and
     allow the User to easily understand statistical information or generate
     statistical plots to help understand a seismic inversion
 
-    Inherits plotting capabilities from the Gadget class to reduce clutter.
+    Inherits plotting capabilities from InspectorPlotter class to reduce clutter
     """
 
     def __init__(self, tag=None, path=None):
@@ -176,10 +177,10 @@ class Inspector(Gadget):
         :rtype receivers: multiindexed dataframe containing unique station info
         """
         # Create a dataframe with source information
-        event_id = event_name(ds)
+        event_id = format_event_name(ds)
         if event_id not in self.sources.index:
             src = {
-                "event_id": event_name(ds),
+                "event_id": format_event_name(ds),
                 "time": str(ds.events[0].preferred_origin().time),
                 "magnitude": ds.events[0].preferred_magnitude().mag,
                 "depth_km": ds.events[0].preferred_origin().depth * 1E-3,
@@ -230,7 +231,7 @@ class Inspector(Gadget):
         :rtype: pandas.DataFrame
         :return: a dataframe object containing information per misfit window
         """
-        eid = event_name(ds=ds)
+        eid = format_event_name(ds)
 
         # Initialize an empty dictionary that will be used to initalize
         # a Pandas DataFrame
@@ -355,6 +356,7 @@ class Inspector(Gadget):
         """
         # Dynamically determine file format
         if not fmt:
+            tag = tag.split(".")[0]  # remove extension if there is one
             if os.path.exists(os.path.join(path, f"{tag}.csv")):
                 fmt = "csv"
             elif os.path.exists(os.path.join(path, f"{tag}.hdf")):
@@ -379,7 +381,8 @@ class Inspector(Gadget):
             raise NotImplementedError
 
     def isolate(self, model=None, step=None,  event=None, network=None,
-                station=None):
+                station=None, channel=None, comp=None, keys=None, 
+                exclude=None, unique_key=None):
         """
         Returns a new dataframe that is grouped by a given index
         if variable is None, defaults to returning all available values
@@ -394,21 +397,58 @@ class Inspector(Gadget):
         :param station: station name e.g. 'BKZ' (optional)
         :type network: str
         :param network: network name e.g. 'NZ' (optional)
+        :type channel: str
+        :param channel: channel name e.g. 'HHE' (optional)
+        :type comp: str
+        :param comp: component name e.g. 'Z' (optional)
+        :type unique_key: str
+        :param unique_key: isolates model, event and station information, 
+            alongside a single info key, such as dlnA.
+            Useful for looking at one variable without have to write out long 
+            lists to 'exclude' or 'keys'
+        :type keys: list
+        :param keys: list of keys to retain in returned dataset, 'exclude'
+            will override this variable, best to use them separately
+        :type exclude: list
+        :param exclude: list of keys to remove from returned dataset
         :rtype: pandas.DataFrame
         :return: DataFrame with selected rows based on selected column values
         """
         df = self.windows
-        return df.loc[(df["event"] == (event or df["event"].to_numpy())) &
-                      (df["model"] == (model or df["model"].to_numpy())) &
-                      (df["step"] == (step or df["step"].to_numpy())) &
-                      (df["station"] == (station or df["station"].to_numpy())) &
-                      (df["network"] == (network or df["network"].to_numpy()))
-                      ]
+        df = df.loc[(df["event"] == (event or df["event"].to_numpy())) &
+                    (df["model"] == (model or df["model"].to_numpy())) &
+                    (df["step"] == (step or df["step"].to_numpy())) &
+                    (df["station"] == (station or df["station"].to_numpy())) &
+                    (df["network"] == (network or df["network"].to_numpy())) &
+                    (df["channel"] == (channel or df["channel"].to_numpy())) &
+                    (df["component"] == (comp or df["component"].to_numpy())) 
+                    ]
+        if unique_key is not None:
+            # return the unique key alongside identifying information
+            unique_keys = ["event", "model", "step", "network", "station", 
+                           "channel", "comp", unique_key]
+            df = df.loc[:, df.columns.intersection(unique_keys)]
+        if exclude is not None:
+            # delete excluded keys from key list one by one
+            df_keys = df.keys().to_numpy()
+            for e in exclude:
+                df_keys = df_keys[df_keys != e]
+            if keys is not None:
+                keys = np.append(df_keys, keys)
+            else:
+                keys = df_keys
+        if keys is not None:
+            # 'exclude' may produce repeat keys so run unique beforehand
+            df = df.loc[:, df.columns.intersection(np.unique(keys))]
+        return df
 
     def nwin(self, level="step"):
         """
         Find the cumulative length of misfit windows for a given model/step,
         or the number of misfit windows for a given model/step.
+
+        Neat trick to select just by station:
+            insp.windows(level='station').query("station == 'BFZ'")
 
         :type level: str
         :param level: Default is 'step'
@@ -442,8 +482,13 @@ class Inspector(Gadget):
         Sum the total misfit for a given model based on the individual
         misfits for each misfit window, and the number of sources used.
 
+        To get per-station misfit on a per-step basis
+            df = insp.misfits(level="station").query("station == 'TOZ'")
+            df.groupby(['model', 'step']).sum()
+
         :type level: str
         :param level:  Default is 'step'
+            'station': unscaled misfit on a per-station basis
             'step': to get total misfit for a given step count.
             'event': to get this on a per-event misfit.
         :rtype: dict
@@ -555,27 +600,28 @@ class Inspector(Gadget):
 
         return sources
 
-    def get_dist_baz(self):
+    def calculate_srcrcv(self):
         """
-        Convert the coordinates of the sources and receivers from the default
-        latitude longitude values to a UTM projection of choice.
-        Not saved because it can be re-calculated if Inspector.sources and
-        Inspector.receivers are present.
+        Retrieve information regarding source-receiver pairs including distance,
+        backazimuth and theoretical traveltimes for a 1D Earth model.
 
         Return a DataFrame that can be used as a lookup table.
+
+        :type taupy_model_name: str
+        :param taupy_model_name: 1D model for obspy.taupy.TauPyModel
         """
         if self.sources.empty or self.receivers.empty:
             return []
 
-        from obspy.geodetics import gps2dist_azimuth
         srcrcv_dict = {"event": [], "network": [], "station": [],
                        "distance_km": [], "backazimuth": []
                        }
 
-        for eid, elat, elon in zip(self.sources.index.to_numpy(),
-                                   self.sources.latitude.to_numpy(),
-                                   self.sources.longitude.to_numpy()
-                                   ):
+        for eid, elat, elon, edpth in zip(self.sources.index.to_numpy(),
+                                          self.sources.latitude.to_numpy(),
+                                          self.sources.longitude.to_numpy(),
+                                          self.sources.depth_km.to_numpy()
+                                          ):
             for rid, rlat, rlon in zip(self.receivers.index,
                                        self.receivers.latitude.to_numpy(),
                                        self.receivers.longitude.to_numpy()
@@ -591,6 +637,7 @@ class Inspector(Gadget):
                 srcrcv_dict["backazimuth"].append(baz)
 
         return pd.DataFrame(srcrcv_dict)
+
 
 
 

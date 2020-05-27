@@ -5,6 +5,7 @@ add new auxiliary data structures to existing ASDF datasets
 """
 import warnings
 import numpy as np
+from pyatoa import logger
 from pyatoa.utils.form import create_window_dictionary, channel_code
 
 
@@ -42,7 +43,7 @@ def add_misfit_windows(windows, ds, path):
                                       )
 
 
-def add_adjoint_sources(adj_srcs, ds, path, time_offset):
+def add_adjoint_sources(adjsrcs, ds, path, time_offset):
     """
     NOTE: Borrowed and modified from Pyadjoint source code:
           pyadjoint.adjoint_source.write_to_asdf()
@@ -50,8 +51,8 @@ def add_adjoint_sources(adj_srcs, ds, path, time_offset):
     Writes the adjoint source to an ASDF file.
     Note: For now it is assumed SPECFEM will be using the adjoint source
 
-    :type adj_srcs: list of pyadjoint.asdf_data_set.ASDFDataSet
-    :param adj_srcs: adjoint source to save
+    :type adjsrcs: list of pyadjoint.asdf_data_set.ASDFDataSet
+    :param adjsrcs: adjoint source to save
     :type ds: pyasdf.asdf_data_set.ASDFDataSet
     :type path: str
     :param path: internal pathing for save location in the auxiliary data attr.
@@ -70,7 +71,7 @@ def add_adjoint_sources(adj_srcs, ds, path, time_offset):
     ...                            'elevation_in_m':2.0})
     """
     # Save adjoint sources per component
-    for key, adj_src in adj_srcs.items():
+    for key, adj_src in adjsrcs.items():
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
 
@@ -93,14 +94,19 @@ def add_adjoint_sources(adj_srcs, ds, path, time_offset):
             specfem_adj_source[:, 1] = adj_src.adjoint_source[::-1]
 
             station_id = f"{adj_src.network}.{adj_src.station}"
-            coordinates = ds.waveforms[
-                f"{adj_src.network}.{adj_src.station}"].coordinates
-
-            # Safeguard against funny types in the coordinates dictionary
-            latitude = float(coordinates["latitude"])
-            longitude = float(coordinates["longitude"])
-            elevation_in_m = float(coordinates["elevation_in_m"])
-
+            try:
+                coordinates = ds.waveforms[station_id].coordinates
+                # Safeguard against funny types in the coordinates dictionary
+                latitude = float(coordinates["latitude"])
+                longitude = float(coordinates["longitude"])
+                elevation_in_m = float(coordinates["elevation_in_m"])
+            except KeyError:
+                latitude = longitude = elevation_in_m = 0
+                logger.warning(
+                    f"cannot find matching StationXML for {station_id} "
+                    "coordinate information will be set to 0"
+                    )
+            # Parameters saved as a dictionary object
             parameters = {
                 "dt": adj_src.dt, "misfit_value": adj_src.misfit,
                 "adjoint_source_type": adj_src.adj_src_type,

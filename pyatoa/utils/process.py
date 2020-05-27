@@ -36,7 +36,7 @@ def zero_pad(st, pad_length_in_seconds, before=True, after=True):
         # Constant value is default 0
         tr.data = np.pad(array, (pad_before, pad_after), mode='constant')
         tr.stats.starttime -= pad_length_in_seconds
-        logger.debug(f"new origin time {tr.id}: {tr.stats.starttime}")
+        logger.debug(f"new starttime {tr.id}: {tr.stats.starttime}")
     return st_pad
 
 
@@ -87,14 +87,11 @@ def trim_streams(st_a, st_b, precision=1E-3, force=None):
             if end_hold < end_set:
                 end_set = end_hold
     
-    
+    # Trim to common start and end times    
     st_a_out = st_a.copy()
     st_b_out = st_b.copy()
     for st in [st_a_out, st_b_out]:
         st.trim(start_set, end_set)
-        st.detrend("linear")
-        st.detrend("demean")
-        st.taper(max_percentage=0.05)
 
     # Trimming doesn't always make the starttimes exactly equal if the precision
     # of the UTCDateTime object is set too high. Pyatoa used to restrict 
@@ -150,7 +147,6 @@ def match_npts(st_a, st_b, force=None):
         if diff:
             logger.debug(f"appending {diff} zeros to {tr.get_id()}")
             tr.data = np.append(tr.data, np.zeros(diff))
-            tr.taper(0.025)
 
     # Ensure streams are returned in the correct order
     if not force or force == "a":
@@ -172,19 +168,17 @@ def is_preprocessed(st):
     :return: if preprocessing has occurred
     """
     for tr in st:
-        if hasattr(tr.stats, 'processing'):
+        if hasattr(tr.stats, "processing"):
             for processing in tr.stats.processing:
                 # A little hacky, but processing flag will have the str
                 # ..': filter(options'... to signify that a filter is applied
-                if 'filter(' in processing:
-                    warnings.warn("stream already preprocessed", UserWarning)
+                if "filter(options" in processing:
                     return True
-
     # If nothing found, return False
     return False
 
 
-def preproc(mgmt, choice, water_level=60, corners=4, taper_percentage=0.05):
+def preproc(mgmt, choice, water_level=60, taper_percentage=0.05):
     """
     Preprocess waveform data from a Manager class given a few extra processing
     parameters.
@@ -210,70 +204,79 @@ def preproc(mgmt, choice, water_level=60, corners=4, taper_percentage=0.05):
     if is_preprocessed(st):
         return st
 
-    # Standard preprocessing before specific preprocessing
-    st.detrend("linear")
-    st.detrend("demean")
-    st.taper(max_percentage=taper_percentage)
+    taper_amount = st[0].stats.npts * taper_percentage * st[0].stats.delta
+    if taper_amount > abs(mgmt.stats.time_offset_sec):
+        logger.warning("taper amount exceeds time offset, taper may affect "
+                       "data if source receiver distance is short")
+    elif taper_amount < abs(mgmt.stats.time_offset_sec):
+        logger.info("adjusting taper to cover time offset")
+        taper_percentage = (abs(mgmt.stats.time_offset_sec) / 
+                                    st[0].stats.npts * st[0].stats.delta)
+
+    # Get rid of extra long period signals which may adversely affect processing
+    st.detrend("simple").taper(taper_percentage)
+    st.filter("highpass", freq=1/(mgmt.config.max_period * 2))
 
     # Observed specific data preprocessing includes response and rotating to ZNE
     if choice == "obs" and not mgmt.config.synthetics_only:
-        # Occasionally, inventory issues arise, as ValueErrors due to
-        # station availability, e.g. NZ.COVZ. Try/except to catch these.
         try:
-            st.attach_response(mgmt.inv)
-            st.remove_response(output=mgmt.config.unit_output,
+            st.remove_response(inventory=mgmt.inv, 
+                               output=mgmt.config.unit_output,
                                water_level=water_level,
                                plot=False)
+            logger.debug(f"remove response, units of {mgmt.config.unit_output}")
         except ValueError:
-            logger.warning(f"Error removing response from {st[0].get_id()}")
+            # ValueErrors may occur due to mismatched codes in stream and inv
+            logger.warning(f"error removing response from {st[0].get_id()}")
             return st
-        logger.debug("remove response, units of {}".format(
-            mgmt.config.unit_output)
-        )
 
-        # Clean up streams after response removal
-        st.detrend("linear")
-        st.detrend("demean")
-        st.taper(max_percentage=taper_percentage)
-
-        # Rotate streams if they are not in the ZNE coordinate system, e.g. Z12
+        # Rotate streams if not in ZNE, e.g. Z12
         st.rotate(method="->ZNE", inventory=mgmt.inv)
-    # Synthetic specific data processing includes changing units
+
+    # Synthetic specific data processing
     else:
+        # Change units of synthetics if necessary
         if mgmt.config.unit_output != mgmt.config.synthetic_unit:
             logger.debug("unit output and synthetic output do not match, "
                          "adjusting")
             st = change_syn_units(st, current=mgmt.config.unit_output,
                                   desired=mgmt.config.synthetic_unit)
-            st.detrend("linear")
-            st.detrend("demean")
-            st.taper(max_percentage=taper_percentage)
 
+    # Try to ensure that end points touch 0 before filtering
+    st.detrend("simple").detrend("demean").taper(0.05)
+    
     # Rotate the given stream from standard NEZ to RTZ
     if mgmt.baz:
-        st.rotate(method="NE->RT", back_azimuth=baz)
-        logger.debug(f"rotating NE->RT by {baz} degrees")
+        st.rotate(method="NE->RT", back_azimuth=mgmt.baz)
+        logger.debug(f"rotating NE->RT by {mgmt.baz} degrees")
 
     # Filter data using ObsPy Butterworth filters. Zerophase avoids phase shift
-    # Bandpass filter
     if mgmt.config.min_period and mgmt.config.max_period:
-        st.filter("bandpass",
-                  freqmin=1/mgmt.config.max_period,
-                  freqmax=1/mgmt.config.min_period, corners=corners,
-                  zerophase=True
+        st.filter("bandpass", corners=mgmt.config.filter_corners, 
+                  zerophase=True,
+                  freqmin=1/mgmt.config.max_period, 
+                  freqmax=1/mgmt.config.min_period, 
                   )
         logger.debug(
-            f"bandpass {mgmt.config.min_period}-{mgmt.config.max_period}s")
+            f"bandpass filter "
+            f"{mgmt.config.min_period}-{mgmt.config.max_period}s w/ "
+            f"{mgmt.config.filter_corners} corners"
+            )
     # Highpass if only minimum period given
     elif mgmt.config.min_period:
-        st.filter("highpass", freq=mgmt.config.min_period, corners=corners,
-                  zerophase=True)
-        logger.debug(f"highpass {mgmt.config.min_period}s")
+        st.filter("highpass", freq=mgmt.config.min_period, 
+                  corners=mgmt.config.filter_corners, zerophase=True)
+        logger.debug(f"highpass {mgmt.config.min_period}s w/ "
+                     f"{mgmt.config.filter_corners} corners")
     # Highpass if only minimum period given
     elif mgmt.config.max_period:
-        st.filter("lowpass", freq=mgmt.config.max_period, corners=corners,
-                  zerophase=True)
-        logger.debug(f"lowpass {mgmt.config.max_period}s")
+        st.filter("lowpass", freq=mgmt.config.max_period, 
+                  corners=mgmt.config.filter_corners, zerophase=True)
+        logger.debug(f"lowpass {mgmt.config.max_period}s w/ "
+                     f"{mgmt.config.filter_corners} corners")
+    
+    # Taper again to ensure final waveforms are clean
+    st.detrend("simple").detrend("demean").taper(0.1)
 
     return st
 
@@ -312,12 +315,11 @@ def change_syn_units(st, current, desired):
 
     return st_diff
 
-
 def stf_convolve(st, half_duration, source_decay=4., time_shift=None,
                  time_offset=None):
     """
-    Convolve function with a Gaussian window.
-    Following taken from specfem "comp_source_time_function.f90"
+    Convolve function with a Gaussian window source time function.
+    Following borrowed from Specfem3D Cartesian "comp_source_time_function.f90"
 
     hdur given is hdur_Gaussian = hdur/SOURCE_DECAY_MIMIC_TRIANGLE
     with SOURCE_DECAY_MIMIC_TRIANGLE ~ 1.68
@@ -342,8 +344,6 @@ def stf_convolve(st, half_duration, source_decay=4., time_shift=None,
     :rtype: obspy.stream.Stream
     :return: stream object which has been convolved with a source time function
     """
-    logger.debug(f"convolve w/ gaussian half-dur={half_duration:.2f}s")
-
     sampling_rate = st[0].stats.sampling_rate
     half_duration_in_samples = round(half_duration * sampling_rate)
 
@@ -362,22 +362,9 @@ def stf_convolve(st, half_duration, source_decay=4., time_shift=None,
     for tr in st_out:
         if time_shift:
             tr.stats.starttime += time_shift
-        # if time offset is given, split the trace into before and after origin
-        # only convolve after zero time
-
-        # This doesn't actually work? It just adds more samples to the trace
-        # which is not what we want
-        # if time_offset:
-        #     after_origin = np.convolve(tr.data[time_offset_in_samp:],
-        #                                gaussian_stf, mode="same"
-        #                                )
-        #     data_out = np.concatenate([tr.data[:time_offset_in_samp],
-        #                                after_origin])
-        #     tr.data = data_out
-        # else:
-        #     data_out = np.convolve(tr.data, gaussian_stf, mode="same")
-        #     tr.data = data_out
         data_out = np.convolve(tr.data, gaussian_stf, mode="same")
         tr.data = data_out
+
+    logger.debug(f"convolved data w/ Gaussian (t/2={half_duration:.2f}s)")
 
     return st_out

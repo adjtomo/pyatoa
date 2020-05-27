@@ -5,7 +5,7 @@ Contains non-class functions for setting Config objects of Pyflex and Pyadjoint.
 """
 import yaml
 from pyatoa import logger
-from pyatoa.utils.form import model_number, step_count
+from pyatoa.utils.form import format_model_number, format_step_count
 from pyatoa.core.seisflows.pyaflowa import pyaflowa_kwargs
 from pyatoa.plugins.pyflex_presets import pyflex_presets
 
@@ -28,8 +28,7 @@ class Config:
                  adj_src_type="cc_traveltime_misfit", start_pad=20, end_pad=500,
                  synthetic_unit="DISP", observed_tag="observed",
                  synthetic_tag="synthetic", synthetics_only=False,
-                 win_amp_ratio=0., map_corners=None, cfgpaths=None,
-                 save_to_ds=True, **kwargs):
+                 win_amp_ratio=0., cfgpaths=None, save_to_ds=True, **kwargs):
         """
         Allows the user to control the parameters of the workflow, including:
         setting the Config objects for Pyflex and Pyadjoint, and the paths for
@@ -41,8 +40,10 @@ class Config:
 
         :type yaml_fid: str
         :param yaml_fid: id for .yaml file if config is to be loaded externally
-        :type model_number: int or str
-        :param model_number: model iteration number for annotations and tags
+        :type model: int
+        :param model: model number, will be formatted for use in tags 
+        :type step: int
+        :param step: step count, will be formatted for use in tags
         :type event_id: str
         :param event_id: unique event identifier for data gathering, annotations
         :type: min_period: float
@@ -95,10 +96,8 @@ class Config:
             contains data is passed to the Manager, but you don't want to
             overwrite the data inside while you do some temporary processing.
         """
-        # Format the model number and step count to Pyatoa standard
-        self.model = model_number(model)
-        self.step = step_count(step)
-
+        self.model = model
+        self.step = step
         self.event_id = event_id
         self.min_period = float(min_period)
         self.max_period = float(max_period)
@@ -109,19 +108,20 @@ class Config:
         self.synthetic_unit = synthetic_unit.upper()
         self.observed_tag = observed_tag
 
-        # Tag synthetics based on model number and step count if given
         self.synthetic_tag = synthetic_tag
         if self.model:
-            self.synthetic_tag += f"_{self.model}{self.step or ''}"
+            # Tag based on model number and step count, e.g. synthetic_m00s00
+            self.synthetic_tag += (f"_{self.model_number}"
+                                   f"{self.step_count or ''}"
+                                   )
 
         self.pyflex_preset = pyflex_preset
         self.adj_src_type = adj_src_type
-        self.map_corners = map_corners
         self.synthetics_only = synthetics_only
         self.win_amp_ratio = win_amp_ratio
         self.start_pad = int(start_pad)
         self.end_pad = int(end_pad)
-        self.component_list = component_list or ['Z', 'N', 'E']
+        self.component_list = component_list or ["Z", "N", "E"]
         self.save_to_ds = save_to_ds
 
         # These are filled in with actual Config objects by _check()
@@ -152,29 +152,49 @@ class Config:
         String representation of class Config for print statements.
         Separate into similar labels for easier reading.
         """
-        key_dict = {"Config": ["model", "step", "event_id"],
-                    "Gather": ["client", "start_pad", "end_pad"],
+        # Model and step need to be formatted before printing
+        str_out = ("Config\n"
+                   f"    {'model:':<25}{self.model_number}\n"
+                   f"    {'step:':<25}{self.step_count}\n"
+                   f"    {'event:':<25}{self.event_id}\n"
+                   )
+        # Format the remainder of the keys identically
+        key_dict = {"Gather": ["client", "start_pad", "end_pad", "save_to_ds"],
                     "Process": ["min_period", "max_period", "filter_corners",
                                 "unit_output", "synthetic_unit",
                                 "rotate_to_rtz", "win_amp_ratio",
                                 "synthetics_only"],
                     "Labels": ["component_list", "observed_tag",
                                "synthetic_tag", "cfgpaths"],
-                    "Misc.": ["save_to_ds", "map_corners"],
                     "External": ["pyflex_preset", "adj_src_type",
                                  "pyflex_config", "pyadjoint_config"
                                  ]
                     }
-        str_out = ""
         for key, items in key_dict.items():
             str_out += f"{key.upper()}\n"
             for item in items:
-                str_out += f"{' '*4}{item+':':<25}{getattr(self, item)}\n"
+                str_out += f"    {item+':':<25}{getattr(self, item)}\n"
         return str_out
 
     def __repr__(self):
         """Simply call string representation"""
         return self.__str__()
+
+    @property
+    def model_number(self):
+        """string formatted version of model, e.g. 'm00'"""
+        if self.model is not None:
+            return format_model_number(self.model)
+        else:
+            return None
+
+    @property
+    def step_count(self):
+        """string formatted version of step, e.g. 's00'"""
+        if self.step is not None:
+            return format_step_count(self.step)
+        else:
+            return None
 
     def _check(self, **kwargs):
         """
@@ -184,17 +204,6 @@ class Config:
         # Check period range is acceptable
         assert(self.min_period < self.max_period), \
             "min_period must be less than max_period"
-
-        # Check that the map corners is a dict and contains proper keys
-        if self.map_corners is not None:
-            assert(isinstance(self.map_corners, dict)), \
-                "map_corners must be a dictionary object"
-            acceptable_keys = ['lat_min', 'lat_max', 'lon_min', 'lon_max']
-            for key in self.map_corners.keys():
-                assert(key in acceptable_keys), "key should be in {}".format(
-                    acceptable_keys)
-        else:
-            self.map_corners = None
 
         # Check if unit output properly set, dictated by ObsPy units
         acceptable_units = ['DISP', 'VEL', 'ACC']
@@ -218,7 +227,9 @@ class Config:
         # Rotate component list if necessary
         if self.rotate_to_rtz:
             logger.debug("Components changed ZNE -> ZRT")
-            self.component_list = ['Z', 'R', 'T']
+            for comp in ["N", "E"]:
+                assert(comp not in self.component_list), \
+                        f"rotated component list cannot include '{comp}'"
 
         # Check that the amplitude ratio is a reasonable number
         if self.win_amp_ratio > 0:
@@ -353,14 +364,6 @@ class Config:
                 attrs[key] = ''
 
         attrs["creation_time"] = str(UTCDateTime())
-
-        # Auxiliary data can't take dictionaries so convert to lists, variables
-        attrs["map_corners"] = [self.map_corners['lat_min'],
-                                self.map_corners['lat_max'],
-                                self.map_corners['lon_min'],
-                                self.map_corners['lon_max']
-                                ]
-
         attrs["cfgpaths_waveforms"] = self.cfgpaths["waveforms"]
         attrs["cfgpaths_synthetics"] = self.cfgpaths["synthetics"]
         attrs["cfgpaths_responses"] = self.cfgpaths["responses"]
@@ -464,13 +467,6 @@ class Config:
         for key, item in cfgin.items():
             if "cfgpaths" in key:
                 cfgpaths[key.split('_')[1]] = item.any() or []
-            elif key == "map_corners":
-                map_corners = {'lat_min': item[0].item(),
-                               'lat_max': item[1].item(),
-                               'lon_min': item[2].item(),
-                               'lon_max': item[3].item()
-                               }
-                setattr(self, key, map_corners)
             else:
                 # Convert numpy objects into native python objects to avoid
                 # any confusion when reading from ASDF format

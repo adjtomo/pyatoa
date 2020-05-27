@@ -21,8 +21,8 @@ from obspy import Stream, read, read_inventory
 from obspy.clients.fdsn.header import FDSNException
 
 from pyatoa import logger
-from pyatoa.utils.read import read_ascii
-from pyatoa.utils.form import event_name
+from pyatoa.utils.read import read_sem
+from pyatoa.utils.form import format_event_name
 from pyatoa.utils.calculate import overlapping_days
 from pyatoa.utils.srcrcv import merge_inventories
 
@@ -174,7 +174,7 @@ class InternalFetcher:
         """
         event = self.ds.events[0]
         self.origintime = event.preferred_origin().time
-        logger.debug(f"matching event found: {event_name(event=event)}")
+        logger.debug(f"matching event found: {format_event_name(event=event)}")
         return event
 
     def asdf_station_fetch(self, station_code):
@@ -393,7 +393,7 @@ class InternalFetcher:
                     net=net, sta=sta, cmp=cha[2:], dva=specfem_id)):
                 try:
                     # Convert the ASCII file to a miniseed
-                    st += read_ascii(filepath, self.origintime)
+                    st += read_sem(filepath, self.origintime)
                 except UnicodeDecodeError:
                     # If the data file is for some reason already in miniseed
                     st += read(filepath)
@@ -541,7 +541,9 @@ class Gatherer(InternalFetcher, ExternalGetter):
             raise GathererNoDataException(f"no Event information found for "
                                           f"{self.config.event_id}")
         else:
-            logger.debug(f"matching event found: {event_name(event=event)}")
+            logger.debug("matching event found: "
+                         f"{format_event_name(event=event)}"
+                         )
             # Append extra information and save event before returning
             if append_focal_mechanism:
                 event = self.append_focal_mechanism(event)
@@ -620,7 +622,7 @@ class Gatherer(InternalFetcher, ExternalGetter):
         logger.info("matching StationXML found")
         if (self.ds is not None) and self.config.save_to_ds:
             # !!! This is a temp fix for PyASDF 0.6.1 where re-adding StationXML 
-            # !!! that contains comments throws a TypeError. Will raise an issue
+            # !!! that contains comments throws a TypeError. Issue #59
             try: 
                 self.ds.add_stationxml(inv)
                 logger.info("saved to ASDFDataSet")

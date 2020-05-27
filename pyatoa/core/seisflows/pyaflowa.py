@@ -20,19 +20,22 @@ import traceback
 
 from pyatoa import logger
 from pyatoa.utils.read import read_stations
-from pyatoa.utils.form import model_number, step_count, event_name
+from pyatoa.utils.form import (format_model_number, format_step_count, 
+                               format_event_name)
 from pyatoa.utils.asdf.clean import clean_ds
-from pyatoa.visuals.statistics import plot_output_optim
+from pyatoa.utils.images import tile_combine_imgs
 from pyatoa.utils.write import (write_stations_adjoint, write_adj_src_to_ascii,
-                                write_misfit, tile_combine_imgs,
-                                src_vtk_from_specfem, rcv_vtk_from_specfem
+                                write_misfit, src_vtk_from_specfem, 
+                                rcv_vtk_from_specfem
                                 )
+from pyatoa.visuals.seisflows_plotting import plot_output_optim
 
 # A list of key word arguments that are accepted by Pyaflowa but are only
 # listed in Seisflows' parameters.yaml file. Listed here so that Pyatoa
 # knows that these arguments are acceptable.
 pyaflowa_kwargs = ["set_logging", "win_amp_ratio", "fix_windows", "snapshot",
-                   "srcrcv_vtk", "plot_wav", "plot_map", "make_pdf"]
+                   "srcrcv_vtk", "plot_wav", "plot_map", "make_pdf", 
+                   "map_corners"]
 
 
 class Pyaflowa:
@@ -348,8 +351,9 @@ class Pyaflowa:
                     # Only plot maps once since they won't change
                     map_fid = oj(paths["maps"], f"map_{sta.code}.png")
                     if not os.path.exists(map_fid):
-                        mgmt.srcrcvmap(stations=inv, show=False,
-                                       save=map_fid)
+                        mgmt.srcrcvmap(stations=inv, 
+                                       map_corners=self.map_corners,
+                                       show=False, save=map_fid)
 
         logger.info(f"Pyaflowa processed {processed} stations")
         return bool(processed)
@@ -391,7 +395,7 @@ class Pyaflowa:
             files and only retain the resultant PDF. Optional but hidden as
             purging is preferable to avoid too many files.
         """
-        event_id = event_name(ds)
+        event_id = format_event_name(ds)
 
         # Establish correct directory and file name
         # path/to/figures/m??/s??/eid_m??_s??.pdf

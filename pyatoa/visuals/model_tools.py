@@ -205,7 +205,7 @@ def colorscale(orientation, **kwargs):
     return cbar
 
 
-def set_axes(xlabel="E (m)", ylabel="N (m)", zlabel="Z (m)", ranges=None,
+def set_axes(xlabel="E", ylabel="N", zlabel="Z", ranges=None,
              xyz=[True, True, True], **kwargs):
     """
     Utility function to create an axis object that wraps around data.
