@@ -72,7 +72,7 @@ def format_event_name(ds_or_event):
     :return: the event name to be used for naming schema in the workflow
     """
     if isinstance(ds_or_event, Event):
-        return event.resource_id.id.split('/')[-1]
+        return ds_or_event.resource_id.id.split('/')[-1]
     elif isinstance(ds_or_event, ASDFDataSet):
         return os.path.basename(ds_or_event.filename).split(".")[0]
     else:
