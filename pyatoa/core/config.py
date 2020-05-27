@@ -22,8 +22,8 @@ class Config:
     defined through scripts or interactive shells.
     """
     def __init__(self, yaml_fid=None, ds=None, path=None, model=None, step=None,
-                 event_id=None, min_period=10, max_period=30, filter_corners=4,
-                 client="IRIS", rotate_to_rtz=False, unit_output="DISP",
+                 event_id=None, min_period=10, max_period=30, filter_corners=2,
+                 client=None, rotate_to_rtz=False, unit_output="DISP",
                  pyflex_preset="default", component_list=None,
                  adj_src_type="cc_traveltime_misfit", start_pad=20, end_pad=500,
                  synthetic_unit="DISP", observed_tag="observed",

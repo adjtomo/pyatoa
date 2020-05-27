@@ -4,7 +4,31 @@ For writing various output files used by Pyatoa, Specfem and Seisflows
 import os
 import glob
 import numpy as np
-from pyatoa.utils.form import format_event_name
+from pyatoa.utils.form import format_event_name, channel_code
+
+
+def write_stream_sem(st, unit, path="./", time_offset=0):
+    """
+    Write an ObsPy Stream in the two-column ASCII format that Specfem uses
+
+    :type st: obspy.core.stream.Stream
+    :param st: stream containing synthetic data to be written
+    :type unit: str
+    :param unit: the units of the synthetic data, used for file extension, must 
+        be 'd', 'v', 'a' for displacement, velocity, acceleration, resp.
+    :type path: str
+    :param path: path to save data to, defaults to cwd
+    :type time_offset: float
+    :param time_offset: optional argument to offset the time array. Sign matters
+        e.g. time_offset=-20 means t0=-20
+    """
+    assert(unit.lower() in ["d", "v", "a"]), "'unit' must be 'd', 'v' or 'a'"
+    for tr in st:
+        s = tr.stats
+        fid = f"{s.network}.{s.station}.{channel_code(s.delta)}X{s.component}"
+        fid = os.path.join(path, f"{fid}.sem{unit.lower()}")
+        data = np.vstack((tr.times() + time_offset, tr.data)).T
+        np.savetxt(fid, data, ["%13.7f", "%17.7f"])
 
 
 def write_misfit(ds, model, step, path="./", fidout=None):

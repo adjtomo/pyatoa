@@ -102,7 +102,7 @@ def test_plot_waveforms(mgmt):
         comp = obs.stats.component
         syn = mp.st_syn.select(component=comp)[0]
         mp.plot_waveforms(ax=axes[i], obs=obs, syn=syn)
-        mp.plot_amplitude_threshold(ax=ax, obs=obs)
+        mp.plot_amplitude_threshold(ax=axes[i], obs=obs)
     plt.show()
     plt.close()
 
@@ -114,7 +114,7 @@ def test_plot_stalta(mgmt):
     mp = ManagerPlotter(mgmt=mgmt)
     _, axes, _ = mp.setup_plot()
     for i, stalta in enumerate(mp.staltas.values()):
-        mp.plot_stalta(ax=axes[i], stalta=stalta, normalize=False)
+        mp.plot_stalta(ax=axes[i], stalta=stalta)
     plt.show()
     plt.close()
 

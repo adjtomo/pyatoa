@@ -50,6 +50,9 @@ class ExternalGetter:
         :rtype event: obspy.core.event.Event or None
         :return event: event object if found, else None.
         """
+        if not self.Client:
+            return None
+
         event = None
         if self.config.event_id is not None:
             try:
@@ -96,6 +99,9 @@ class ExternalGetter:
         :rtype: obspy.core.inventory.Inventory
         :return: inventory containing relevant network and stations
         """
+        if not self.Client:
+            return None
+
         logger.debug(f"querying client {self.config.client}")
         net, sta, loc, cha = station_code.split('.')
         try:
@@ -128,6 +134,9 @@ class ExternalGetter:
         :rtype stream: obspy.core.stream.Stream
         :return stream: waveform contained in a stream
         """
+        if not self.Client:
+            return None
+
         logger.debug(f"querying client {self.config.client}")
         net, sta, loc, cha = station_code.split('.')
         try:
@@ -511,7 +520,10 @@ class Gatherer(InternalFetcher, ExternalGetter):
         self.ds = ds
         self.config = config
         self.origintime = origintime
-        self.Client = Client(self.config.client)
+        if self.config.client is not None:
+            self.Client = Client(self.config.client)
+        else:
+            self.Client = None
 
     def gather_event(self, append_focal_mechanism=True):
         """
@@ -536,7 +548,8 @@ class Gatherer(InternalFetcher, ExternalGetter):
                 pass
 
         # No data in ASDFDataSet, query FDSN
-        event = self.event_get()
+        if self.Client:
+            event = self.event_get()
         if event is None:
             raise GathererNoDataException(f"no Event information found for "
                                           f"{self.config.event_id}")

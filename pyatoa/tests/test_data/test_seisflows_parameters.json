@@ -1,0 +1,42 @@
+{
+    "TITLE": "pyatoa_test",
+    "CASE": "Data",
+    "DT": 0.02,
+    "NT": 15000,
+    "PYATOA": {
+        "adj_src_type": "cc",
+        "cfgpaths": {
+            "responses": [],
+            "synthetics": [],
+            "waveforms": []
+        },
+        "client": null,
+        "end_pad": 350,
+        "filter_corners": 4,
+        "fix_windows": "iter",
+        "make_pdf": true,
+        "map_corners": {
+            "lat_max": -37.0,
+            "lat_min": -42.5,
+            "lon_max": 178.5,
+            "lon_min": 173.0
+        },
+        "max_period": 30.0,
+        "min_period": 10.0,
+        "plot_map": true,
+        "plot_wav": true,
+        "pyflex_preset": "nznorth_10-30s",
+        "rotate_to_rtz": false,
+        "set_logging": {
+            "pyadjoint": "debug",
+            "pyatoa": "debug",
+            "pyflex": "debug"
+        },
+        "snapshot": true,
+        "srcrcv_vtk": true,
+        "start_pad": 20,
+        "synthetic_unit": "DISP",
+        "unit_output": "DISP",
+        "win_amp_ratio": 0.2
+    }
+}

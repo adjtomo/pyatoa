@@ -327,7 +327,7 @@ def test_save_adjsrcs(tmpdir, mgmt_post, adjoint_source):
 
 def test_get_path_for_aux_data(mgmt_pre):
     """
-    Ensure that path naming works as advertised
+    Ensure that path naming works as advertise
     """
     assert(mgmt_pre._get_path_for_aux_data() == "default")        
     mgmt_pre.config.model = "m00"

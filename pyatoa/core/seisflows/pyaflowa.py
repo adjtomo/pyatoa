@@ -6,6 +6,9 @@ This Seisflows plugin class that allows easy scripting of Pyatoa functionality
 into a Seisflows workflow. It takes care of input from the Seisflows master
 directory, and output into a Pyatoa-specific auxiliary directory with a
 pre-defined directory structure that allows for easy navigation of outputs.
+
+To do:
+    -Get rid of set or lock out __setattr__
 """
 import os
 # cheeky shorthand for cleaner calls
@@ -45,22 +48,22 @@ class Pyaflowa:
     distribute information from the Seisflows workflow into Pyatoa. It takes
     care of directory structures, data processing and I/O.
     """
-    def __init__(self, par, paths):
+    def __init__(self, pars, paths):
         """
         Pyaflowa only needs to know what Seisflows knows.
         With this information it can create the internal directory
         structure that it uses to navigate around Seisflows.
 
-        :type par: dict
-        :param par: a dictionary of the Seisflows parameters contained in the
+        :type pars: dict
+        :param pars: a dictionary of the Seisflows parameters contained in the
             `PAR` variable. should be passed here as vars(PAR)
         :type paths: dict
         :param paths: a dictionary of the Seisflows paths contained in the
             `PATH` variable. should be passed here as vars(PATH)
         """
         # Distribute the relative Seisflows paramaters to Pyaflowa
-        self.__dict__ = par["PYATOA"]
-        self.title = par["TITLE"]
+        self.__dict__ = pars["PYATOA"]
+        self.title = pars["TITLE"]
 
         # Grab relevant external paths
         assert("PYATOA_IO" in paths.keys())
@@ -86,9 +89,9 @@ class Pyaflowa:
         # Set some attributes that will be set/used during the workflow
         self.iteration = 0
         self.step_count = 0
-        self.synthetics_only = bool(par["CASE"].lower() == "synthetic")
+        self.synthetics_only = bool(pars["CASE"].lower() == "synthetic")
 
-        self._check_parameters(par)
+        self._check_parameters(pars)
 
     def __str__(self):
         """

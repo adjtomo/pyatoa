@@ -129,8 +129,14 @@ def read_stations(path_to_stations):
     """
     stations = np.loadtxt(path_to_stations, dtype="str")
 
-    # Get all the unique network names
-    networks = {_: [] for _ in np.unique(stations[:, 1])}
+    # Get all the unique network names, try-except to catch when there is only
+    # one station in the file
+    try:
+        networks = {_: [] for _ in np.unique(stations[:, 1])}
+    except IndexError:
+        networks = {stations[1]: []}
+        stations = [stations]
+
     for sta in stations:
         # Parse the station information
         station_ = sta[0]

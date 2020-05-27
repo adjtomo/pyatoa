@@ -99,7 +99,7 @@ PYATOA:
     max_period: 30.         
     filter_corners: 4       
     rotate_to_rtz: False    
-    client: TEST_CLIENT          
+    client: null          
     start_pad: 20           
     end_pad: 350 
 

@@ -428,7 +428,7 @@ def manager_map(map_corners, inv=None, event=None, stations=None,
 
     # If given, plot all background stations for this given event.
     if stations is not None:
-        if isinstance(stations, ndarray):
+        if isinstance(stations, np.ndarray):
             plot_stations_simple(m, lats=stations[:, 0], lons=stations[:, 1])
         else:
             plot_stations(m, inv=stations, event=event,
