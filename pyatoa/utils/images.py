@@ -2,6 +2,8 @@
 Utility functions for manipulating image files such as .png and .pdfs, using the
 Python Pillow package
 """
+import os
+import glob
 from PIL import Image
 
 

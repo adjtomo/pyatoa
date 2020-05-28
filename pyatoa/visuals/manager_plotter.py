@@ -511,9 +511,7 @@ class ManagerPlotter:
         # Final touch ups for the figure
         axes[0].set_title(self.create_title(append_title=append_title,
                                             normalized=normalize))
-        axes[0].set_xlim([np.maximum(self.time_axis[0], -10), 
-                          self.time_axis[-1]]
-                          )
+        axes[0].set_xlim([self.time_axis[0], self.time_axis[-1]])
         axes[-1].set_xlabel("time [s]")
         f.tight_layout()
 
