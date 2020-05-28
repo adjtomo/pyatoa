@@ -147,7 +147,9 @@ def test_process_event(tmpdir, pyaflowa, st_obs, st_syn, cat, inv):
         path = os.path.join(cfg.cfgpaths["waveforms"][0], path)
         os.makedirs(path, exist_ok=True)
 
-        fid = f"{tr.id}.D.{t.year}.{t.julday:0>3}"
+        qid = f"{tr.id}.D.{t.year}.{t.julday:0>3}"
+        # Recast trace data as int32 to get around ObsPy1.1 int64 (Issue #2356)
+        tr.data = tr.data.astype("int32")
         tr.write(os.path.join(path, fid), format="MSEED")
 
     # write StationXML into a SEED formatted directory structure

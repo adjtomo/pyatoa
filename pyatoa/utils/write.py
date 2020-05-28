@@ -25,7 +25,7 @@ def write_stream_sem(st, unit, path="./", time_offset=0):
     assert(unit.lower() in ["d", "v", "a"]), "'unit' must be 'd', 'v' or 'a'"
     for tr in st:
         s = tr.stats
-        fid = f"{s.network}.{s.station}.{channel_code(s.delta)}X{s.component}"
+        fid = f"{s.network}.{s.station}.{channel_code(s.delta)}X{s.channel[-1]}"
         fid = os.path.join(path, f"{fid}.sem{unit.lower()}")
         data = np.vstack((tr.times() + time_offset, tr.data)).T
         np.savetxt(fid, data, ["%13.7f", "%17.7f"])
