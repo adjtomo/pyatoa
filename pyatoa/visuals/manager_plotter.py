@@ -46,7 +46,8 @@ class ManagerPlotter:
             figsize (tuple): size of the figure, defaults A4 (11.689, 8.27)
             dpi (float): dots per inch of the figure, defaults 100
             linewidth (float): line width for all lines on plot, default 1.6
-
+            xlim_s (list): time axis bounds of the plot, defaults to full length
+    
             obs_color (str): color for observed waveform, defaults 'k'
             syn_color (str): color for synthetic waveform, defaults 'r
             stalta_color (str): color of stalta waveform, default 'gray'
@@ -73,6 +74,7 @@ class ManagerPlotter:
             plot_legend (bool): toggle legend, default True
 
             normalize (bool): normalize waveform data before plotting
+            set_title (bool): create a default title using workflow parameters
             append_title(str): User appended string to the end of the title
         """
         self.st_obs = mgmt.st_obs.copy()
@@ -435,6 +437,8 @@ class ManagerPlotter:
         dpi = self.kwargs.get("dpi", 100)
         append_title = self.kwargs.get("append_title", None)
         normalize = self.kwargs.get("normalize", False)
+        xlim_s = self.kwargs.get("xlim_s", None)
+        set_title = self.kwargs.get("set_title", True)
 
         plot_windows = self.kwargs.get("plot_windows", True)
         plot_rejected_windows = self.kwargs.get("plot_rejected_windows", True)
@@ -509,9 +513,13 @@ class ManagerPlotter:
             align_yaxes(ax, twax)
 
         # Final touch ups for the figure
-        axes[0].set_title(self.create_title(append_title=append_title,
-                                            normalized=normalize))
-        axes[0].set_xlim([self.time_axis[0], self.time_axis[-1]])
+        if set_title:
+            axes[0].set_title(self.create_title(append_title=append_title,
+                                                normalized=normalize))
+        if xlim_s is not None:
+            axes[0].set_xlim(xlim_s)
+        else:
+            axes[0].set_xlim([self.time_axis[0], self.time_axis[-1]])
         axes[-1].set_xlabel("time [s]")
         f.tight_layout()
 
