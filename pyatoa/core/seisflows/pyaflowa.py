@@ -227,7 +227,7 @@ class Pyaflowa:
                 self.prepare_eval_grad(ds, paths)
 
                 if self.make_pdf:
-                    self.make_event_pdf(ds, paths)
+                    self.make_event_pdf(paths)
 
                 logger.info("writing event misfit to disk")
                 write_misfit(ds, self.model, self.step, path=self.misfits_dir)
