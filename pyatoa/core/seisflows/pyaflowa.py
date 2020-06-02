@@ -65,14 +65,15 @@ class Pyaflowa:
         self.__dict__ = pars["PYATOA"]
         self.title = pars["TITLE"]
 
-        # Grab relevant external paths
+        # Grab relevant external paths from Seisflows
         assert("PYATOA_IO" in paths.keys())
         pyatoa_io = paths["PYATOA_IO"]
         self.work_dir = paths["WORKDIR"]
+        self.scratch_dir = paths["SCRATCH"]
         self.specfem_data = paths["SPECFEM_DATA"]
         self.config_file = oj(self.work_dir, "parameters.yaml")
 
-        # Distribute internal paths
+        # Distribute hardcoded internal directory structure
         self.data_dir = oj(pyatoa_io, "data")
         self.misfits_dir = oj(pyatoa_io, "data", "misfits")
         self.snapshots_dir = oj(pyatoa_io, "data", "snapshot")
@@ -202,7 +203,7 @@ class Pyaflowa:
                 del kwargs[key]
         self.__dict__.update(kwargs)
 
-    def eval_func(self, cwd, event_id, overwrite=None):
+    def eval_func(self, event_id, overwrite=None):
         """
         High level function to interact with Seisflows.
 
@@ -219,14 +220,14 @@ class Pyaflowa:
         self._set_logging()
 
         # Set up the machinery for a single workflow instnace
-        config, paths = self.prepare_event(cwd, event_id)
+        config, paths = self.prepare_event(event_id)
         with pyasdf.ASDFDataSet(paths["dataset"]) as ds:
             status = self.process_event(ds, config, paths, overwrite)
             if status:
                 self.prepare_eval_grad(ds, paths)
 
                 if self.make_pdf:
-                    self.make_event_pdf(ds, paths)
+                    self.make_event_pdf(paths)
 
                 logger.info("writing event misfit to disk")
                 write_misfit(ds, self.model, self.step, path=self.misfits_dir)
@@ -264,14 +265,15 @@ class Pyaflowa:
             for func in [src_vtk_from_specfem, rcv_vtk_from_specfem]:
                 func(path_to_data=self.specfem_data, path_out=self.vtks_dir)
 
-    def prepare_event(self, cwd, event_id):
+    def prepare_event(self, event_id):
         """
         Mid level function to set up an embarassingly parallelizable workflow
         instance by establishing event-dependent directory structure.
         Creating matching Pyatoa Config object.
 
-        :type cwd: str
-        :param cwd: current working directory for this instance of Pyatoa
+        Note: cwd is hardcoded assuming the Seisflows scratch directory naming
+              schema is constant
+
         :type event_id: str
         :param event_id: event identifier tag for file naming etc.
         :rtype config: pyatoa.core.Config
@@ -280,7 +282,7 @@ class Pyaflowa:
         :return paths: event-specific paths used for I/O
         """
         # Process specific internal directories for the processing
-        paths = {"cwd": cwd,
+        paths = {"cwd": oj(self.scratch_dir, "solver", event_id),
                  "dataset": oj(self.data_dir, f"{event_id}.h5"),
                  "maps": oj(self.maps_dir, event_id),
                  "figures": oj(self.figures_dir, self.model, event_id),
@@ -293,8 +295,8 @@ class Pyaflowa:
         config = pyatoa.Config(
             yaml_fid=self.config_file, event_id=event_id, model=self.model,
             step=self.step, synthetics_only=self.synthetics_only,
-            cfgpaths={"synthetics": oj(cwd, "traces", "syn"),
-                      "waveforms": oj(cwd, "traces", "obs")}
+            cfgpaths={"synthetics": oj(paths["cwd"], "traces", "syn"),
+                      "waveforms": oj(paths["cwd"], "traces", "obs")}
         )
 
         return config, paths
@@ -384,7 +386,7 @@ class Pyaflowa:
             pathout=oj(paths["cwd"], "DATA")
         )
 
-    def make_event_pdf(self, ds, paths, purge=True):
+    def make_event_pdf(self, paths, purge=True):
         """
         Make a PDF of waveforms and maps tiled together for easy analysis of
         waveform fits, default purge the original files for space-saving
@@ -398,7 +400,7 @@ class Pyaflowa:
             files and only retain the resultant PDF. Optional but hidden as
             purging is preferable to avoid too many files.
         """
-        event_id = format_event_name(ds)
+        event_id = os.path.basename(paths["cwd"])
 
         # Establish correct directory and file name
         # path/to/figures/m??/s??/eid_m??_s??.pdf
@@ -408,8 +410,7 @@ class Pyaflowa:
         if not os.path.exists(os.path.dirname(outfile)):
             os.makedirs(os.path.dirname(outfile))
 
-        tile_combine_imgs(
-            ds=ds, save_pdf_to=outfile, wavs_path=paths["figures"],
+        tile_combine_imgs(save_pdf_to=outfile, wavs_path=paths["figures"],
             maps_path=paths["maps"], purge_wavs=purge, purge_tiles=purge
         )
 
