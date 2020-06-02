@@ -55,8 +55,8 @@ def imgs_to_pdf(fids, fid_out):
                     append_images=images)
 
 
-def tile_combine_imgs(ds, wavs_path, maps_path, save_pdf_to,
-                      sort_by="baz", purge_wavs=False, purge_tiles=False):
+def tile_combine_imgs(wavs_path, maps_path, save_pdf_to, purge_wavs=False, 
+                      purge_tiles=False):
     """
     Utility function to tile and combine the output figures from the workflow.
     Tiles maps and waveform plots together, and then combines them into a
@@ -65,26 +65,18 @@ def tile_combine_imgs(ds, wavs_path, maps_path, save_pdf_to,
 
     Maps should not be purged because they can be used by future workflows
 
-    :type ds: pyasdf.ASDFDataSet
-    :param ds: dataset used for sorting
     :type wavs_path: str
     :param wavs_path: path to the waveform figures
     :type maps_path: str
     :param maps_path: path to the map figures
     :type save_pdf_to: str
     :param save_pdf_to: path and filename to save final PDF file
-    :type sort_by: str
-    :param sort_by: method to sort stations by when combining into a pdf,
-        available: 'baz', 'misfit' (misfit not implemented)
     :type purge_wavs: bool
     :param purge_wavs: delete the waveform files after tiling them
     :type purge_tiles: bool
     :param purge_tiles: delete the tile files after combining into pdf
     :return:
     """
-    # Intra-function imports because this is usually only called once in a while
-    from pyatoa.utils.srcrcv import sort_by_backazimuth
-
     # Set the template filenames to look for/ use
     wav_fid = "wav_{sta}.png"
     map_fid = "map_{sta}.png"
@@ -94,10 +86,11 @@ def tile_combine_imgs(ds, wavs_path, maps_path, save_pdf_to,
     files = glob.glob(os.path.join(wavs_path, wav_fid.format(sta="*")))
     stanames = []
     for f in files:
-        sta = os.path.basename(f).split("_")[1].split(".")[0]
+        sta = os.path.basename(f).split("_")[1].split(".")[0]  # e.g. BFZ
         stanames.append(sta)
     stanames = set(stanames)
     stanames = list(stanames)
+    stanames.sort()
 
     # combine map and waveform figures into tiles
     tile_names = []
@@ -117,24 +110,6 @@ def tile_combine_imgs(ds, wavs_path, maps_path, save_pdf_to,
     if purge_wavs:
         for f in files:
             os.remove(f)
-
-    # combine the tiles into a single .pdf
-    # sort stations by backazimuth for easier visualization
-    if sort_by:
-        if sort_by == "baz":
-            sorted_station_names = sort_by_backazimuth(ds)
-        # Sort by largest to smallest misfit
-        elif sort_by == "misfit":
-            raise NotImplementedError
-
-        # Sort the tile names based on the sort method
-        tile_names_sorted = []
-        for name in sorted_station_names:
-            net, sta = name.split('.')
-            for tile in tile_names:
-                if sta in tile:
-                    tile_names_sorted.append(tile)
-        tile_names = tile_names_sorted
 
     # Create the pdf
     imgs_to_pdf(fids=tile_names, fid_out=save_pdf_to)
