@@ -9,13 +9,14 @@ import pyatoa
 import logging
 import traceback
 from pyasdf import ASDFDataSet as asdf
+from pyatoa.utils.form import format_event_name
 
 # User defines HDF5 filename
-ds_fid = glob.glob(os.path.join(os.getcwd(), '*.h5'))[0]
+ds_fid = "2017p819775.h5"
 model = "m00"
 step = "s00"
 synthetics_only = False
-set_logging = False
+set_logging = True
 
 # initiate logging
 if set_logging:
@@ -25,36 +26,29 @@ if set_logging:
     logger_pyflex.setLevel(logging.DEBUG)
 
 
-# assuming the HDF5 file is named after the event id
-event_id = os.path.basename(ds_fid).split('.')[0]
-if not os.path.exists(f"./figures/{event_id}"):
-    os.makedirs(f"./figures/{event_id}")
-
-# additional text to add to title of waveform plots
-append_title = (f"pyflex={config.pyflex_preset}; "
-                f"pyadjoint={config.adj_src_type} ")
-
 # initiate pyasdf dataset where all data will be saved
 with asdf(ds_fid) as ds:
-    cfg = pyatoa.Config(ds=ds, path=f"{model}{step}")
-    mgmt = pyatoa.Manager(config=cfg, ds=ds)
+    event_id = format_event_name(ds)
+    if not os.path.exists(f"./figures/{event_id}"):
+        os.makedirs(f"./figures/{event_id}")
+
+    mgmt = pyatoa.Manager(ds=ds)
     stations = ds.waveforms.list()
 
     # begin the workflow by looping through all stations
-    for station in stations:
+    for station in ds.waveforms.list():
         net, sta = station.split('.')
         try:
-            mgmt.load(station)
+            mgmt.load(station, path=f"{model}/{step}")
             mgmt.standardize()
             mgmt.preprocess()
             mgmt.window()
             mgmt.measure()
-            mgmt.plot_wav(save="./figures/{config.event_id}/wav_{sta}",
-                          append_title=append_title, show=True,
-                          )
-            mgmt.plot_map(save="./figures/{config.event_id}/map_{sta}",
-                          show=True
-                          )
+            mgmt.plot(save="./figures/{event_id}/wav_{sta}",
+                      append_title=(f"pyflex={mgmt.cfg.pyflex_preset}; "
+                                    f"pyadjoint={mgmt.cfg.adj_src_type}"), 
+                      show=True,
+                      )
             mgmt.reset()
         except Exception as e:
             traceback.print_exc()

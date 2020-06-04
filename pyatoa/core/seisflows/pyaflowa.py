@@ -335,11 +335,10 @@ class Pyaflowa:
         for net in inv:
             for sta in net:
                 try:
-                    processed += mgmt.flow(
-                            station_code=f"{net.code}.{sta.code}.*.HH*",
-                            preprocess_overwrite=overwrite,
-                            fix_windows=fix_windows
-                            )
+                    mgmt.gather(station_code=f"{net.code}.{sta.code}.*.HH*")
+                    processed += mgmt.flow(preprocess_overwrite=overwrite,
+                                           fix_windows=fix_windows
+                                           )
                 except pyatoa.ManagerError as e:
                     logger.warning(e)
                     continue

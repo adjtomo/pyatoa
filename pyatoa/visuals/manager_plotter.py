@@ -91,7 +91,7 @@ class ManagerPlotter:
 
         self.time_axis = self.st_obs[0].times() + mgmt.stats.time_offset_sec
 
-    def setup_plot(self):
+    def setup_plot(self, twax_off=False):
         """
         Dynamically set up plots according to number_of given
 
@@ -105,6 +105,8 @@ class ManagerPlotter:
         # general kwargs
         figsize = self.kwargs.get("figsize", (11.689, 8.27))  # A4
         dpi = self.kwargs.get("dpi", 100)
+
+        # For removing labels and tick markers
 
         # Initiate the figure and fill it up with grids
         f = plt.figure(figsize=figsize, dpi=dpi)
@@ -129,6 +131,12 @@ class ManagerPlotter:
         # remove x-tick labels except for last axis
         for ax in axes[0:-1]:
             plt.setp(ax.get_xticklabels(), visible=False)
+
+        # option to turn off twin axis
+        if twax_off:
+            for twax in twaxes:
+                twax.axes.get_xaxis().set_visible(False)
+                twax.axes.get_yaxis().set_visible(False)
 
         return f, axes, twaxes
 
@@ -439,6 +447,8 @@ class ManagerPlotter:
         normalize = self.kwargs.get("normalize", False)
         xlim_s = self.kwargs.get("xlim_s", None)
         set_title = self.kwargs.get("set_title", True)
+        plot_xaxis = self.kwargs.get("plot_xaxis", True)
+        plot_yaxis = self.kwargs.get("plot_yaxis", True)
 
         plot_windows = self.kwargs.get("plot_windows", True)
         plot_rejected_windows = self.kwargs.get("plot_rejected_windows", True)
@@ -449,8 +459,12 @@ class ManagerPlotter:
         plot_arrivals = self.kwargs.get("plot_arrivals", True)
         plot_legend = self.kwargs.get("legend", True)
 
+
+        # If nothing on the twin axis, this will turn off tick marks
+        twax_off = bool(not plot_staltas or not plot_adjsrcs)
+
         # Plot per component in the same fashion, only if observed data exists
-        f, axes, twaxes = self.setup_plot()
+        f, axes, twaxes = self.setup_plot(twax_off)
         for i, obs in enumerate(self.st_obs):
             comp = obs.stats.channel[-1]
 
@@ -521,6 +535,18 @@ class ManagerPlotter:
         else:
             axes[0].set_xlim([self.time_axis[0], self.time_axis[-1]])
         axes[-1].set_xlabel("time [s]")
+
+        # Option to turn off tick labels and axis labels
+        if not plot_xaxis or not plot_yaxis:
+            for axis in [axes, twaxes]:
+                for ax in axis:
+                    if not plot_xaxis:
+                        ax.axes.xaxis.set_ticklabels([])
+                        ax.set_xlabel("")
+                    if not plot_yaxis:
+                        ax.axes.yaxis.set_ticklabels([])
+                        ax.set_ylabel("")
+
         f.tight_layout()
 
         if self.save:
@@ -562,7 +588,18 @@ def pretty_grids(input_ax, twax=False, grid=False):
     """
     input_ax.set_axisbelow(True)
     input_ax.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
-    input_ax.tick_params(which='both', direction='in', top=True, right=True)
+    # Ensure the twin axis doesn't clash with ticks of the main axis
+    if twax:
+        left = False
+        right = True
+    else:
+        left = True
+        right = False
+
+    input_ax.tick_params(which='major', direction='in', top=True, right=right,
+                         left=left, length=8)
+    input_ax.tick_params(which='minor', direction='in', top=True, right=right,
+                         left=left, length=3)
 
     # Set the grids 'on' only if main axis
     if not twax:
