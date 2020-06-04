@@ -35,18 +35,18 @@ class Inspector(InspectorPlotter):
         :param path: path to the ASDFDataSets that were outputted
             by Pyaflowa in the Seisflows workflow
         """
-        # If no tag given, create dictionaries based on datasets
         self.windows = pd.DataFrame()
         self.sources = pd.DataFrame()
         self.receivers = pd.DataFrame()
 
-        # If a tag is given, load rather than reading from datasets
         if tag is not None:
+            # If a tag is given, load rather than reading from datasets
             try:
                 self.read(tag)
             except FileNotFoundError:
                 print("file not found")
         elif path is not None:
+            # If no tag given, read in HDF5 files from path
             dsfids = glob(os.path.join(path, "*.h5"))
             for i, dsfid in enumerate(dsfids):
                 print(f"{os.path.basename(dsfid):<25} {i:0>2}/{len(dsfids)}",
@@ -301,10 +301,13 @@ class Inspector(InspectorPlotter):
         """
         try:
             with pyasdf.ASDFDataSet(dsfid) as ds:
-                if windows:
-                    self._get_windows_from_dataset(ds)
                 if srcrcv:
                     self._get_srcrcv_from_dataset(ds)
+                if windows:
+                    try:
+                        self._get_windows_from_dataset(ds)
+                    except AttributeError as e:
+                        print("error: missing auxiliary data")
                 return
         except OSError:
             print(f"error: already open")
