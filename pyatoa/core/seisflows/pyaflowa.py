@@ -340,8 +340,9 @@ class Pyaflowa:
                                            fix_windows=fix_windows
                                            )
                 except pyatoa.ManagerError as e:
+                    # Pass on ManagerErrors to allow waveform plotting
                     logger.warning(e)
-                    continue
+                    pass
                 except Exception as e:
                     logger.warning(e, exc_info=True)
                     continue

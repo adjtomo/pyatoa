@@ -80,10 +80,12 @@ class ManagerPlotter:
         self.st_obs = mgmt.st_obs.copy()
         self.st_syn = mgmt.st_syn.copy()
         self.config = mgmt.config
-        self.windows = mgmt.windows
-        self.staltas = mgmt.staltas
-        self.adjsrcs = mgmt.adjsrcs
-        self.rejected_windows = mgmt._rej_win
+        # If auxiliary data is None, initialize as empty dictionary so that 
+        # waveforms can still be plotted
+        self.windows = mgmt.windows or {}
+        self.staltas = mgmt.staltas or {}
+        self.adjsrcs = mgmt.adjsrcs or {}
+        self.rejected_windows = mgmt._rej_win or {}
 
         self.show = show
         self.save = save
