@@ -332,33 +332,42 @@ class Pyaflowa:
         inv = read_stations(oj(paths["cwd"], "DATA", "STATIONS"))
 
         # Loop through stations and invoke Pyatoa workflow
+        # Wrap everything in try-excepts to prevent mid-workflow fails
         for net in inv:
             for sta in net:
+                mgmt.reset()
+                # Gather data, if fail, move onto the next station
                 try:
                     mgmt.gather(station_code=f"{net.code}.{sta.code}.*.HH*")
-                    processed += mgmt.flow(preprocess_overwrite=overwrite,
-                                           fix_windows=fix_windows
-                                           )
                 except pyatoa.ManagerError as e:
-                    # Pass on ManagerErrors to allow waveform plotting
+                    logger.warning(e)
+                    continue
+                # Process data, if fail, pass to waveform plotting
+                try:
+                    mgmt.flow(preprocess_overwrite=overwrite,
+                              fix_windows=fix_windows)
+                    processed += 1
+                except pyatoa.ManagerError as e:
                     logger.warning(e)
                     pass
                 except Exception as e:
                     logger.warning(e, exc_info=True)
+                    pass
+                # Plot data and create source-receiver map
+                try:
+                    if self.plot_wav:
+                        mgmt.plot(save=oj(paths["figures"], f"wav_{sta.code}"),
+                                  show=False, return_figure=False
+                                  )
+                    if self.plot_map:
+                        map_fid = oj(paths["maps"], f"map_{sta.code}.png")
+                        if not os.path.exists(map_fid):
+                            mgmt.srcrcvmap(stations=inv, 
+                                           map_corners=self.map_corners,
+                                           show=False, save=map_fid)
+                except pyatoa.ManagerError as e:
+                    logger.warning(e)
                     continue
-
-                # Only make plots if the full processing was completed
-                if self.plot_wav:
-                    mgmt.plot(save=oj(paths["figures"], f"wav_{sta.code}"),
-                              show=False, return_figure=False
-                              )
-                if self.plot_map:
-                    # Only plot maps once since they won't change
-                    map_fid = oj(paths["maps"], f"map_{sta.code}.png")
-                    if not os.path.exists(map_fid):
-                        mgmt.srcrcvmap(stations=inv, 
-                                       map_corners=self.map_corners,
-                                       show=False, save=map_fid)
 
         logger.info(f"Pyaflowa processed {processed} stations")
         return bool(processed)
