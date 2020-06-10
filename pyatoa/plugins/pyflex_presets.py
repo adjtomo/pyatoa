@@ -60,6 +60,20 @@ pyflex_presets = {
     # nznorth: From the New Zealand group doing local studies of North Island
     # For the 1D velocity model, windowing parameters need to be very loose to
     # pick the large time shifts
+    "nznorth_2-30s_loose": {
+        "stalta_waterlevel": 0.10, 
+        "tshift_acceptance_level": 8.0,  # based on sign-flip
+        "dlna_acceptance_level": 3.0,
+        "cc_acceptance_level": 0.5,
+        "s2n_limit": 3.,
+        "max_time_before_first_arrival": 5.,
+        "c_0": 0.4,
+        "c_1": 2.0, 
+        "c_3a": 3.0,
+        "c_3b": 2.0,
+        "c_4a": 2.5,
+        "c_4b": 12.0
+    },
     "nznorth_1D": {
         "stalta_waterlevel": 0.07, 
         "tshift_acceptance_level": 10.0,

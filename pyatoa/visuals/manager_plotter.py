@@ -57,6 +57,10 @@ class ManagerPlotter:
             window_anno (str): a custom string which can contain the optional 
                 format arguemnts: [max_cc, cc_shift, dlnA, left, length]. None,
                 defaults to formatting all arguments
+            window_anno_alternate (str): custom string for all windows that 
+                aren't the first window, useful for dropping the labels for 
+                parameters, allows for cleaner annotations without
+                compromising readability
             window_anno_fontsize (str): fontsize for window annotation, def 8
             window_anno_height (float): annotation height, percentage of y axis,
                 default 0.7
@@ -249,15 +253,24 @@ class ManagerPlotter:
             within the window
         """
         window_anno = self.kwargs.get("window_anno", None)
+        window_anno_alternate = self.kwargs.get("window_anno_alternate", None)
         window_color = self.kwargs.get("window_color", "orange")
         window_anno_fontsize = self.kwargs.get("window_anno_fontsize", 8)
         window_anno_height = self.kwargs.get("window_anno_height", 0.65)  
+        alternate_anno_height = self.kwargs.get("alternate_anno_height", None)
         window_anno_rotation = self.kwargs.get("window_anno_rotation", 0)
         window_anno_fontcolor = self.kwargs.get("window_anno_fontcolor", "k")
         window_anno_fontweight = self.kwargs.get("window_anno_fontweight", 
                                                  "normal")
-
+        
+        # Determine heights for the annotations, allow alternating heights so 
+        # that adjacent windows don't write over one another
         ymin, ymax = ax.get_ylim()
+        y_anno = window_anno_height * (ymax - ymin) + ymin
+        if alternate_anno_height is not None:
+            y_anno_alt= (alternate_anno_height) * (ymax - ymin) + ymin
+        else:
+            y_anno_alt = y_anno
 
         # Default window annotation string
         if window_anno is None:
@@ -267,6 +280,9 @@ class ManagerPlotter:
                            "left={left:.1f}s\n"
                            "length={length:.1f}s\n"
                            )
+        # Set the annotation for all windows that aren't the first
+        if window_anno_alternate is None:
+            window_anno_alternate = window_anno
 
         for j, window in enumerate(windows):
             tleft = window.left * window.dt + self.time_axis[0]
@@ -282,16 +298,16 @@ class ManagerPlotter:
             if plot_window_annos:
                 # Annotate window information into each window
                 t_anno = (tright - tleft) * 0.025 + tleft
-                y_anno = window_anno_height * (ymax - ymin) + ymin
                 s_anno = window_anno.format(
                                 max_cc=window.max_cc_value,
                                 cc_shift=window.cc_shift * window.dt,
                                 dlnA=window.dlnA,
                                 left=tleft,
                                 length=tright - tleft)
-
-                ax.annotate(s=s_anno, xy=(t_anno, y_anno), zorder=11, 
-                            fontsize=window_anno_fontsize,
+                # Alternate the height of the annotations
+                ax.annotate(s=s_anno, 
+                            xy=(t_anno, [y_anno, y_anno_alt][j%2]), 
+                            zorder=11, fontsize=window_anno_fontsize,
                             rotation=window_anno_rotation, 
                             color=window_anno_fontcolor,
                             fontweight=window_anno_fontweight
@@ -308,6 +324,10 @@ class ManagerPlotter:
                                         0.05 * (ymax-ymin) + ymin),
                                     fontsize=8
                                     )
+            # After the first window, set the alternate window anno str
+            if j == 0:
+                window_anno = window_anno_alternate
+
 
     def plot_rejected_windows(self, ax, windows):
         """
