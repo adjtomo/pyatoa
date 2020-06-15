@@ -111,6 +111,7 @@ class ManagerPlotter:
         # general kwargs
         figsize = self.kwargs.get("figsize", (11.689, 8.27))  # A4
         dpi = self.kwargs.get("dpi", 100)
+        fontsize = self.kwargs.get("fontsize", 8)
 
         # For removing labels and tick markers
 
@@ -129,8 +130,8 @@ class ManagerPlotter:
                 ax = plt.subplot(gs[i], sharex=axes[0])
             twinax = ax.twinx()
 
-            pretty_grids(twinax, twax=True)
-            pretty_grids(ax)
+            pretty_grids(twinax, twax=True, fontsize=fontsize)
+            pretty_grids(ax, fontsize=fontsize)
             twaxes.append(twinax)
             axes.append(ax)
 
@@ -226,8 +227,9 @@ class ManagerPlotter:
             ax.axhline(y=waterlevel, xmin=self.time_axis[0], 
                        xmax=self.time_axis[-1], alpha=0.4, zorder=8, 
                        linewidth=linewidth, c=stalta_color, linestyle='--')
-            ax.annotate(s=f"waterlevel = {stalta_wl}", alpha=0.7,
-                        xy=(0.85 * (xmax - xmin) + xmin, waterlevel), fontsize=8
+            ax.annotate(s=f"stalta_waterlevel = {stalta_wl}", alpha=0.7, 
+                        fontsize=8,
+                        xy=(0.75 * (xmax - xmin) + xmin, waterlevel)
                         )
 
         return [b2]
@@ -274,15 +276,20 @@ class ManagerPlotter:
 
         # Default window annotation string
         if window_anno is None:
-            window_anno = ("max_cc={max_cc:.2f}\n"
-                           "cc_shift={cc_shift:.2f}s\n"
-                           "dlnA={dlnA:.3f}\n"
-                           "left={left:.1f}s\n"
-                           "length={length:.1f}s\n"
+            window_anno = ("cc={max_cc:.2f}\n"
+                           "dT={cc_shift:.2f}s\n"
+                           "dlnA={dlnA:.2f}\n"
+                           "lft={left:.1f}s\n"
+                           "len={length:.1f}s\n"
                            )
         # Set the annotation for all windows that aren't the first
         if window_anno_alternate is None:
-            window_anno_alternate = window_anno
+            window_anno = ("{max_cc:.2f}\n"
+                           "{cc_shift:.2f}s\n"
+                           "{dlnA:.2f}\n"
+                           "{left:.1f}s\n"
+                           "{length:.1f}s\n"
+                           )
 
         for j, window in enumerate(windows):
             tleft = window.left * window.dt + self.time_axis[0]
@@ -292,13 +299,19 @@ class ManagerPlotter:
             ax.add_patch(Rectangle(xy=(tleft, ymin), width=tright - tleft, 
                                    height=(ymax + np.abs(ymin)), 
                                    fc=window_color, ec="k", 
-                                   alpha=(window.max_cc_value ** 2) * 0.25
+                                   alpha=(window.max_cc_value ** 2) * 0.25,
+                                   zorder=10
                 )
             )
+            # Outline the rectangle with solid black lines
+            for x_ in [tleft, tright]:
+                ax.axvline(x=x_, ymin=0, ymax=1, color="k", alpha=1., zorder=11)
+
             if plot_window_annos:
                 # Annotate window information into each window
                 t_anno = (tright - tleft) * 0.025 + tleft
                 s_anno = window_anno.format(
+                                i=j,
                                 max_cc=window.max_cc_value,
                                 cc_shift=window.cc_shift * window.dt,
                                 dlnA=window.dlnA,
@@ -307,10 +320,10 @@ class ManagerPlotter:
                 # Alternate the height of the annotations
                 ax.annotate(s=s_anno, 
                             xy=(t_anno, [y_anno, y_anno_alt][j%2]), 
-                            zorder=11, fontsize=window_anno_fontsize,
+                            zorder=12, fontsize=window_anno_fontsize,
                             rotation=window_anno_rotation, 
                             color=window_anno_fontcolor,
-                            fontweight=window_anno_fontweight
+                            fontweight=window_anno_fontweight,
                             )
 
             if plot_phase_arrivals:
@@ -383,7 +396,7 @@ class ManagerPlotter:
         b1, = ax.plot(self.time_axis, adjsrc.adjoint_source[::-1], 
                       adj_src_color, alpha=0.55, linewidth=linewidth,
                       linestyle="-.", zorder=9,
-                      label=fr"Adjoint Source ($\chi$={adjsrc.misfit:.2E})"
+                      label=fr"Adjoint Source ($\chi$={adjsrc.misfit:.2f})"
                       )
         return [b1]
 
@@ -465,6 +478,8 @@ class ManagerPlotter:
         # Distribute some kwargs before starting
         figsize = self.kwargs.get("figsize", (11.689, 8.27))  # A4
         dpi = self.kwargs.get("dpi", 100)
+        fontsize = self.kwargs.get("fontsize", 8)
+        legend_fontsize = self.kwargs.get("legend_fontsize", 8)
         append_title = self.kwargs.get("append_title", None)
         normalize = self.kwargs.get("normalize", False)
         xlim_s = self.kwargs.get("xlim_s", None)
@@ -520,7 +535,7 @@ class ManagerPlotter:
                 if i == len(self.st_obs) // 2:  
                     # middle trace: append units of the adjoint source on ylabel
                     twax.set_ylabel("adjoint source [m$^{-4}$ s]", rotation=270, 
-                                    labelpad=42.5)
+                                    labelpad=20)
             else:
                 twax.set_yticklabels([])  # turn off yticks if no adjsrc
 
@@ -544,7 +559,8 @@ class ManagerPlotter:
 
             if plot_legend:
                 labels = [l.get_label() for l in lines]
-                ax.legend(lines, labels, prop={"size": 10}, loc="upper right")
+                ax.legend(lines, labels, prop={"size": legend_fontsize}, 
+                          loc="upper right")
 
             align_yaxes(ax, twax)
 
@@ -556,7 +572,7 @@ class ManagerPlotter:
             axes[0].set_xlim(xlim_s)
         else:
             axes[0].set_xlim([self.time_axis[0], self.time_axis[-1]])
-        axes[-1].set_xlabel("time [s]")
+        axes[-1].set_xlabel("time [s]", fontsize=fontsize)
 
         # Option to turn off tick labels and axis labels
         if not plot_xaxis or not plot_yaxis:
@@ -599,7 +615,7 @@ def align_yaxes(ax1, ax2):
     ax2.set_ylim(ymin_a2+dy, ymax_a2+dy)
 
 
-def pretty_grids(input_ax, twax=False, grid=False):
+def pretty_grids(input_ax, twax=False, grid=False, fontsize=8):
     """
     Standard plot skeleton formatting, thick lines and internal tick marks etc.
 
@@ -619,9 +635,9 @@ def pretty_grids(input_ax, twax=False, grid=False):
         right = False
 
     input_ax.tick_params(which='major', direction='in', top=True, right=right,
-                         left=left, length=8)
+                         left=left, length=8, labelsize=fontsize)
     input_ax.tick_params(which='minor', direction='in', top=True, right=right,
-                         left=left, length=3)
+                         left=left, length=3, labelsize=fontsize)
 
     # Set the grids 'on' only if main axis
     if not twax:
