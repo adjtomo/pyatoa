@@ -1,7 +1,7 @@
 ## For Version 0.2.0
 
 #### Features
-- [ ] Use Pandas in the Inspector class to do the large-scale data analysis required for all the misfit windows, etc.
+- [X] Use Pandas in the Inspector class to do the large-scale data analysis required for all the misfit windows, etc.
 
 #### Bugs
 - [X] FDSNException in gatherer.gather_observed( Uknown Error (timeout))  
@@ -13,7 +13,6 @@
       *Moved purge outside loop and set it to delete all files inside the dir with the correct tag*
 - [X] Pyaflowa waveform composites aren't made if a thrifty inversion is done because it skips s00  
       *removed the step count requirement in the if statement*
-
       
 #### Questions
 - [ ] Fixed windowing might encounter some problems because the synthetic trace is changing, so the values of max_cc_, cc_shift and dlnA       are not being re-evaluated. Can this be remedied?
@@ -62,6 +61,7 @@
 - [X] Processing provenance saved into auxiliary_data?  
       *Saved processing stats from obspy stream into the Config object for each model/step*
 - [X] Retain step count information for MisfitWindows and AdjointSources
+- [ ] Save Pyflex/Pyadjoint Config parameters, not just the map name, incase map names change
 
 #### Misc.
 - [X] Move all hardcoded stuff into plugins, e.g. fault_coordinates, geonet_moment_tensor
