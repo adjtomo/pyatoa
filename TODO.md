@@ -97,6 +97,7 @@
 - [X] make srcs_w_depth.vtk, and perhaps with depth as planar slices  
       *New src_vtk_from_specfem() function that takes constant x y or z values to make planar slices*
 - [X] Waveform improvement script should take advantage of Manager.load() rather than accessing waveform tags
+- [ ] Inspector convergence plot should plot line search models as non-connected points as in Krischer et al. 2018(?)
 
 #### Inspector:
 - [ ] Find window corresponding to largest time shift, or misfit
