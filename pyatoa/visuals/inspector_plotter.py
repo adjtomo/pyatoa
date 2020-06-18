@@ -159,6 +159,7 @@ class InspectorPlotter:
         fontsize = kwargs.get("fontsize", 12)
         figsize = kwargs.get("figsize", (8, 6))
         legend = kwargs.get("legend", True)
+        legend_loc = kwargs.get("legend_loc", "best")
         label_range = kwargs.get("label_range", False)
         xstep = kwargs.get("xstep", 2)
         ymax = kwargs.get("ymax", None)
@@ -262,7 +263,7 @@ class InspectorPlotter:
         plt.axvline(x=0, ymin=0, ymax=1, linewidth=2., c="k", zorder=2, 
                     alpha=0.75, linestyle=':')
         if legend:
-            plt.legend(fontsize=fontsize/1.25)
+            plt.legend(fontsize=fontsize/1.25, loc=legend_loc)
 
         plt.tight_layout() 
 

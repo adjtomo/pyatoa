@@ -12,7 +12,7 @@ Note:
 """
 import os
 from glob import glob
-from pyatoa.visuals.model import Model
+from pyatoa.visuals.model_maker import ModelMaker
 from pyatoa.utils.images import imgs_to_pdf
 
 
@@ -123,9 +123,9 @@ def call_models(fid, path_out="./figures", make_pdf=True):
         par["default_range"] = False
 
     # Call the model maker
-    model = Model(fid=fid, srcs=srcs_fid, rcvs=rcvs_fid, coast=coast_fid,
-                  figsize=figsize, zero_origin=par["zero_origin"],
-                  convert=par["convert"], offscreen=True, logging=False)
+    model = ModelMaker(fid=fid, srcs=srcs_fid, rcvs=rcvs_fid, coast=coast_fid,
+                       figsize=figsize, zero_origin=par["zero_origin"],
+                       convert=par["convert"], offscreen=True, logging=False)
 
     # Make the models
     if z_slices:
@@ -168,10 +168,10 @@ def user_input():
     """
     fids = []
     model = f"{input('Choose model number (wildcards okay): '):0>4}"
-    fids += glob("model_{model}_*.vtk")
-    fids += glob(f"log_model_{model}_??.vtk")
-    fids += glob(f"gradient_{model}_*.vtk")
-    fids += glob(f"model_{model}_poissons.vtk")
+    fids += glob(f"model_{model}_*.vtk")
+    # fids += glob(f"log_model_{model}_??.vtk")
+    # fids += glob(f"gradient_{model}_*.vtk")
+    # fids += glob(f"model_{model}_poissons.vtk")
 
     if False:
         add_mods = input("Make models for 'models'?: [y]/n ")

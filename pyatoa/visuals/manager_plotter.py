@@ -311,7 +311,7 @@ class ManagerPlotter:
                 # Annotate window information into each window
                 t_anno = (tright - tleft) * 0.025 + tleft
                 s_anno = window_anno.format(
-                                i=j,
+                                i=j+1,
                                 max_cc=window.max_cc_value,
                                 cc_shift=window.cc_shift * window.dt,
                                 dlnA=window.dlnA,
