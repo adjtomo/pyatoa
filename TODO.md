@@ -31,6 +31,7 @@
       *Added a check call at the end of check() that puts up a user warning if unnused kwargs fall through*
 - [X] include __repr__ for all classes
      *config, manager, pyaflowa... todo: inspector  
+- [ ] Have some sort of flag/cache system that tells the Manager/Gatherer that an FDSNNoDataException has been thrown, that way it won't query FDSN in future iterations
 
 #### Config
 - [ ] Include UTM projection into config and propogate into scripts
