@@ -175,7 +175,11 @@ class Pyaflowa:
                  if fix by iteration, return False if s00, True otherwise
                  if fix window False, reevaluate windows each step
         """
-        if isinstance(self.fix_windows, bool):
+        if self.model == "m00" and self.step == "s00":
+            # Always false if this is the first iteration of the inversion
+            return False
+        elif isinstance(self.fix_windows, bool):
+            # Simply return the bool if not first iteration
             return self.fix_windows
         elif self.fix_windows == "iter":
             # False if this is the first step in the iteration, True else
@@ -335,6 +339,9 @@ class Pyaflowa:
         # Wrap everything in try-excepts to prevent mid-workflow fails
         for net in inv:
             for sta in net:
+                # Print a header for each station for easier parsing in log file
+                logger.info(
+                        f"\n{'='*80}\n{' '*36}{net.code}.{sta.code}\n{'='*80}")
                 mgmt.reset()
                 # Gather data, if fail, move onto the next station
                 try:

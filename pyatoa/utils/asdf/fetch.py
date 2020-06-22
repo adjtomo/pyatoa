@@ -7,7 +7,7 @@ from pyflex.window import Window
 from obspy import UTCDateTime
 
 
-def windows_from_dataset(ds, net, sta, model, step, check_previous=True):
+def windows_from_dataset(ds, net, sta, model, step, previous_step=False):
     """
     Returns misfit windows from an ASDFDataSet for a given model, step,
     network and station, as well as a count of windows returned.
@@ -51,24 +51,25 @@ def windows_from_dataset(ds, net, sta, model, step, check_previous=True):
     step_count = format_step_count(step)
     windows = ds.auxiliary_data.MisfitWindows
 
-    window_dict = {}
-    if hasattr(windows, model_number) and \
-                        hasattr(windows[model_number], step_count):
-        # Attempt to retrieve windows from the given model/step
-        logger.debug(f"searching for windows in {model_number}{step_count}")
+    window_dict = {}    
+    if previous_step:
+        # Attempt to retrieve windows from previous model/step
+        prev_windows = _return_windows_from_previous_step(windows=windows, 
+                                                          model=model, 
+                                                          step=step
+                                                          )
         window_dict = dataset_windows_to_pyflex_windows(
-            windows=windows[model_number][step_count], network=net, station=sta
-            )
+            windows=prev_windows, network=net, station=sta
+            )  
     else:
-        if check_previous:
-            # Attempt to retrieve windows from previous model/step
-            prev_windows = _return_windows_from_previous_step(windows=windows, 
-                                                              model=model, 
-                                                              step=step
-                                                              )
+        if hasattr(windows, model_number) and \
+                            hasattr(windows[model_number], step_count):
+            # Attempt to retrieve windows from the given model/step
+            logger.debug(f"searching for windows in {model_number}{step_count}")
             window_dict = dataset_windows_to_pyflex_windows(
-                windows=prev_windows, network=net, station=sta
-                )  
+                windows=windows[model_number][step_count], network=net, 
+                station=sta
+                )
 
     return window_dict
 

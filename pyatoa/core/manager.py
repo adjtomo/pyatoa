@@ -396,34 +396,24 @@ class Manager:
         self._check()
         return self
 
-    def flow(self, station_code, fix_windows=False, preprocess_overwrite=None):
+    def flow(self, fix_windows=False, preprocess_overwrite=None):
         """
         A convenience function to run the full workflow with a single command.
+        Does not include gathering as that could be from gather() or load()
 
         Will raise ManagerError for controlled exceptions meaning workflow 
-        cannot continue. Sucessful workflow returns 1.
+        cannot continue.
 
-        :type station_code: str
-        :param station_code: Station code following SEED naming convention.
-            This must be in the form NN.SSSS.LL.CCC (N=network, S=station,
-            L=location, C=channel). Allows for wildcard naming. By default
-            the pyatoa workflow wants three orthogonal components in the N/E/Z
-            coordinate system. Example station code: NZ.OPRZ.10.HH?
         :type fix_windows: bool
         :param fix_windows: do not pick new windows, but load windows from the
             given dataset
         :type preprocess_overwrite: function
         :param preprocess_overwrite: overwrite the core preprocess functionality
         """
-        self.reset()
-        self.gather(station_code=station_code)
         self.standardize()
         self.preprocess(overwrite=preprocess_overwrite)
         self.window(fix_windows=fix_windows)
         self.measure()
-        
-        # Sucessful workflow
-        return 1
 
     def gather(self, station_code, choice=None):
         """
@@ -616,8 +606,6 @@ class Manager:
         :type force: bool
         :param force: ignore flag checks and run function, useful if e.g.
             external preprocessing is used that doesn't meet flag criteria
-        :rtype: bool
-        :return: status of the function, 1: successful / 0: failed
         """
         # Pre-check to see if data has already been standardized
         self._check()
@@ -642,11 +630,12 @@ class Manager:
         # Get misfit windows from dataset or using Pyflex
         if fix_windows and (hasattr(self.ds, "auxiliary_data") and
                             hasattr(self.ds.auxiliary_data, "MisfitWindows")):
-            # Attempt to retrieve MisfitWindow from the Dataset
+            # Attempt to retrieve MisfitWindows from the Dataset
             net, sta, _, _ = self.st_obs[0].get_id().split(".")
             self.windows = windows_from_dataset(ds=self.ds, net=net, sta=sta,
                                                 model=self.config.model, 
-                                                step=self.config.step
+                                                step=self.config.step,
+                                                previous_step=True
                                                 )
             self.stats.nwin = sum(len(_) for _ in self.windows.values())
         else:
