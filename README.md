@@ -1,4 +1,4 @@
-## Python's Adjoint Tomography Operations Assitant
+## Python's Adjoint Tomography Operations Assitant  
 ### Misfit assessment for the modern tomographer
 
 ---
