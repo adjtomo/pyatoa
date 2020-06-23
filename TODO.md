@@ -17,27 +17,29 @@
 #### Questions
 - [ ] Fixed windowing might encounter some problems because the synthetic trace is changing, so the values of max_cc_, cc_shift and dlnA are not being re-evaluated. Can this be remedied? Can we add some functionality to Pyflex to reevaluate misfit values based on waveforms?
 - [ ] Is weighting adjoint sources by station proximity something that Pyatoa should do, how could it be implemented?
-- [ ] Should we be able to export ASDFDataSets to hardcoded directory structures. This would provide a form of 'backwards compatability' to old styles of tomography, but if the User already can access a Dataset, do they need this functionality?
+- [X] Should we be able to export ASDFDataSets to hardcoded directory structures. This would provide a form of 'backwards compatability' to old styles of tomography, but if the User already can access a Dataset, do they need this functionality?
 - [ ] Pyflex: Very close source-receiver distances means P-wave arrival is within the first wavelength, meaning no noise amplitude calculations can take place, and windows are not picked even for good waveforms. Can this be reconciled in Pyflex, or do we need to exclude distances <100km e.g.?
 
 #### General
-- [ ] Rename 'model' to 'iteration', and start counting iterations from 1 not 0, to match Seisflows, also because the way this is handled now is technically incorrect. Currently m00s03 refers to Iteration 1, Step 3, which is actually referring to the line search FOR model 1, so calling it m00 is incorrect. Also step 0 refers to a forward simulation before the adjoint simulation but is not always run. This is actually correct.
+- [ ] Big change: Rename 'model' to 'iteration', and start counting iterations from 1 not 0, to match Seisflows.  
+      Refer to 'iterations' as 'evaluations', in reference to function evaluations.  
+      Current implementation is wrong and misleading, as e.g. m00s03 refers to the line search for model 1.
+- [ ] Flag/cache system to tells the Manage/Gatherer/Pyaflowa that an FDSNNoDataException has been thrown, so it won't query FDSN in future iterations
+
 - [ ] Documentation, tutorials, examples and API
 - [ ] Tests with PyTest
 - [X] ipynb in gitignore
-- [ ] remove large data files from test data
+- [X] remove large data files from test data
 - [X] make model number, step count formatters standard package wide functions  
      *utils.format now has model() and step() functions that standardize these string formatters*
 - [X] check unused kwargs in the config in the case of typos  
       *Added a check call at the end of check() that puts up a user warning if unnused kwargs fall through*
 - [X] include __repr__ for all classes
      *config, manager, pyaflowa... todo: inspector  
-- [ ] Have some sort of flag/cache system that tells the Manager/Gatherer that an FDSNNoDataException has been thrown, that way it won't query FDSN in future iterations
 
 #### Config
 - [ ] Include UTM projection into config and propogate into scripts
 - [X] Change 'model_number' to model
-- [ ] Save Pyflex and Pyadjoint parameters explicitely (nested dict?) rather than saving maps, this will facilitate future usability for re-processing data.
 
 #### Manager
 - [X] Initialize an empty Manager with an empty Config to remove the need to call Config separately
@@ -100,8 +102,8 @@
 - [X] make srcs_w_depth.vtk, and perhaps with depth as planar slices  
       *New src_vtk_from_specfem() function that takes constant x y or z values to make planar slices*
 - [X] Waveform improvement script should take advantage of Manager.load() rather than accessing waveform tags
-- [ ] Inspector convergence plot should plot line search models as non-connected points as in Krischer et al. 2018(?)
+- [X] Inspector convergence plot should plot line search models as non-connected points as in Krischer et al. 2018(?)
 
 #### Inspector:
-- [ ] Find window corresponding to largest time shift, or misfit
+- [ ] Automatically create a list of windows corresponding to largest time shift, or misfit or dlnA
 
