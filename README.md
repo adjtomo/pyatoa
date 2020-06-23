@@ -1,5 +1,5 @@
 ## Python's Adjoint Tomography Operations Assitant
-### A misfit assessment package for the modern tomographer
+### Misfit assessment for the modern tomographer
 
 ---
 Documentation can be found here (in development): https://pyatoa.readthedocs.io/en/latest/
