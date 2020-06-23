@@ -202,7 +202,11 @@ class Pyaflowa:
         attributes other than the ones set in __init__ are allowed.
         """
         for key in list(kwargs.keys()):
-            if not hasattr(self, key):
+            if key == "par":
+                # Update the Seisflows Pyatao specific parameters
+                kwargs.update(kwargs[key]["PYATOA"])
+                del kwargs[key] 
+            elif not hasattr(self, key):
                 logger.warning(f"Pyaflowa has no attribute '{key}', ignoring")
                 del kwargs[key]
         self.__dict__.update(kwargs)
