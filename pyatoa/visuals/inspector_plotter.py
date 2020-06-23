@@ -114,6 +114,102 @@ class InspectorPlotter:
         else:
             plt.close()
 
+    def raypaths(self, model, step, show=True, save=False, **kwargs):
+        """
+        Plot rays connecting sources and receivers based on the availability
+        of measurements. Useful for getting an approximation of resolution.
+        """
+        ray_color = kwargs.get("ray_color", "k")
+        station_color = kwargs.get("station_color", "c")
+        event_color = kwargs.get("event_color", "orange")
+
+        f, ax = plt.subplots(figsize=(8, 8))
+
+        df = self.misfits(level="station").loc[model, step]
+
+        # Get lat/lon information from sources and receivers
+        stations = self.receivers.droplevel(0)  # remove network index
+        events = self.sources.drop(["time", "magnitude", "depth_km"], axis=1)
+        
+        plotted, names = [], []
+        for event, sta in df.index.to_numpy():
+            elon, elat = events.loc[event].longitude, events.loc[event].latitude
+            slon, slat = stations.loc[sta].longitude, stations.loc[sta].latitude
+            # Plot a marker for each event and station
+            if event not in plotted:
+                plt.scatter(elon, elat, marker="o", c=event_color, 
+                                     edgecolors="k", s=25, zorder=100)
+                plotted.append(event)
+            if sta not in plotted:
+                plt.scatter(slon, slat, marker="v", c=station_color, 
+                                     edgecolors="k", s=25, zorder=100)
+                plotted.append(event)
+
+            # Connect source and receiver with a line
+            plt.plot([elon, slon], [elat, slat], color=ray_color, linestyle="-", 
+                     alpha=0.1, zorder=50)
+
+        plt.xlabel("Longitude")
+        plt.ylabel("Latitude")
+        plt.title(f"Raypaths ({len(events)} events, {len(stations)} stations)")
+
+        if save:
+            plt.savefig(save)
+        if show:
+            plt.show()
+        else:
+            plt.close()
+
+
+    def event_misfit_map(self, event, model, step, choice, show=True, 
+                         save=False, **kwargs):
+        """
+        Plot source and receiver locations with map view. Optional arguments
+        for only plotting certain stations or events.
+
+        :type show: bool
+        :param show: Show the plot
+        :type save: str
+        :param save: fid to save the given figure
+        """
+        assert(event in self.sources.index), "event name not found"
+        cmap = kwargs.get("cmap", "viridis")
+
+        f, ax = plt.subplots()
+        source = self.sources.loc[event]
+        src = plt.scatter(source.longitude, source.latitude, marker="o", c="r", 
+                          edgecolors="k", s=20, zorder=100)
+
+        # Go through each of the stations corresponding to this source
+        df = self.misfits(level="station").loc[model, step, event]  # i<3pandas
+        assert(choice in df.columns), f"choice must be in {df.columns}"
+
+        # Get lat lon values for receivers
+        df = df.merge(self.receivers, on="station")
+        misfit_values = df[choice].to_numpy()
+        rcvs = plt.scatter(df.longitude.to_numpy(), df.latitude.to_numpy(), 
+                           c=misfit_values, marker="v", s=15, zorder=100, 
+                           cmap=cmap
+                           )
+
+        rcv_names = df.index.to_numpy()
+
+        plt.xlabel("Longitude")
+        plt.ylabel("Latitude")
+        plt.title(f"{event} {model}{step}; {len(df)} stations")
+
+        colormap_colorbar(cmap, vmin=misfit_values.min(), 
+                          vmax=misfit_values.max(), cbar_label=choice,
+                          )
+
+        if save:
+            plt.savefig(save)
+        if show:
+            hover_on_plot(f, ax, rcvs, rcv_names, **kwargs)
+            plt.show()
+
+        return f, ax
+
     def hist(self, model, step, model_comp=None, step_comp=None, event=None,
              station=None, choice="cc_shift_in_seconds", binsize=1., show=True, 
              save=None, **kwargs):
