@@ -160,12 +160,62 @@ class InspectorPlotter:
         else:
             plt.close()
 
+    def station_misfit_map(self, station, model, step, choice, show=True, 
+                           save=False, **kwargs):
+        """
+        Plot a single station and all events that it has measurements for.
+        Events will be colored by choice of value: misfit or n_win (num windows)
+
+        :type show: bool
+        :param show: Show the plot
+        :type save: str
+        :param save: fid to save the given figure
+        """
+        assert(station in self.stations), "station name not found"
+        cmap = kwargs.get("cmap", "viridis")
+
+        sta = self.receivers.droplevel(0).loc[station]
+
+        # Get misfit on a per-station basis 
+        df = self.misfits(level="station").loc[model, step].swaplevel(0, 1)
+        df = df.sort_values(by="station").loc[station]
+
+        # Get source lat/lon values as a single dataframe with same index name
+        src = self.sources.drop(["time", "magnitude", "depth_km"], axis=1)
+        src.index.names = ["event"]
+
+        # This is a dataframe of events corresponding to a single station
+        df = df.merge(src, on="event")
+
+        f, ax = plt.subplots()
+        src = plt.scatter(sta.longitude, sta.latitude, marker="v", c="orange", 
+                          edgecolors="k", s=25, zorder=100)
+        plt.scatter(df.longitude.to_numpy(), df.latitude.to_numpy(),
+                    c=df[choice].to_numpy(), marker="o", s=25, zorder=99,
+                    cmap=cmap)
+
+        plt.xlabel("Longitude")
+        plt.ylabel("Latitude")
+        plt.title(f"{station} {model}{step}; {len(df)} events")
+
+        colormap_colorbar(cmap, vmin=df[choice].to_numpy().min(), 
+                          vmax=df[choice].to_numpy().max(), cbar_label=choice,
+                          )
+
+        if save:
+            plt.savefig(save)
+        if show:
+            hover_on_plot(f, ax, src, df.index.to_numpy(), **kwargs)
+            plt.show()
+
+        return f, ax
+
 
     def event_misfit_map(self, event, model, step, choice, show=True, 
                          save=False, **kwargs):
         """
-        Plot source and receiver locations with map view. Optional arguments
-        for only plotting certain stations or events.
+        Plot a single event and all stations with measurements. Stations are
+        colored by choice of value: misfit or n_win (number of windows)
 
         :type show: bool
         :param show: Show the plot
@@ -192,8 +242,6 @@ class InspectorPlotter:
                            cmap=cmap
                            )
 
-        rcv_names = df.index.to_numpy()
-
         plt.xlabel("Longitude")
         plt.ylabel("Latitude")
         plt.title(f"{event} {model}{step}; {len(df)} stations")
@@ -205,7 +253,7 @@ class InspectorPlotter:
         if save:
             plt.savefig(save)
         if show:
-            hover_on_plot(f, ax, rcvs, rcv_names, **kwargs)
+            hover_on_plot(f, ax, rcvs, df.index.to_numpy(), **kwargs)
             plt.show()
 
         return f, ax
@@ -300,7 +348,7 @@ class InspectorPlotter:
             # Compare models, plot original model on top 
             n, bins, patches = plt.hist(
                 x=val, bins=np.arange(-1*lim, lim+.1, binsize),
-                color=color,  histtype="bar",  edgecolor="black", linewidth=3,
+                color=color,  histtype="bar",  edgecolor="black", linewidth=4.,
                 label=f"{model}{step}; N={len(val)}", zorder=11, alpha=1.
             )
             mu1, var1, std1 = get_stats(n, bins)
@@ -309,7 +357,7 @@ class InspectorPlotter:
             n2, bins2, patches2 = plt.hist(
                 x=val_comp, bins=np.arange(-1*lim, lim+.1, binsize),
                 color=color_comp,  histtype="bar", edgecolor="black",
-                linewidth=2.5,
+                linewidth=5.,
                 label=f"{model_comp}{step_comp}; N={len(val_comp)}", zorder=10,
             )
             mu2, var2, std2 = get_stats(n2, bins2)
@@ -317,8 +365,11 @@ class InspectorPlotter:
             # Plot edges of comparison over top
             plt.hist(x=val_comp, bins=np.arange(-1*lim, lim+.1, binsize),
                      color="k", histtype="step", edgecolor=color_comp,
-                     linewidth=6., zorder=12,
+                     linewidth=4., zorder=12,
                      )
+            # Plot a line at 0 as a reference
+            plt.axvline(x=0, ymin=0, ymax=1, linewidth=2., c="k", zorder=2, 
+                    alpha=0.75, linestyle=':')
         else:
             # No comparison model, plot single histogram
             n, bins, patches = plt.hist(
@@ -327,6 +378,13 @@ class InspectorPlotter:
                 label=f"{model}; N={len(val)}", zorder=10,
             )
             mu1, var1, std1 = get_stats(n, bins)
+
+            # Plot the mean and one standard deviation
+            plt.axvline(x=mu1, ymin=0, ymax=1, linewidth=2, c="k", 
+                        linestyle="--", zorder=15, alpha=0.5)
+            for sign in [-1, 1]:
+                plt.axvline(x=mu1 + sign*std1, ymin=0, ymax=1, linewidth=2, 
+                            c="k", linestyle=":", zorder=15, alpha=0.5)
 
         # Set xlimits of the plot
         if xlim:
@@ -356,8 +414,7 @@ class InspectorPlotter:
                         labelsize=fontsize, width=2.)
         if label_range:
             plt.xticks(np.arange(-1*label_range, label_range+.1, step=xstep))
-        plt.axvline(x=0, ymin=0, ymax=1, linewidth=2., c="k", zorder=2, 
-                    alpha=0.75, linestyle=':')
+
         if legend:
             plt.legend(fontsize=fontsize/1.25, loc=legend_loc)
 

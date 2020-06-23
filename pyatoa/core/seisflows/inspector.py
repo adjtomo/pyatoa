@@ -380,6 +380,42 @@ class Inspector(InspectorPlotter):
         else:
             raise NotImplementedError
 
+    def sort_steps(self):
+        """
+        Once the L-BFGS optimization is well scaled, the function evaluation in
+        the line search of the previous model 'm-1' is used as the function 
+        evaluation of the current model 'm' meaning the forward simulation of 
+        model 'm' is skipped. 
+        This can lead to some confusing naming schema. So this function creates 
+        a mapping of step count to model number to help make sense of this.
+
+        Example: Given three iterations
+        m00: [s00, s01, s02]
+        m01: [s00, s01]
+        m02: [s01]
+
+        At m02, the gradient is well scaled and s00 is skipped.
+        We therefore have three models as opposed to the two suggested, 
+        {m00: m00s00, m01: m01s00, m02: m01s01, m03: m02s01}
+
+        Confusing aye? This needs to be adjusted in Pyatoa...
+        """
+        dict_out = {}
+        m = 0
+        # Hacky way to get an additional model to the end of the model list
+        final_model = f"m{int(self.models[-1][1:])+1:0>2}"
+
+        for model in np.append(self.models, final_model):
+            if model in self.steps and "s00" in self.steps[model]:
+                dict_out[f"m{m:0>2}"] = f"{model}/s00"
+            else:
+                last_model_last_step = self.steps[prev_model][-1]
+                dict_out[f"m{m:0>2}"] = f"{prev_model}/{last_model_last_step}"
+            m += 1
+            prev_model = model
+
+        return dict_out
+
     def isolate(self, model=None, step=None,  event=None, network=None,
                 station=None, channel=None, comp=None, keys=None, 
                 exclude=None, unique_key=None):
@@ -513,9 +549,12 @@ class Inspector(InspectorPlotter):
                 group_list[:-2]).misfit.sum().rename("unscaled_misfit")
         df = pd.concat([misfits, nwin], axis=1)
 
-        # No formal definition of station misfit (?), return unscaled misfit
+        # No formal definition of station misfit so we just define it as the
+        # misfit for a given station, divided by number of windows
         if level == "station":
-            pass
+            df["misfit"] = df.apply(
+                lambda row: row.unscaled_misfit / row.n_win, axis=1
+            )
         # Event misfit function defined by Tape et al. (2010) Eq. 6
         elif level in ["event", "step"]:
             # Group misfits to the event level and sum together windows, misfit

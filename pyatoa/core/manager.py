@@ -600,7 +600,7 @@ class Manager:
 
         return self
 
-    def window(self, fix_windows=False, force=False):
+    def window(self, fixed=False, model=None, step=None, force=False):
         """
         Evaluate misfit windows using Pyflex. Save windows to ASDFDataSet.
         Allows previously defined windows to be retrieved from ASDFDataSet.
@@ -610,8 +610,8 @@ class Manager:
             -All windows are saved into the ASDFDataSet, even if retrieved.
             -STA/LTA information is collected and stored internally.
 
-        :type fix_windows: bool
-        :param fix_windows: do not pick new windows, but load windows from the
+        :type fixed: bool
+        :param fixed: do not pick new windows, but load windows from the
             given dataset
         :type force: bool
         :param force: ignore flag checks and run function, useful if e.g.
@@ -624,9 +624,11 @@ class Manager:
 
         if not self.stats.standardized and not force:
             raise ManagerError("cannot window, waveforms not standardized")
-        if fix_windows and not self.ds:
+        if fixed and not self.ds:
             logger.warning("cannot fix window, no dataset")
-            fix_windows = False
+            fixed = False
+        elif fixed and (model is None or step is None):
+            raise ManagerError("fixed windows require 'model' and 'step'")
 
         # Synthetic STA/LTA as Pyflex WindowSelector.calculate_preliminaries()
         for comp in self.config.component_list:
@@ -639,16 +641,9 @@ class Manager:
             except IndexError:
                 continue
 
-        # Get misfit windows from dataset or using Pyflex
-        if fix_windows and (hasattr(self.ds, "auxiliary_data") and
-                            hasattr(self.ds.auxiliary_data, "MisfitWindows")):
-            # Attempt to retrieve MisfitWindow from the Dataset
-            net, sta, _, _ = self.st_obs[0].get_id().split(".")
-            self.windows = windows_from_dataset(ds=self.ds, net=net, sta=sta,
-                                                model=self.config.model, 
-                                                step=self.config.step
-                                                )
-            self.stats.nwin = sum(len(_) for _ in self.windows.values())
+        # Find misfit windows, from a dataset or through window selection
+        if fixed:
+            self.retrieve_windows(model, step)
         else:
             self.select_windows_plus()
 
@@ -656,6 +651,44 @@ class Manager:
         logger.info(f"{self.stats.nwin} window(s) total found")
 
         return self
+
+    def retrieve_windows(self, model, step):
+        """
+        Mid-level window selection function that retrieves windows from a 
+        PyASDF Dataset, recalculates window criteria, and attaches window 
+        information to Manager. 
+        No access to rejected window information unfortunately.
+        """
+        logger.info(f"retrieving windows from dataset {model}{step}")
+
+        net, sta, _, _ = self.st_obs[0].get_id().split(".")
+        windows = windows_from_dataset(ds=self.ds, net=net, sta=sta,
+                                            model=self.config.model, 
+                                            step=self.config.step
+                                            )
+
+        # Recalculate window criteria for new values for cc, tshift, dlnA etc...
+        logger.debug("recalculating window criteria")
+        for comp, windows_ in windows.items():
+            try:
+                d = self.st_obs.select(component=comp)[0].data
+                s = self.st_syn.select(component=comp)[0].data
+                for w, win in enumerate(windows_):
+                    logger.debug(f"{comp}{w}_old - "
+                                 f"cc:{win.max_cc_value:.2f} / "
+                                 f"dt:{win.cc_shift:.1f} / "
+                                 f"dlnA:{win.dlnA:.2f}")
+                    win._calc_criteria(d, s)
+                    logger.debug(f"{comp}{w}_new - "
+                                 f"cc:{win.max_cc_value:.2f} / "
+                                 f"dt:{win.cc_shift:.1f} / "
+                                 f"dlnA:{win.dlnA:.2f}")
+            # IndexError thrown when trying to access an empty Stream
+            except IndexError:
+                continue
+
+        self.windows = windows
+        self.stats.nwin = sum(len(_) for _ in self.windows.values())
 
     def select_windows_plus(self):
         """
@@ -705,7 +738,6 @@ class Manager:
         self.windows = window_dict
         self._rej_win = reject_dict
         self.stats.nwin = nwin
-
 
     def measure(self, force=False):
         """

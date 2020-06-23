@@ -538,6 +538,7 @@ class Gatherer(InternalFetcher, ExternalGetter):
         :return: event retrieved either via internal or external methods
         """
         logger.debug("gathering event")
+        event = None
         if self.ds:
             try:
                 # If dataset is given, search for event in ASDFDataSet. If event

@@ -67,6 +67,8 @@ class ManagerPlotter:
             window_anno_rotation (float): rotation of annotation (deg), def 0
             window_anno_fontcolor (str): color of annotation text, def 'k'
             window_anno_fontweight (str): weight of font, default 'normal' 
+            window_anno_bbox (dict): bbox dict for window annotations, None means
+                no bounding box
 
             plot_windows (bool): toggle window plotting, default True
             plot_rejected_windows (bool): toggle rejected window plot, default T
@@ -78,8 +80,10 @@ class ManagerPlotter:
             plot_legend (bool): toggle legend, default True
 
             normalize (bool): normalize waveform data before plotting
-            set_title (bool): create a default title using workflow parameters
-            append_title(str): User appended string to the end of the title
+            set_title (bool or str): create a default title using workflow 
+                parameters, if str given, overwrites all title
+            append_title(str): User appended string to the end of the title. 
+                useful to get extra information on top of the default title
         """
         self.st_obs = mgmt.st_obs.copy()
         self.st_syn = mgmt.st_syn.copy()
@@ -264,6 +268,7 @@ class ManagerPlotter:
         window_anno_fontcolor = self.kwargs.get("window_anno_fontcolor", "k")
         window_anno_fontweight = self.kwargs.get("window_anno_fontweight", 
                                                  "normal")
+        window_anno_bbox = self.kwargs.get("window_anno_box", None)
         
         # Determine heights for the annotations, allow alternating heights so 
         # that adjacent windows don't write over one another
@@ -324,6 +329,7 @@ class ManagerPlotter:
                             rotation=window_anno_rotation, 
                             color=window_anno_fontcolor,
                             fontweight=window_anno_fontweight,
+                            bbox=window_anno_bbox
                             )
 
             if plot_phase_arrivals:
@@ -565,9 +571,14 @@ class ManagerPlotter:
             align_yaxes(ax, twax)
 
         # Final touch ups for the figure
-        if set_title:
-            axes[0].set_title(self.create_title(append_title=append_title,
-                                                normalized=normalize))
+        if isinstance(set_title, bool):
+            if set_title:
+                axes[0].set_title(self.create_title(append_title=append_title,
+                                                    normalized=normalize))
+        else:
+            axes[0].set_title(set_title)
+        
+
         if xlim_s is not None:
             axes[0].set_xlim(xlim_s)
         else:
