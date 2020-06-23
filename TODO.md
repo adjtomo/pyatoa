@@ -21,6 +21,7 @@
 - [ ] Pyflex: Very close source-receiver distances means P-wave arrival is within the first wavelength, meaning no noise amplitude calculations can take place, and windows are not picked even for good waveforms. Can this be reconciled in Pyflex, or do we need to exclude distances <100km e.g.?
 
 #### General
+- [ ] Rename 'model' to 'iteration', and start counting iterations from 1 not 0, to match Seisflows, also because the way this is handled now is technically incorrect. Currently m00s03 refers to Iteration 1, Step 3, which is actually referring to the line search FOR model 1, so calling it m00 is incorrect. Also step 0 refers to a forward simulation before the adjoint simulation but is not always run. This is actually correct.
 - [ ] Documentation, tutorials, examples and API
 - [ ] Tests with PyTest
 - [X] ipynb in gitignore
