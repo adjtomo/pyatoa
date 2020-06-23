@@ -388,96 +388,100 @@ class InspectorPlotter:
                       linewidth=0.1
                       )
 
-    def convergence(self, by, windows_by="length_s", fontsize=15,
-                    show=True, save=None):
+    def convergence(self, plot_windows="length_s", plot_discards=True,
+                    fontsize=15, legend=True, show=True, save=None):
         """
         Plot the convergence rate over the course of an inversion.
         Scatter plot of total misfit against model number, or by step count
 
         :type choice: str
         :param choice: choice to plot convergence through 'model' or 'iter'
-        :type windows_by: str
+        :type plot_windows: str or bool
         :param windows_by: parameter to use for Inspector.measurements() to
             determine how to illustrate measurement number, either by
             cum_win_len: cumulative window length in seconds
             num_windows: number of misfit windows
+            None: will not plot window information
         :type fontsize: int
         :param fontsize: fontsize of all labels
+        :type plot_discards: bool
+        :param plot_discards: plot the discarded function evaluations from the
+            line searches. Useful for understanding how efficient the 
+            optimization algorithm as
         :type show: bool
         :param show: show the plot after making it
         :type save: str
         :param save: file id to save the figure to
         """
-        assert(windows_by in ["n_win", "length_s"]), \
-            "windows_by must be: 'n_win; or 'length_s'"
+        if plot_windows:
+            assert(plot_windows in ["n_win", "length_s"]), \
+                "plot_windows must be: 'n_win; or 'length_s'"
 
-        ydict = {"length_s": "Cumulative Window Length [s]",
-                 "n_win": "Numer of Measurements"}
-
-        # Get misfit information and window lengths together
+        # Get misfit information and window lengths together in a dataframe
         df = self.misfits()
         df = df.merge(self.nwin(), on=["model", "step"])
         df.drop(["n_event", "summed_misfit"], axis=1, inplace=True)
         models = df.index.get_level_values("model").unique().to_numpy()
 
         f, ax1 = plt.subplots(figsize=(8, 6))
-        ax2 = ax1.twinx()
-        # Plot each iteration and every step count, not as intuitive but shows
-        # the behavior of the inversion better
-        if by == "iteration":
-            # Color by unique model names
-            start = 0
-            for model in models:
-                misfits = df.loc[model].misfit.to_numpy()
-                windows = df.loc[model, windows_by].to_numpy()
-                end = start + len(misfits)
-                ax1.plot(np.arange(start, end), misfits, "o-",
-                         linewidth=3, markersize=10, zorder=100,
-                         )
-                ax2.plot(np.arange(start, end), windows, "v--",
-                         linewidth=2, markersize=8, zorder=100
-                         )
-                start = end
-            ax1.set_xlabel("Iteration", fontsize=fontsize)
-            ax1.set_xticks(np.arange(0, end, 5))
-            ax1.set_xticks(np.arange(0, end, 1), minor=True)
 
-        # Plot by the final accepted misfit per model
-        elif by == "model":
-            xlabels, misfits, windows = [], [], []
-            for m, model in enumerate(models):
-                try:
-                    # Try to access model as the first step
-                    df_temp = df.loc[model, "s00"]
-                    # xlbl = f"{model}s00"
-                except KeyError:
-                    # If first step not available, search last step last model
-                    df_temp = df.loc[models[m - 1]].iloc[-1]
-                    # xlbl = f"{models[m - 1]}{df_temp.name}"
-                xlbl = model
-                misfit, window = df_temp.loc[["misfit", windows_by]].to_numpy()
+        # Get the actual model numbers based on step count
+        true_models = self.sort_steps()
+        xvalues, xlabels, misfits, windows = [], [], [], []
+        for x, (model, modstep) in enumerate(true_models.items()):
+            m, s = modstep.split("/")
+            df_temp = df.loc[m, s]
 
-                xlabels.append(xlbl)
-                misfits.append(misfit)
+            if plot_windows:
+                misfit, window = df_temp.loc[["misfit", 
+                                              plot_windows]].to_numpy()
                 windows.append(window)
-            ax1.plot(models, misfits, 'o-', linewidth=3, markersize=10, c="k")
-            ax2.plot(models, windows, 'v--', linewidth=3, markersize=10, c="k")
+            else:
+                misfit = df_temp.loc["misfit"]
 
-            ax1.set_xlabel("Model number", fontsize=fontsize)
-            ax1.xaxis.set_ticks(np.arange(0, len(models)), 1)
-            ax1.set_xticklabels(xlabels, rotation=45, ha="right")
-        else:
-            raise ValueError("'by' must be 'model' or 'iteration")
+            xvalues.append(x)
+            xlabels.append(model)
+            misfits.append(misfit)
 
-        # Shared formatting
-        ax1.set_ylabel("Total Normalized Misfit (solid)", fontsize=fontsize)
-        ax2.set_ylabel(f"{ydict[windows_by]} (dashed)", rotation=270,
-                       labelpad=15., fontsize=fontsize)
-        ax2.ticklabel_format(style="sci", axis="y", scilimits=(0, 0))
+            # Plot all discarded misfits, these will be applied to m + 1
+            if plot_discards:
+                for step in self.steps[m]:
+                    misfit_ = df.loc[m, step].loc["misfit"]
+                    if misfit_ != misfit:
+                        l1 = ax1.plot(x + 1, misfit_, 'o', markersize=10, c="r",
+                                      label="discarded", zorder=7)
+
+        l2 = ax1.plot(xvalues, misfits, 'o-', linewidth=3, markersize=10, c="k",
+                      label="misfit", zorder=10)
+
+        ax1.set_xlabel("Model Number", fontsize=fontsize)
+        ax1.xaxis.set_ticks(xvalues)
+        ax1.set_xticklabels(xlabels, rotation=45, ha="right")
+        ax1.set_ylabel("Total Normalized Misfit", fontsize=fontsize)
 
         # Only set ticks on the x-axis
         ax1.xaxis.grid(True, which="minor", linestyle=":")
         ax1.xaxis.grid(True, which="major", linestyle="-")
+
+        # Lines for legend
+        lines = l2 + l1
+
+        # Plot measurement number/ window length, useful if it was allowed
+        # to vary freely during the inversion, or changes at restarts
+        if windows:
+            ax2 = ax1.twinx()
+            ydict = {"length_s": "Cumulative Window Length [s]",
+                     "n_win": "Numer of Measurements"}
+            lines += ax2.plot(xvalues, windows, 'v:', linewidth=2, 
+                              markersize=8, c="orange", label="windows",
+                              zorder=5)
+            ax2.set_ylabel(f"{ydict[plot_windows]} (dashed)", rotation=270,
+                           labelpad=15., fontsize=fontsize)
+            ax2.ticklabel_format(style="sci", axis="y", scilimits=(0, 0))
+
+        if legend:
+            labels = [l.get_label() for l in lines]
+            ax1.legend(lines, labels, prop={"size": 12}, loc="upper right")
 
         f.tight_layout()
 
