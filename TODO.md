@@ -15,7 +15,7 @@
       *removed the step count requirement in the if statement*
       
 #### Questions
-- [ ] Fixed windowing might encounter some problems because the synthetic trace is changing, so the values of max_cc_, cc_shift and dlnA       are not being re-evaluated. Can this be remedied?
+- [ ] Fixed windowing might encounter some problems because the synthetic trace is changing, so the values of max_cc_, cc_shift and dlnA are not being re-evaluated. Can this be remedied? Can we add some functionality to Pyflex to reevaluate misfit values based on waveforms?
 - [ ] Is weighting adjoint sources by station proximity something that Pyatoa should do, how could it be implemented?
 - [ ] Should we be able to export ASDFDataSets to hardcoded directory structures. This would provide a form of 'backwards compatability' to old styles of tomography, but if the User already can access a Dataset, do they need this functionality?
 - [ ] Pyflex: Very close source-receiver distances means P-wave arrival is within the first wavelength, meaning no noise amplitude calculations can take place, and windows are not picked even for good waveforms. Can this be reconciled in Pyflex, or do we need to exclude distances <100km e.g.?
@@ -36,7 +36,8 @@
 
 #### Config
 - [ ] Include UTM projection into config and propogate into scripts
-- [ ] Change 'model_number' to model
+- [X] Change 'model_number' to model
+- [ ] Save Pyflex and Pyadjoint parameters explicitely (nested dict?) rather than saving maps, this will facilitate future usability for re-processing data.
 
 #### Manager
 - [X] Initialize an empty Manager with an empty Config to remove the need to call Config separately
