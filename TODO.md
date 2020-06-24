@@ -29,6 +29,7 @@
 - [ ] Change mapping to Cartopy or just drop mapping capabilities completely? Seems to make things more difficult for not much gain. Or have a completely indepenent module to 
      make maps all in one go given CMTSOLUTIONS and STATION file list. Or use ObsPy mapping functionality to replace Manager.srcrcvmap()? Current Basemap calling is a bit 
      rough.
+- [ ] Make network calls optional in e.g. Inspector(), search for station name only and maybe if multiple stations have the same name, then require network code. Station should be enough to identify.
 - [ ] Documentation, tutorials, examples and API
 - [ ] Tests with PyTest
 - [X] ipynb in gitignore
