@@ -289,12 +289,12 @@ class ManagerPlotter:
                            )
         # Set the annotation for all windows that aren't the first
         if window_anno_alternate is None:
-            window_anno = ("{max_cc:.2f}\n"
-                           "{cc_shift:.2f}s\n"
-                           "{dlnA:.2f}\n"
-                           "{left:.1f}s\n"
-                           "{length:.1f}s\n"
-                           )
+            window_anno_alternate = ("{max_cc:.2f}\n"
+                                     "{cc_shift:.2f}s\n"
+                                     "{dlnA:.2f}\n"
+                                     "{left:.1f}s\n"
+                                     "{length:.1f}s\n"
+                                     )
 
         for j, window in enumerate(windows):
             tleft = window.left * window.dt + self.time_axis[0]

@@ -160,6 +160,42 @@ class InspectorPlotter:
         else:
             plt.close()
 
+    def measurement_hist(self, model, step, choice="event", show=True, 
+                         save=False):
+        """
+        Make histograms of measurements for stations or events to show the 
+        distribution of measurements. 
+        :type model: str
+        :param model: model number e.g. 'm00'
+        :type step: str
+        :param step: step count e.g. 's00'
+        :type choice: str
+        :param choice: choice of making hist by 'event' or 'station'
+        :type show: bool
+        :param show: Show the plot
+        :type save: str
+        :param save: fid to save the given figure
+        """
+        arr = self.nwin(level=choice).loc[model, step].n_win.to_numpy()
+        n, bins, patches = plt.hist(x=arr, color="orange", histtype="bar",  
+                                    edgecolor="black", linewidth=4.,
+                                    label=choice, alpha=1., zorder=20
+                                    )
+        mu, var, std = get_histogram_stats(n, bins)
+        plt.axvline(x=mu, ymin=0, ymax=1, linewidth=2, c="k", 
+                    linestyle="--", zorder=15, alpha=0.5)
+        for sign in [-1, 1]:
+            plt.axvline(x=mu + sign*std, ymin=0, ymax=1, linewidth=2, 
+                        c="k", linestyle=":", zorder=15, alpha=0.5)
+
+        if save:
+            plt.savefig(save)
+        if show:
+            plt.show()
+        else:
+            plt.close()
+
+
     def station_misfit_map(self, station, model, step, choice, show=True, 
                            save=False, **kwargs):
         """
@@ -209,7 +245,6 @@ class InspectorPlotter:
             plt.show()
 
         return f, ax
-
 
     def event_misfit_map(self, event, model, step, choice, show=True, 
                          save=False, **kwargs):
@@ -308,14 +343,6 @@ class InspectorPlotter:
         xstep = kwargs.get("xstep", 2)
         ymax = kwargs.get("ymax", None)
 
-        def get_stats(n_, bins_):
-            """get stats from a histogram"""
-            mids = 0.5 * (bins_[1:] + bins_[:-1])
-            mean = np.average(mids, weights=n_)
-            var = np.average((mids - mean)**2, weights=n_)
-            std = np.sqrt(var)
-
-            return mean, var, std
 
         def get_values(m, s, e, sta):
             """short hand to get the data, and the maximum value in DataFrame"""
@@ -351,7 +378,7 @@ class InspectorPlotter:
                 color=color,  histtype="bar",  edgecolor="black", linewidth=4.,
                 label=f"{model}{step}; N={len(val)}", zorder=11, alpha=1.
             )
-            mu1, var1, std1 = get_stats(n, bins)
+            mu1, var1, std1 = get_histogram_stats(n, bins)
 
             # Plot comparison below
             n2, bins2, patches2 = plt.hist(
@@ -360,7 +387,7 @@ class InspectorPlotter:
                 linewidth=5.,
                 label=f"{model_comp}{step_comp}; N={len(val_comp)}", zorder=10,
             )
-            mu2, var2, std2 = get_stats(n2, bins2)
+            mu2, var2, std2 = get_histogram_stats(n2, bins2)
 
             # Plot edges of comparison over top
             plt.hist(x=val_comp, bins=np.arange(-1*lim, lim+.1, binsize),
@@ -377,7 +404,7 @@ class InspectorPlotter:
                 histtype="bar", edgecolor="black", linewidth=2.5,
                 label=f"{model}; N={len(val)}", zorder=10,
             )
-            mu1, var1, std1 = get_stats(n, bins)
+            mu1, var1, std1 = get_histogram_stats(n, bins)
 
             # Plot the mean and one standard deviation
             plt.axvline(x=mu1, ymin=0, ymax=1, linewidth=2, c="k", 
@@ -751,6 +778,21 @@ def hover_on_plot(f, ax, obj, values, dissapear=True, **kwargs):
     f.canvas.mpl_connect("motion_notify_event", hover)
     return hover
 
+def get_histogram_stats(n, bins):
+    """
+    Get mean, variance and standard deviation from a histogram
+    
+    :type n: array or list of arrays
+    :param n: values of histogram bins
+    :type bins: array
+    :param bins: edges of the bins
+    """
+    mids = 0.5 * (bins[1:] + bins[:-1])
+    mean = np.average(mids, weights=n)
+    var = np.average((mids - mean)**2, weights=n)
+    std = np.sqrt(var)
+
+    return mean, var, std
 
 def annotate_txt(ax, txt, anno_location="lower-right", **kwargs):
     """

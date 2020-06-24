@@ -45,8 +45,8 @@ class WaveformImprovement:
         self.windows = None
         self.time_axis = None
 
-
-    def gather(self, sta, min_period, max_period, synthetics_only=False):
+    def gather(self, sta, min_period, max_period, synthetics_only=False, 
+               fix_windows=False):
         """
         Parse dataset for given station, gather observed and synthetic data, 
         preprocess data and return as stream objects.
@@ -77,16 +77,17 @@ class WaveformImprovement:
                 path = f"{model}/{step}"
                 cfg = Config(path=path, ds=self.ds, min_period=min_period, 
                              max_period=max_period, 
-                             synthetics_only=synthetics_only
+                             synthetics_only=synthetics_only, save_to_ds=False
                              )
                 mgmt = Manager(config=cfg, ds=self.ds)   
                 mgmt.load(sta)
                 mgmt.standardize()
                 mgmt.preprocess() 
+                mgmt.window(fixed=fix_windows, model=model, step=step)
+
+                windows[path] = mgmt.windows
                 synthetics[path] = mgmt.st_syn.copy() 
-                windows[path] = windows_from_dataset(ds=self.ds, model=model, 
-                                                     step=step, net=network, 
-                                                     sta=station)
+
                 # Observed waveform will be the same
                 if st_obs is None:
                     st_obs = mgmt.st_obs.copy()
@@ -234,6 +235,11 @@ class WaveformImprovement:
                                   height=(ymax + np.abs(ymin)), 
                                   alpha=(win.max_cc_value **2) / 4)
                     )
+                    # Outline the rectangle with solid lines
+                    for t_ in [tleft, tright]:
+                        axes[row][col].axvline(x=t_, ymin=0, ymax=1, color="k",
+                                               alpha=1., zorder=11)
+
                     # Annotate time shift value into window,
                     # Alternate height if multiple windows so no overlap
                     axes[row][col].text(

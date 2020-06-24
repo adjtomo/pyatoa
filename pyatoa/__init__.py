@@ -19,6 +19,6 @@ warnings_logger.addHandler(logger)
 from pyatoa.core.config import Config # NOQA
 from pyatoa.core.manager import Manager, ManagerError # NOQA
 from pyatoa.core.gatherer import Gatherer # NOQA
-from pyatoa.core.seisflows.pyaflowa import Pyaflowa  # NOQA
-from pyatoa.core.seisflows.inspector import Inspector  # NOQA
+from pyatoa.core.pyaflowa import Pyaflowa  # NOQA
+from pyatoa.core.inspector import Inspector  # NOQA
 from pyatoa.utils.read import read_sem, read_stations, read_cmtsolution # NOQA
