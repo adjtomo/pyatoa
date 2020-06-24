@@ -23,9 +23,12 @@
 #### General
 - [ ] Big change: Rename 'model' to 'iteration', and start counting iterations from 1 not 0, to match Seisflows.  
       Refer to 'iterations' as 'evaluations', in reference to function evaluations.  
+      Use integers to refer to iterations and step counts, only format for print statements, removes a lot of difficult   
       Current implementation is wrong and misleading, as e.g. m00s03 refers to the line search for model 1.
 - [ ] Flag/cache system to tells the Manage/Gatherer/Pyaflowa that an FDSNNoDataException has been thrown, so it won't query FDSN in future iterations
-
+- [ ] Change mapping to Cartopy or just drop mapping capabilities completely? Seems to make things more difficult for not much gain. Or have a completely indepenent module to 
+     make maps all in one go given CMTSOLUTIONS and STATION file list. Or use ObsPy mapping functionality to replace Manager.srcrcvmap()? Current Basemap calling is a bit 
+     rough.
 - [ ] Documentation, tutorials, examples and API
 - [ ] Tests with PyTest
 - [X] ipynb in gitignore
