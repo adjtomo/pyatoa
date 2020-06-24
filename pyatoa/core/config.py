@@ -6,7 +6,7 @@ Contains non-class functions for setting Config objects of Pyflex and Pyadjoint.
 import yaml
 from pyatoa import logger
 from pyatoa.utils.form import format_model_number, format_step_count
-from pyatoa.core.seisflows.pyaflowa import pyaflowa_kwargs
+from pyatoa.core.pyaflowa import pyaflowa_kwargs
 from pyatoa.plugins.pyflex_presets import pyflex_presets
 
 from pyflex import Config as PyflexConfig
