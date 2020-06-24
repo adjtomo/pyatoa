@@ -114,6 +114,185 @@ class InspectorPlotter:
         else:
             plt.close()
 
+    def raypaths(self, model, step, show=True, save=False, **kwargs):
+        """
+        Plot rays connecting sources and receivers based on the availability
+        of measurements. Useful for getting an approximation of resolution.
+        """
+        ray_color = kwargs.get("ray_color", "k")
+        station_color = kwargs.get("station_color", "c")
+        event_color = kwargs.get("event_color", "orange")
+
+        f, ax = plt.subplots(figsize=(8, 8))
+
+        df = self.misfits(level="station").loc[model, step]
+
+        # Get lat/lon information from sources and receivers
+        stations = self.receivers.droplevel(0)  # remove network index
+        events = self.sources.drop(["time", "magnitude", "depth_km"], axis=1)
+        
+        plotted, names = [], []
+        for event, sta in df.index.to_numpy():
+            elon, elat = events.loc[event].longitude, events.loc[event].latitude
+            slon, slat = stations.loc[sta].longitude, stations.loc[sta].latitude
+            # Plot a marker for each event and station
+            if event not in plotted:
+                plt.scatter(elon, elat, marker="o", c=event_color, 
+                                     edgecolors="k", s=25, zorder=100)
+                plotted.append(event)
+            if sta not in plotted:
+                plt.scatter(slon, slat, marker="v", c=station_color, 
+                                     edgecolors="k", s=25, zorder=100)
+                plotted.append(event)
+
+            # Connect source and receiver with a line
+            plt.plot([elon, slon], [elat, slat], color=ray_color, linestyle="-", 
+                     alpha=0.1, zorder=50)
+
+        plt.xlabel("Longitude")
+        plt.ylabel("Latitude")
+        plt.title(f"Raypaths ({len(events)} events, {len(stations)} stations)")
+
+        if save:
+            plt.savefig(save)
+        if show:
+            plt.show()
+        else:
+            plt.close()
+
+    def measurement_hist(self, model, step, choice="event", show=True, 
+                         save=False):
+        """
+        Make histograms of measurements for stations or events to show the 
+        distribution of measurements. 
+        :type model: str
+        :param model: model number e.g. 'm00'
+        :type step: str
+        :param step: step count e.g. 's00'
+        :type choice: str
+        :param choice: choice of making hist by 'event' or 'station'
+        :type show: bool
+        :param show: Show the plot
+        :type save: str
+        :param save: fid to save the given figure
+        """
+        arr = self.nwin(level=choice).loc[model, step].n_win.to_numpy()
+        n, bins, patches = plt.hist(x=arr, color="orange", histtype="bar",  
+                                    edgecolor="black", linewidth=4.,
+                                    label=choice, alpha=1., zorder=20
+                                    )
+        mu, var, std = get_histogram_stats(n, bins)
+        plt.axvline(x=mu, ymin=0, ymax=1, linewidth=2, c="k", 
+                    linestyle="--", zorder=15, alpha=0.5)
+        for sign in [-1, 1]:
+            plt.axvline(x=mu + sign*std, ymin=0, ymax=1, linewidth=2, 
+                        c="k", linestyle=":", zorder=15, alpha=0.5)
+
+        if save:
+            plt.savefig(save)
+        if show:
+            plt.show()
+        else:
+            plt.close()
+
+
+    def station_misfit_map(self, station, model, step, choice, show=True, 
+                           save=False, **kwargs):
+        """
+        Plot a single station and all events that it has measurements for.
+        Events will be colored by choice of value: misfit or n_win (num windows)
+
+        :type show: bool
+        :param show: Show the plot
+        :type save: str
+        :param save: fid to save the given figure
+        """
+        assert(station in self.stations), "station name not found"
+        cmap = kwargs.get("cmap", "viridis")
+
+        sta = self.receivers.droplevel(0).loc[station]
+
+        # Get misfit on a per-station basis 
+        df = self.misfits(level="station").loc[model, step].swaplevel(0, 1)
+        df = df.sort_values(by="station").loc[station]
+
+        # Get source lat/lon values as a single dataframe with same index name
+        src = self.sources.drop(["time", "magnitude", "depth_km"], axis=1)
+        src.index.names = ["event"]
+
+        # This is a dataframe of events corresponding to a single station
+        df = df.merge(src, on="event")
+
+        f, ax = plt.subplots()
+        src = plt.scatter(sta.longitude, sta.latitude, marker="v", c="orange", 
+                          edgecolors="k", s=25, zorder=100)
+        plt.scatter(df.longitude.to_numpy(), df.latitude.to_numpy(),
+                    c=df[choice].to_numpy(), marker="o", s=25, zorder=99,
+                    cmap=cmap)
+
+        plt.xlabel("Longitude")
+        plt.ylabel("Latitude")
+        plt.title(f"{station} {model}{step}; {len(df)} events")
+
+        colormap_colorbar(cmap, vmin=df[choice].to_numpy().min(), 
+                          vmax=df[choice].to_numpy().max(), cbar_label=choice,
+                          )
+
+        if save:
+            plt.savefig(save)
+        if show:
+            hover_on_plot(f, ax, src, df.index.to_numpy(), **kwargs)
+            plt.show()
+
+        return f, ax
+
+    def event_misfit_map(self, event, model, step, choice, show=True, 
+                         save=False, **kwargs):
+        """
+        Plot a single event and all stations with measurements. Stations are
+        colored by choice of value: misfit or n_win (number of windows)
+
+        :type show: bool
+        :param show: Show the plot
+        :type save: str
+        :param save: fid to save the given figure
+        """
+        assert(event in self.sources.index), "event name not found"
+        cmap = kwargs.get("cmap", "viridis")
+
+        f, ax = plt.subplots()
+        source = self.sources.loc[event]
+        src = plt.scatter(source.longitude, source.latitude, marker="o", c="r", 
+                          edgecolors="k", s=20, zorder=100)
+
+        # Go through each of the stations corresponding to this source
+        df = self.misfits(level="station").loc[model, step, event]  # i<3pandas
+        assert(choice in df.columns), f"choice must be in {df.columns}"
+
+        # Get lat lon values for receivers
+        df = df.merge(self.receivers, on="station")
+        misfit_values = df[choice].to_numpy()
+        rcvs = plt.scatter(df.longitude.to_numpy(), df.latitude.to_numpy(), 
+                           c=misfit_values, marker="v", s=15, zorder=100, 
+                           cmap=cmap
+                           )
+
+        plt.xlabel("Longitude")
+        plt.ylabel("Latitude")
+        plt.title(f"{event} {model}{step}; {len(df)} stations")
+
+        colormap_colorbar(cmap, vmin=misfit_values.min(), 
+                          vmax=misfit_values.max(), cbar_label=choice,
+                          )
+
+        if save:
+            plt.savefig(save)
+        if show:
+            hover_on_plot(f, ax, rcvs, df.index.to_numpy(), **kwargs)
+            plt.show()
+
+        return f, ax
+
     def hist(self, model, step, model_comp=None, step_comp=None, event=None,
              station=None, choice="cc_shift_in_seconds", binsize=1., show=True, 
              save=None, **kwargs):
@@ -159,18 +338,11 @@ class InspectorPlotter:
         fontsize = kwargs.get("fontsize", 12)
         figsize = kwargs.get("figsize", (8, 6))
         legend = kwargs.get("legend", True)
+        legend_loc = kwargs.get("legend_loc", "best")
         label_range = kwargs.get("label_range", False)
         xstep = kwargs.get("xstep", 2)
         ymax = kwargs.get("ymax", None)
 
-        def get_stats(n_, bins_):
-            """get stats from a histogram"""
-            mids = 0.5 * (bins_[1:] + bins_[:-1])
-            mean = np.average(mids, weights=n_)
-            var = np.average((mids - mean)**2, weights=n_)
-            std = np.sqrt(var)
-
-            return mean, var, std
 
         def get_values(m, s, e, sta):
             """short hand to get the data, and the maximum value in DataFrame"""
@@ -203,25 +375,28 @@ class InspectorPlotter:
             # Compare models, plot original model on top 
             n, bins, patches = plt.hist(
                 x=val, bins=np.arange(-1*lim, lim+.1, binsize),
-                color=color,  histtype="bar",  edgecolor="black", linewidth=3,
+                color=color,  histtype="bar",  edgecolor="black", linewidth=4.,
                 label=f"{model}{step}; N={len(val)}", zorder=11, alpha=1.
             )
-            mu1, var1, std1 = get_stats(n, bins)
+            mu1, var1, std1 = get_histogram_stats(n, bins)
 
             # Plot comparison below
             n2, bins2, patches2 = plt.hist(
                 x=val_comp, bins=np.arange(-1*lim, lim+.1, binsize),
                 color=color_comp,  histtype="bar", edgecolor="black",
-                linewidth=2.5,
+                linewidth=5.,
                 label=f"{model_comp}{step_comp}; N={len(val_comp)}", zorder=10,
             )
-            mu2, var2, std2 = get_stats(n2, bins2)
+            mu2, var2, std2 = get_histogram_stats(n2, bins2)
 
             # Plot edges of comparison over top
             plt.hist(x=val_comp, bins=np.arange(-1*lim, lim+.1, binsize),
                      color="k", histtype="step", edgecolor=color_comp,
-                     linewidth=6., zorder=12,
+                     linewidth=4., zorder=12,
                      )
+            # Plot a line at 0 as a reference
+            plt.axvline(x=0, ymin=0, ymax=1, linewidth=2., c="k", zorder=2, 
+                    alpha=0.75, linestyle=':')
         else:
             # No comparison model, plot single histogram
             n, bins, patches = plt.hist(
@@ -229,7 +404,14 @@ class InspectorPlotter:
                 histtype="bar", edgecolor="black", linewidth=2.5,
                 label=f"{model}; N={len(val)}", zorder=10,
             )
-            mu1, var1, std1 = get_stats(n, bins)
+            mu1, var1, std1 = get_histogram_stats(n, bins)
+
+            # Plot the mean and one standard deviation
+            plt.axvline(x=mu1, ymin=0, ymax=1, linewidth=2, c="k", 
+                        linestyle="--", zorder=15, alpha=0.5)
+            for sign in [-1, 1]:
+                plt.axvline(x=mu1 + sign*std1, ymin=0, ymax=1, linewidth=2, 
+                            c="k", linestyle=":", zorder=15, alpha=0.5)
 
         # Set xlimits of the plot
         if xlim:
@@ -259,10 +441,9 @@ class InspectorPlotter:
                         labelsize=fontsize, width=2.)
         if label_range:
             plt.xticks(np.arange(-1*label_range, label_range+.1, step=xstep))
-        plt.axvline(x=0, ymin=0, ymax=1, linewidth=2., c="k", zorder=2, 
-                    alpha=0.75, linestyle=':')
+
         if legend:
-            plt.legend(fontsize=fontsize/1.25)
+            plt.legend(fontsize=fontsize/1.25, loc=legend_loc)
 
         plt.tight_layout() 
 
@@ -387,96 +568,100 @@ class InspectorPlotter:
                       linewidth=0.1
                       )
 
-    def convergence(self, by, windows_by="length_s", fontsize=15,
-                    show=True, save=None):
+    def convergence(self, plot_windows="length_s", plot_discards=True,
+                    fontsize=15, legend=True, show=True, save=None):
         """
         Plot the convergence rate over the course of an inversion.
         Scatter plot of total misfit against model number, or by step count
 
         :type choice: str
         :param choice: choice to plot convergence through 'model' or 'iter'
-        :type windows_by: str
+        :type plot_windows: str or bool
         :param windows_by: parameter to use for Inspector.measurements() to
             determine how to illustrate measurement number, either by
             cum_win_len: cumulative window length in seconds
             num_windows: number of misfit windows
+            None: will not plot window information
         :type fontsize: int
         :param fontsize: fontsize of all labels
+        :type plot_discards: bool
+        :param plot_discards: plot the discarded function evaluations from the
+            line searches. Useful for understanding how efficient the 
+            optimization algorithm as
         :type show: bool
         :param show: show the plot after making it
         :type save: str
         :param save: file id to save the figure to
         """
-        assert(windows_by in ["n_win", "length_s"]), \
-            "windows_by must be: 'n_win; or 'length_s'"
+        if plot_windows:
+            assert(plot_windows in ["n_win", "length_s"]), \
+                "plot_windows must be: 'n_win; or 'length_s'"
 
-        ydict = {"length_s": "Cumulative Window Length [s]",
-                 "n_win": "Numer of Measurements"}
-
-        # Get misfit information and window lengths together
+        # Get misfit information and window lengths together in a dataframe
         df = self.misfits()
         df = df.merge(self.nwin(), on=["model", "step"])
         df.drop(["n_event", "summed_misfit"], axis=1, inplace=True)
         models = df.index.get_level_values("model").unique().to_numpy()
 
         f, ax1 = plt.subplots(figsize=(8, 6))
-        ax2 = ax1.twinx()
-        # Plot each iteration and every step count, not as intuitive but shows
-        # the behavior of the inversion better
-        if by == "iteration":
-            # Color by unique model names
-            start = 0
-            for model in models:
-                misfits = df.loc[model].misfit.to_numpy()
-                windows = df.loc[model, windows_by].to_numpy()
-                end = start + len(misfits)
-                ax1.plot(np.arange(start, end), misfits, "o-",
-                         linewidth=3, markersize=10, zorder=100,
-                         )
-                ax2.plot(np.arange(start, end), windows, "v--",
-                         linewidth=2, markersize=8, zorder=100
-                         )
-                start = end
-            ax1.set_xlabel("Iteration", fontsize=fontsize)
-            ax1.set_xticks(np.arange(0, end, 5))
-            ax1.set_xticks(np.arange(0, end, 1), minor=True)
 
-        # Plot by the final accepted misfit per model
-        elif by == "model":
-            xlabels, misfits, windows = [], [], []
-            for m, model in enumerate(models):
-                try:
-                    # Try to access model as the first step
-                    df_temp = df.loc[model, "s00"]
-                    # xlbl = f"{model}s00"
-                except KeyError:
-                    # If first step not available, search last step last model
-                    df_temp = df.loc[models[m - 1]].iloc[-1]
-                    # xlbl = f"{models[m - 1]}{df_temp.name}"
-                xlbl = model
-                misfit, window = df_temp.loc[["misfit", windows_by]].to_numpy()
+        # Get the actual model numbers based on step count
+        true_models = self.sort_steps()
+        xvalues, xlabels, misfits, windows = [], [], [], []
+        for x, (model, modstep) in enumerate(true_models.items()):
+            m, s = modstep.split("/")
+            df_temp = df.loc[m, s]
 
-                xlabels.append(xlbl)
-                misfits.append(misfit)
+            if plot_windows:
+                misfit, window = df_temp.loc[["misfit", 
+                                              plot_windows]].to_numpy()
                 windows.append(window)
-            ax1.plot(models, misfits, 'o-', linewidth=3, markersize=10, c="k")
-            ax2.plot(models, windows, 'v--', linewidth=3, markersize=10, c="k")
+            else:
+                misfit = df_temp.loc["misfit"]
 
-            ax1.set_xlabel("Model number", fontsize=fontsize)
-            ax1.xaxis.set_ticks(np.arange(0, len(models)), 1)
-            ax1.set_xticklabels(xlabels, rotation=45, ha="right")
-        else:
-            raise ValueError("'by' must be 'model' or 'iteration")
+            xvalues.append(x)
+            xlabels.append(model)
+            misfits.append(misfit)
 
-        # Shared formatting
-        ax1.set_ylabel("Total Normalized Misfit (solid)", fontsize=fontsize)
-        ax2.set_ylabel(f"{ydict[windows_by]} (dashed)", rotation=270,
-                       labelpad=15., fontsize=fontsize)
-        ax2.ticklabel_format(style="sci", axis="y", scilimits=(0, 0))
+            # Plot all discarded misfits, these will be applied to m + 1
+            if plot_discards:
+                for step in self.steps[m]:
+                    misfit_ = df.loc[m, step].loc["misfit"]
+                    if misfit_ != misfit:
+                        l1 = ax1.plot(x + 1, misfit_, 'o', markersize=10, c="r",
+                                      label="discarded", zorder=7)
+
+        l2 = ax1.plot(xvalues, misfits, 'o-', linewidth=3, markersize=10, c="k",
+                      label="misfit", zorder=10)
+
+        ax1.set_xlabel("Model Number", fontsize=fontsize)
+        ax1.xaxis.set_ticks(xvalues)
+        ax1.set_xticklabels(xlabels, rotation=45, ha="right")
+        ax1.set_ylabel("Total Normalized Misfit", fontsize=fontsize)
 
         # Only set ticks on the x-axis
         ax1.xaxis.grid(True, which="minor", linestyle=":")
         ax1.xaxis.grid(True, which="major", linestyle="-")
+
+        # Lines for legend
+        lines = l2 + l1
+
+        # Plot measurement number/ window length, useful if it was allowed
+        # to vary freely during the inversion, or changes at restarts
+        if windows:
+            ax2 = ax1.twinx()
+            ydict = {"length_s": "Cumulative Window Length [s]",
+                     "n_win": "Numer of Measurements"}
+            lines += ax2.plot(xvalues, windows, 'v:', linewidth=2, 
+                              markersize=8, c="orange", label="windows",
+                              zorder=5)
+            ax2.set_ylabel(f"{ydict[plot_windows]} (dashed)", rotation=270,
+                           labelpad=15., fontsize=fontsize)
+            ax2.ticklabel_format(style="sci", axis="y", scilimits=(0, 0))
+
+        if legend:
+            labels = [l.get_label() for l in lines]
+            ax1.legend(lines, labels, prop={"size": 12}, loc="upper right")
 
         f.tight_layout()
 
@@ -593,6 +778,21 @@ def hover_on_plot(f, ax, obj, values, dissapear=True, **kwargs):
     f.canvas.mpl_connect("motion_notify_event", hover)
     return hover
 
+def get_histogram_stats(n, bins):
+    """
+    Get mean, variance and standard deviation from a histogram
+    
+    :type n: array or list of arrays
+    :param n: values of histogram bins
+    :type bins: array
+    :param bins: edges of the bins
+    """
+    mids = 0.5 * (bins[1:] + bins[:-1])
+    mean = np.average(mids, weights=n)
+    var = np.average((mids - mean)**2, weights=n)
+    std = np.sqrt(var)
+
+    return mean, var, std
 
 def annotate_txt(ax, txt, anno_location="lower-right", **kwargs):
     """

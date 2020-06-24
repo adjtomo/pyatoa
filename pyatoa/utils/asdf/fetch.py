@@ -106,6 +106,7 @@ def dataset_windows_to_pyflex_windows(windows, network, station):
             )
 
             # We cant initiate these parameters so set them after the fact
+            # If data changed, should recalculate with Window._calc_criteria()
             setattr(window, "dlnA", par["dlnA"])
             setattr(window, "cc_shift", par["cc_shift_in_samples"])
             setattr(window, "max_cc_value", par["max_cc_value"])
