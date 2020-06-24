@@ -4,9 +4,9 @@
 - [X] Use Pandas in the Inspector class to do the large-scale data analysis required for all the misfit windows, etc.
 
 #### Bugs
+- [ ] Pyflex value Error is being thrown (pyflex.window_selector() line 427 np.abs(noise).max() zero size array)
 - [X] FDSNException in gatherer.gather_observed( Uknown Error (timeout))  
       *Added catch for FDSNException in gather_observed() and return st_obs=None*
-- [ ] Pyflex value Error is being thrown (pyflex.window_selector() line 427 np.abs(noise).max() zero size array)
 - [X] Pyaflowa exit gracefully if no data is gathered for an entire event, currently finalize is throwing uncaught errors  
       *Pyaflowa counts successful processes, if none, finalize is skipped*
 - [X] Fix: waveform plots not deleted if theyre not included in the composite pdf  
@@ -17,8 +17,9 @@
 #### Questions
 - [ ] Fixed windowing might encounter some problems because the synthetic trace is changing, so the values of max_cc_, cc_shift and dlnA are not being re-evaluated. Can this be remedied? Can we add some functionality to Pyflex to reevaluate misfit values based on waveforms?
 - [ ] Is weighting adjoint sources by station proximity something that Pyatoa should do, how could it be implemented?
-- [X] Should we be able to export ASDFDataSets to hardcoded directory structures. This would provide a form of 'backwards compatability' to old styles of tomography, but if the User already can access a Dataset, do they need this functionality?
 - [ ] Pyflex: Very close source-receiver distances means P-wave arrival is within the first wavelength, meaning no noise amplitude calculations can take place, and windows are not picked even for good waveforms. Can this be reconciled in Pyflex, or do we need to exclude distances <100km e.g.?
+- [X] Should we be able to export ASDFDataSets to hardcoded directory structures. This would provide a form of 'backwards compatability' to old styles of tomography, but if the User already can access a Dataset, do they need this functionality?
+
 
 #### General
 - [ ] Big change: Rename 'model' to 'iteration', and start counting iterations from 1 not 0, to match Seisflows.  
@@ -46,10 +47,16 @@
 - [X] Change 'model_number' to model
 
 #### Manager
+- [ ] Remove window_amplitude_ratio() from Manager, Pyflex already has this with 'check_global_data_quality'
+- [ ] Check if convolve_stf properly performs the time shift  
+- [ ] Enforce zero padding front and back of waveforms for short source-receiver distance, as windowing ignores these because the stalta starts too early.
+- [ ] Log statement stating fid when saving figures
+- [ ] Manager.load() should allow loading misfit windows and adjoint sources as well, will need a warning statement to say waveforms are not processed
+- [ ] Functions return self to allow chaining
+- [ ] Custom error messages, or specific error messages from Manager rather than returning 0 or 1
 - [X] Initialize an empty Manager with an empty Config to remove the need to call Config separately
 - [X] Move window by amplitude in Manager.window() into its own function  
      *moved into pyatoa.utils.window and import by Manager*
-- [ ] Check if convolve_stf properly performs the time shift  
 - [ ] ~~Option to save processed streams in the dataset~~  
      *decided to just allow saving preprocessing attributes to config in pyaflowa, don't think this is super important*  
 - [X] Change preprocess() function to take a Manager object, that way when the `overwrite` parameter is called, the User knows exactly
@@ -57,20 +64,16 @@
       *standard preproc() fuction now takes manager as an input, which shortens the call in Manager class*
 - [X] Ability to turn off saving for pyasdf dataset  
      *added a 'save_to_ds' bool parameter to the config object that toggles saving for waveforms, metadata, windows, adj_srcs
-- [ ] Enforce zero padding front and back of waveforms for short source-receiver distance, as windowing ignores these because the stalta starts too early.
 - [X] Manager.load() take model number from Config if available
-- [ ] Log statement stating fid when saving figures
-- [ ] Manager.load() should allow loading misfit windows and adjoint sources as well, will need a warning statement to say waveforms are not processed
-- [ ] Functions return self to allow chaining
-- [ ] Custom error messages, or specific error messages from Manager rather than returning 0 or 1
+
 
 #### ASDF
+- [ ] Save Pyflex/Pyadjoint Config parameters, not just the map name, incase map names change
 - [ ] Generate waveform plots, maps, from an ASDF dataset. As in remove the need to create a Manager just to make 
       waveform plots, if a dataset already exists
 - [X] Processing provenance saved into auxiliary_data?  
       *Saved processing stats from obspy stream into the Config object for each model/step*
 - [X] Retain step count information for MisfitWindows and AdjointSources
-- [ ] Save Pyflex/Pyadjoint Config parameters, not just the map name, incase map names change
 
 #### Misc.
 - [X] Move all hardcoded stuff into plugins, e.g. fault_coordinates, geonet_moment_tensor
