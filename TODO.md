@@ -43,7 +43,8 @@
      *config, manager, pyaflowa... todo: inspector  
 
 #### Config
-- [ ] Include UTM projection into config and propogate into scripts
+- [ ] Include a set() function to prevent incorrect parameter sets or overwriting read-only parameters
+- [ ] ~~Include UTM projection into config and propogate into scripts~~
 - [X] Change 'model_number' to model
 
 #### Manager
