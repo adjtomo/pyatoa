@@ -31,6 +31,7 @@
      make maps all in one go given CMTSOLUTIONS and STATION file list. Or use ObsPy mapping functionality to replace Manager.srcrcvmap()? Current Basemap calling is a bit 
      rough.
 - [ ] Make network calls optional in e.g. Inspector(), search for station name only and maybe if multiple stations have the same name, then require network code. Station should be enough to identify.
+- [ ] Allow additional windowing criteria that avoids choosing windows for stations that are too close/too far from one another.
 - [ ] Documentation, tutorials, examples and API
 - [ ] Tests with PyTest
 - [X] ipynb in gitignore
@@ -82,6 +83,8 @@
 
 
 #### Visuals
+- [ ] Lower alpha of legend in waveform plotter
+- [ ] Show the extent of the window search criteria from Pyflex
 - [X] Depth cross section of a Catalog object  
       *In pyaflowa artist *  
 - [ ] ~~Plot output optim only show models, maybe iterations as smaller points, or plot both~~  
@@ -114,4 +117,5 @@
 
 #### Inspector:
 - [ ] Automatically create a list of windows corresponding to largest time shift, or misfit or dlnA
+- [ ] misfits() should default to misfit per model, not step, needs to be done after the name change of model > iteration 
 
