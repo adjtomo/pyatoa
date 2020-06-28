@@ -83,8 +83,10 @@
 
 
 #### Visuals
+- [ ] Kwargs in docstrings and raise TypeError for undefined kwargs
 - [ ] Lower alpha of legend in waveform plotter
 - [ ] Show the extent of the window search criteria from Pyflex
+- [ ] Plot c_0 * stalta_waterlevel for water level rejection
 - [X] Depth cross section of a Catalog object  
       *In pyaflowa artist *  
 - [ ] ~~Plot output optim only show models, maybe iterations as smaller points, or plot both~~  
@@ -94,7 +96,6 @@
 - [ ] ~~Remove rcParams and explicitely set all plot attributes in calls~~   
      *let sleeping dogs lie for now, hopefully this is okay but maybe change in future if it causes problems*  
 - [x] Windows extend the height of the waveform plot
-- [ ] Plot c_0 * stalta_waterlevel for water level rejection
 
 #### Pyaflowa:
 - [X] fix windows within a single iteration  
