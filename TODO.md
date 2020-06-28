@@ -56,6 +56,7 @@
 - [ ] Manager.load() should allow loading misfit windows and adjoint sources as well, will need a warning statement to say waveforms are not processed
 - [ ] Functions return self to allow chaining
 - [ ] Custom error messages, or specific error messages from Manager rather than returning 0 or 1
+- [ ] Calculate full waveform difference and save in ASDFDataSet, for use in variance reduction
 - [X] Initialize an empty Manager with an empty Config to remove the need to call Config separately
 - [X] Move window by amplitude in Manager.window() into its own function  
      *moved into pyatoa.utils.window and import by Manager*
