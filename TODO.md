@@ -118,4 +118,5 @@
 #### Inspector:
 - [ ] Automatically create a list of windows corresponding to largest time shift, or misfit or dlnA
 - [ ] misfits() should default to misfit per model, not step, needs to be done after the name change of model > iteration 
+- [ ] save focal mechanism attributes from sources if available
 
