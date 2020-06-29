@@ -259,9 +259,14 @@ class Inspector(InspectorPlotter):
 
                     # get information from corresponding adjoint source
                     # This will be the same for multiple windows
-                    adj_src = adjoint_sources[model][step][adj_src_fmt.format(
-                        net=net, sta=sta, cmp=component
-                    )]
+                    try:
+                        adj_src = adjoint_sources[model][step][
+                              adj_src_fmt.format(net=net, sta=sta, cmp=component
+                        )]
+                    except KeyError:
+                        print(f"Missing adjoint source for {model}{step} "
+                              f"{net}.{sta}_{component}, skipping")
+                        continue
                     window["misfit"].append(adj_src.parameters["misfit_value"])
 
                     # winfo keys match the keys of the Pyflex Window objects
