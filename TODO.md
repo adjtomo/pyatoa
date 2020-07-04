@@ -84,6 +84,7 @@
 
 
 #### Visuals
+- [ ] Manager plotter use a separate smaller subplot for window information, including sta/lta, rejected windows, etc.
 - [ ] Kwargs in docstrings and raise TypeError for undefined kwargs
 - [ ] Lower alpha of legend in waveform plotter
 - [ ] Show the extent of the window search criteria from Pyflex
