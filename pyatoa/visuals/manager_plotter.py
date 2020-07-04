@@ -348,33 +348,73 @@ class ManagerPlotter:
                 window_anno = window_anno_alternate
 
 
-    def plot_rejected_windows(self, ax, windows):
+    def plot_rejected_windows(self, ax, rejected_windows, windows=None,
+                              skip_tags=["water_level"]):
         """
         Plot rejected windows as solid transparent lines out of the way of the 
         plot. Hardcoded color dictionary used as a way to visually identify why
         certain windows were rejected
 
+        If windows are also given, will not plot rejected windows that are 
+        contained within given window
+
         :type ax: matplotlib.axes.Axes
         :param ax: axis object on which to plot
+        :type rejected_windows: list of pyflex.Window objects
+        :param rejected_windows: list of rejected windows to plot
         :type windows: list of pyflex.Window objects
-        :param windows: list of windows to plot
+        :param windows: list of windows to use for exclusion
+        :type skip_tags: list of str
+        :param skip_tags: an optional list of tags that can be used to skip
+            specific rejected window tags
         """
         ymin, ymax = ax.get_ylim()
-        dy = 0.04 * (ymax - ymin)  # increment for window location
+        dy = 0.04 * (ymax - ymin)  # increment for bar location
 
-        for tag, window in windows.items():
-            if window:
-                for win in window:
-                    tleft = win.left * win.dt + self.time_axis[0]
-                    tright = win.right * win.dt + self.time_axis[0]
-                    ax.hlines(y=ymin, xmin=tleft, xmax=tright, linewidth=3.5,
-                              colors=rejected_window_colors[tag], alpha=0.25
-                              )
-                # Find the leftmost for annotation
-                lft = min([win.left * win.dt for win in window]) 
-                lft += self.time_axis[0]
-                ax.annotate(xy=(lft, ymin), s=tag.replace("_", " "), fontsize=7)
-                ymin -= dy
+        # First check if rejected windows fall inside chosen windows, exclude
+        win_arr = np.array([[_.left * _.dt, _.right * _.dt] for _ in windows])
+        for tag in rejected_windows.keys():
+            # Skip plotting certain window rejects
+            if tag in skip_tags:
+                continue
+            bool_arr = None
+            # Compare the start and endtimes using a boolean array
+            rwin_arr = np.array([[_.left * _.dt, _.right * _.dt] for _ in 
+                                                    rejected_windows[tag]])
+            for wa in win_arr:
+                # Check if rejected window is contained within window bounds
+                bool_arr_ = np.logical_and(rwin_arr[:, 0] >= wa[0],  # start
+                                           rwin_arr[:, 1] <= wa[1]  # end
+                                           )
+                if bool_arr is not None:
+                    bool_arr = np.logical_and(bool_arr, bool_arr_)
+                else:
+                    bool_arr = bool_arr_
+
+            # Negate the booleans to exclude rej windows within bounds
+            rej_wins = rwin_arr[~bool_arr]
+
+            if rej_wins.any():
+                for rw in rej_wins:
+                    # Shift rejected windows by the proper time offset
+                    rw += self.time_axis[0]
+                    ax.add_patch(
+                        Rectangle(xy=(rw[0], ymin), width=rw[1] - rw[0], 
+                                  height=dy, fc=rejected_window_colors[tag], 
+                                  ec="k", alpha=0.25, zorder=5
+                        )
+                    )
+                    ymin -= dy
+                    # ax.hlines(y=ymin, xmin=rw[0] + self.time_axis[0], 
+                    #           xmax=rw[1] + self.time_axis[0], linewidth=4.5,
+                    #           colors=rejected_window_colors[tag], alpha=0.25,
+                    #           zorder=5
+                    #           )
+
+                # Annotate the leftmost rejected window point
+                ax.annotate(xy=(rej_wins[:,0].min(), ymin), 
+                            s=tag.replace("_", " "), fontsize=7, zorder=6)
+                # ymin -= dy
 
     def plot_adjsrcs(self, ax, adjsrc):
         """
@@ -526,7 +566,8 @@ class ManagerPlotter:
                                          normalize=normalize)
 
             if rejwins is not None and plot_rejected_windows:
-                self.plot_rejected_windows(ax=ax, windows=rejwins)
+                self.plot_rejected_windows(ax=ax, rejected_windows=rejwins,
+                                           windows=windows)
 
             # Format now as windows use the y-limits for height of windows
             format_axis(ax)
@@ -602,8 +643,8 @@ class ManagerPlotter:
             plt.savefig(self.save, figsize=figsize, dpi=dpi)
         if self.show:
             plt.show()
-        else:
-            plt.close()
+
+        return f, ax
 
 
 def align_yaxes(ax1, ax2):
