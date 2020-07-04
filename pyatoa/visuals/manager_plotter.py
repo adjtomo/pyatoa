@@ -127,7 +127,7 @@ class ManagerPlotter:
         gs = mpl.gridspec.GridSpec(nrows, ncols, height_ratios=height_ratios,
                                    hspace=0)
         axes, twaxes = [], []
-        for i in range(len(self.st_obs)):
+        for i in range(gs.get_geometry()[0]):
             if i == 0:
                 ax = plt.subplot(gs[i])
             else:
@@ -351,12 +351,13 @@ class ManagerPlotter:
     def plot_rejected_windows(self, ax, rejected_windows, windows=None,
                               skip_tags=["water_level"]):
         """
-        Plot rejected windows as solid transparent lines out of the way of the 
-        plot. Hardcoded color dictionary used as a way to visually identify why
-        certain windows were rejected
+        Plot rejected windows as transparent lines at the bottom of the axis. 
+        Hardcoded color dictionary (defined at top) used as a way to visually 
+        identify why certain windows were rejected
 
-        If windows are also given, will not plot rejected windows that are 
-        contained within given window
+        The function performs some array manipulation to exclude rejected 
+        windows that fall within already chosen time windows to avoid redundant
+        plotting. 
 
         :type ax: matplotlib.axes.Axes
         :param ax: axis object on which to plot
@@ -369,20 +370,28 @@ class ManagerPlotter:
             specific rejected window tags
         """
         ymin, ymax = ax.get_ylim()
-        dy = 0.04 * (ymax - ymin)  # increment for bar location
+        dy = 0.05 * (ymax - ymin)  # increment for bar location
 
-        # First check if rejected windows fall inside chosen windows, exclude
+        # Chosen time windows - collapse adjacent windows into single windows by 
+        # looking for repeated values and removing them, recombining
         win_arr = np.array([[_.left * _.dt, _.right * _.dt] for _ in windows])
+        win_arr, count = np.unique(win_arr, return_counts=True)
+        idx_vals_repeated = np.where(count > 1)[0]
+        win_arr = np.delete(win_arr, idx_vals_repeated)
+        win_arr = win_arr.reshape(len(win_arr) // 2, 2)
+
         for tag in rejected_windows.keys():
             # Skip plotting certain window rejects
             if tag in skip_tags:
                 continue
-            bool_arr = None
-            # Compare the start and endtimes using a boolean array
+
+            # We will compare the start and endtimes using a boolean array
             rwin_arr = np.array([[_.left * _.dt, _.right * _.dt] for _ in 
                                                     rejected_windows[tag]])
+
+            # Check if rejected windows are contained within the window bounds
+            bool_arr = None
             for wa in win_arr:
-                # Check if rejected window is contained within window bounds
                 bool_arr_ = np.logical_and(rwin_arr[:, 0] >= wa[0],  # start
                                            rwin_arr[:, 1] <= wa[1]  # end
                                            )
@@ -393,28 +402,26 @@ class ManagerPlotter:
 
             # Negate the booleans to exclude rej windows within bounds
             rej_wins = rwin_arr[~bool_arr]
-
             if rej_wins.any():
                 for rw in rej_wins:
                     # Shift rejected windows by the proper time offset
                     rw += self.time_axis[0]
+                    # Plot as rectangle, shorter windows get larger zorder
                     ax.add_patch(
                         Rectangle(xy=(rw[0], ymin), width=rw[1] - rw[0], 
                                   height=dy, fc=rejected_window_colors[tag], 
-                                  ec="k", alpha=0.25, zorder=5
+                                  ec="k", alpha=0.25, 
+                                  zorder=5 + 1 / (rw[1] - rw[0])
                         )
                     )
-                    ymin -= dy
-                    # ax.hlines(y=ymin, xmin=rw[0] + self.time_axis[0], 
-                    #           xmax=rw[1] + self.time_axis[0], linewidth=4.5,
-                    #           colors=rejected_window_colors[tag], alpha=0.25,
-                    #           zorder=5
-                    #           )
 
-                # Annotate the leftmost rejected window point
+                # Annotate the leftmost rejected window point with the tag
                 ax.annotate(xy=(rej_wins[:,0].min(), ymin), 
-                            s=tag.replace("_", " "), fontsize=7, zorder=6)
-                # ymin -= dy
+                            s=tag.replace("_", " "), fontsize=7.25, zorder=6)
+                ymin -= dy
+
+        # Reset ylimits based on the extent of the rejected windows
+        ax.set_ylim([-abs(ymin), ymax])
 
     def plot_adjsrcs(self, ax, adjsrc):
         """
@@ -506,9 +513,9 @@ class ManagerPlotter:
 
         # Add information about the Pyflex and Pyadjoint parameters used
         if self.kwargs.get("plot_stalta", True):
-            title += f" pyflex={self.config.pyflex_preset} "
+            title += f" pyflex={self.config.pyflex_preset}, "
         if self.kwargs.get("plot_adjsrc", True):
-            title += f" pyadjoint={self.config.adj_src_type} "
+            title += f" pyadjoint={self.config.adj_src_type}, "
 
         # User appended title information
         if append_title is not None:
@@ -582,7 +589,7 @@ class ManagerPlotter:
                 if i == len(self.st_obs) // 2:  
                     # middle trace: append units of the adjoint source on ylabel
                     twax.set_ylabel("adjoint source [m$^{-4}$ s]", rotation=270, 
-                                    labelpad=20)
+                                    labelpad=20, fontsize=fontsize)
             else:
                 twax.set_yticklabels([])  # turn off yticks if no adjsrc
 
@@ -595,14 +602,14 @@ class ManagerPlotter:
                     self.plot_amplitude_threshold(ax=ax, obs=obs)
 
             # Finish with axes formatting
-            ax.set_ylabel(comp.upper())
+            ax.set_ylabel(comp.upper(), fontsize=fontsize)
             if i == len(self.st_obs) // 2:
                 # Middle trace will carry the units of the waveforms
                 units = {"DISP": "displacement [m]", 
                          "VEL": "velocity [m/s]",
                          "ACC": "acceleration [m/s^2]",
                          "none": ""}[self.config.unit_output]
-                ax.set_ylabel(f"{units}\n{ax.get_ylabel()}")
+                ax.set_ylabel(f"{units}\n{ax.get_ylabel()}", fontsize=fontsize)
 
             if plot_legend:
                 labels = [l.get_label() for l in lines]
