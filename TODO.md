@@ -89,6 +89,7 @@
 - [ ] Lower alpha of legend in waveform plotter
 - [ ] Show the extent of the window search criteria from Pyflex
 - [ ] Plot c_0 * stalta_waterlevel for water level rejection
+- [ ] Allow plotting time dependent rejection criteria from Pyflex
 - [X] Depth cross section of a Catalog object  
       *In pyaflowa artist *  
 - [ ] ~~Plot output optim only show models, maybe iterations as smaller points, or plot both~~  
