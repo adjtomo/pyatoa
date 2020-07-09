@@ -82,8 +82,8 @@
 - [X] Move all hardcoded stuff into plugins, e.g. fault_coordinates, geonet_moment_tensor
 - [X] Move tools and visualize out of utils dir into main dir
 
-
 #### Visuals
+- [ ] More info in manager plotter title, such as event depth, magnitude, srcrcv distance, baz
 - [ ] Manager plotter use a separate smaller subplot for window information, including sta/lta, rejected windows, etc.
 - [ ] Kwargs in docstrings and raise TypeError for undefined kwargs
 - [ ] Lower alpha of legend in waveform plotter
