@@ -49,6 +49,7 @@
 - [X] Change 'model_number' to model
 
 #### Manager
+- [ ] Include window weights into adjoint source calculation
 - [ ] Remove window_amplitude_ratio() from Manager, Pyflex already has this with 'check_global_data_quality'
 - [ ] Check if convolve_stf properly performs the time shift  
 - [ ] Enforce zero padding front and back of waveforms for short source-receiver distance, as windowing ignores these because the stalta starts too early.
@@ -83,6 +84,7 @@
 - [X] Move tools and visualize out of utils dir into main dir
 
 #### Visuals
+- [ ] Automatically combine map and waveform plot in matplotlib, rather than after generating .png's
 - [ ] More info in manager plotter title, such as event depth, magnitude, srcrcv distance, baz
 - [ ] Manager plotter use a separate smaller subplot for window information, including sta/lta, rejected windows, etc.
 - [ ] Kwargs in docstrings and raise TypeError for undefined kwargs
@@ -96,8 +98,7 @@
      *this is okay, Inspector can make more detailed plots if we want, just want a quick visualization**  
 - [X] VTK plotter  
      *VTK plotter using mayavi has been started, but needs fine tuning, and implementation into the greater workflow*  
-- [ ] ~~Remove rcParams and explicitely set all plot attributes in calls~~   
-     *let sleeping dogs lie for now, hopefully this is okay but maybe change in future if it causes problems*  
+- [X] Remove rcParams and explicitely set all plot attributes in calls
 - [x] Windows extend the height of the waveform plot
 
 #### Pyaflowa:
