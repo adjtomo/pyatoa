@@ -21,8 +21,8 @@ def windows_from_dataset(ds, net, sta, iteration, step_count,
     in the Pyatoa workflow.
 
     Note:
-        Expects that windows are saved into the dataset at each iteration and step 
-        such that there is a coherent structure within the dataset
+        Expects that windows are saved into the dataset at each iteration and 
+        step such that there is a coherent structure within the dataset
 
     To do:
         If windows are calculated for a given iteration/step but e.g. something 

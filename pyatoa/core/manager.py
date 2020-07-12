@@ -641,7 +641,7 @@ class Manager:
 
         return self
 
-    def retrieve_windows(self, model, step):
+    def retrieve_windows(self, iteration, step_count):
         """
         Mid-level window selection function that retrieves windows from a 
         PyASDF Dataset, recalculates window criteria, and attaches window 
@@ -652,8 +652,8 @@ class Manager:
 
         net, sta, _, _ = self.st_obs[0].get_id().split(".")
         windows = windows_from_dataset(ds=self.ds, net=net, sta=sta,
-                                       iteration=self.config.iter_tag, 
-                                       step_count=self.config.step_tag
+                                       iteration=iteration, 
+                                       step_count=step_count
                                        )
 
         # Recalculate window criteria for new values for cc, tshift, dlnA etc...
@@ -663,6 +663,7 @@ class Manager:
                 d = self.st_obs.select(component=comp)[0].data
                 s = self.st_syn.select(component=comp)[0].data
                 for w, win in enumerate(windows_):
+                    # Post the old and new values to the logger for sanity check
                     logger.debug(f"{comp}{w}_old - "
                                  f"cc:{win.max_cc_value:.2f} / "
                                  f"dt:{win.cc_shift:.1f} / "
@@ -810,9 +811,7 @@ class Manager:
                            "will not save windows")
         else:
             logger.debug("saving misfit windows to ASDFDataSet")
-            add_misfit_windows(self.windows, self.ds, 
-                               path=self._get_path_for_aux_data()
-                               )
+            add_misfit_windows(self.windows, self.ds, path=self.config.aux_path)
 
     def save_adjsrcs(self):
         """
@@ -832,27 +831,8 @@ class Manager:
         else:
             logger.debug("saving adjoint sources to ASDFDataSet")
             add_adjoint_sources(adjsrcs=self.adjsrcs, ds=self.ds, 
-                                path=self._get_path_for_aux_data(), 
+                                path=self.config.aux_path, 
                                 time_offset=self.stats.time_offset_sec)
-
-    def _get_path_for_aux_data(self):
-        """
-        Determine the path to save MisfitWindows and AdjointSources auxiliary 
-        data based on model number and step count if available
-
-        :rtype: str
-        :return: path for auxiliary data saving
-        """
-        if self.config.model_number and self.config.step_count:
-            # model/step/window_tag
-            path = "/".join([self.config.model_number, self.config.step_count])
-        elif self.config.model_number:
-            # model/window_tag
-            path = self.config.model_number
-        else:
-            path = "default"
-
-        return path
 
     def _format_windows(self):
         """

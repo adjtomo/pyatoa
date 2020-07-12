@@ -114,9 +114,9 @@ class Config:
         self.observed_tag = observed_tag
 
         self.synthetic_tag = synthetic_tag
-        if self.iteration:
+        if self._get_aux_path(default=None) is not None:
             # Tag is based on current iter and step, e.g. synthetic_i00s00
-            self.synthetic_tag += f"_{self.iter_tag}{self.step_tag or ''}"
+            self.synthetic_tag += f"_{self._get_aux_path(separator='')}"
 
         self.pyflex_preset = pyflex_preset
         self.adj_src_type = adj_src_type
@@ -199,6 +199,11 @@ class Config:
         else:
             return None
 
+    @property
+    def aux_path(self):
+        """property to quickly get a bog-standard aux path e.g. i00/s00"""
+        return self._get_aux_path()
+
     def _check(self, **kwargs):
         """
         A series of sanity checks to make sure that the configuration parameters
@@ -261,6 +266,30 @@ class Config:
         if unused_kwargs:
             raise ValueError(f"{unused_kwargs} are not keyword arguments in "
                              f"Pyatoa, Pyflex or Pyadjoint.")
+
+    def _get_aux_path(self, default="default", separator="/"):
+        """
+        Pre-formatted path to be used for tagging and identification in 
+        ASDF dataset auxiliary data. Internal function to be called by property
+        aux_path.
+
+        :type default: str
+        :param default: if no iteration or step information is given, path will
+            default to this string. By default it is 'default'.
+        :type separator: str
+        :param separator: if an iteration and step_count are available, 
+            separator will be placed between. Defaults to '/', use '' for no
+            separator.
+        """
+        if (self.iter_tag is not None) and self.step_tag is not None:
+            # model/step/window_tag
+            path = separator.join([self.iter_tag, self.step_tag])
+        elif self.iter_tag is not None:
+            path = self.iter_tag
+        else:
+            path = default
+
+        return path
 
     @staticmethod
     def _check_io_format(fid, fmt=None):
@@ -377,17 +406,8 @@ class Config:
         del attrs["pyadjoint_config"]
         del attrs["cfgpaths"]
 
-        # Figure out how to tag the data in the dataset
-        if self.iteration and self.step_count:
-            # model/step/window_tag
-            path = os.path.join(self.iter_tag, self.step_tag)
-        elif self.iteration:
-            path = self.iter_tag
-        else:
-            path = "default"
-
         ds.add_auxiliary_data(data_type="Configs", data=array([True]),
-                              path=path, parameters=attrs
+                              path=self.aux_path, parameters=attrs
                               )
 
     def _write_ascii(self, filename):
