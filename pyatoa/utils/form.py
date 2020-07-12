@@ -11,36 +11,36 @@ from pyasdf import ASDFDataSet
 from obspy.core.event import Event
 
 
-def format_model_number(iteration):
+def format_iter(iteration):
     """
-    The model number is based on the current iteration and should be formatted
-    with a leading 'm' character and two digits. Inputs can be strings or
-    integers. Assuming model numbers won't go above 99.
+    Format the iteration to be used in internal path naming and labelling.
+    Standard is to format with a leading 'i' character followed by two digits. 
+    Inputs can be strings or integers. Assumes iterations won't go above 99.
 
     :type iteration: str or int
-    :param iteration: input model number, e.g. 0, '0', 'm0', 'm00'
+    :param iteration: input model number, e.g. 0, '0', 'i0', 'i00'
     :rtype: str
-    :return: formatted model number, e.g. 'm00', or None if no matching format
+    :return: formatted model number, e.g. 'i00', or None if no matching format
     """
     if isinstance(iteration, str):
-        # If e.g. model_number = "0"
-        if not iteration[0] == "m":
-            mdlnmbr = f"m{iteration:0>2}"
-        # If e.g. model_number = "m00"
+        # If e.g. iteration = "0"
+        if not iteration[0] == "i":
+            iternum = f"i{iteration:0>2}"
+        # If e.g. iteration = "m00"
         else:
-            mdlnmbr = iteration
-    # If e.g. model_number = 0
+            iternum = iteration
+    # If e.g. iteration = 0
     elif isinstance(iteration, int):
-        mdlnmbr = f"m{iteration:0>2}"
+        iternum = f"i{iteration:0>2}"
     else:
-        mdlnmbr = None
+        iternum = None
 
-    return mdlnmbr
+    return iternum
 
 
-def format_step_count(count):
+def format_step(count):
     """
-    Same as for model number but step count is formatted with a leading 's'
+    Same as for iteration but step count is formatted with a leading 's'
 
     :type count: str or int
     :param count: input model number, e.g. 0, '0', 's0', 's00'

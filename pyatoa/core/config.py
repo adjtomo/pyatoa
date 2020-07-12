@@ -5,7 +5,7 @@ Contains non-class functions for setting Config objects of Pyflex and Pyadjoint.
 """
 import yaml
 from pyatoa import logger
-from pyatoa.utils.form import format_model_number, format_step_count
+from pyatoa.utils.form import format_iter, format_step
 from pyatoa.core.pyaflowa import pyaflowa_kwargs
 from pyatoa.plugins.pyflex_presets import pyflex_presets
 
@@ -21,14 +21,15 @@ class Config:
     read from and write to external files in various formats, or explicitely
     defined through scripts or interactive shells.
     """
-    def __init__(self, yaml_fid=None, ds=None, path=None, model=None, step=None,
-                 event_id=None, min_period=10, max_period=30, filter_corners=2,
-                 client=None, rotate_to_rtz=False, unit_output="DISP",
-                 pyflex_preset="default", component_list=None,
-                 adj_src_type="cc_traveltime_misfit", start_pad=20, end_pad=500,
-                 synthetic_unit="DISP", observed_tag="observed",
-                 synthetic_tag="synthetic", synthetics_only=False,
-                 win_amp_ratio=0., cfgpaths=None, save_to_ds=True, **kwargs):
+    def __init__(self, yaml_fid=None, ds=None, path=None, iteration=None, 
+                 step_count=None, event_id=None, min_period=10, max_period=30, 
+                 filter_corners=2, client=None, rotate_to_rtz=False, 
+                 unit_output="DISP", pyflex_preset="default", 
+                 component_list=None, adj_src_type="cc_traveltime_misfit", 
+                 start_pad=20, end_pad=500, synthetic_unit="DISP", 
+                 observed_tag="observed", synthetic_tag="synthetic", 
+                 synthetics_only=False, win_amp_ratio=0., cfgpaths=None, 
+                 save_to_ds=True, **kwargs):
         """
         Allows the user to control the parameters of the workflow, including:
         setting the Config objects for Pyflex and Pyadjoint, and the paths for
@@ -40,10 +41,14 @@ class Config:
 
         :type yaml_fid: str
         :param yaml_fid: id for .yaml file if config is to be loaded externally
-        :type model: int
-        :param model: model number, will be formatted for use in tags 
-        :type step: int
-        :param step: step count, will be formatted for use in tags
+        :type iteration: int
+        :param iteration: if running an inversion, the current iteration. Used 
+            for internal path naming, as well as interaction with Seisflows via
+            Pyaflowa.
+        :type step_count: int
+        :param step: if running an inversion, the current step count in the
+            line search, will be used for internal path naming, and interaction
+            with Seisflows via Pyaflowa.
         :type event_id: str
         :param event_id: unique event identifier for data gathering, annotations
         :type: min_period: float
@@ -96,8 +101,8 @@ class Config:
             contains data is passed to the Manager, but you don't want to
             overwrite the data inside while you do some temporary processing.
         """
-        self.model = model
-        self.step = step
+        self.iteration = iteration
+        self.step_count = step_count
         self.event_id = event_id
         self.min_period = float(min_period)
         self.max_period = float(max_period)
@@ -109,10 +114,10 @@ class Config:
         self.observed_tag = observed_tag
 
         self.synthetic_tag = synthetic_tag
-        if self.model:
-            # Tag based on model number and step count, e.g. synthetic_m00s00
-            self.synthetic_tag += (f"_{self.model_number}"
-                                   f"{self.step_count or ''}"
+        if self.iteration:
+            # Tag based on model number and step count, e.g. synthetic_i00s00
+            self.synthetic_tag += (f"_{format_iter(self.iteration)}"
+                                   f"{format_step(self.step_count) or ''}"
                                    )
 
         self.pyflex_preset = pyflex_preset
@@ -154,8 +159,8 @@ class Config:
         """
         # Model and step need to be formatted before printing
         str_out = ("Config\n"
-                   f"    {'model:':<25}{self.model_number}\n"
-                   f"    {'step:':<25}{self.step_count}\n"
+                   f"    {'iter:':<25}{format_iter(self.iteration)}\n"
+                   f"    {'step:':<25}{format_step(self.step_count)}\n"
                    f"    {'event:':<25}{self.event_id}\n"
                    )
         # Format the remainder of the keys identically
@@ -179,22 +184,6 @@ class Config:
     def __repr__(self):
         """Simply call string representation"""
         return self.__str__()
-
-    @property
-    def model_number(self):
-        """string formatted version of model, e.g. 'm00'"""
-        if self.model is not None:
-            return format_model_number(self.model)
-        else:
-            return None
-
-    @property
-    def step_count(self):
-        """string formatted version of step, e.g. 's00'"""
-        if self.step is not None:
-            return format_step_count(self.step)
-        else:
-            return None
 
     def _check(self, **kwargs):
         """
@@ -375,11 +364,12 @@ class Config:
         del attrs["cfgpaths"]
 
         # Figure out how to tag the data in the dataset
-        if self.model and self.step:
+        if self.iteration and self.step_count:
             # model/step/window_tag
-            path = f"{self.model}/{self.step}"
-        elif self.model:
-            path = self.model
+            path = os.path.join(f"{format_iter(self.iteration)}"
+                                f"{format_step(self.step_count)}")
+        elif self.iteration:
+            path = f"{format_iter(self.iteration)}"
         else:
             path = "default"
 
