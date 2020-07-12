@@ -115,10 +115,8 @@ class Config:
 
         self.synthetic_tag = synthetic_tag
         if self.iteration:
-            # Tag based on model number and step count, e.g. synthetic_i00s00
-            self.synthetic_tag += (f"_{format_iter(self.iteration)}"
-                                   f"{format_step(self.step_count) or ''}"
-                                   )
+            # Tag is based on current iter and step, e.g. synthetic_i00s00
+            self.synthetic_tag += f"_{self.iter_tag}{self.step_tag or ''}"
 
         self.pyflex_preset = pyflex_preset
         self.adj_src_type = adj_src_type
@@ -159,8 +157,8 @@ class Config:
         """
         # Model and step need to be formatted before printing
         str_out = ("Config\n"
-                   f"    {'iter:':<25}{format_iter(self.iteration)}\n"
-                   f"    {'step:':<25}{format_step(self.step_count)}\n"
+                   f"    {'iter:':<25}{self.iter_tag}\n"
+                   f"    {'step:':<25}{self.step_tag}\n"
                    f"    {'event:':<25}{self.event_id}\n"
                    )
         # Format the remainder of the keys identically
@@ -184,6 +182,22 @@ class Config:
     def __repr__(self):
         """Simply call string representation"""
         return self.__str__()
+
+    @property
+    def iter_tag(self):
+        """string formatted version of iteration, e.g. 'i00'"""
+        if self.iteration is not None:
+            return format_iter(self.iteration)
+        else:
+            return None
+
+    @property
+    def step_tag(self):
+        """string formatted version of step, e.g. 's00'"""
+        if self.step_count is not None:
+            return format_step(self.step_count)
+        else:
+            return None
 
     def _check(self, **kwargs):
         """
@@ -366,10 +380,9 @@ class Config:
         # Figure out how to tag the data in the dataset
         if self.iteration and self.step_count:
             # model/step/window_tag
-            path = os.path.join(f"{format_iter(self.iteration)}"
-                                f"{format_step(self.step_count)}")
+            path = os.path.join(self.iter_tag, self.step_tag)
         elif self.iteration:
-            path = f"{format_iter(self.iteration)}"
+            path = self.iter_tag
         else:
             path = "default"
 

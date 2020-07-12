@@ -122,7 +122,7 @@ class Inspector(InspectorPlotter):
             return []
 
     @property
-    def models(self):
+    def iterations(self):
         """Return an array of all models"""
         return self._try_print("model")
 
@@ -137,7 +137,7 @@ class Inspector(InspectorPlotter):
             return []
 
     @property
-    def iterations(self):
+    def evaluations(self):
         """Returns the number of iterations, or the sum of all step counts"""
         try:
             return sum(self.steps.apply(len).values)

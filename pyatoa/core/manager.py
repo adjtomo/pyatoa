@@ -652,9 +652,9 @@ class Manager:
 
         net, sta, _, _ = self.st_obs[0].get_id().split(".")
         windows = windows_from_dataset(ds=self.ds, net=net, sta=sta,
-                                            model=self.config.model, 
-                                            step=self.config.step
-                                            )
+                                       iteration=self.config.iter_tag, 
+                                       step_count=self.config.step_tag
+                                       )
 
         # Recalculate window criteria for new values for cc, tshift, dlnA etc...
         logger.debug("recalculating window criteria")
