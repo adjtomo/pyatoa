@@ -15,40 +15,73 @@ class InspectorPlotter:
     Should not be called on its own, these functions will be inherited by
     the Inspector class automatically.
     """
-    def map(self, show=True, save=False, **kwargs):
+    def map(self, event=None, network=None, station=None, show=True, save=False, 
+            **kwargs):
         """
         Plot source and receiver locations with map view. Optional arguments
         for only plotting certain stations or events.
 
+        :type event: str or list
+        :param event: particular event or list of events to plot
+        :type network: str or list
+        :param network: particular network or list of networks to plot
+        :type station: str or list
+        :param station: particular station or list of stations to plot
         :type show: bool
         :param show: Show the plot
         :type save: str
         :param save: fid to save the given figure
         """
+        # For isolating parameters, ensure they are lists. quack
+        if isinstance(event, str):
+            event = [event]
+        if isinstance(network, str):
+            network = [network]
+        if isinstance(station, str):
+            station = [station]
+
+        markersize = kwargs.get("markersize", 10)
         f, ax = plt.subplots()
 
         if not self.sources.empty:
-            sc_sources = plt.scatter(self.sources.longitude.to_numpy(),
-                                     self.sources.latitude.to_numpy(),
-                                     marker="o", c="w", edgecolors="g", s=10,
-                                     zorder=100
+            # Allow for isolation of particular events
+            if event is not None:
+                src_lat = self.sources.loc[event].latitude
+                src_lon = self.sources.loc[event].longitude
+            else:
+                src_lat = self.sources.latitude
+                src_lon = self.sources.longitude
+            sc_sources = plt.scatter(src_lat, src_lon, marker="o", c="None", 
+                                     edgecolors="k", s=markersize, zorder=100
                                      )
         if not self.receivers.empty:
             sc_receiver_names, sc_receiver_list = [], []
-
-            # Color by unique network values
-            networks = self.receivers.index.get_level_values(
-                "network").unique().to_numpy()
+            # Allow for isolation of networks
+            if network is not None:
+                networks = self.receivers.loc[network]
+            else:
+                networks = self.receivers
+            networks = networks.index.get_level_values("network").unique()
             for net in networks:
+                # Allow for isolation of stations
+                if station is not None:
+                    try:
+                        rcv_lat = self.receivers.loc[net].loc[station].latitude
+                        rcv_lon = self.receivers.loc[net].loc[station].longitude
+                        rcv_nam = station
+                    except KeyError:
+                        continue
+                else:
+                    # else just plot all stations in a given network
+                    rcv_lat = self.receivers.loc[net].latitude
+                    rcv_lon = self.receivers.loc[net].longitude
+                    rcv_nam = self.receivers.loc[net].index.to_numpy()
+
                 # Random color cycle for networks
-                sc_receivers = plt.scatter(
-                    self.receivers.loc[net].longitude.to_numpy(),
-                    self.receivers.loc[net].latitude.to_numpy(),
-                    marker="v", s=10, zorder=100, label=net
-                )
+                sc_receivers = plt.scatter(rcv_lat, rcv_lon, marker="v", 
+                                           s=markersize, zorder=100, label=net)
                 sc_receiver_list.append(sc_receivers)
-                sc_receiver_names.append(
-                    self.receivers.loc[net].index.to_numpy())
+                sc_receiver_names.append(rcv_nam)
 
         plt.xlabel("Longitude")
         plt.ylabel("Latitude")
@@ -165,6 +198,7 @@ class InspectorPlotter:
         """
         Make histograms of measurements for stations or events to show the 
         distribution of measurements. 
+
         :type model: str
         :param model: model number e.g. 'm00'
         :type step: str
@@ -293,15 +327,15 @@ class InspectorPlotter:
 
         return f, ax
 
-    def hist(self, model, step, model_comp=None, step_comp=None, event=None,
-             station=None, choice="cc_shift_in_seconds", binsize=1., show=True, 
-             save=None, **kwargs):
+    def hist(self, model, step, model_comp=None, step_comp=None, f=None, 
+             ax=None, event=None, station=None, choice="cc_shift_in_seconds", 
+             binsize=1., show=True, save=None, **kwargs):
         """
         Create a histogram of misfit information for either time shift or
         amplitude differences. Option to compare against different models,
         and to look at different choices.
 
-        Choices are: "misfit", "dlna", "cc_shift_sec", "length_s"
+        Choices are any column value in the Inspector.windows attribute
 
         :type model: str
         :param model: model to choose for misfit
@@ -311,6 +345,8 @@ class InspectorPlotter:
         :param model_comp: model to compare with, will be plotted in front
         :type step_comp: str
         :param step_comp: step to compare with
+        :type f: matplotlib.figure
+        :param f: plot to an existing figure
         :type choice: str
         :param choice: choice of 'cc_shift_s' for time shift, or 'dlnA' as
             amplitude
@@ -330,7 +366,7 @@ class InspectorPlotter:
             assert step_comp in self.steps.loc[model_comp], \
                 f"step_comp must be in {self.steps.loc[model_comp]}"
 
-        # For fine tuning figure parameters
+        # Optional kwargs for fine tuning figure parameters
         title = kwargs.get("title", "")
         xlim = kwargs.get("xlim", None)
         color = kwargs.get("color", "darkorange")
@@ -342,6 +378,13 @@ class InspectorPlotter:
         label_range = kwargs.get("label_range", False)
         xstep = kwargs.get("xstep", 2)
         ymax = kwargs.get("ymax", None)
+        xlabel = kwargs.get("xlabel", None)
+        zeroline = kwargs.get("zeroline", False)
+        meanline = kwargs.get("meanline", False)
+        stdline = kwargs.get("stdline", False)
+        linewidth = kwargs.get("linewidth", 2.5)
+        label = kwargs.get("label", None)
+        label_comp = kwargs.get("label_comp", None)
 
 
         def get_values(m, s, e, sta):
@@ -357,12 +400,17 @@ class InspectorPlotter:
         # For cleaner formatting of axis labels
         label_dict = {"cc_shift_in_seconds": "Time Shift (s)",
                       "dlnA": "$\Delta\ln$(A)",
-                      "misfit": "misfit",
+                      "misfit": "Misfit",
                       "length_s": "Window Length (s)",
-                      "max_cc_value": "Peak Cross Correlation"
+                      "max_cc_value": "Peak Cross Correlation",
+                      "relative_starttime": "Relative Start Time (s)",
+                      "relative_endtime": "Relative End Time (s)",
                       }
+        if f is None:
+            f, ax = plt.subplots(figsize=figsize)
+        if ax is None:
+            ax = plt.gca()
 
-        f, ax = plt.subplots(figsize=figsize)
         val, lim = get_values(model, step, event, station)
 
         if model_comp:
@@ -375,43 +423,61 @@ class InspectorPlotter:
             # Compare models, plot original model on top 
             n, bins, patches = plt.hist(
                 x=val, bins=np.arange(-1*lim, lim+.1, binsize),
-                color=color,  histtype="bar",  edgecolor="black", linewidth=4.,
-                label=f"{model}{step}; N={len(val)}", zorder=11, alpha=1.
+                color=color,  histtype="bar",  edgecolor="black", 
+                linewidth=linewidth,
+                label=(label or f"{model}{step}") + f"; N={len(val)}", 
+                zorder=11, alpha=1.
             )
-            mu1, var1, std1 = get_histogram_stats(n, bins)
+
+            # mu1, var1, std1 = get_histogram_stats(n, bins)
+            mean = np.mean(val)
+            std = np.std(val)
+            med = np.median(val)
 
             # Plot comparison below
             n2, bins2, patches2 = plt.hist(
                 x=val_comp, bins=np.arange(-1*lim, lim+.1, binsize),
                 color=color_comp,  histtype="bar", edgecolor="black",
-                linewidth=5.,
-                label=f"{model_comp}{step_comp}; N={len(val_comp)}", zorder=10,
+                linewidth=linewidth + 1, zorder=10,
+                label=(label_comp or f"{model_comp}{step_comp}") + \
+                        f"; N={len(val_comp)}", 
             )
-            mu2, var2, std2 = get_histogram_stats(n2, bins2)
+            # mu2, var2, std2 = get_histogram_stats(n2, bins2)
+            mean_comp = np.mean(val_comp)
+            std_comp = np.std(val_comp)
+            med_comp = np.median(val_comp)
 
             # Plot edges of comparison over top
             plt.hist(x=val_comp, bins=np.arange(-1*lim, lim+.1, binsize),
                      color="k", histtype="step", edgecolor=color_comp,
-                     linewidth=4., zorder=12,
+                     linewidth=linewidth, zorder=12,
                      )
-            # Plot a line at 0 as a reference
-            plt.axvline(x=0, ymin=0, ymax=1, linewidth=2., c="k", zorder=2, 
-                    alpha=0.75, linestyle=':')
         else:
             # No comparison model, plot single histogram
             n, bins, patches = plt.hist(
                 x=val, bins=len(np.arange(-1*lim, lim, binsize)), color=color,
-                histtype="bar", edgecolor="black", linewidth=2.5,
-                label=f"{model}; N={len(val)}", zorder=10,
+                histtype="bar", edgecolor="black", linewidth=linewidth,
+                label=f"N={len(val)}", zorder=10,
             )
-            mu1, var1, std1 = get_histogram_stats(n, bins)
+            # mu1, var1, std1 = get_histogram_stats(n, bins)
+            mean = np.mean(val)
+            std = np.std(val)
+            med = np.median(val)
 
-            # Plot the mean and one standard deviation
-            plt.axvline(x=mu1, ymin=0, ymax=1, linewidth=2, c="k", 
-                        linestyle="--", zorder=15, alpha=0.5)
+        # Plot reference lines
+        if zeroline:
+            plt.axvline(x=0, ymin=0, ymax=1, linewidth=2.5, c="k", 
+                        zorder=15, alpha=0.75, linestyle="-")
+
+        # Plot the mean of the histogram
+        if meanline:
+            plt.axvline(x=mu1, ymin=0, ymax=1, linewidth=2.5, c="k", 
+                        linestyle="--", zorder=15, alpha=0.75)
+        # Plot one standard deviation
+        if stdline:
             for sign in [-1, 1]:
-                plt.axvline(x=mu1 + sign*std1, ymin=0, ymax=1, linewidth=2, 
-                            c="k", linestyle=":", zorder=15, alpha=0.5)
+                plt.axvline(x=mu1 + sign*std1, ymin=0, ymax=1, linewidth=2.5, 
+                            c="k", linestyle=(0,(1,1)), zorder=15, alpha=0.75)
 
         # Set xlimits of the plot
         if xlim:
@@ -424,17 +490,24 @@ class InspectorPlotter:
 
         # Stats in the title by default
         if not title:
-            title = f"$\mu({model})\pm\sigma({model})$={mu1:.2f}$\pm${std1:.2f}"
+            tit_fmt = "mean: {mean:.2f} / std: {std:.2f} / med: {med:.2f}"
+            title = tit_fmt.format(mean=mean, std=std, med=med)
             if model_comp:
-                title += (f"\n$\mu({model_comp})\pm\sigma({model_comp})$="
-                          f"{mu2:.2f}$\pm${std2:.2f}"
-                          )
+                tit_comp = tit_fmt.format(mean=mean_comp, std=std_comp, 
+                                          med=med_comp)
+                title = " ".join([f"[{label or model}]", title, "\n", 
+                                  f"[{label_comp or model_comp}]", tit_comp
+                                  ])
 
         # Finalize plot details
-        try:
-            plt.xlabel(label_dict[choice], fontsize=fontsize)
-        except Keyerror:
-            plt.xlabel(choice, fontsize=fontsize)
+        if xlabel:
+            xlab_ = xlabel
+        else: 
+            try:
+                xlab_ = label_dict[choice]
+            except Keyerror:
+                xlab_ = choice
+        plt.xlabel(xlab_, fontsize=fontsize)
         plt.ylabel("Count", fontsize=fontsize)
         plt.title(title, fontsize=fontsize)
         plt.tick_params(which='both', direction='in', top=True, right=True,
@@ -443,7 +516,12 @@ class InspectorPlotter:
             plt.xticks(np.arange(-1*label_range, label_range+.1, step=xstep))
 
         if legend:
-            plt.legend(fontsize=fontsize/1.25, loc=legend_loc)
+            leg = plt.legend(fontsize=fontsize/1.25, loc=legend_loc)
+            # Thin border around legend objects, unnecessarily thick bois
+            for leg_ in leg.legendHandles:
+                leg_.set_linewidth(1.5)
+
+
 
         plt.tight_layout() 
 
@@ -451,8 +529,6 @@ class InspectorPlotter:
             plt.savefig(save)
         if show:
             plt.show()
-        else:
-            plt.close()
     
         return f, ax
 
@@ -569,7 +645,8 @@ class InspectorPlotter:
                       )
 
     def convergence(self, plot_windows="length_s", plot_discards=True,
-                    fontsize=15, legend=True, show=True, save=None):
+                    ignore_models=False, show=True, save=None, 
+                    normalize=False, **kwargs):
         """
         Plot the convergence rate over the course of an inversion.
         Scatter plot of total misfit against model number, or by step count
@@ -579,20 +656,32 @@ class InspectorPlotter:
         :type plot_windows: str or bool
         :param windows_by: parameter to use for Inspector.measurements() to
             determine how to illustrate measurement number, either by
-            cum_win_len: cumulative window length in seconds
-            num_windows: number of misfit windows
+            length_s: cumulative window length in seconds
+            n_win: number of misfit windows
             None: will not plot window information
-        :type fontsize: int
-        :param fontsize: fontsize of all labels
         :type plot_discards: bool
         :param plot_discards: plot the discarded function evaluations from the
             line searches. Useful for understanding how efficient the 
             optimization algorithm as
+        :type ignore_models: list
+        :param ignore_models: a list of models to be ignored in the plotting
         :type show: bool
         :param show: show the plot after making it
         :type save: str
         :param save: file id to save the figure to
         """
+        f = kwargs.get("f", None)
+        ax = kwargs.get("ax", None)
+        fontsize = kwargs.get("fontsize", 15)
+        figsize = kwargs.get("figsize", (8, 6))
+        legend = kwargs.get("legend", True)
+        misfit_label = kwargs.get("misfit_label", "misfit")
+        discard_label = kwargs.get("discard_label", "discards")
+        window_label = kwargs.get("window_label", "windows")
+        misfit_color = kwargs.get("misfit_color", "k")
+        discard_color = kwargs.get("discard_color", "r")
+        window_color = kwargs.get("window_color", "orange")
+
         if plot_windows:
             assert(plot_windows in ["n_win", "length_s"]), \
                 "plot_windows must be: 'n_win; or 'length_s'"
@@ -603,12 +692,20 @@ class InspectorPlotter:
         df.drop(["n_event", "summed_misfit"], axis=1, inplace=True)
         models = df.index.get_level_values("model").unique().to_numpy()
 
-        f, ax1 = plt.subplots(figsize=(8, 6))
+        if f is None:
+            f, ax = plt.subplots(figsize=figsize)
+        if ax is None:
+            ax = plt.gca()
 
         # Get the actual model numbers based on step count
         true_models = self.sort_steps()
+        discard_models = self.sort_steps(discards=True)
+
+        ld, lines = None, []  # For legend lines
         xvalues, xlabels, misfits, windows = [], [], [], []
         for x, (model, modstep) in enumerate(true_models.items()):
+            if ignore_models and model in ignore_models:
+                continue
             m, s = modstep.split("/")
             df_temp = df.loc[m, s]
 
@@ -623,37 +720,47 @@ class InspectorPlotter:
             xlabels.append(model)
             misfits.append(misfit)
 
-            # Plot all discarded misfits, these will be applied to m + 1
+            # Plot all discarded misfits that were evaluated during line search
+            # Super hacky, needs to be reworked
             if plot_discards:
-                for step in self.steps[m]:
-                    misfit_ = df.loc[m, step].loc["misfit"]
-                    if misfit_ != misfit:
-                        l1 = ax1.plot(x + 1, misfit_, 'o', markersize=10, c="r",
-                                      label="discarded", zorder=7)
+                if f"m{x:0>2}_all" in discard_models.keys():
+                    for ms_ in discard_models[f"m{x:0>2}_all"]:
+                        m_, s_ = ms_.split("/")
+                        misfit_ = df.loc[m_, s_].loc["misfit"]
+                        if misfit_ == misfit:
+                            continue
+                        ld = ax.plot(x, misfit_, 'X', markersize=10, 
+                                      c=discard_color, label=discard_label, 
+                                      zorder=6)
 
-        l2 = ax1.plot(xvalues, misfits, 'o-', linewidth=3, markersize=10, c="k",
-                      label="misfit", zorder=10)
+        # Add single marker to legend
+        if ld:
+            lines += ld
 
-        ax1.set_xlabel("Model Number", fontsize=fontsize)
-        ax1.xaxis.set_ticks(xvalues)
-        ax1.set_xticklabels(xlabels, rotation=45, ha="right")
-        ax1.set_ylabel("Total Normalized Misfit", fontsize=fontsize)
+        # Normalize the values to make the starting misfit 1
+        if normalize:
+            misfits = [_/max(misfits) for _ in misfits]
+
+        lines += ax.plot(xvalues, misfits, 'o-', linewidth=3, markersize=10, 
+                          c=misfit_color, label=misfit_label, zorder=10)
+
+        ax.set_xlabel("Model Number", fontsize=fontsize)
+        ax.xaxis.set_ticks(xvalues)
+        ax.set_xticklabels(xlabels, rotation=45, ha="right")
+        ax.set_ylabel("Total Normalized Misfit", fontsize=fontsize)
 
         # Only set ticks on the x-axis
-        ax1.xaxis.grid(True, which="minor", linestyle=":")
-        ax1.xaxis.grid(True, which="major", linestyle="-")
-
-        # Lines for legend
-        lines = l2 + l1
+        ax.xaxis.grid(True, which="minor", linestyle=":")
+        ax.xaxis.grid(True, which="major", linestyle="-")
 
         # Plot measurement number/ window length, useful if it was allowed
         # to vary freely during the inversion, or changes at restarts
         if windows:
-            ax2 = ax1.twinx()
+            ax2 = ax.twinx()
             ydict = {"length_s": "Cumulative Window Length [s]",
                      "n_win": "Numer of Measurements"}
             lines += ax2.plot(xvalues, windows, 'v:', linewidth=2, 
-                              markersize=8, c="orange", label="windows",
+                              markersize=8, c=window_color, label=window_label,
                               zorder=5)
             ax2.set_ylabel(f"{ydict[plot_windows]} (dashed)", rotation=270,
                            labelpad=15., fontsize=fontsize)
@@ -661,7 +768,7 @@ class InspectorPlotter:
 
         if legend:
             labels = [l.get_label() for l in lines]
-            ax1.legend(lines, labels, prop={"size": 12}, loc="upper right")
+            ax.legend(lines, labels, prop={"size": 12}, loc="upper right")
 
         f.tight_layout()
 
@@ -670,7 +777,7 @@ class InspectorPlotter:
         if show:
             plt.show()
 
-        return f, ax1
+        return f, ax
 
 
 def colormap_colorbar(cmap, **kwargs):

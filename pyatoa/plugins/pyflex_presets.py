@@ -97,7 +97,7 @@ pyflex_presets = {
         "cc_acceptance_level": 0.7,
         "s2n_limit": 3.,
         "max_time_before_first_arrival": 5.,
-        "min_surface_wave_velocity": 1.2,  # Default is 3.0
+        "min_surface_wave_velocity": 1.4,  # Default is 3.0
         "check_global_data_quality": True,  # Default is False
         "c_0": 0.7,
         "c_1": 2.0, 
@@ -131,6 +131,23 @@ pyflex_presets = {
         "max_time_before_first_arrival": 0.,  # minimum starting before P-wave
         "c_0": 0.7,
         "c_1": 2.5,  # min_win_len = c_1 * min_period
+        "c_3a": 3.0,
+        "c_3b": 2.0,
+        "c_4a": 2.5,
+        "c_4b": 12.0
+    },
+    # North Island, 2-30s
+    "nznorth_2-30s": {
+        "stalta_waterlevel": 0.1,
+        "tshift_acceptance_level": 8.0,  # based on sign-flip
+        "dlna_acceptance_level": 2.,
+        "cc_acceptance_level": 0.7,
+        "s2n_limit": 3.,
+        "max_time_before_first_arrival": 5.,
+        "min_surface_wave_velocity": 1.4,  # Default is 3.0
+        "check_global_data_quality": True,  # Default is False
+        "c_0": 0.7,
+        "c_1": 5.,  # min_win_len = c_1 * min_period
         "c_3a": 3.0,
         "c_3b": 2.0,
         "c_4a": 2.5,

@@ -42,7 +42,8 @@ def place_scalebar(m, map_corners, **kwargs):
     :type loc: str
     :param loc: location of scalebar, 'upper-right' or 'lower-right'
     """
-    loc = kwargs.get("loc", "upper-right")
+    loc = kwargs.get("scalebar_location", "upper-right")
+    fontsize = kwargs.get("legend_fontsize", 13)
 
     mc = map_corners
     if loc == "upper-right":
@@ -52,8 +53,8 @@ def place_scalebar(m, map_corners, **kwargs):
         latscale = mc['lat_min'] + (mc['lat_max'] - mc['lat_min']) * 0.04
         lonscale = mc['lon_min'] + (mc['lon_max'] - mc['lon_min']) * 0.9
     m.drawmapscale(lonscale, latscale, lonscale, latscale, 100,
-                   yoffset=0.01 * (m.ymax-m.ymin), zorder=5000, linewidth=2,
-                   fontsize=13
+                   yoffset=0.01 * (m.ymax-m.ymin), zorder=100, linewidth=2,
+                   fontsize=fontsize
                    )
 
 
@@ -76,7 +77,7 @@ def build_colormap(array, cmap=cm.jet_r):
     return colormap
 
 
-def event_beachball(m, event, fm_type="focal_mechanism", **kwargs):
+def event_beachball(m, event, fm_type="focal_mechanism", zorder=90, **kwargs):
     """
     Plot event beachball for a given moment tensor attribute from event object.
 
@@ -91,19 +92,23 @@ def event_beachball(m, event, fm_type="focal_mechanism", **kwargs):
     :type event: obspy.core.event.Event
     :param event: event object which should contain focal mechanism
     """
-    width = kwargs.get("width", 2.6E4)
-    facecolor = kwargs.get("facecolor", 'r')
-    linewidth = kwargs.get("linewidth", 1)
-    zorder = kwargs.get("zorder", 1000)
+    width = kwargs.get("src_width", 2.6E4)
+
+    src_marker = kwargs.get("src_marker", "o")
+    src_markercolor = kwargs.get("src_markercolor", "r")
+    src_markersize = kwargs.get("src_markersize", 105)
+    src_linewidth = kwargs.get("src_linewidth", 1.75)
 
     eventx, eventy = m(event.preferred_origin().longitude,
                        event.preferred_origin().latitude
                        )
 
-    # No focal mechanism? Just plot a ploint
+    # No focal mechanism? Just plot a ploint, same as connect_source_receiver()
     if not hasattr(event, 'focal_mechanisms'):
-        m.scatter(eventx, eventy, marker="o", color=facecolor,
-                  edgecolor="k", s=105, zorder=zorder, linewidth=1.75)
+        m.scatter(eventx, eventy, marker=src_marker, color=src_markercolor,
+                  edgecolor="k", s=src_markersize, linewidth=src_linewidth,
+                  zorder=90)
+
     else:
         if fm_type == "focal_mechanism":
             fm = event.focal_mechanisms[0].moment_tensor.tensor or \
@@ -122,14 +127,15 @@ def event_beachball(m, event, fm_type="focal_mechanism", **kwargs):
             beach_input = [sdr.strike, sdr.dip, sdr.rake]
 
         b = beach(beach_input, xy=(eventx, eventy), width=width,
-                  linewidth=linewidth, facecolor=facecolor)
+                  linewidth=src_linewidth, facecolor=src_markercolor
+                  )
         b.set_zorder(zorder)
         ax = plt.gca()
         ax.add_collection(b)
 
 
 def plot_stations(m, inv, event=None, annotate_names=False,
-                  color_by_network=False):
+                  color_by_network=False, **kwargs):
     """
     Fill map with stations based on station availability and network
 
@@ -144,6 +150,11 @@ def plot_stations(m, inv, event=None, annotate_names=False,
     :type color_by_network: bool
     :param color_by_network: decided the coloring of different networks
     """
+    marker = kwargs.get("station_marker", "v")
+    color = kwargs.get("station_markercolor", "None")
+    size = kwargs.get("station_markersize", 80)
+    linewidth = kwargs.get("station_linewidth", 1.25)
+
     # Sort the networks by station name
     code, num_sta = [], []
     for net in inv:
@@ -151,35 +162,34 @@ def plot_stations(m, inv, event=None, annotate_names=False,
         num_sta.append(len(net))
     num_sta, network_codes = zip(*sorted(zip(num_sta, code)))
 
-    # A simple list of colors to color by network.
-    # NOTE: Assuming we never plot more networks than length of available colors
-    if color_by_network:
-        available_colors = ['r', 'g', 'b', 'c', 'm', 'y', 'k', 'w']
-    else:
-        available_colors = ['None'] * len(network_codes)
-
     # Plot stations
     for i, net_code in enumerate(network_codes):
+        if color_by_network:
+            c = f"C{i}"
+        else:
+            c = color
+
         net = inv.select(net_code)[0]
         # For legend
-        m.scatter(0, 0, marker='v', color=available_colors[i],
-                  linestyle='-', s=80, linewidth=1.25, zorder=1,
-                  label=code)
+        m.scatter(0, 0, marker=marker, color=color, linestyle='-', s=size, 
+                  linewidth=linewidth, zorder=1, label=code)
+
         for sta in net:
             # If an event is given, check that the station is active at time
             if event and not sta.is_active(time=event.preferred_origin().time):
                 continue
+
             x, y = m(sta.longitude, sta.latitude)
-            m.scatter(x, y, marker='v', color=available_colors[i],
-                      edgecolor='k', linestyle='-', s=80, linewidth=1.25,
-                      zorder=1001
+            m.scatter(x, y, marker=marker, color=c, edgecolor="k", 
+                      linestyle='-', s=size, linewidth=linewidth, zorder=60
                       )
+
             # Annotate the station name next to the station
             if annotate_names:
-                plt.annotate(f"{net.code}.{sta.code}", xy=(x, y), xytext=(x, y),
-                             zorder=6, fontsize=7, bbox=dict(facecolor='w',
-                                                             edgecolor='k',
-                                                             boxstyle='round')
+                plt.annotate(f"{net.code}.{sta.code}", xy=(x, y), 
+                             xytext=(x, y), zorder=60, fontsize=7, 
+                             bbox=dict(facecolor='w', edgecolor='k', 
+                                       boxstyle='round')
                              )
 
 
@@ -196,11 +206,11 @@ def plot_stations_simple(m, lats, lons):
     """
     x, y = m(lons, lats)
     m.scatter(x, y, marker='v', color='None', edgecolor='k', linestyle='-',
-              s=95, linewidth=1.75, zorder=100
+              s=95, linewidth=1.75, zorder=70
               )
 
 
-def annotate_srcrcv_information(m, event, inv):
+def annotate_srcrcv_information(m, event, inv, **kwargs):
     """
     Annotate event receiver information into bottom right corner of the map
 
@@ -211,21 +221,25 @@ def annotate_srcrcv_information(m, event, inv):
     :type inv: obspy.core.inventory.Inventory
     :param inv: inventory containing relevant network and stations
     """
+    fontsize = kwargs.get("anno_fontsize", 12)
+    x = kwargs.get("anno_x", 0.95)
+    y = kwargs.get("anno_y", 0.105)
+
     event.origins[0].time.precision = 0
     gcdist, baz = gcd_and_baz(event, inv[0][0])
     event_id = event.resource_id.id.split('/')[1]
 
-    plt.annotate(s=(f"{event_id} / {inv[0].code}.{inv[0][0].code}\n"
-                    f"{event.preferred_origin().time}\n"
-                    f"{event.preferred_magnitude().magnitude_type}="
-                    f"{event.preferred_magnitude().mag:.2f}\n"
-                    f"Depth(km)={event.preferred_origin().depth*1E-3:.2f}\n"
-                    f"Dist(km)={gcdist:.2f}\n"
-                    f"BAz(deg)={baz:.2f}"),
-                 xy=(m.xmin + (m.xmax-m.xmin) * 0.675,
-                     m.ymin + (m.ymax-m.ymin) * 0.035), multialignment='right',
-                 fontsize=10
-                 )
+    plt.text(s=(f"{event_id} / {inv[0].code}.{inv[0][0].code}\n"
+             f"{event.preferred_origin().time}\n"
+             f"{event.preferred_magnitude().magnitude_type}="
+             f"{event.preferred_magnitude().mag:.2f}\n"
+             f"Depth(km)={event.preferred_origin().depth*1E-3:.2f}\n"
+             f"Dist(km)={gcdist:.2f}\n"
+             f"BAz(deg)={baz:.2f}"),
+             x=x, y=y, horizontalalignment="right",
+             verticalalignment="center", transform=plt.gca().transAxes,
+             fontsize=fontsize
+             )
 
 
 def connect_source_receiver(m, event, sta, **kwargs):
@@ -240,25 +254,39 @@ def connect_source_receiver(m, event, sta, **kwargs):
     :type sta: obspy.core.inventory.Inventory
     :param sta: inventory containing relevant network and stations
     """
-    linestyle = kwargs.get("linestyle", "--")
-    linewidth = kwargs.get("linewidth", 1.1)
-    linecolor = kwargs.get("color", "k")
-    marker = kwargs.get("marker", "v")
-    markercolor = kwargs.get("markercolor", "r")
-    zorder = kwargs.get("zorder", 100)
+    linestyle = kwargs.get("srcrcv_linestyle", "--")
+    linewidth = kwargs.get("srcrcv_linewidth", 1.5)
+    linecolor = kwargs.get("srcrcv_color", "k")
+    rcv_marker = kwargs.get("rcv_marker", "v")
+    rcv_markercolor = kwargs.get("rcv_markercolor", "r")
+    rcv_markersize = kwargs.get("rcv_markersize", 75)
+    rcv_linewidth = kwargs.get("rcv_linewidth", 1.5)
+    src_marker = kwargs.get("src_marker", "o")
+    src_markercolor = kwargs.get("src_markercolor", "r")
+    src_markersize = kwargs.get("src_markersize", 105)
+    src_linewidth = kwargs.get("src_linewidth", 1.75)
+    
+    zorder = kwargs.get("zorder", 70)
 
     # Get coordinates in map extent
     event_x, event_y = m(event.preferred_origin().longitude,
-                         event.preferred_origin().latitude)
+                         event.preferred_origin().latitude
+                         )
     station_x, station_y = m(sta.longitude, sta.latitude)
 
-    # Plot line, station, event
-    m.plot([event_x, station_x], [event_y, station_y], linestyle, linewidth,
-           c=linecolor, zorder=zorder-10)
-    m.scatter(station_x, station_y, marker=marker, color=markercolor,
-              edgecolor='k', linestyle='-', s=75, zorder=zorder)
-    m.scatter(event_x, event_y, marker="o", color=markercolor, edgecolor="k",
-              s=105, zorder=zorder, linewidth=1.75)
+    # Connecting line
+    m.plot([event_x, station_x], [event_y, station_y], linestyle=linestyle, 
+           linewidth=linewidth, c=linecolor, zorder=zorder-10)
+
+    # Receiver
+    m.scatter(station_x, station_y, marker=rcv_marker, color=rcv_markercolor,
+              linewidth=rcv_linewidth, edgecolor="k", s=rcv_markersize, 
+              zorder=zorder)
+
+    # Source, should be overwritten by focal mechanism
+    m.scatter(event_x, event_y, marker=src_marker, color=src_markercolor, 
+              edgecolor="k", s=src_markersize, zorder=zorder, 
+              linewidth=src_linewidth)
 
 
 def interpolate_and_contour(m, x, y, z, len_xi, len_yi, fill=True,
@@ -344,17 +372,18 @@ def initiate_basemap(map_corners=None, scalebar=True, **kwargs):
     :rtype m: Basemap
     :return m: basemap object
     """
+    area_thresh = kwargs.get("area_thresh", None)
     continent_color = kwargs.get("contininent_color", "w")
     lake_color = kwargs.get("lake_color", "w")
     coastline_zorder = kwargs.get("coastline_zorder", 5)
     coastline_linewidth = kwargs.get("coastline_linewidth", 2.0)
     fill_color = kwargs.get("fill_color", "w")
-    scalebar_location = kwargs.get("scalebar_location", "upper-right")
     latlon_linewidth = kwargs.get("latlon_linewidth", 0.)   
 
     # Initiate map and draw in style. Stereographic projection if regional
     # corners are given, otherwise world map
     if map_corners:
+        import ipdb;ipdb.set_trace()
         m = Basemap(projection='stere', resolution='h', rsphere=6371200,
                     lat_0=(map_corners['lat_min'] + map_corners['lat_max'])/2,
                     lon_0=(map_corners['lon_min'] + map_corners['lon_max'])/2,
@@ -362,6 +391,7 @@ def initiate_basemap(map_corners=None, scalebar=True, **kwargs):
                     urcrnrlat=map_corners['lat_max'],
                     llcrnrlon=map_corners['lon_min'],
                     urcrnrlon=map_corners['lon_max'],
+                    area_thresh=area_thresh
                     )
         m.drawparallels(np.arange(int(map_corners['lat_min']),
                                   int(map_corners['lat_max']), 1),
@@ -374,6 +404,7 @@ def initiate_basemap(map_corners=None, scalebar=True, **kwargs):
     else:
         m = Basemap(projection='cyl', resolution='c', llcrnrlat=-90,
                     urcrnrlat=90, llcrnrlon=-180, urcrnrlon=180,
+                    area_thresh=area_thresh
                     )
 
     m.drawcoastlines(linewidth=coastline_linewidth, zorder=coastline_zorder)
@@ -381,7 +412,7 @@ def initiate_basemap(map_corners=None, scalebar=True, **kwargs):
     m.drawmapboundary(fill_color=fill_color)
 
     if scalebar and map_corners:
-        place_scalebar(m, map_corners, loc=scalebar_location)
+        place_scalebar(m, map_corners, **kwargs)
 
     return m
 
@@ -424,30 +455,31 @@ def manager_map(map_corners, inv=None, event=None, stations=None,
 
     # Initiate matplotlib instances
     f = plt.figure(figsize=figsize, dpi=dpi)
-    m = initiate_basemap(map_corners=map_corners, scalebar=True)
+    m = initiate_basemap(map_corners=map_corners, scalebar=True, **kwargs)
 
     # If given, plot all background stations for this given event.
     if stations is not None:
         if isinstance(stations, np.ndarray):
-            plot_stations_simple(m, lats=stations[:, 0], lons=stations[:, 1])
+            plot_stations_simple(m, lats=stations[:, 0], lons=stations[:, 1],
+                                 **kwargs)
         else:
             plot_stations(m, inv=stations, event=event,
                           annotate_names=annotate_names,
-                          color_by_network=color_by_network
+                          color_by_network=color_by_network,
                           )
 
-    # Plot the station
+    # Plot the connected station
     if inv is not None:
-        plot_stations(m, inv)
+        plot_stations(m, inv, **kwargs)
 
     # If an event is given, try to plot the focal-mechanism beachball
     if event is not None:
-        event_beachball(m, event)
+        event_beachball(m, event, **kwargs)
 
     # If an inventory object is given, plot source receiver line, and info
     if (inv and event) is not None:
-        connect_source_receiver(m, event=event, sta=inv[0][0])
-        annotate_srcrcv_information(m, event=event, inv=inv)
+        connect_source_receiver(m, event=event, sta=inv[0][0], **kwargs)
+        annotate_srcrcv_information(m, event=event, inv=inv, **kwargs)
 
     # Finality
     f.tight_layout()

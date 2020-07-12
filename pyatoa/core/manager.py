@@ -590,7 +590,8 @@ class Manager:
 
         return self
 
-    def window(self, fixed=False, model=None, step=None, force=False):
+    def window(self, fixed=False, model=None, step=None, force=False, 
+               save=True):
         """
         Evaluate misfit windows using Pyflex. Save windows to ASDFDataSet.
         Allows previously defined windows to be retrieved from ASDFDataSet.
@@ -634,8 +635,8 @@ class Manager:
             self.retrieve_windows(model, step)
         else:
             self.select_windows_plus()
-
-        self.save_windows()
+        if save:
+            self.save_windows()
         logger.info(f"{self.stats.nwin} window(s) total found")
 
         return self

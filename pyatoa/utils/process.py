@@ -243,7 +243,7 @@ def preproc(mgmt, choice, water_level=60, taper_percentage=0.05):
                                   desired=mgmt.config.synthetic_unit)
 
     # Try to ensure that end points touch 0 before filtering
-    st.detrend("simple").detrend("demean").taper(0.05)
+    st.detrend("simple").detrend("demean").taper(taper_percentage)
     
     # Rotate the given stream from standard NEZ to RTZ
     if mgmt.baz:

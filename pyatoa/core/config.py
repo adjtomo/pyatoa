@@ -476,6 +476,7 @@ class Config:
                     setattr(self, key, item.tolist())
                 except AttributeError:
                     setattr(self, key, item)
+
         setattr(self, "cfgpaths", cfgpaths)
 
         self._check()

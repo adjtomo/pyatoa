@@ -116,6 +116,7 @@ class ManagerPlotter:
         figsize = self.kwargs.get("figsize", (11.689, 8.27))  # A4
         dpi = self.kwargs.get("dpi", 100)
         fontsize = self.kwargs.get("fontsize", 8)
+        axes_linewidth = self.kwargs.get("axes_linewidth", 1)
 
         # For removing labels and tick markers
 
@@ -134,8 +135,9 @@ class ManagerPlotter:
                 ax = plt.subplot(gs[i], sharex=axes[0])
             twinax = ax.twinx()
 
-            pretty_grids(twinax, twax=True, fontsize=fontsize)
-            pretty_grids(ax, fontsize=fontsize)
+            pretty_grids(twinax, twax=True, fontsize=fontsize, 
+                         linewidth=axes_linewidth)
+            pretty_grids(ax, fontsize=fontsize, linewidth=axes_linewidth)
             twaxes.append(twinax)
             axes.append(ax)
 
@@ -165,7 +167,7 @@ class ManagerPlotter:
         """
         obs_color = self.kwargs.get("obs_color", "k")
         syn_color = self.kwargs.get("syn_color", "r")
-        linewidth = self.kwargs.get("linewdith", 1.6)
+        linewidth = self.kwargs.get("linewidth", 1.6)
 
         # Option to normalize the data traces
         if normalize:
@@ -208,7 +210,7 @@ class ManagerPlotter:
         :rtype: list of matplotlib.lines.Lines2D objects
         :return: list containing the lines plotted on the axis
         """
-        linewidth = self.kwargs.get("linewdith", 1.6)
+        linewidth = self.kwargs.get("linewidth", 1.6)
         stalta_color = self.kwargs.get("stalta_color", "gray")
 
         # Get waterlevel from the Pyflex config object
@@ -224,7 +226,7 @@ class ManagerPlotter:
         waterlevel = (ymax - ymin) * stalta_wl + ymin
 
         b2, = ax.plot(self.time_axis, stalta, stalta_color, alpha=0.4, 
-                      zorder=9, label=f"STA/LTA")
+                      linewidth=linewidth, zorder=9, label=f"STA/LTA")
 
         if plot_waterlevel:
             # Plot the waterlevel of the STA/LTA defined by Pyflex Config
@@ -370,15 +372,19 @@ class ManagerPlotter:
             specific rejected window tags
         """
         ymin, ymax = ax.get_ylim()
-        dy = 0.05 * (ymax - ymin)  # increment for bar location
+        dy = 0.075 * (ymax - ymin)  # increment for bar location
 
         # Chosen time windows - collapse adjacent windows into single windows by 
         # looking for repeated values and removing them, recombining
-        win_arr = np.array([[_.left * _.dt, _.right * _.dt] for _ in windows])
-        win_arr, count = np.unique(win_arr, return_counts=True)
-        idx_vals_repeated = np.where(count > 1)[0]
-        win_arr = np.delete(win_arr, idx_vals_repeated)
-        win_arr = win_arr.reshape(len(win_arr) // 2, 2)
+        if windows is not None:
+            win_arr = np.array(
+                [[_.left * _.dt, _.right * _.dt] for _ in windows])
+            win_arr, count = np.unique(win_arr, return_counts=True)
+            idx_vals_repeated = np.where(count > 1)[0]
+            win_arr = np.delete(win_arr, idx_vals_repeated)
+            win_arr = win_arr.reshape(len(win_arr) // 2, 2)
+        else:
+            win_arr = None
 
         for tag in rejected_windows.keys():
             # Skip plotting certain window rejects
@@ -390,20 +396,21 @@ class ManagerPlotter:
                                                     rejected_windows[tag]])
 
             # Check if rejected windows are contained within the window bounds
-            bool_arr = None
-            for wa in win_arr:
-                bool_arr_ = np.logical_and(rwin_arr[:, 0] >= wa[0],  # start
-                                           rwin_arr[:, 1] <= wa[1]  # end
-                                           )
-                if bool_arr is not None:
-                    bool_arr = np.logical_and(bool_arr, bool_arr_)
-                else:
-                    bool_arr = bool_arr_
+            if win_arr is not None:
+                bool_arr = None
+                for wa in win_arr:
+                    bool_arr_ = np.logical_and(rwin_arr[:, 0] >= wa[0],  # start
+                                               rwin_arr[:, 1] <= wa[1]  # end
+                                               )
+                    if bool_arr is not None:
+                        bool_arr = np.logical_and(bool_arr, bool_arr_)
+                    else:
+                        bool_arr = bool_arr_
+                rwin_arr = rwin_arr[~bool_arr]
 
             # Negate the booleans to exclude rej windows within bounds
-            rej_wins = rwin_arr[~bool_arr]
-            if rej_wins.any():
-                for rw in rej_wins:
+            if rwin_arr.any():
+                for rw in rwin_arr:
                     # Shift rejected windows by the proper time offset
                     rw += self.time_axis[0]
                     # Plot as rectangle, shorter windows get larger zorder
@@ -411,13 +418,13 @@ class ManagerPlotter:
                         Rectangle(xy=(rw[0], ymin), width=rw[1] - rw[0], 
                                   height=dy, fc=rejected_window_colors[tag], 
                                   ec="k", alpha=0.25, 
-                                  zorder=5 + 1 / (rw[1] - rw[0])
+                                  zorder=15 + 1 / (rw[1] - rw[0])
                         )
                     )
 
                 # Annotate the leftmost rejected window point with the tag
-                ax.annotate(xy=(rej_wins[:,0].min(), ymin), 
-                            s=tag.replace("_", " "), fontsize=7.25, zorder=6)
+                ax.annotate(xy=(rwin_arr[:, 0].min(), ymin), 
+                            s=tag.replace("_", " "), fontsize=7.75, zorder=14)
                 ymin -= dy
 
         # Reset ylimits based on the extent of the rejected windows
@@ -442,13 +449,15 @@ class ManagerPlotter:
         :rtype: list of matplotlib.lines.Lines2D objects
         :return: list containing the lines plotted on the axis
         """
-        linewidth = self.kwargs.get("linewdith", 1.6)
-        adj_src_color = self.kwargs.get("adj_src_color", "g")
+        linewidth = self.kwargs.get("linewidth", 1.6)
+        linestyle = self.kwargs.get("adj_src_linestyle", (0, (5, 1)))
+        color = self.kwargs.get("adj_src_color", "g")
+        alpha = self.kwargs.get("adj_src_alpha", 0.4)
 
         # Time reverse adjoint source; line up with waveforms
-        b1, = ax.plot(self.time_axis, adjsrc.adjoint_source[::-1], 
-                      adj_src_color, alpha=0.55, linewidth=linewidth,
-                      linestyle="-.", zorder=9,
+        b1, = ax.plot(self.time_axis, adjsrc.adjoint_source[::-1], color, 
+                      alpha=alpha, linewidth=linewidth, linestyle=linestyle, 
+                      zorder=9,
                       label=fr"Adjoint Source ($\chi$={adjsrc.misfit:.2f})"
                       )
         return [b1]
@@ -536,6 +545,7 @@ class ManagerPlotter:
         append_title = self.kwargs.get("append_title", None)
         normalize = self.kwargs.get("normalize", False)
         xlim_s = self.kwargs.get("xlim_s", None)
+        percent_over = self.kwargs.get("percent_over", 0.125)
         set_title = self.kwargs.get("set_title", True)
         plot_xaxis = self.kwargs.get("plot_xaxis", True)
         plot_yaxis = self.kwargs.get("plot_yaxis", True)
@@ -577,7 +587,7 @@ class ManagerPlotter:
                                            windows=windows)
 
             # Format now as windows use the y-limits for height of windows
-            format_axis(ax)
+            format_axis(ax, percent_over)
 
             if windows is not None and plot_windows: 
                 self.plot_windows(ax=ax, windows=windows, 
@@ -622,9 +632,10 @@ class ManagerPlotter:
         if isinstance(set_title, bool):
             if set_title:
                 axes[0].set_title(self.create_title(append_title=append_title,
-                                                    normalized=normalize))
+                                                    normalized=normalize),
+                                  fontsize=fontsize)
         else:
-            axes[0].set_title(set_title)
+            axes[0].set_title(set_title, fontsize=fontsize)
         
 
         if xlim_s is not None:
@@ -651,8 +662,9 @@ class ManagerPlotter:
         if self.show:
             plt.show()
 
-        return f, ax
-
+        # Provide figure and axes for further editing of figure
+        self.f = f
+        self.axes = axes
 
 def align_yaxes(ax1, ax2):
     """
@@ -674,7 +686,7 @@ def align_yaxes(ax1, ax2):
     ax2.set_ylim(ymin_a2+dy, ymax_a2+dy)
 
 
-def pretty_grids(input_ax, twax=False, grid=False, fontsize=8):
+def pretty_grids(input_ax, twax=False, grid=False, fontsize=8, linewidth=1):
     """
     Standard plot skeleton formatting, thick lines and internal tick marks etc.
 
@@ -694,9 +706,14 @@ def pretty_grids(input_ax, twax=False, grid=False, fontsize=8):
         right = False
 
     input_ax.tick_params(which='major', direction='in', top=True, right=right,
-                         left=left, length=8, labelsize=fontsize)
+                         left=left, length=8, labelsize=fontsize, 
+                         width=2*linewidth/3)
     input_ax.tick_params(which='minor', direction='in', top=True, right=right,
-                         left=left, length=3, labelsize=fontsize)
+                         left=left, length=4, labelsize=fontsize, 
+                         width=2*linewidth/3)
+
+    for axis in ["top", "bottom", "left", "right"]:
+        input_ax.spines[axis].set_linewidth(linewidth)
 
     # Set the grids 'on' only if main axis
     if not twax:
@@ -707,7 +724,7 @@ def pretty_grids(input_ax, twax=False, grid=False, fontsize=8):
                               color='k', alpha=0.25)
 
 
-def format_axis(input_ax):
+def format_axis(input_ax, percent_over=0.125):
     """
     Ensure that the upper and lower y-bounds are the same value
 
@@ -716,10 +733,10 @@ def format_axis(input_ax):
     """
     ymin, ymax = input_ax.get_ylim()
     maxvalue = max([abs(_) for _ in input_ax.get_ylim()])
-    percentover = maxvalue * 0.125
+    percent_over = maxvalue * percent_over
     if abs(round(ymin / ymax)) != 0:
         # Set bounds to be the same positive and negative
-        bounds = (-1 * (maxvalue + percentover), (maxvalue + percentover))
+        bounds = (-1 * (maxvalue + percent_over), (maxvalue + percent_over))
     else: 
         bounds = (-0.05, 1.05)
     input_ax.set_ylim(bounds)

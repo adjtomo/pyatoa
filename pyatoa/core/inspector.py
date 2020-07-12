@@ -383,7 +383,7 @@ class Inspector(InspectorPlotter):
         else:
             raise NotImplementedError
 
-    def sort_steps(self):
+    def sort_steps(self, discards=False):
         """
         Once the L-BFGS optimization is well scaled, the function evaluation in
         the line search of the previous model 'm-1' is used as the function 
@@ -405,17 +405,32 @@ class Inspector(InspectorPlotter):
         """
         dict_out = {}
         m = 0
+        prev_model = None
         # Hacky way to get an additional model to the end of the model list
         final_model = f"m{int(self.models[-1][1:])+1:0>2}"
 
         for model in np.append(self.models, final_model):
             if model in self.steps and "s00" in self.steps[model]:
-                dict_out[f"m{m:0>2}"] = f"{model}/s00"
+                selected_iteration = f"{model}/s00"
             else:
                 last_model_last_step = self.steps[prev_model][-1]
-                dict_out[f"m{m:0>2}"] = f"{prev_model}/{last_model_last_step}"
+                selected_iteration = f"{prev_model}/{last_model_last_step}"
+
+            dict_out[f"m{m:0>2}"] = selected_iteration
+
+            # Set the new model count
             m += 1
             prev_model = model
+
+            if m > len(self.models):
+                break
+
+            # Get the discarded steps by searching the previous model
+            if discards:
+                if model in self.steps:
+                    all_steps = [f"{model}/{step}" for step in 
+                                         self.steps[model] if "s00" not in step]
+                dict_out[f"m{m:0>2}_all"] = all_steps
 
         return dict_out
 
