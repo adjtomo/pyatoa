@@ -22,9 +22,9 @@ import logging
 import traceback
 
 from pyatoa import logger
+from pyatoa.config import get_aux_path
 from pyatoa.utils.read import read_stations
-from pyatoa.utils.form import (format_model_number, format_step_count, 
-                               format_event_name)
+from pyatoa.utils.form import format_iter, format_step, format_event_name
 from pyatoa.utils.asdf.clean import clean_ds
 from pyatoa.utils.images import tile_combine_imgs
 from pyatoa.utils.write import (write_stations_adjoint, write_adj_src_to_ascii,
@@ -101,8 +101,8 @@ class Pyaflowa:
         """
         # An ugly way to format the first two lines the same as the rest
         str_out = "\n".join([
-            "PYAFLOWA", "\t{:<25}{}".format("model:", self.model),
-            "\t{:<25}{}".format("step:", self.step), ""]
+            "PYAFLOWA", "\t{:<25}{}".format("iteration:", self.iter_tag),
+            "\t{:<25}{}".format("step count:", self.step_tag), ""]
         )
         for key, item in vars(self).items():
             if isinstance(item, dict):
@@ -111,19 +111,18 @@ class Pyaflowa:
         return str_out
 
     @property
-    def model(self):
+    def iter_tag(self):
         """
-        The model number is based on the current iteration, which starts at 1
-        so model number, starting from 0, lags behind by 1. Formatted like 'm00'
+        The current iteration, which starts at 1, formatted as 'i01'
         """
-        return format_model_number(max(self.iteration - 1, 0))
+        return format_iter(self.iteration)
 
     @property
-    def step(self):
+    def step_tag(self):
         """
         Formatted step count, e.g. 's00'
         """
-        return format_step_count(self.step_count)
+        return format_step(self.step_count)
 
     def _set_logging(self):
         """
@@ -175,8 +174,8 @@ class Pyaflowa:
                  if fix by iteration, return False if s00, True otherwise
                  if fix window False, reevaluate windows each step
         """
-        if self.model == "m00" and self.step == "s00":
-            # Always false if this is the first iteration of the inversion
+        if self.iteration == 1 and self.step_count == 0:
+            # Always False if this is the first iteration/step of the inversion
             return False
         elif isinstance(self.fix_windows, bool):
             # Simply return the bool if not first iteration
@@ -184,7 +183,7 @@ class Pyaflowa:
         elif self.fix_windows == "iter":
             # False if this is the first step in the iteration, True else
             try:
-                return hasattr(ds.auxiliary_data.MisfitWindows, self.model)
+                return hasattr(ds.auxiliary_data.MisfitWindows, self.iter_tag)
             except AttributeError:
                 # If no MisfitWindows aux data, ds has just been instantiated
                 return False
@@ -238,7 +237,9 @@ class Pyaflowa:
                     self.make_event_pdf(paths)
 
                 logger.info("writing event misfit to disk")
-                write_misfit(ds, self.model, self.step, path=self.misfits_dir)
+                write_misfit(ds, iteration=self.iteration, 
+                             step_count=self.step_count, path=self.misfits_dir
+                             )
 
     def finalize(self):
         """
@@ -293,7 +294,7 @@ class Pyaflowa:
         paths = {"cwd": oj(self.scratch_dir, "solver", event_id),
                  "dataset": oj(self.data_dir, f"{event_id}.h5"),
                  "maps": oj(self.maps_dir, event_id),
-                 "figures": oj(self.figures_dir, self.model, event_id),
+                 "figures": oj(self.figures_dir, self.iter_tag, event_id),
                  }
         for key in ["maps", "figures"]:
             if not os.path.exists(paths[key]):
@@ -301,8 +302,9 @@ class Pyaflowa:
 
         # Config object from .yaml file, event specific trace directories
         config = pyatoa.Config(
-            yaml_fid=self.config_file, event_id=event_id, model=self.model,
-            step=self.step, synthetics_only=self.synthetics_only,
+            yaml_fid=self.config_file, event_id=event_id, 
+            iteration=self.iteration, step_count=self.step_count, 
+            synthetics_only=self.synthetics_only,
             cfgpaths={"synthetics": oj(paths["cwd"], "traces", "syn"),
                       "waveforms": oj(paths["cwd"], "traces", "obs")}
         )
@@ -332,7 +334,7 @@ class Pyaflowa:
         logger.info(f"Fix windows: {fix_windows}")
 
         # Make sure the ASDFDataSet doesn't already contain auxiliary_data
-        clean_ds(ds=ds, model=self.model, step=self.step)
+        clean_ds(ds=ds, iteration=self.iteration, step_count=self.step_count)
 
         # Set up the Manager and get station information
         config.write(write_to=ds)
@@ -424,8 +426,8 @@ class Pyaflowa:
 
         # Establish correct directory and file name
         # path/to/figures/m??/s??/eid_m??_s??.pdf
-        outfile = oj(self.figures_dir, self.model, self.step,
-                     f"{event_id}_{self.model}{self.step}.pdf")
+        outfile = oj(self.figures_dir, self.iter_tag, self.step_tag,
+                     f"{event_id}_{self.iter_tag}{self.step_tag}.pdf")
 
         if not os.path.exists(os.path.dirname(outfile)):
             os.makedirs(os.path.dirname(outfile))

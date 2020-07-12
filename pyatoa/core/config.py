@@ -114,9 +114,9 @@ class Config:
         self.observed_tag = observed_tag
 
         self.synthetic_tag = synthetic_tag
-        if self._get_aux_path(default=None) is not None:
+        if self.get_aux_path(default=None) is not None:
             # Tag is based on current iter and step, e.g. synthetic_i00s00
-            self.synthetic_tag += f"_{self._get_aux_path(separator='')}"
+            self.synthetic_tag += f"_{self.get_aux_path(separator='')}"
 
         self.pyflex_preset = pyflex_preset
         self.adj_src_type = adj_src_type
@@ -202,7 +202,7 @@ class Config:
     @property
     def aux_path(self):
         """property to quickly get a bog-standard aux path e.g. i00/s00"""
-        return self._get_aux_path()
+        return self.get_aux_path()
 
     def _check(self, **kwargs):
         """
@@ -267,7 +267,7 @@ class Config:
             raise ValueError(f"{unused_kwargs} are not keyword arguments in "
                              f"Pyatoa, Pyflex or Pyadjoint.")
 
-    def _get_aux_path(self, default="default", separator="/"):
+    def get_aux_path(self, default="default", separator="/"):
         """
         Pre-formatted path to be used for tagging and identification in 
         ASDF dataset auxiliary data. Internal function to be called by property

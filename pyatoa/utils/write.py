@@ -4,7 +4,8 @@ For writing various output files used by Pyatoa, Specfem and Seisflows
 import os
 import glob
 import numpy as np
-from pyatoa.utils.form import format_event_name, channel_code
+from pyatoa.utils.form import (format_event_name, format_iter, format_step, 
+                               channel_code)
 
 
 def write_stream_sem(st, unit, path="./", time_offset=0):
@@ -31,38 +32,48 @@ def write_stream_sem(st, unit, path="./", time_offset=0):
         np.savetxt(fid, data, ["%13.7f", "%17.7f"])
 
 
-def write_misfit(ds, model, step, path="./", fidout=None):
+def write_misfit(ds, iteration, step_count=None, path="./", fidout=None):
     """
     This function writes a text file containing event misfit.
     This misfit value corresponds to F_S^T of Eq 6. Tape et al. (2010)
 
-    e.g. path/to/misfits/{model_number}/{event_id}
+    e.g. path/to/misfits/{iteration}/{event_id}
     
     These files will then need to be read by: seisflows.workflow.write_misfit()
 
     :type ds: pyasdf.ASDFDataSet
     :param ds: processed dataset, assumed to contain auxiliary_data.Statistics
-    :type model: str
-    :param model: model number, e.g. "m00"
-    :type step: str
-    :param step: step count, e.g. "s00"
+    :type iteration: str or int
+    :param iteration: iteration number, e.g. "i01". Will be formatted so int ok.
+    :type step_count: str or int
+    :param step_count: step count e.g. "s00". Will be formatted so int ok.
     :type path: str
     :param path: output path to write the misfit. fid will be the event name
     :type fidout: str
     :param fidout: allow user defined filename, otherwise default to name of ds
         note: if given, var 'pathout' is not used, this must be a full path
     """
+    iter_tag = format_iter(iteration)
+    step_tag = format_step(step_count)
+
     # By default, name the file after the event id
     if fidout is None:
         fidout = os.path.join(path, format_event_name(ds))
     
-    # collect the total misfit calculated by Pyadjoint
+    # Collect the total misfit calculated by Pyadjoint
     total_misfit = 0
-    adjoint_sources = ds.auxiliary_data.AdjointSources[model][step]
+    adjoint_sources = ds.auxiliary_data.AdjointSources[iter_tag]
+    if step_tag:
+        adjoint_sources = adjoint_sources[step_tag]
+
     for adjsrc in adjoint_sources.list():
         total_misfit += adjoint_sources[adjsrc].parameters["misfit_value"]
 
-    number_windows = len(ds.auxiliary_data.MisfitWindows[model][step])
+    # Count up the number of misfit windows
+    win = ds.auxiliary_data.MisfitWindows[iter_tag]
+    if step_tag:
+        win = win[step_tag]
+    number_windows = len(win)
 
     scaled_misfit = 0.5 * total_misfit / number_windows
 
@@ -70,7 +81,7 @@ def write_misfit(ds, model, step, path="./", fidout=None):
     np.savetxt(fidout, [scaled_misfit], '%11.6e')
 
 
-def write_stations_adjoint(ds, model, specfem_station_file, step=None,
+def write_stations_adjoint(ds, iteration, specfem_station_file, step_count=None,
                            pathout=None):
     """
     Generate the STATIONS_ADJOINT file for Specfem input by reading in the
@@ -79,22 +90,20 @@ def write_stations_adjoint(ds, model, specfem_station_file, step=None,
     
     :type ds: pyasdf.ASDFDataSet
     :param ds: dataset containing AdjointSources auxiliary data
-    :type model: str
-    :param model: model number, e.g. "m00"
-    :type step: str
-    :param step: step count, e.g. "s00"
+    :type iteration: str or int
+    :param iteration: iteration number, e.g. "i01". Will be formatted so int ok.
+    :type step_count: str or int
+    :param step_count: step count e.g. "s00". Will be formatted so int ok.
     :type specfem_station_file: str
     :param specfem_station_file: path/to/specfem/DATA/STATIONS
     :type pathout: str
     :param pathout: path to save file 'STATIONS_ADJOINT'
     """
-    eid = format_event_name(ds)
-
     # Check which stations have adjoint sources
     stas_with_adjsrcs = []
-    adj_srcs = ds.auxiliary_data.AdjointSources[model]
+    adj_srcs = ds.auxiliary_data.AdjointSources[format_iter(iteration)]
     if step:
-        adj_srcs = adj_srcs[step]
+        adj_srcs = adj_srcs[format_step(step_count)]
 
     for code in adj_srcs.list():
         stas_with_adjsrcs.append(code.split('_')[1])
@@ -107,7 +116,7 @@ def write_stations_adjoint(ds, model, specfem_station_file, step=None,
     # If no output path is specified, save into current working directory with
     # an event_id tag to avoid confusion with other files, else normal naming
     if pathout is None:
-        write_out = f"./STATIONS_ADJOINT_{eid}"
+        write_out = f"./STATIONS_ADJOINT_{format_event_name(ds)}"
     else:
         write_out = os.path.join(pathout, "STATIONS_ADJOINT")
 
@@ -118,7 +127,7 @@ def write_stations_adjoint(ds, model, specfem_station_file, step=None,
                     f.write(line)
 
 
-def write_adj_src_to_ascii(ds, model, step=None, pathout=None, 
+def write_adj_src_to_ascii(ds, iteration, step_count=None, pathout=None, 
                            comp_list=["N", "E", "Z"]):
     """
     Take AdjointSource auxiliary data from a Pyasdf dataset and write out
@@ -132,10 +141,10 @@ def write_adj_src_to_ascii(ds, model, step=None, pathout=None,
 
     :type ds: pyasdf.ASDFDataSet
     :param ds: dataset containing adjoint sources
-    :type model: str
-    :param model: model number, e.g. "m00"
-    :type step: str
-    :param step: step count e.g. "s00"
+    :type iteration: str or int
+    :param iteration: iteration number, e.g. "i00". Will be formatted so int ok.
+    :type step: str or int
+    :param step: step count e.g. "s00". Will be formatted so int ok.
     :type pathout: str
     :param pathout: path to write the adjoint sources to
     :type comp_list: list of str
@@ -167,16 +176,14 @@ def write_adj_src_to_ascii(ds, model, step=None, pathout=None,
             f_.write(adj_formatter.format(dt=dt, amp=amp))
 
     # Shortcuts
-    adjsrcs = ds.auxiliary_data.AdjointSources[model]
+    adjsrcs = ds.auxiliary_data.AdjointSources[format_iter(iteration)]
     if step:
-        adjsrcs = adjsrcs[step]
-
-    eid = format_event_name(ds)
+        adjsrcs = adjsrcs[format_step(step_count)]
 
     # Set the path to write the data to.
     # If no path is given, default to current working directory
     if pathout is None:
-        pathout = os.path.join("./", eid)
+        pathout = os.path.join("./", format_event_name(ds))
     if not os.path.exists(pathout):
         os.makedirs(pathout)
 
