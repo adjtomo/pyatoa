@@ -5,133 +5,88 @@ dataset so no returns
 """
 
 
-def clean_ds(ds, model=None, step=None, fix_windows=False):
+def clean_ds(ds, iteration=None, step_count=None, fix_windows=False):
     """
     Removes synthetic waveforms and auxiliary data so that only observation
-    data remains for new model runs. If no model nmber is given, will wipe
+    data remains for new iteration runs. If no iteration nmber is given, will wipe
     all non-observation data and all auxiliary data
     
     :type ds: pyasdf.ASDFDataSet
     :param ds: dataset to be cleaned
     :type fix_windows: bool
     :param fix_windows: don't delete MisfitWindows
-    :type model: str
-    :param model: model number, e.g. "m00"
-        :type step: str
-    :param step: step number, e.g. "s00"
+    :type iteration: str
+    :param iteration: iteration number, e.g. "m00"
+        :type step_count: str
+    :param step_count: step_count number, e.g. "s00"
     """
-    del_synthetic_waveforms(ds=ds, model=model, step=step)
+    del_synthetic_waveforms(ds=ds, iteration=iteration, step_count=step_count)
     retain = []
     if fix_windows:
         retain.append("MisfitWindows")
-    del_auxiliary_data(ds=ds, model=model, step=step, retain=retain)
+
+    del_auxiliary_data(ds=ds, iteration=iteration, step_count=step_count, 
+                       retain=retain)
 
 
-def del_synthetic_waveforms(ds, model=None, step=None):
+def del_synthetic_waveforms(ds, iteration=None, step_count=None):
     """
-    Remove "synthetic_{model}" tagged waveforms from an asdf dataset.
-    If no model number given, wipes all synthetic data from dataset.   
+    Remove "synthetic_{iteration}" tagged waveforms from an asdf dataset.
+    If no iteration number given, wipes all synthetic data from dataset.   
  
     :type ds: pyasdf.ASDFDataSet
     :param ds: dataset to be cleaned
-    :type model: str
-    :param model: model number, e.g. "m00"
-    :type step: str
-    :param model: step count, e.g. "s00"
+    :type iteration: str
+    :param iteration: iteration number, e.g. "m00"
+    :type step_count: str
+    :param iteration: step_count count, e.g. "s00"
     """
     for sta in ds.waveforms.list():
         for stream in ds.waveforms[sta].list():
             if "synthetic" in stream:
-                if (model is not None) and model in stream:
-                    if (step is not None) and step in stream:
+                if (iteration is not None) and iteration in stream:
+                    if (step_count is not None) and step_count in stream:
                         del ds.waveforms[sta][stream]
-                    elif step is None:
+                    elif step_count is None:
                         del ds.waveforms[sta][stream]
-                elif model is None:
+                elif iteration is None:
                     del ds.waveforms[sta][stream]
 
 
-def del_auxiliary_data(ds, model=None, step=None, retain=[]):
+def del_auxiliary_data(ds, iteration=None, step_count=None, retain=None,
+                       only=None):
     """
-    Delete all items in auxiliary data for a given model, if model not given,
+    Delete all items in auxiliary data for a given iteration, if iteration not given,
     wipes all auxiliary data.
 
     :type ds: pyasdf.ASDFDataSet
     :param ds: dataset to be cleaned
-    :type model: str
-    :param model: model number, e.g. "m00"
-    :type step: str
-    :param step: step number, e.g. "s00"
+    :type iteration: str
+    :param iteration: iteration number, e.g. "m00"
+    :type step_count: str
+    :param step_count: step_count number, e.g. "s00"
     :type retain: list of str
-    :param retain: auxiliary data to retain
+    :param retain: list of auxiliary data tags to retain, that is: delete all 
+        auxiliary data EXCEPT FOR the names given in this variable
+    :type only: list of str
+    :param only: list of auxiliary data tags to remove, that is: ONLY delete 
+        auxiliary data that matches the names given in this variable. 
+        Lower in priority than 'retain'
     """
     for aux in ds.auxiliary_data.list():
-        if aux in retain:
+        if retain and aux in retain:
             continue
-        if (model is not None) and hasattr(ds.auxiliary_data[aux], model):
-            # If the aux data doesn't contain this model, nothing to clean
-            if (step is not None) and hasattr(ds.auxiliary_data[aux][model],
-                                              step):
-                del ds.auxiliary_data[aux][model][step]
-            # If no 'step' given, simply delete the model subgroup if avail.
-            elif step is None:
-                del ds.auxiliary_data[aux][model]
-        elif model is None:
+        if only and aux not in only:
+            continue
+        if (iteration is not None) and hasattr(ds.auxiliary_data[aux], 
+                                               iteration):
+            # If the aux data doesn't contain this iteration, nothing to clean
+            if (step_count is not None) and (
+                        hasattr(ds.auxiliary_data[aux][iteration], step_count)):
+                del ds.auxiliary_data[aux][iteration][step_count]
+            # If no 'step_count' given, simply delete the iteration subgroup 
+            elif step_count is None:
+                del ds.auxiliary_data[aux][iteration]
+        elif iteration is None:
             del ds.auxiliary_data[aux]
-
-
-def del_adjoint_sources(ds, model=None):
-    """
-    Delete adjoint sources from auxiliary data by model. Wipe all if no model
-    
-    :type ds: pyasdf.ASDFDataSet
-    :param ds: dataset to be cleaned
-    :type model: str
-    :param model: model number, e.g. "m00"
-    """
-    if model is not None:
-        for comp in ds.auxiliary_data.AdjointSources[model].list():
-            del ds.auxiliary_data.AdjointSources[model][comp]
-    elif model is None:
-        for model in ds.auxiliary.data.AdjointSources.list():
-            for comp in ds.auxiliary_data.AdjointSources[model].list():
-                del ds.auxiliary_data.AdjointSources[model][comp]
-
-
-def del_misfit_windows(ds, model=None):
-    """
-    Delete misfit windows from auxiliary data by model. Wipe all if no model
-    
-    :type ds: pyasdf.ASDFDataSet
-    :param ds: dataset to be cleaned
-    :type model: str
-    :param model: model number, e.g. "m00"
-    """
-    if model:
-        for comp in ds.auxiliary_data.MisfitWindows[model].list():
-            del ds.auxiliary_data.MisfitWindows[model][comp]
-    else:
-        for model in ds.auxiliary.data.MisfitWindows.list():
-            for comp in ds.auxiliary_data.MisfitWindows[model].list():
-                del ds.auxiliary_data.MisfitWindows[model][comp]
-
-
-def del_configs(ds, model=None):
-    """
-    Delete configs from auxiliary data by model. Wipe all if no model
-    
-    :type ds: pyasdf.ASDFDataSet
-    :param ds: dataset to be cleaned
-    :type model: str
-    :param model: model number, e.g. "m00"
-    """
-    if model:
-        for comp in ds.auxiliary_data.Configs[model].list():
-            del ds.auxiliary_data.Configs[model][comp]
-    else:
-        for model in ds.auxiliary.data.Configs.list():
-            for comp in ds.auxiliary_data.Configs[model].list():
-                del ds.auxiliary_data.Configs[model][comp]
-
-
-
+            
