@@ -22,7 +22,6 @@ import logging
 import traceback
 
 from pyatoa import logger
-from pyatoa.config import get_aux_path
 from pyatoa.utils.read import read_stations
 from pyatoa.utils.form import format_iter, format_step, format_event_name
 from pyatoa.utils.asdf.clean import clean_ds
@@ -48,7 +47,7 @@ class Pyaflowa:
     distribute information from the Seisflows workflow into Pyatoa. It takes
     care of directory structures, data processing and I/O.
     """
-    def __init__(self, pars, paths):
+    def __init__(self, pars, paths, config_file="parameters.yaml"):
         """
         Pyaflowa only needs to know what Seisflows knows.
         With this information it can create the internal directory
@@ -69,17 +68,17 @@ class Pyaflowa:
         assert("PYATOA_IO" in paths.keys())
         pyatoa_io = paths["PYATOA_IO"]
         self.work_dir = paths["WORKDIR"]
-        self.scratch_dir = paths["SCRATCH"]
         self.specfem_data = paths["SPECFEM_DATA"]
-        self.config_file = oj(self.work_dir, "parameters.yaml")
+        self.config_file = oj(self.work_dir, config_file)
 
         # Distribute hardcoded internal directory structure
         self.data_dir = oj(pyatoa_io, "data")
-        self.misfits_dir = oj(pyatoa_io, "data", "misfits")
         self.snapshots_dir = oj(pyatoa_io, "data", "snapshot")
         self.figures_dir = oj(pyatoa_io, "figures")
-        self.maps_dir = oj(pyatoa_io, "figures", "maps")
         self.vtks_dir = oj(pyatoa_io, "figures", "vtks")
+        self.scratch_dir = oj(pyatoa_io, "scratch")
+        self.maps_dir = oj(pyatoa_io, "scratch", "maps")
+        self.misfits_dir = oj(pyatoa_io, "scratch", "misfits")
 
         # Create Pyatoa directory structure
         for fid in [self.figures_dir, self.data_dir, self.misfits_dir,
@@ -158,8 +157,8 @@ class Pyaflowa:
         try:
             pyatoa.Config(yaml_fid=self.config_file)
         except ValueError as e:
-            logger.warning(e)
-            logger.warning("Config encountered unexpected arguments... exiting")
+            logger.warning(f"Config encountered unexpected arguments...\n"
+                           f"exiting with exit code:\n{e}")
             sys.exit(-1)
 
     def _check_for_fixed_windows(self, ds):
@@ -290,12 +289,13 @@ class Pyaflowa:
         :rtype paths: dict
         :return paths: event-specific paths used for I/O
         """
-        # Process specific internal directories for the processing
-        paths = {"cwd": oj(self.scratch_dir, "solver", event_id),
+        # Hardcoded process-specific internal directories for the processing
+        paths = {"cwd": oj(self.work_dir, "scratch", "solver", event_id),
                  "dataset": oj(self.data_dir, f"{event_id}.h5"),
                  "maps": oj(self.maps_dir, event_id),
                  "figures": oj(self.figures_dir, self.iter_tag, event_id),
                  }
+
         for key in ["maps", "figures"]:
             if not os.path.exists(paths[key]):
                 os.makedirs(paths[key])

@@ -27,7 +27,7 @@ class Config:
                  unit_output="DISP", pyflex_preset="default", 
                  component_list=None, adj_src_type="cc_traveltime_misfit", 
                  start_pad=20, end_pad=500, synthetic_unit="DISP", 
-                 observed_tag="observed", synthetic_tag="synthetic", 
+                 observed_tag="observed", synthetic_tag=None, 
                  synthetics_only=False, win_amp_ratio=0., cfgpaths=None, 
                  save_to_ds=True, **kwargs):
         """
@@ -112,11 +112,10 @@ class Config:
         self.unit_output = unit_output.upper()
         self.synthetic_unit = synthetic_unit.upper()
         self.observed_tag = observed_tag
-
-        self.synthetic_tag = synthetic_tag
-        if self.get_aux_path(default=None) is not None:
-            # Tag is based on current iter and step, e.g. synthetic_i00s00
-            self.synthetic_tag += f"_{self.get_aux_path(separator='')}"
+        
+        # Allow manual override of synthetic tag, but keep internal and rely 
+        # on calling property for actual value
+        self._synthetic_tag = synthetic_tag
 
         self.pyflex_preset = pyflex_preset
         self.adj_src_type = adj_src_type
@@ -200,9 +199,22 @@ class Config:
             return None
 
     @property
+    def synthetic_tag(self):
+        """tag to be used for synthetic data, uses iteration and step count"""
+        if self._synthetic_tag is not None:
+            return self._synthetic_tag
+
+        # If no override value given, fall back to default
+        tag = self._get_aux_path(default=None, separator='')
+        if tag is not None:
+            return f"synthetic_{tag}"
+        else:
+            return "synthetic"
+
+    @property
     def aux_path(self):
         """property to quickly get a bog-standard aux path e.g. i00/s00"""
-        return self.get_aux_path()
+        return self._get_aux_path()
 
     def _check(self, **kwargs):
         """
@@ -227,6 +239,7 @@ class Config:
         for key in self.cfgpaths.keys():
             assert(key in required_keys), \
                 f"path keys can only be in {required_keys}"
+
         # Make sure that all the required keys are given in the dictionary
         for key in required_keys:
             if key not in self.cfgpaths.keys():
@@ -267,7 +280,7 @@ class Config:
             raise ValueError(f"{unused_kwargs} are not keyword arguments in "
                              f"Pyatoa, Pyflex or Pyadjoint.")
 
-    def get_aux_path(self, default="default", separator="/"):
+    def _get_aux_path(self, default="default", separator="/"):
         """
         Pre-formatted path to be used for tagging and identification in 
         ASDF dataset auxiliary data. Internal function to be called by property

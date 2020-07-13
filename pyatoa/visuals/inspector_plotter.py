@@ -147,7 +147,7 @@ class InspectorPlotter:
         else:
             plt.close()
 
-    def raypaths(self, model, step, show=True, save=False, **kwargs):
+    def raypaths(self, iteration, step, show=True, save=False, **kwargs):
         """
         Plot rays connecting sources and receivers based on the availability
         of measurements. Useful for getting an approximation of resolution.
@@ -158,7 +158,7 @@ class InspectorPlotter:
 
         f, ax = plt.subplots(figsize=(8, 8))
 
-        df = self.misfits(level="station").loc[model, step]
+        df = self.misfits(level="station").loc[iteration, step]
 
         # Get lat/lon information from sources and receivers
         stations = self.receivers.droplevel(0)  # remove network index
@@ -193,14 +193,14 @@ class InspectorPlotter:
         else:
             plt.close()
 
-    def measurement_hist(self, model, step, choice="event", show=True, 
+    def measurement_hist(self, iteration, step, choice="event", show=True, 
                          save=False):
         """
         Make histograms of measurements for stations or events to show the 
         distribution of measurements. 
 
-        :type model: str
-        :param model: model number e.g. 'm00'
+        :type iteration: str
+        :param iteration: iteration number e.g. 'i00'
         :type step: str
         :param step: step count e.g. 's00'
         :type choice: str
@@ -210,7 +210,7 @@ class InspectorPlotter:
         :type save: str
         :param save: fid to save the given figure
         """
-        arr = self.nwin(level=choice).loc[model, step].n_win.to_numpy()
+        arr = self.nwin(level=choice).loc[iteration, step].n_win.to_numpy()
         n, bins, patches = plt.hist(x=arr, color="orange", histtype="bar",  
                                     edgecolor="black", linewidth=4.,
                                     label=choice, alpha=1., zorder=20
@@ -230,7 +230,7 @@ class InspectorPlotter:
             plt.close()
 
 
-    def station_misfit_map(self, station, model, step, choice, show=True, 
+    def station_misfit_map(self, station, iteration, step, choice, show=True, 
                            save=False, **kwargs):
         """
         Plot a single station and all events that it has measurements for.
@@ -247,7 +247,7 @@ class InspectorPlotter:
         sta = self.receivers.droplevel(0).loc[station]
 
         # Get misfit on a per-station basis 
-        df = self.misfits(level="station").loc[model, step].swaplevel(0, 1)
+        df = self.misfits(level="station").loc[iteration, step].swaplevel(0, 1)
         df = df.sort_values(by="station").loc[station]
 
         # Get source lat/lon values as a single dataframe with same index name
@@ -266,7 +266,7 @@ class InspectorPlotter:
 
         plt.xlabel("Longitude")
         plt.ylabel("Latitude")
-        plt.title(f"{station} {model}{step}; {len(df)} events")
+        plt.title(f"{station} {iteration}{step}; {len(df)} events")
 
         colormap_colorbar(cmap, vmin=df[choice].to_numpy().min(), 
                           vmax=df[choice].to_numpy().max(), cbar_label=choice,
@@ -280,7 +280,7 @@ class InspectorPlotter:
 
         return f, ax
 
-    def event_misfit_map(self, event, model, step, choice, show=True, 
+    def event_misfit_map(self, event, iteration, step, choice, show=True, 
                          save=False, **kwargs):
         """
         Plot a single event and all stations with measurements. Stations are
@@ -300,7 +300,7 @@ class InspectorPlotter:
                           edgecolors="k", s=20, zorder=100)
 
         # Go through each of the stations corresponding to this source
-        df = self.misfits(level="station").loc[model, step, event]  # i<3pandas
+        df = self.misfits(level="station").loc[iteration, step, event] #  <3ezpz
         assert(choice in df.columns), f"choice must be in {df.columns}"
 
         # Get lat lon values for receivers
@@ -313,7 +313,7 @@ class InspectorPlotter:
 
         plt.xlabel("Longitude")
         plt.ylabel("Latitude")
-        plt.title(f"{event} {model}{step}; {len(df)} stations")
+        plt.title(f"{event} {iteration}{step}; {len(df)} stations")
 
         colormap_colorbar(cmap, vmin=misfit_values.min(), 
                           vmax=misfit_values.max(), cbar_label=choice,
@@ -327,22 +327,22 @@ class InspectorPlotter:
 
         return f, ax
 
-    def hist(self, model, step, model_comp=None, step_comp=None, f=None, 
+    def hist(self, iteration, step, iteration_comp=None, step_comp=None, f=None, 
              ax=None, event=None, station=None, choice="cc_shift_in_seconds", 
              binsize=1., show=True, save=None, **kwargs):
         """
         Create a histogram of misfit information for either time shift or
-        amplitude differences. Option to compare against different models,
+        amplitude differences. Option to compare against different iterations,
         and to look at different choices.
 
         Choices are any column value in the Inspector.windows attribute
 
-        :type model: str
-        :param model: model to choose for misfit
+        :type iteration: str
+        :param iteration: iteration to choose for misfit
         :type step: str
         :param step: step count to query, e.g. 's00'
-        :type model_comp: str
-        :param model_comp: model to compare with, will be plotted in front
+        :type iteration_comp: str
+        :param iteration_comp: iteration to compare with, will be plotted in front
         :type step_comp: str
         :param step_comp: step to compare with
         :type f: matplotlib.figure
@@ -357,14 +357,15 @@ class InspectorPlotter:
         :type save: str
         :param save: fid to save the figure
         """
-        assert model in self.models, f"model must be in {self.models}"
-        assert step in self.steps.loc[model], \
-            f"step must be in {self.steps.loc[model]}"
-        if model_comp is not None:
-            assert model_comp in self.models, \
-                f"model_comp must be in {self.models}"
-            assert step_comp in self.steps.loc[model_comp], \
-                f"step_comp must be in {self.steps.loc[model_comp]}"
+        assert iteration in self.iterations, \
+                                     f"iteration must be in {self.iterations}"
+        assert step in self.steps.loc[iteration], \
+            f"step must be in {self.steps.loc[iteration]}"
+        if iteration_comp is not None:
+            assert iteration_comp in self.iterations, \
+                f"iteration_comp must be in {self.iterations}"
+            assert step_comp in self.steps.loc[iteration_comp], \
+                f"step_comp must be in {self.steps.loc[iteration_comp]}"
 
         # Optional kwargs for fine tuning figure parameters
         title = kwargs.get("title", "")
@@ -389,7 +390,7 @@ class InspectorPlotter:
 
         def get_values(m, s, e, sta):
             """short hand to get the data, and the maximum value in DataFrame"""
-            df_a = self.isolate(model=m, step=s, event=e, station=sta)
+            df_a = self.isolate(iteration=m, step=s, event=e, station=sta)
             try:
                 val_ = df_a.loc[:, choice].to_numpy()
             except KeyError as e:
@@ -411,21 +412,21 @@ class InspectorPlotter:
         if ax is None:
             ax = plt.gca()
 
-        val, lim = get_values(model, step, event, station)
+        val, lim = get_values(iteration, step, event, station)
 
-        if model_comp:
-            val_comp, lim_comp = get_values(model_comp, step_comp, event, 
+        if iteration_comp:
+            val_comp, lim_comp = get_values(iteration_comp, step_comp, event, 
                                             station)
 
             # Reset the limit to be the greater of the two
             lim = max(lim, lim_comp)
 
-            # Compare models, plot original model on top 
+            # Compare iterations, plot original iteration on top 
             n, bins, patches = plt.hist(
                 x=val, bins=np.arange(-1*lim, lim+.1, binsize),
                 color=color,  histtype="bar",  edgecolor="black", 
                 linewidth=linewidth,
-                label=(label or f"{model}{step}") + f"; N={len(val)}", 
+                label=(label or f"{iteration}{step}") + f"; N={len(val)}", 
                 zorder=11, alpha=1.
             )
 
@@ -439,7 +440,7 @@ class InspectorPlotter:
                 x=val_comp, bins=np.arange(-1*lim, lim+.1, binsize),
                 color=color_comp,  histtype="bar", edgecolor="black",
                 linewidth=linewidth + 1, zorder=10,
-                label=(label_comp or f"{model_comp}{step_comp}") + \
+                label=(label_comp or f"{iteration_comp}{step_comp}") + \
                         f"; N={len(val_comp)}", 
             )
             # mu2, var2, std2 = get_histogram_stats(n2, bins2)
@@ -453,7 +454,7 @@ class InspectorPlotter:
                      linewidth=linewidth, zorder=12,
                      )
         else:
-            # No comparison model, plot single histogram
+            # No comparison iteration, plot single histogram
             n, bins, patches = plt.hist(
                 x=val, bins=len(np.arange(-1*lim, lim, binsize)), color=color,
                 histtype="bar", edgecolor="black", linewidth=linewidth,
@@ -492,11 +493,11 @@ class InspectorPlotter:
         if not title:
             tit_fmt = "mean: {mean:.2f} / std: {std:.2f} / med: {med:.2f}"
             title = tit_fmt.format(mean=mean, std=std, med=med)
-            if model_comp:
+            if iteration_comp:
                 tit_comp = tit_fmt.format(mean=mean_comp, std=std_comp, 
                                           med=med_comp)
-                title = " ".join([f"[{label or model}]", title, "\n", 
-                                  f"[{label_comp or model_comp}]", tit_comp
+                title = " ".join([f"[{label or iteration}]", title, "\n", 
+                                  f"[{label_comp or iteration_comp}]", tit_comp
                                   ])
 
         # Finalize plot details
@@ -532,23 +533,24 @@ class InspectorPlotter:
     
         return f, ax
 
-    def plot_windows(self, model, step, event=None, network=None, station=None,
-                     component=None):
+    def plot_windows(self, iteration, step, event=None, network=None, 
+                     station=None, component=None):
         """
         Show lengths of windows chosen based on source-receiver distance, akin
         to Tape's Thesis or to the LASIF plots. These are useful for showing
         which phases are chosen, and window choosing behavior as distance
         increases and (probably) misfit increases.
 
-        :type model: str
-        :param model: model to analyze
+        :type iteration: str
+        :param iteration: iteration to analyze
         :type step: str
         :param step: step count to query, e.g. 's00'
         :type component: str
         :param component: choose a specific component to analyze
         """
-        assert(model in self.models and step in self.steps[model]), \
-            f"{model}{step} does not exist in Inspector"
+        assert(
+            iteration in self.iterations and step in self.steps[iteration]), \
+            f"{iteration}{step} does not exist in Inspector"
 
         comp_dict = {"Z": "orangered",
                      "N": "forestgreen", "R": "forestgreen",
@@ -556,7 +558,7 @@ class InspectorPlotter:
                      }
 
         srcrcv = self.calculate_srcrcv()
-        windows = self.isolate(model=model, step=step, event=event,
+        windows = self.isolate(iteration=iteration, step=step, event=event,
                                network=network, station=station
                                )
         # Only get information up to component, and times
@@ -602,12 +604,12 @@ class InspectorPlotter:
 
         plt.show()
 
-    def plot_window_differences(model_a, step_a, model_b, step_b):
+    def plot_window_differences(iteration_a, step_a, iteration_b, step_b):
         """
         """
         srcrcv = self.calculate_srcrcv()
-        windows_a = self.isolate(model=model_a, step=step_a)
-        windows_b = self.isolate(model=model_b, step=step_b)
+        windows_a = self.isolate(iteration=iteration_a, step=step_a)
+        windows_b = self.isolate(iteration=iteration_b, step=step_b)
         df_a = windows_a.loc[:, ["event", "network", "station", "component",
                                  "relative_starttime", "relative_endtime"]]
         df_a.rename(columns={"relative_starttime": "start_a",
@@ -645,14 +647,14 @@ class InspectorPlotter:
                       )
 
     def convergence(self, plot_windows="length_s", plot_discards=True,
-                    ignore_models=False, show=True, save=None, 
+                    ignore_iterations=False, show=True, save=None, 
                     normalize=False, **kwargs):
         """
         Plot the convergence rate over the course of an inversion.
-        Scatter plot of total misfit against model number, or by step count
+        Scatter plot of total misfit against iteration number, or by step count
 
         :type choice: str
-        :param choice: choice to plot convergence through 'model' or 'iter'
+        :param choice: choice to plot convergence through 'iteration' or 'iter'
         :type plot_windows: str or bool
         :param windows_by: parameter to use for Inspector.measurements() to
             determine how to illustrate measurement number, either by
@@ -663,8 +665,8 @@ class InspectorPlotter:
         :param plot_discards: plot the discarded function evaluations from the
             line searches. Useful for understanding how efficient the 
             optimization algorithm as
-        :type ignore_models: list
-        :param ignore_models: a list of models to be ignored in the plotting
+        :type ignore_iterations: list
+        :param ignore_iterations: a list of iterations to be ignored in the plotting
         :type show: bool
         :param show: show the plot after making it
         :type save: str
@@ -688,26 +690,26 @@ class InspectorPlotter:
 
         # Get misfit information and window lengths together in a dataframe
         df = self.misfits()
-        df = df.merge(self.nwin(), on=["model", "step"])
+        df = df.merge(self.nwin(), on=["iteration", "step"])
         df.drop(["n_event", "summed_misfit"], axis=1, inplace=True)
-        models = df.index.get_level_values("model").unique().to_numpy()
+        iterations = df.index.get_level_values("iteration").unique().to_numpy()
 
         if f is None:
             f, ax = plt.subplots(figsize=figsize)
         if ax is None:
             ax = plt.gca()
 
-        # Get the actual model numbers based on step count
-        true_models = self.sort_steps()
-        discard_models = self.sort_steps(discards=True)
+        # Get the actual iteration numbers based on step count
+        true_iterations = self.sort_steps()
+        discard_iterations = self.sort_steps(discards=True)
 
         ld, lines = None, []  # For legend lines
         xvalues, xlabels, misfits, windows = [], [], [], []
-        for x, (model, modstep) in enumerate(true_models.items()):
-            if ignore_models and model in ignore_models:
+        for x, (iteration, iterstep) in enumerate(true_iterations.items()):
+            if ignore_iterations and iteration in ignore_iterations:
                 continue
-            m, s = modstep.split("/")
-            df_temp = df.loc[m, s]
+            i, s = iterstep.split("/")
+            df_temp = df.loc[i, s]
 
             if plot_windows:
                 misfit, window = df_temp.loc[["misfit", 
@@ -717,21 +719,21 @@ class InspectorPlotter:
                 misfit = df_temp.loc["misfit"]
 
             xvalues.append(x)
-            xlabels.append(model)
+            xlabels.append(iteration)
             misfits.append(misfit)
 
             # Plot all discarded misfits that were evaluated during line search
             # Super hacky, needs to be reworked
             if plot_discards:
-                if f"m{x:0>2}_all" in discard_models.keys():
-                    for ms_ in discard_models[f"m{x:0>2}_all"]:
-                        m_, s_ = ms_.split("/")
-                        misfit_ = df.loc[m_, s_].loc["misfit"]
+                if f"i{x:0>2}_all" in discard_iterations.keys():
+                    for is_ in discard_iterations[f"i{x:0>2}_all"]:
+                        i_, s_ = is_.split("/")
+                        misfit_ = df.loc[i_, s_].loc["misfit"]
                         if misfit_ == misfit:
                             continue
                         ld = ax.plot(x, misfit_, 'X', markersize=10, 
-                                      c=discard_color, label=discard_label, 
-                                      zorder=6)
+                                     c=discard_color, label=discard_label, 
+                                     zorder=6)
 
         # Add single marker to legend
         if ld:

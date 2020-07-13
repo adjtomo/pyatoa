@@ -10,7 +10,6 @@ import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
-from pyatoa.utils.form import format_model_number, format_step_count
 from pyatoa.utils.calculate import normalize_a_to_b, abs_max
 
 
@@ -515,10 +514,10 @@ class ManagerPlotter:
 
         # Add information about the iteration, windowing and misfit measurement
         title += "\n"
-        if self.config.model is not None:
-            title += format_model_number(self.config.model)
-        if self.config.step is not None:
-            title += format_step_count(self.config.step)
+        if self.config.iter_tag is not None:
+            title += self.config.iter_tag
+        if self.config.step_tag is not None:
+            title += self.config.step_tag
 
         # Add information about the Pyflex and Pyadjoint parameters used
         if self.kwargs.get("plot_stalta", True):

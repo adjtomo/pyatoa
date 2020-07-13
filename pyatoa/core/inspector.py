@@ -67,14 +67,14 @@ class Inspector(InspectorPlotter):
         try:
             str_out = (f"{len(self.events):<4} event(s)\n"
                        f"{len(self.stations):<4} station(s)\n"
-                       f"{len(self.models):<4} model(s)\n"
-                       f"{self.iterations:<4} iteration(s)")
+                       f"{len(self.iterations):<4} iteration(s)\n"
+                       f"{self.evaluations:<4} evaluation(s)")
 
         except KeyError:
             str_out = (f"{0:<4} event(s)\n"
                        f"{0:<4} station(s)\n"
-                       f"{0:<4} model(s)\n"
-                       f"{0:<4} iteration(s)\n")
+                       f"{0:<4} iteration(s)\n"
+                       f"{0:<4} evaluation(s)\n")
         return str_out
 
     def __str__(self):
@@ -123,14 +123,14 @@ class Inspector(InspectorPlotter):
 
     @property
     def iterations(self):
-        """Return an array of all models"""
-        return self._try_print("model")
+        """Return an array of all iteration"""
+        return self._try_print("iteration")
 
     @property
     def steps(self):
-        """Returns a pandas.Series of models with values listing steps"""
+        """Returns a pandas. Series of iteration with values listing steps"""
         try:
-            return self.windows.groupby("model").apply(
+            return self.windows.groupby("iteration").apply(
                 lambda x: x["step"].unique()
             )
         except KeyError:
@@ -235,7 +235,7 @@ class Inspector(InspectorPlotter):
 
         # Initialize an empty dictionary that will be used to initalize
         # a Pandas DataFrame
-        window = {"event": [], "model": [], "step": [], "network": [],
+        window = {"event": [], "iteration": [], "step": [], "network": [],
                   "station": [], "channel": [], "component": [], "misfit": [],
                   "length_s": [],
                   }
@@ -249,9 +249,9 @@ class Inspector(InspectorPlotter):
         misfit_windows = ds.auxiliary_data.MisfitWindows
         adjoint_sources = ds.auxiliary_data.AdjointSources
 
-        for model in misfit_windows.list():
-            for step in misfit_windows[model].list():
-                for win in misfit_windows[model][step]:
+        for iter_ in misfit_windows.list():
+            for step in misfit_windows[iter_].list():
+                for win in misfit_windows[iter_][step]:
                     # pick apart information from this window
                     cha_id = win.parameters["channel_id"]
                     net, sta, loc, cha = cha_id.split(".")
@@ -259,7 +259,7 @@ class Inspector(InspectorPlotter):
 
                     # get information from corresponding adjoint source
                     # This will be the same for multiple windows
-                    adj_src = adjoint_sources[model][step][adj_src_fmt.format(
+                    adj_src = adjoint_sources[iter_][step][adj_src_fmt.format(
                         net=net, sta=sta, cmp=component
                     )]
                     window["misfit"].append(adj_src.parameters["misfit_value"])
@@ -274,7 +274,7 @@ class Inspector(InspectorPlotter):
                     window["station"].append(sta)
                     window["channel"].append(cha)
                     window["component"].append(component)
-                    window["model"].append(model)
+                    window["iteration"].append(iter_)
                     window["step"].append(step)
 
                     # useful to get window length information
@@ -383,7 +383,7 @@ class Inspector(InspectorPlotter):
         else:
             raise NotImplementedError
 
-    def sort_steps(self, discards=False):
+    def get_models(self, discards=False):
         """
         Once the L-BFGS optimization is well scaled, the function evaluation in
         the line search of the previous model 'm-1' is used as the function 
@@ -404,37 +404,37 @@ class Inspector(InspectorPlotter):
         Confusing aye? This needs to be adjusted in Pyatoa...
         """
         dict_out = {}
-        m = 0
-        prev_model = None
+        i = 0
+        prev_iter = None
         # Hacky way to get an additional model to the end of the model list
-        final_model = f"m{int(self.models[-1][1:])+1:0>2}"
+        final_iter = f"i{int(self.iterations[-1][1:])+1:0>2}"
 
-        for model in np.append(self.models, final_model):
-            if model in self.steps and "s00" in self.steps[model]:
-                selected_iteration = f"{model}/s00"
+        for iter_ in np.append(self.iterations, final_iter):
+            if iter_ in self.steps and "s00" in self.steps[iter_]:
+                selected_iteration = f"{iter_}/s00"
             else:
-                last_model_last_step = self.steps[prev_model][-1]
-                selected_iteration = f"{prev_model}/{last_model_last_step}"
+                last_iter_last_step = self.steps[prev_iter][-1]
+                selected_iteration = f"{prev_iter}/{last_iter_last_step}"
 
-            dict_out[f"m{m:0>2}"] = selected_iteration
+            dict_out[f"i{i:0>2}"] = selected_iteration
 
             # Set the new model count
-            m += 1
-            prev_model = model
+            i += 1
+            prev_iter = iter_
 
-            if m > len(self.models):
+            if i > len(self.iterations):
                 break
 
             # Get the discarded steps by searching the previous model
             if discards:
-                if model in self.steps:
-                    all_steps = [f"{model}/{step}" for step in 
-                                         self.steps[model] if "s00" not in step]
-                dict_out[f"m{m:0>2}_all"] = all_steps
+                if iter_ in self.steps:
+                    all_steps = [f"{iter_}/{step}" for step in 
+                                         self.steps[iter_] if "s00" not in step]
+                dict_out[f"i{i:0>2}_all"] = all_steps
 
         return dict_out
 
-    def isolate(self, model=None, step=None,  event=None, network=None,
+    def isolate(self, iteration=None, step=None,  event=None, network=None,
                 station=None, channel=None, comp=None, keys=None, 
                 exclude=None, unique_key=None):
         """
@@ -443,8 +443,8 @@ class Inspector(InspectorPlotter):
 
         :type event: str
         :param event: event id e.g. '2018p130600' (optional
-        :type model: str
-        :param model: model number e.g. 'm00' (optional)
+        :type iteration: str
+        :param iteration: iteration e.g. 'i00' (optional)
         :type step: str
         :param step: step count e.g. 's00' (optional)
         :type station: str
@@ -470,7 +470,8 @@ class Inspector(InspectorPlotter):
         """
         df = self.windows
         df = df.loc[(df["event"] == (event or df["event"].to_numpy())) &
-                    (df["model"] == (model or df["model"].to_numpy())) &
+                    (df["iteration"] == (
+                                    iteration or df["iteration"].to_numpy())) &
                     (df["step"] == (step or df["step"].to_numpy())) &
                     (df["station"] == (station or df["station"].to_numpy())) &
                     (df["network"] == (network or df["network"].to_numpy())) &
@@ -479,7 +480,7 @@ class Inspector(InspectorPlotter):
                     ]
         if unique_key is not None:
             # return the unique key alongside identifying information
-            unique_keys = ["event", "model", "step", "network", "station", 
+            unique_keys = ["event", "iteration", "step", "network", "station", 
                            "channel", "comp", unique_key]
             df = df.loc[:, df.columns.intersection(unique_keys)]
         if exclude is not None:
@@ -498,8 +499,8 @@ class Inspector(InspectorPlotter):
 
     def nwin(self, level="step"):
         """
-        Find the cumulative length of misfit windows for a given model/step,
-        or the number of misfit windows for a given model/step.
+        Find the cumulative length of misfit windows for a given iter/step,
+        or the number of misfit windows for a given iter/step.
 
         Neat trick to select just by station:
             insp.windows(level='station').query("station == 'BFZ'")
@@ -511,11 +512,11 @@ class Inspector(InspectorPlotter):
             'station': to get this on a per-station basis,
                     useful for identifying sta quality.
         :rtype: pandas.DataFrame
-        :return: a DataFrame with indices corresponding to model, step,
+        :return: a DataFrame with indices corresponding to iter, step,
             columns listing the number of windows (n_win) and the cumulative
             length of windows in seconds (length_s)
         """
-        group_list = ["model", "step", "length_s"]
+        group_list = ["iteration", "step", "length_s"]
         if level in ["station", "event"]:
             group_list.insert(2, level)
         elif level == "step":
@@ -533,12 +534,12 @@ class Inspector(InspectorPlotter):
 
     def misfits(self, level="step"):
         """
-        Sum the total misfit for a given model based on the individual
+        Sum the total misfit for a given iteration based on the individual
         misfits for each misfit window, and the number of sources used.
 
         To get per-station misfit on a per-step basis
             df = insp.misfits(level="station").query("station == 'TOZ'")
-            df.groupby(['model', 'step']).sum()
+            df.groupby(['iteration', 'step']).sum()
 
         :type level: str
         :param level:  Default is 'step'
@@ -546,10 +547,10 @@ class Inspector(InspectorPlotter):
             'step': to get total misfit for a given step count.
             'event': to get this on a per-event misfit.
         :rtype: dict
-        :return: total misfit for each model in the class
+        :return: total misfit for each iteration in the class
         """
         # Various levels to sort the misfit by
-        group_list = ["model", "step", "event", "station", "component", 
+        group_list = ["iteration", "step", "event", "station", "component", 
                       "misfit"]
         misfits = self.windows.loc[:, tuple(group_list)]
 
@@ -583,7 +584,7 @@ class Inspector(InspectorPlotter):
             if level == "step":
                 # Sum the event misfits if step-wise misfit is requested
                 misfits = df.loc[:, "misfit"]
-                group = misfits.groupby(["model", "step"])
+                group = misfits.groupby(["iteration", "step"])
                 df = pd.concat([group.apply(len).rename("n_event"),
                                 group.sum().rename("summed_misfit")], axis=1)
                 # Misfit function a la Tape et al. (2010) Eq. 7

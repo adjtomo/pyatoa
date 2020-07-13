@@ -55,6 +55,13 @@ def test_incorrect_parameter_check():
     with pytest.raises(ValueError):
         cfg = Config(ununused_kwarg="I dont belong :(")
 
-
+def test_get_path_for_aux_data():
+    """
+    Ensure that path naming works as advertise
+    """
+    assert(Config().get_aux_path() == "default")
+    assert(Config(iteration=0).get_aux_path() == "i00")
+    assert(Config(iteration=0, step_count=1).get_aux_path() == "i00/s01")
+ 
 
 
