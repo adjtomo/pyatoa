@@ -1,6 +1,7 @@
 ## For Version 0.2.0
 
 #### Features
+- [ ] Introduce multiprocessing with concurrent.futures or multiprocessing packages.
 - [X] Use Pandas in the Inspector class to do the large-scale data analysis required for all the misfit windows, etc.
 
 #### Bugs
