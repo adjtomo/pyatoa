@@ -381,43 +381,50 @@ class Config:
         :param filename: filename to save yaml file
         """
         # Ensure file ending
-        if filename[-5:] != ".yaml":
+        if os.path.splitext(filename)[1] != ".yaml":
             filename += ".yaml"
         with open(filename, "w") as f:
             yaml.dump(vars(self), f, default_flow_style=False, sort_keys=False)
 
     def _write_asdf(self, ds):
         """
-        Save the config values as a dictionary in the pyasdf data format
-        for easy lookback
+        Save the Config values as a parameter dictionary in the ASDF Data set
+        Converts types to play nice with ASDF Auxiliary Data.
+        Flattens dictionaries and external Config objects for easy storage.
 
         :type ds: pyasdf.ASDFDataSet
         :param ds: dataset to save the config file to
         """
         # Lazy imports because this function isn't always called
         from numpy import array
-        from obspy import UTCDateTime
         from copy import deepcopy
 
-        # Add/standardize some variables before passing to dataset
-        # deep copy to ensure that we aren't editing the Config parameters
+        # Deep copy to ensure that we aren't editing the Config parameters
         attrs = vars(deepcopy(self))
-
-        # Auxiliary data doesn't like NoneType objects
+        
+        add_attrs = {}
+        del_attrs = []
         for key, item in attrs.items():
             if item is None:
-                attrs[key] = ''
+                # HDF doesn't support NoneType so convert to string        
+                attrs[key] = "None"
+            elif isinstance(item, (dict, PyflexConfig, PyadjointConfig)):
+                # Flatten dictionaries, add prefix, delete original
+                try:
+                    # Config objects will need to be converted to dictionaries
+                    vars_ = vars(item)
+                except TypeError:
+                    vars_ = item
+                # Prepend a prefix for easier read-back, also convert NoneTypes
+                vars_ = {f"{key}_{k}": ('' if i is None else i)
+                                                for k, i in vars_.items()}
+                del_attrs.append(key)
+                add_attrs.update(vars_)
 
-        attrs["creation_time"] = str(UTCDateTime())
-        attrs["cfgpaths_waveforms"] = self.cfgpaths["waveforms"]
-        attrs["cfgpaths_synthetics"] = self.cfgpaths["synthetics"]
-        attrs["cfgpaths_responses"] = self.cfgpaths["responses"]
-
-        # remove Config objects because pyASDF won't recognize dicts or objects
-        # these will be reinstated by _check() if/when read back in
-        del attrs["pyflex_config"]
-        del attrs["pyadjoint_config"]
-        del attrs["cfgpaths"]
+        # Update the dictionary after the fact
+        for key in del_attrs:
+            attrs.pop(key)
+        attrs.update(add_attrs)
 
         ds.add_auxiliary_data(data_type="Configs", data=array([True]),
                               path=self.aux_path, parameters=attrs
@@ -499,23 +506,40 @@ class Config:
         else:
             cfgin = ds.auxiliary_data.Configs[path].parameters
 
-        cfgpaths = {}
-        for key, item in cfgin.items():
-            if "cfgpaths" in key:
-                cfgpaths[key.split('_')[1]] = item.any() or []
-            else:
-                # Convert numpy objects into native python objects to avoid
-                # any confusion when reading from ASDF format
-                try:
-                    setattr(self, key, item.item())
-                except ValueError:
-                    setattr(self, key, item.tolist())
-                except AttributeError:
-                    setattr(self, key, item)
+        # Parameters from flattened dictionaries will need special treatment
+        cfgpaths, pyflex_config, pyadjoint_config = {}, {}, {}
 
+        for key, item in cfgin.items():
+            # Convert the item into expected native Python objects
+            if isinstance(item, str):
+                item = None if item == "None" else item
+            else:
+                try:
+                    item = item.item()
+                except ValueError:
+                    item = item.tolist()
+
+            # Put the item in the correct dictionary
+            if "cfgpaths" in key:
+                # e.g. cfgpaths_waveforms -> waveforms
+                cfgpaths[key.split('_')[1]] = item
+            elif "pyflex_config" in key:
+                pyflex_config["_".join(key.split('_')[2:])] = item
+            elif "pyadjoint_config" in key:
+                # e.g. pyadjoint_config_dlna_sigma_min -> dlna_sigma_min
+                pyadjoint_config["_".join(key.split('_')[2:])] = item
+            else:
+                # Normal Config attribute
+                setattr(self, key, item)
+
+        # Assign the flattened dictionaries back into nested dictionaries
         setattr(self, "cfgpaths", cfgpaths)
 
-        self._check()
+        pyflex_config, _ = set_pyflex_config(**pyflex_config, choice=None)
+        setattr(self, "pyflex_config", pyflex_config)
+
+        pyadjoint_config, _ = set_pyadjoint_config(**pyadjoint_config)
+        setattr(self, "pyadjoint_config", pyadjoint_config)
 
 
 def set_pyflex_config(min_period, max_period, choice=None, **kwargs):
