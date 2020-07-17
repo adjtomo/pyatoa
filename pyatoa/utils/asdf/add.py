@@ -6,7 +6,7 @@ add new auxiliary data structures to existing ASDF datasets
 import warnings
 import numpy as np
 from pyatoa import logger
-from pyatoa.utils.form import create_window_dictionary, channel_code
+from pyatoa.utils.form import channel_code
 
 
 def add_misfit_windows(windows, ds, path):
@@ -21,24 +21,35 @@ def add_misfit_windows(windows, ds, path):
     :type path: str
     :param path: internal pathing to save location of auxiliary data
     """
+
+
     # Save windows by component
     for comp in windows.keys():
-        for i, window in enumerate(windows[comp]):
+        for i, win in enumerate(windows[comp]):
             # Figure out how to tag the data in the dataset
-            net, sta, loc, cha = window.channel_id.split(".")
+            net, sta, loc, cha = win.channel_id.split(".")
 
             # net_sta_comp_i: e.g. NZ_BFZ_Z_0
             window_tag = "_".join([net, sta, cha[-1], str(i)])
 
-            # ASDF auxiliary_data subgroups don't play nice with nested
-            # dictionaries, which the window parameters are. Format them
-            # a bit simpler for saving into the dataset
-            window_dict = create_window_dictionary(window)
+            # Turn UTCDateTime objects into strings
+            wdict = win._get_json_content()
+            wdict["absolute_endtime"] = str(wdict["absolute_endtime"])
+            wdict["absolute_starttime"] = str(wdict["absolute_starttime"])
+            wdict["time_of_first_sample"] = str(wdict["time_of_first_sample"])
+
+            # Flatten nested dictionary
+            phase_arrivals = wdict["phase_arrivals"]
+            for phase in phase_arrivals:
+                wdict[f"phase_arrival_{phase['name']}"] = phase["time"]
+            wdict.pop("phase_arrivals")
+
+            # Write windows into dataset
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")
-                ds.add_auxiliary_data(data=np.array([True]),
+                ds.add_auxiliary_data(data=np.array([win.left, win.right]),
                                       data_type="MisfitWindows",
-                                      parameters=window_dict,
+                                      parameters=wdict,
                                       path=f"{path}/{window_tag}"
                                       )
 

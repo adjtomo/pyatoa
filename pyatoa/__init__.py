@@ -11,10 +11,11 @@ formatter = logging.Formatter(FORMAT, datefmt="%Y-%m-%d %H:%M:%S")
 ch.setFormatter(formatter)
 logger.addHandler(ch)
 
+# Actually this is annoying, don't do that
 # Redirect warning messages into the logger
-logging.captureWarnings(True)
-warnings_logger = logging.getLogger("py.warnings")
-warnings_logger.addHandler(logger)
+# logging.captureWarnings(True)
+# warnings_logger = logging.getLogger("py.warnings")
+# warnings_logger.addHandler(logger)
 
 from pyatoa.core.config import Config # NOQA
 from pyatoa.core.manager import Manager, ManagerError # NOQA
