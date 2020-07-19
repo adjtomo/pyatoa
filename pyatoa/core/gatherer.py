@@ -355,7 +355,8 @@ class InternalFetcher:
             return None
 
     def fetch_syn_by_dir(self, station_code, event_id="", pathname="synthetics",
-                         specfem_fid_template="{net}.{sta}.*{cmp}.sem{dva}"):
+                         specfem_fid_template="{net}.{sta}.*{cmp}.sem{dva}",
+                         synthetic_unit="?"):
         """
         Fetch synthetic waveforms from Specfem3D via directory structure on
         disk, if necessary convert native ASCII format to Stream object.
@@ -373,6 +374,12 @@ class InternalFetcher:
             the directory for the event id first, rather than just searching the
             given directory. Useful for when data is stored by event id
             e.g. /path/to/synthetics/{event_id}/*
+        :type synthetic_unit: str
+        :param synthetic_unit: optional argument to specify the letter used to 
+            identify the units of the synthetic data: ["d", "v", "a", "?"]
+            Specfem denotes the units of synthetic traces by the naming of the
+            ASCII files, corresponding to 'd' for displacement, 
+            'v' for velocity, and 'a' for acceleration. Wildcards okay
         :type pathname: str
         :param pathname: the key in cfgpaths dictionary to search for data
         :rtype stream: obspy.core.stream.Stream
@@ -380,11 +387,6 @@ class InternalFetcher:
         """
         if self.origintime is None:
             raise AttributeError("'origintime' must be specified")
-
-        # Specfem denotes the units of synthetic traces by the naming of the
-        # ASCII files, corresponding to 'd' for displacement, 'v' for velocity,
-        # and 'a' for acceleration. Take this value from the user config.
-        specfem_id = self.config.synthetic_unit[0].lower()
 
         # Generate information necessary to search for data
         net, sta, loc, cha = station_code.split('.')
@@ -399,7 +401,7 @@ class InternalFetcher:
             full_path = os.path.join(path_, event_id, specfem_fid_template)
             st = Stream()
             for filepath in glob.glob(full_path.format(
-                    net=net, sta=sta, cmp=cha[2:], dva=specfem_id)):
+                    net=net, sta=sta, cmp=cha[2:], dva=synthetic_unit.lower())):
                 try:
                     # Convert the ASCII file to a miniseed
                     st += read_sem(filepath, self.origintime)

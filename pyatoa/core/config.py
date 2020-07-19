@@ -26,10 +26,9 @@ class Config:
                  filter_corners=2, client=None, rotate_to_rtz=False, 
                  unit_output="DISP", pyflex_preset="default", 
                  component_list=None, adj_src_type="cc_traveltime_misfit", 
-                 start_pad=20, end_pad=500, synthetic_unit="DISP", 
-                 observed_tag="observed", synthetic_tag=None, 
-                 synthetics_only=False, win_amp_ratio=0., cfgpaths=None, 
-                 save_to_ds=True, **kwargs):
+                 start_pad=20, end_pad=500, observed_tag="observed", 
+                 synthetic_tag=None, synthetics_only=False, win_amp_ratio=0., 
+                 cfgpaths=None, save_to_ds=True, **kwargs):
         """
         Allows the user to control the parameters of the workflow, including:
         setting the Config objects for Pyflex and Pyadjoint, and the paths for
