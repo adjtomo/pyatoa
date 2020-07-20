@@ -2,10 +2,9 @@
 """
 Pyaflowa - Pyatoa's Seisflows plugin class
 
-This Seisflows plugin class that allows easy scripting of Pyatoa functionality
-into a Seisflows workflow. It takes care of input from the Seisflows master
-directory, and output into a Pyatoa-specific auxiliary directory with a
-pre-defined directory structure that allows for easy navigation of outputs.
+This plugin class mimics the functionalities of the Seisflows preprocess class,
+allowing for a straightforward implementation of Pyatoa functionalities into
+an existing Seisflows workflow.
 
 To do:
     -Get rid of set or lock out __setattr__
@@ -49,9 +48,9 @@ class Pyaflowa:
     """
     def __init__(self, pars, paths, config_file="parameters.yaml"):
         """
-        Pyaflowa only needs to know what Seisflows knows.
-        With this information it can create the internal directory
-        structure that it uses to navigate around Seisflows.
+        Analagous to seisflows.preprocess.setup()
+
+        Pyaflowa only needs access to the variables and paths in Seisflows.
 
         :type pars: dict
         :param pars: a dictionary of the Seisflows parameters contained in the
@@ -135,7 +134,7 @@ class Pyaflowa:
     def _check_parameters(self, ext_par):
         """
         Perform some sanity checks upon initialization. If they fail, hard exit
-        so that Seisflows crashes, that way things don't crash after jobs have
+        so that Seisflows crashes, that way things won't crash after jobs have
         been submitted etc.
 
         :type ext_par: dict

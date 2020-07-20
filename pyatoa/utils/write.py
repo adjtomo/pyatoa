@@ -62,7 +62,7 @@ def write_misfit(ds, iteration, step_count=None, path="./", fidout=None):
     
     # Collect the total misfit calculated by Pyadjoint
     total_misfit = 0
-    adjoint_sources = ds.auxiliary_data.AdjointSources[iter_tag]
+    adjoint_sources = ds.auxiliadry_data.AdjointSources[iter_tag]
     if step_tag:
         adjoint_sources = adjoint_sources[step_tag]
 
@@ -79,6 +79,8 @@ def write_misfit(ds, iteration, step_count=None, path="./", fidout=None):
 
     # save in the same format as seisflows 
     np.savetxt(fidout, [scaled_misfit], '%11.6e')
+
+    return scaled_misfit
 
 
 def write_stations_adjoint(ds, iteration, specfem_station_file, step_count=None,

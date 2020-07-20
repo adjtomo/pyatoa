@@ -247,11 +247,9 @@ class Manager:
         if self.stats.nwin is None and self.windows is not None:
             self.stats.nwin = sum([len(_) for _ in self.windows.values()])
    
-        # Determine the unscaled misfit. Scale if windows have been chosen
+        # Determine the unscaled misfit
         if not self.stats.misfit and self.adjsrcs is not None:
             self.stats.misfit = sum([_.misfit for _ in self.adjsrcs.values()])
-            if self.stats.nwin:
-                self.stats.misfit /= (2 * self.stats.nwin)
 
     def setup(self, event=None, idx=0, append_focal_mechanism=True):
         """
@@ -794,6 +792,8 @@ class Manager:
         logger.info(f"total misfit {self.stats.misfit:.3f}")
 
         return self
+
+    def write_adjoint_(self, )
 
     def save_windows(self):
         """

@@ -6,7 +6,7 @@ dataset so no returns
 from pyatoa.utils.form import format_iter, format_step
 
 
-def clean_ds(ds, iteration=None, step_count=None, fix_windows=False):
+def clean_dataset(ds, iteration=None, step_count=None, fix_windows=False):
     """
     Removes synthetic waveforms and auxiliary data so that only observation
     data remains for new iterations. If no iteration is given, will 
