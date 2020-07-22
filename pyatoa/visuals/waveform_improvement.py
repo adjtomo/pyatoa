@@ -212,7 +212,6 @@ class WaveformImprovement:
 
         return f, axes
 
-
     def plot(self, sta=None, min_period=None, max_period=None, 
              plot_windows=False, trace_length=None, show=True, save=False, 
              **kwargs):
@@ -246,7 +245,7 @@ class WaveformImprovement:
         if sta is not None:
             self.gather(sta, min_period, max_period)
 
-        assert(self.st_obs), "must collect data for a station before plotting"
+        assert self.st_obs, "must collect data for a station before plotting"
 
         # Instantiate the plotting object
         f, axes = self.setup_plot(nrows=len(self.synthetics.keys()), 
@@ -314,7 +313,7 @@ class WaveformImprovement:
                         if abs(tshift) > abs(tshift_max):
                             tshift_max = tshift
                             tleft_max = tleft
-                            tright_max = tright
+                            # tright_max = tright
 
                     # If annotate largesttime shift value into window
                     if tshift_max and anno_choice == "max":

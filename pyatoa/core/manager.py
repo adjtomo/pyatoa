@@ -21,7 +21,6 @@ from pyatoa.utils.asdf.add import add_misfit_windows, add_adjoint_sources
 from pyatoa.utils.process import (preproc, trim_streams, stf_convolve, zero_pad, 
                                   match_npts)
 
-from pyatoa.visuals.map_maker import MapMaker
 from pyatoa.visuals.manager_plotter import ManagerPlotter
 
 
@@ -139,7 +138,7 @@ class Manager:
         self.windows = windows
         self.staltas = staltas or {}
         self.adjsrcs = adjsrcs
-        self._rej_win = {}
+        self.rejwins = {}
 
         # Internal statistics to keep track of the workflow progress
         self.stats = ManagerStats()
@@ -645,7 +644,7 @@ class Manager:
         information to Manager. 
         No access to rejected window information unfortunately.
         """
-        logger.info(f"retrieving windows from dataset {model}{step}")
+        logger.info(f"retrieving windows from dataset {iteration}{step_count}")
 
         net, sta, _, _ = self.st_obs[0].get_id().split(".")
         windows = windows_from_dataset(ds=self.ds, net=net, sta=sta,
@@ -723,7 +722,7 @@ class Manager:
             nwin += len(windows)
 
         self.windows = window_dict
-        self._rej_win = reject_dict
+        self.rejwins = reject_dict
         self.stats.nwin = nwin
 
     def measure(self, force=False):
@@ -862,7 +861,7 @@ class Manager:
 
         return adjoint_windows
 
-    def plot_wav(self, save=None, show=True, **kwargs):
+    def plot(self, choice="both", save=None, show=True, corners=None, **kwargs):
         """
         Plot observed and synthetics waveforms, misfit windows, STA/LTA and
         adjoint sources for all available components. Append information
@@ -874,41 +873,29 @@ class Manager:
         :param show: show the plot once generated, defaults to False
         :type save: str
         :param save: absolute filepath and filename if figure should be saved
-        """
-        # Precheck for waveform data
-        self._check()
-        if not self.stats.standardized:
-            raise ManagerError("cannot plot, waveforms not standardized")
-        logger.info("plotting waveform")
-
-        # Call on window making function to produce waveform plots
-        mp = ManagerPlotter(mgmt=self, show=show, save=save, **kwargs)
-        mp.plot()
-        return mp
-
-    def plot_map(self, corners=None, save=None, show=True, **kwargs):
-        """
-        Generate a basemap for a given target region. Plot station and receiver
-        from internal station and event attributes.
-
-        :type corners: dict
         :param corners: {lat_min, lat_max, lon_min, lon_max}
-        :type show: bool
-        :param show: show the plot once generated, defaults to False
-        :type save: str
-        :param save: absolute filepath and filename if figure should be saved
+            corners to cut the map to, otherwise a global map is provided
+        :type choice: str
+        :param choice: choice for what to plot:
+            'wav': plot waveform figure only
+            'map': plot a source-receiver map only
+            'both' (default): plot waveform and source-receiver map together
         """
         self._check()
-        logger.info("plotting map")
+        # Precheck for correct data to plot
+        if choice in ["wav", "both"] and not self.stats.standardized:
+            raise ManagerError("cannot plot, waveforms not standardized")
 
-        # Warn user if no inventory is given
-        if not isinstance(self.inv, obspy.Inventory):
-            logger.warning("no inventory given, plotting blank map")
+        if choice in ["map", "both"] and (self.inv is None or
+                                          self.event is None):
+            raise ManagerError("cannot plot map, no event and/or inv found")
 
-        # Call external function to generate map
-        mm = MapMaker(corners=corners, inv=self.inv, cat=self.event,
-                      show=show, save=save, **kwargs)
-        mm.plot()
-        return mm
+        mp = ManagerPlotter(mgmt=self)
+        if choice == "wav":
+            mp.plot_wav(show=show, save=save, **kwargs)
+        elif choice == "map":
+            mp.plot_map(corners=corners, show=show, save=save,  **kwargs)
+        elif choice == "both":
+            mp.plot(corners=corners, show=show, save=save, **kwargs)
 
 
