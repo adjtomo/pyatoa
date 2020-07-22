@@ -12,6 +12,7 @@ import matplotlib.pyplot as plt
 
 from mpl_toolkits.basemap import Basemap
 from obspy.imaging.beachball import beach
+from obspy.geodetics.flinnengdahl import FlinnEngdahl
 from scipy.interpolate import griddata
 
 from pyatoa.utils.srcrcv import gcd_and_baz
@@ -92,7 +93,7 @@ def event_beachball(m, event, fm_type="focal_mechanism", zorder=90, **kwargs):
     :type event: obspy.core.event.Event
     :param event: event object which should contain focal mechanism
     """
-    width = kwargs.get("src_width", 2.6E4)
+    width = kwargs.get("src_width", 60)
 
     src_marker = kwargs.get("src_marker", "o")
     src_markercolor = kwargs.get("src_markercolor", "r")
@@ -127,11 +128,11 @@ def event_beachball(m, event, fm_type="focal_mechanism", zorder=90, **kwargs):
             beach_input = [sdr.strike, sdr.dip, sdr.rake]
 
         b = beach(beach_input, xy=(eventx, eventy), width=width,
-                  linewidth=src_linewidth, facecolor=src_markercolor
+                  linewidth=src_linewidth, facecolor=src_markercolor,
+                  axes=plt.gca()
                   )
         b.set_zorder(zorder)
-        ax = plt.gca()
-        ax.add_collection(b)
+        plt.gca().add_collection(b)
 
 
 def plot_stations(m, inv, event=None, annotate_names=False,
@@ -228,16 +229,19 @@ def annotate_srcrcv_information(m, event, inv, **kwargs):
     event.origins[0].time.precision = 0
     gcdist, baz = gcd_and_baz(event, inv[0][0])
     event_id = event.resource_id.id.split('/')[1]
+    origin_time = event.preferred_origin().time
+    region = FlinnEngdahl().get_region(self.ev_lon, self.ev_lat)
+
 
     plt.text(s=(f"{event_id} / {inv[0].code}.{inv[0][0].code}\n"
-             f"{event.preferred_origin().time}\n"
-             f"{event.preferred_magnitude().magnitude_type}="
-             f"{event.preferred_magnitude().mag:.2f}\n"
-             f"Depth(km)={event.preferred_origin().depth*1E-3:.2f}\n"
-             f"Dist(km)={gcdist:.2f}\n"
-             f"BAz(deg)={baz:.2f}"),
+                f"{origin_time.format_iris_web_service()}\n"
+                f"{event.preferred_magnitude().magnitude_type}="
+                f"{event.preferred_magnitude().mag:.2f}\n"
+                f"Depth(km)={event.preferred_origin().depth*1E-3:.2f}\n"
+                f"Dist(km)={gcdist:.2f}\n"
+                f"BAz(deg)={baz:.2f}"),
              x=x, y=y, horizontalalignment="right",
-             verticalalignment="center", transform=plt.gca().transAxes,
+             verticalalignment="top", transform=plt.gca().transAxes,
              fontsize=fontsize
              )
 
@@ -383,8 +387,7 @@ def initiate_basemap(map_corners=None, scalebar=True, **kwargs):
     # Initiate map and draw in style. Stereographic projection if regional
     # corners are given, otherwise world map
     if map_corners:
-        import ipdb;ipdb.set_trace()
-        m = Basemap(projection='stere', resolution='h', rsphere=6371200,
+        m = Basemap(projection='stere', resolution='c', rsphere=6371200,
                     lat_0=(map_corners['lat_min'] + map_corners['lat_max'])/2,
                     lon_0=(map_corners['lon_min'] + map_corners['lon_max'])/2,
                     llcrnrlat=map_corners['lat_min'],
