@@ -87,6 +87,7 @@ class ManagerPlotter:
         self.st_obs = mgmt.st_obs.copy()
         self.st_syn = mgmt.st_syn.copy()
         self.config = mgmt.config
+
         # If auxiliary data is None, initialize as empty dictionary so that 
         # waveforms can still be plotted
         self.windows = mgmt.windows or {}
@@ -94,33 +95,36 @@ class ManagerPlotter:
         self.adjsrcs = mgmt.adjsrcs or {}
         self.rejected_windows = mgmt._rej_win or {}
 
+        self.fig = None
+        self.axes = None
+        self.twaxes = None
         self.show = show
         self.save = save
         self.kwargs = kwargs
 
         self.time_axis = self.st_obs[0].times() + mgmt.stats.time_offset_sec
 
-    def setup_plot(self, twax_off=False):
+    def setup_plot(self, dpi, figsize, twax_off=False):
         """
         Dynamically set up plots according to number_of given
 
         Calculate the figure size based on DPI, (800, 250) pixels per channel
 
+        :type dpi: float
+        :param dpi: dots per inch, to be set by plot()
+        :type figsize: tuple
+        :param figsize: size of the figure, set by plot()
         :type twax_off: bool
         :param twax_off: if True, dont instantiate a twin-x axis
         :rtype (tw)axes: matplotlib axes
         :return (tw)axes: axis objects
         """
         # general kwargs
-        dpi = self.kwargs.get("dpi", 100)
-        figsize = self.kwargs.get("figsize",
-                                  (800 / dpi, 200 * len(self.st_obs) / dpi)
-                                  )
-        fontsize = self.kwargs.get("fontsize", 8)
+        fontsize = self.kwargs.get("fontsize", 6)
         axes_linewidth = self.kwargs.get("axes_linewidth", 1)
 
         # Initiate the figure and fill it up with grids
-        f = plt.figure(figsize=figsize, dpi=dpi)
+        self.fig = plt.figure(figsize=figsize, dpi=dpi)
 
         nrows, ncols = len(self.st_obs), 1
         height_ratios = [1] * len(self.st_obs)
@@ -150,7 +154,8 @@ class ManagerPlotter:
                 twax.axes.get_xaxis().set_visible(False)
                 twax.axes.get_yaxis().set_visible(False)
 
-        return f, axes, twaxes
+        self.axes = axes
+        self.twaxes = twaxes
 
     def plot_waveforms(self, ax, obs, syn, normalize=False):
         """
@@ -198,11 +203,6 @@ class ManagerPlotter:
         :param ax: axis object on which to plot
         :type stalta: numpy.ndarray
         :param stalta: data array containing the sta/lta waveform
-        :type normalize: bool
-        :param normalize: normalize the trace to the bounds of the axis before
-            plotting. used if adjoint source already plotted on the axis, stalta
-            will have different units so normalize against the axis because 
-            we only care about phases not amplitudes
         :type plot_waterlevel: bool
         :param plot_waterlevel: plot a horizontal line showing the relative
             waterlevel of the sta/lta which is used in determining windows
@@ -211,6 +211,7 @@ class ManagerPlotter:
         """
         linewidth = self.kwargs.get("linewidth", 1.6)
         stalta_color = self.kwargs.get("stalta_color", "gray")
+        fontsize = self.kwargs.get("stalta_wl_fontsize", 6)
 
         # Get waterlevel from the Pyflex config object
         stalta_wl = self.config.pyflex_config.stalta_waterlevel
@@ -233,7 +234,7 @@ class ManagerPlotter:
                        xmax=self.time_axis[-1], alpha=0.4, zorder=8, 
                        linewidth=linewidth, c=stalta_color, linestyle='--')
             ax.annotate(s=f"stalta_waterlevel = {stalta_wl}", alpha=0.7, 
-                        fontsize=8,
+                        fontsize=fontsize,
                         xy=(0.75 * (xmax - xmin) + xmin, waterlevel)
                         )
 
@@ -262,7 +263,7 @@ class ManagerPlotter:
         window_anno = self.kwargs.get("window_anno", None)
         window_anno_alternate = self.kwargs.get("window_anno_alternate", None)
         window_color = self.kwargs.get("window_color", "orange")
-        window_anno_fontsize = self.kwargs.get("window_anno_fontsize", 8)
+        window_anno_fontsize = self.kwargs.get("window_anno_fontsize", 7)
         window_anno_height = self.kwargs.get("window_anno_height", 0.5)
         alternate_anno_height = self.kwargs.get("alternate_anno_height", None)
         window_anno_rotation = self.kwargs.get("window_anno_rotation", 0)
@@ -370,6 +371,8 @@ class ManagerPlotter:
         :param skip_tags: an optional list of tags that can be used to skip
             specific rejected window tags
         """
+        fontsize = self.kwargs.get("rejected_window_fontsize", 6)
+
         ymin, ymax = ax.get_ylim()
         dy = 0.075 * (ymax - ymin)  # increment for bar location
 
@@ -423,7 +426,8 @@ class ManagerPlotter:
 
                 # Annotate the leftmost rejected window point with the tag
                 ax.annotate(xy=(rwin_arr[:, 0].min(), ymin), 
-                            s=tag.replace("_", " "), fontsize=7.75, zorder=14)
+                            s=tag.replace("_", " "), fontsize=fontsize,
+                            zorder=14)
                 ymin -= dy
 
         # Reset ylimits based on the extent of the rejected windows
@@ -539,8 +543,8 @@ class ManagerPlotter:
         dpi = self.kwargs.get("dpi", 100)
         figsize = self.kwargs.get("figsize",
                                   (800 / dpi, 200 * len(self.st_obs) / dpi))
-        fontsize = self.kwargs.get("fontsize", 8)
-        legend_fontsize = self.kwargs.get("legend_fontsize", 8)
+        fontsize = self.kwargs.get("fontsize", 7)
+        legend_fontsize = self.kwargs.get("legend_fontsize", 6)
         append_title = self.kwargs.get("append_title", None)
         normalize = self.kwargs.get("normalize", False)
         xlim_s = self.kwargs.get("xlim_s", None)
@@ -562,7 +566,7 @@ class ManagerPlotter:
         twax_off = bool(not plot_staltas or not plot_adjsrcs)
 
         # Plot per component in the same fashion, only if observed data exists
-        f, axes, twaxes = self.setup_plot(twax_off)
+        self.setup_plot(dpi=dpi, figsize=figsize, twax_off=twax_off)
         for i, obs in enumerate(self.st_obs):
             comp = obs.stats.channel[-1]
 
@@ -574,8 +578,8 @@ class ManagerPlotter:
             rejwins = self.rejected_windows.get(comp, None)
 
             # Begin plotting by distributing axis objects
-            ax = axes[i]
-            twax = twaxes[i]
+            ax = self.axes[i]
+            twax = self.twaxes[i]
             lines = []  # List of lines for making the legend
             lines += self.plot_waveforms(obs=obs, syn=syn, ax=ax, 
                                          normalize=normalize)
@@ -629,21 +633,22 @@ class ManagerPlotter:
         # Final touch ups for the figure
         if isinstance(set_title, bool):
             if set_title:
-                axes[0].set_title(self.create_title(append_title=append_title,
-                                                    normalized=normalize),
-                                  fontsize=fontsize)
+                self.axes[0].set_title(self.create_title(
+                    append_title=append_title, normalized=normalize),
+                    fontsize=fontsize
+                )
         else:
-            axes[0].set_title(set_title, fontsize=fontsize)
+            self.axes[0].set_title(set_title, fontsize=fontsize)
 
         if xlim_s is not None:
-            axes[0].set_xlim(xlim_s)
+            self.axes[0].set_xlim(xlim_s)
         else:
-            axes[0].set_xlim([self.time_axis[0], self.time_axis[-1]])
-        axes[-1].set_xlabel("time [s]", fontsize=fontsize)
+            self.axes[0].set_xlim([self.time_axis[0], self.time_axis[-1]])
+        self.axes[-1].set_xlabel("time [s]", fontsize=fontsize)
 
         # Option to turn off tick labels and axis labels
         if not plot_xaxis or not plot_yaxis:
-            for axis in [axes, twaxes]:
+            for axis in [self.axes, self.twaxes]:
                 for ax in axis:
                     if not plot_xaxis:
                         ax.axes.xaxis.set_ticklabels([])
@@ -652,16 +657,12 @@ class ManagerPlotter:
                         ax.axes.yaxis.set_ticklabels([])
                         ax.set_ylabel("")
 
-        f.tight_layout()
+        self.fig.tight_layout()
 
         if self.save:
             plt.savefig(self.save, figsize=figsize, dpi=dpi)
         if self.show:
             plt.show()
-
-        # Provide figure and axes for further editing of figure
-        self.f = f
-        self.axes = axes
 
 
 def align_yaxes(ax1, ax2):
@@ -696,7 +697,9 @@ def pretty_grids(input_ax, twax=False, grid=False, fontsize=8, linewidth=1,
     """
     input_ax.set_axisbelow(True)
     if sci_format:
-        input_ax.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
+        input_ax.ticklabel_format(style='sci', axis='y', scilimits=(0, 0))
+        # Make sure the scientific notation also has the same fontsize
+        input_ax.yaxis.get_offset_text().set_fontsize(fontsize)
     # Ensure the twin axis doesn't clash with ticks of the main axis
     if twax:
         left = False
@@ -730,6 +733,9 @@ def format_axis(input_ax, percent_over=0.125):
 
     :type input_ax: matplotlib axis
     :param input_ax: axis to prettify
+    :type percent_over: float
+    :param percent_over: the percentage above the peak value that the bounds
+        of the axis will be set
     """
     ymin, ymax = input_ax.get_ylim()
     maxvalue = max([abs(_) for _ in input_ax.get_ylim()])

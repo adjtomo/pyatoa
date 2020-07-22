@@ -7,7 +7,6 @@ import warnings
 import obspy
 import pyflex
 import pyadjoint
-import traceback
 from os.path import basename
 from obspy.signal.filter import envelope
 
@@ -17,12 +16,12 @@ from pyatoa.core.gatherer import Gatherer, GathererNoDataException
 from pyatoa.utils.process import is_preprocessed
 from pyatoa.utils.asdf.fetch import windows_from_dataset
 from pyatoa.utils.window import reject_on_global_amplitude_ratio
-from pyatoa.utils.srcrcv import gcd_and_baz, seismogram_length
+from pyatoa.utils.srcrcv import gcd_and_baz
 from pyatoa.utils.asdf.add import add_misfit_windows, add_adjoint_sources
 from pyatoa.utils.process import (preproc, trim_streams, stf_convolve, zero_pad, 
                                   match_npts)
 
-from pyatoa.visuals.map_maker import manager_map
+from pyatoa.visuals.map_maker import MapMaker
 from pyatoa.visuals.manager_plotter import ManagerPlotter
 
 
@@ -246,7 +245,7 @@ class Manager:
         # Count how many misfit windows are contained in the dataset
         if self.stats.nwin is None and self.windows is not None:
             self.stats.nwin = sum([len(_) for _ in self.windows.values()])
-   
+
         # Determine the unscaled misfit
         if not self.stats.misfit and self.adjsrcs is not None:
             self.stats.misfit = sum([_.misfit for _ in self.adjsrcs.values()])
@@ -365,13 +364,13 @@ class Manager:
             ds = self.ds
         else:
             raise TypeError("load requires a Dataset")
-       
+
         # If no Config object in Manager, load from dataset 
         if self.config is None:
             if path is None:
                 raise TypeError("load requires Config or 'path'")
             else:
-                self.config = Config(ds=ds, path=path) 
+                self.config = Config(ds=ds, path=path)
                 logger.info(f"loading config from dataset {path}")
 
         assert len(station_code.split('.')) == 2, \
@@ -384,9 +383,9 @@ class Manager:
         sta_tag = f"{net}.{sta}"
         if sta_tag in ds.waveforms.list():
             self.inv = ds.waveforms[sta_tag].StationXML
-            self.st_syn = ds.waveforms[sta_tag][synthetic_tag or 
+            self.st_syn = ds.waveforms[sta_tag][synthetic_tag or
                                                 self.config.synthetic_tag]
-            self.st_obs = ds.waveforms[sta_tag][observed_tag or 
+            self.st_obs = ds.waveforms[sta_tag][observed_tag or
                                                 self.config.observed_tag]
         else:
             logger.warning(f"no data for {sta_tag} found in dataset")
@@ -449,8 +448,8 @@ class Manager:
                 self.inv = self.gatherer.gather_station(station_code)
             if "st_syn" in choice:
                 self.st_syn = self.gatherer.gather_synthetic(station_code)
-                
-            return self 
+
+            return self
         except GathererNoDataException as e:
             # Catch the Gatherer exception and redirect as ManagerError 
             # so that it can be caught by flow()
@@ -498,13 +497,13 @@ class Manager:
 
         # Match start and endtimes
         self.st_obs, self.st_syn = trim_streams(
-            st_a=self.st_obs, st_b=self.st_syn, 
+            st_a=self.st_obs, st_b=self.st_syn,
             force={"obs": "a", "syn": "b"}[standardize_to]
             )
 
         # Match the number of samples 
         self.st_obs, self.st_syn = match_npts(
-            st_a=self.st_obs, st_b=self.st_syn, 
+            st_a=self.st_obs, st_b=self.st_syn,
             force={"obs": "a", "syn": "b"}[standardize_to]
             )
 
@@ -576,7 +575,7 @@ class Manager:
             self.st_syn = preproc_fx(self, choice="syn")
             if self.stats.half_dur:
                 # Convolve synthetics with a Gaussian source time function
-                self.st_syn = stf_convolve(st=self.st_syn, 
+                self.st_syn = stf_convolve(st=self.st_syn,
                                            half_duration=self.stats.half_dur
                                            )
 
@@ -588,7 +587,7 @@ class Manager:
 
         return self
 
-    def window(self, fixed=False, model=None, step=None, force=False, 
+    def window(self, fixed=False, model=None, step=None, force=False,
                save=True):
         """
         Evaluate misfit windows using Pyflex. Save windows to ASDFDataSet.
@@ -650,7 +649,7 @@ class Manager:
 
         net, sta, _, _ = self.st_obs[0].get_id().split(".")
         windows = windows_from_dataset(ds=self.ds, net=net, sta=sta,
-                                       iteration=iteration, 
+                                       iteration=iteration,
                                        step_count=step_count
                                        )
 
@@ -698,9 +697,9 @@ class Manager:
 
             # Pyflex throws a TauP warning from ObsPy #2280, ignore that
             with warnings.catch_warnings():
-                warnings.simplefilter("ignore", UserWarning) 
+                warnings.simplefilter("ignore", UserWarning)
                 ws = pyflex.WindowSelector(observed=obs, synthetic=syn,
-                                           config=self.config.pyflex_config, 
+                                           config=self.config.pyflex_config,
                                            event=self.event,
                                            station=self.inv)
                 windows = ws.select_windows()
@@ -710,7 +709,7 @@ class Manager:
             if self.config.win_amp_ratio > 0:
                 windows, ws.rejects["amplitude"] = \
                        reject_on_global_amplitude_ratio(
-                                            data=obs.data, windows=windows, 
+                                            data=obs.data, windows=windows,
                                             ratio=self.config.win_amp_ratio
                                             )
             # ^^^ Further window filtering can be applied here ^^^
@@ -722,7 +721,7 @@ class Manager:
             # Count windows and tell User
             logger.info(f"{len(windows)} window(s) selected for comp {comp}")
             nwin += len(windows)
-            
+
         self.windows = window_dict
         self._rej_win = reject_dict
         self.stats.nwin = nwin
@@ -801,7 +800,7 @@ class Manager:
         Auxiliary data tag is hardcoded as 'MisfitWindows'
         """
         if self.ds is None:
-            logger.warning("Manager has no ASDFDataSet, cannot save windows") 
+            logger.warning("Manager has no ASDFDataSet, cannot save windows")
         elif not self.windows:
             logger.warning("Manager has no windows to save")
         elif not self.config.save_to_ds:
@@ -820,7 +819,7 @@ class Manager:
         """
         if self.ds is None:
             logger.warning("Manager has no ASDFDataSet, cannot save "
-                           "adjoint sources") 
+                           "adjoint sources")
         elif not self.adjsrcs:
             logger.warning("Manager has no adjoint sources to save")
         elif not self.config.save_to_ds:
@@ -828,8 +827,8 @@ class Manager:
                            "will not save adjoint sources")
         else:
             logger.debug("saving adjoint sources to ASDFDataSet")
-            add_adjoint_sources(adjsrcs=self.adjsrcs, ds=self.ds, 
-                                path=self.config.aux_path, 
+            add_adjoint_sources(adjsrcs=self.adjsrcs, ds=self.ds,
+                                path=self.config.aux_path,
                                 time_offset=self.stats.time_offset_sec)
 
     def _format_windows(self):
@@ -863,7 +862,7 @@ class Manager:
 
         return adjoint_windows
 
-    def plot(self, save=None, show=True, **kwargs):
+    def plot_wav(self, save=None, show=True, **kwargs):
         """
         Plot observed and synthetics waveforms, misfit windows, STA/LTA and
         adjoint sources for all available components. Append information
@@ -887,43 +886,29 @@ class Manager:
         mp.plot()
         return mp
 
-    def srcrcvmap(self, save=None, show=True, map_corners=None, stations=None, 
-                  annotate_names=False, color_by_network=False,
-                  figsize=(8, 8.27), dpi=100, **kwargs):
+    def plot_map(self, corners=None, save=None, show=True, **kwargs):
         """
         Generate a basemap for a given target region. Plot station and receiver
-        stored internally. Annotate source-receiver information. 
+        from internal station and event attributes.
 
-        :type map_corners: dict
-        :param map_corners: {lat_min, lat_max, lon_min, lon_max}
-        :type stations: obspy.core.inventory.Inventory
-        :param stations: background stations to plot on the map that will
-            not interact with the source
-        :type annotate_names: bool
-        :param annotate_names: annotate station names
-        :type color_by_network: bool
-        :param color_by_network: color based on network name
+        :type corners: dict
+        :param corners: {lat_min, lat_max, lon_min, lon_max}
         :type show: bool
         :param show: show the plot once generated, defaults to False
         :type save: str
         :param save: absolute filepath and filename if figure should be saved
-        :type figsize: tuple of floats
-        :param figsize: length and width of the figure
-        :type dpi: int
-        :param dpi: dots per inch of the figure
         """
         self._check()
         logger.info("plotting map")
- 
+
         # Warn user if no inventory is given
         if not isinstance(self.inv, obspy.Inventory):
             logger.warning("no inventory given, plotting blank map")
 
         # Call external function to generate map
-        f = manager_map(map_corners=map_corners, inv=self.inv, 
-                        event=self.event, stations=stations, 
-                        color_by_network=color_by_network,
-                        annotate_names=annotate_names, show=show, 
-                        figsize=figsize, dpi=dpi, save=save, **kwargs
-                        )
-        return f
+        mm = MapMaker(corners=corners, inv=self.inv, cat=self.event,
+                      show=show, save=save, **kwargs)
+        mm.plot()
+        return mm
+
+

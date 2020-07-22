@@ -6,22 +6,20 @@ the course of a seismic inversion.
 Show the changes in synthetic waveforms with progressive model updates. 
 Each individual model gets its on row in the plot.
 """
-import os
-import sys
-import glob
+
 import pyasdf
 import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
   
-from pyatoa import Config, Manager, logger
+from pyatoa import  Manager, logger
 from pyatoa.utils.form import format_event_name
 from pyatoa.visuals.manager_plotter import format_axis
-from pyatoa.utils.asdf.fetch import windows_from_dataset
 from pyflex import logger as pflogger
 
 pflogger.setLevel("DEBUG")
 logger.setLevel("INFO")
+
 
 class WaveformImprovement:
     """
@@ -48,7 +46,6 @@ class WaveformImprovement:
         self.windows = None
         self.time_axis = None
 
-    
     def sort_steps(self):
         """
         Figure out which step goes to which model

@@ -21,7 +21,8 @@ class MapMaker:
     A class to call on the Basemap package to generate a map with
     source-receiver information
     """
-    def __init__(self, cat, inv, fig=None, m=None, corners=None, **kwargs):
+    def __init__(self, cat, inv, fig=None, m=None, ax=None, corners=None,
+                 **kwargs):
         """
         Initiate recurring parameters and parse out a few parameters for
         easier access
@@ -34,6 +35,7 @@ class MapMaker:
         self.inv = inv
         self.kwargs = kwargs
         self.fig = fig
+        self.ax = ax
         self.m = m
 
         # To be filled in by initiate()
@@ -84,14 +86,19 @@ class MapMaker:
         lake_color = self.kwargs.get("lake_color", "w")
         coastline_zorder = self.kwargs.get("coastline_zorder", 5)
         coastline_linewidth = self.kwargs.get("coastline_linewidth", 2.0)
+        axis_linewidth = self.kwargs.get("axis_linewidth", 2.0)
         fill_color = self.kwargs.get("fill_color", "w")
         plw = self.kwargs.get("parallel_linewidth", 0.)
         mlw = self.kwargs.get("meridian_linewidth", 0.)
         projection = self.kwargs.get("projection", "stere")
-        resolution = self.kwargs.get("resolution", "c")
+        resolution = self.kwargs.get("resolution", "l")
 
         # Initiate matplotlib instances
-        self.fig = plt.figure(figsize=figsize, dpi=dpi)
+        if self.fig is None:
+            self.fig = plt.figure(figsize=figsize, dpi=dpi)
+        if self.ax is not None:
+            plt.sca(self.ax)
+
         self.fig.tight_layout()
 
         # Initiate map and draw in style
@@ -118,6 +125,8 @@ class MapMaker:
         self.m.fillcontinents(color=continent_color, lake_color=lake_color)
         self.m.drawmapboundary(fill_color=fill_color)
         self.scalebar()
+        for axis in ["top", "bottom", "left", "right"]:
+            plt.gca().spines[axis].set_linewidth(axis_linewidth)
 
         # Calculate the source-receiver locations based on map coordinates
         self.ev_x, self.ev_y = self.m(self.ev_lon, self.ev_lat)
@@ -198,7 +207,7 @@ class MapMaker:
         marker = self.kwargs.get("station_marker", "v")
         color = self.kwargs.get("station_color", "w")
         size = self.kwargs.get("station_size", 80)
-        lw = self.kwargs.get("station_lw", 1.25)
+        lw = self.kwargs.get("station_lw", 1.5)
 
         self.m.scatter(self.sta_x, self.sta_y, marker=marker, color=color,
                        linewidth=lw, s=size, edgecolor="k", zorder=10)
@@ -218,9 +227,9 @@ class MapMaker:
         """
         Annotate event receiver information into bottom right corner of the map
         """
-        fontsize = self.kwargs.get("anno_fontsize", 12)
+        fontsize = self.kwargs.get("anno_fontsize", 10)
         x = self.kwargs.get("anno_x", 0.95)
-        y = self.kwargs.get("anno_y", 0.105)
+        y = self.kwargs.get("anno_y", 0.01)
 
         # Collect some useful information
         event_id = self.event.resource_id.id.split('/')[1]
@@ -232,20 +241,24 @@ class MapMaker:
         mag_type = self.event.preferred_magnitude().magnitude_type
         region = FlinnEngdahl().get_region(self.ev_lon, self.ev_lat)
 
-        self.ax.text(s=(f"{region.title()}\n"
-                        f"Dist: {gc_dist:.2f} km / BAz: {baz:.2f}\n"
-                        f"{'-'*10}\n"
-                        f"{event_id} ({self.ev_lat:.2f}, {self.ev_lon:.2f})\n"
-                        f"   Start: {origin_time.format_iris_web_service()}\n"
-                        f"   Mag: {mag_type} {magnitude:.2f}\n"
-                        f"   Depth: {depth:.2f} km\n"
-                        f"{'-'*10}\n"
-                        f"{sta_id} ({self.sta_lat:.2f}, {self.sta_lon:.2f})\n"
-                        ),
-                     x=x, y=y, horizontalalignment="left",
-                     verticalalignment="top", transform=self.ax.transAxes,
-                     zorder=5, fontsize=fontsize
-                     )
+        # Need to use plot because basemap object has no annotate method
+        plt.gca().text(s=(f"{region.title()}\n"
+                          f"Dist: {gc_dist:.2f} km; BAz: {baz:.2f} deg\n"
+                          f"{'-'*10}{event_id}{'-'*10}\n"
+                          f"{origin_time.format_iris_web_service()}\n"
+                          f"Lat: {self.ev_lat:.2f}, "
+                          f"Lon: {self.ev_lon:.2f}\n"
+                          f"{mag_type} {magnitude:.2f}; "
+                          f"Depth: {depth:.2f} km\n"
+                          f"{'-'*10}{sta_id}{'-'*10}\n"
+                          f"Lat: {self.sta_lat:.2f}, "
+                          f"Lon: {self.sta_lon:.2f}\n"
+                          ),
+                       x=x, y=y, horizontalalignment="right",
+                       verticalalignment="bottom", multialignment="center",
+                       transform=plt.gca().transAxes, zorder=5,
+                       fontsize=fontsize,
+                       )
 
     def plot(self, show=True, save=None):
         """
@@ -259,7 +272,7 @@ class MapMaker:
         """
         # Matplotlib kwargs
         dpi = self.kwargs.get("dpi", 100)
-        figsize = self.kwargs.get("figsize", (800 / dpi, 800 / dpi))
+        figsize = self.kwargs.get("figsize", (600 / dpi, 600 / dpi))
 
         self.initiate()
         self.source()
