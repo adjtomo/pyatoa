@@ -191,8 +191,6 @@ def preproc(mgmt, choice, water_level=60, taper_percentage=0.05):
         available: 'obs', 'syn'
     :type water_level: int
     :param water_level: water level for response removal
-    :type corners: int
-    :param corners: value of the filter corners, i.e. steepness of filter edge
     :type taper_percentage: float
     :param taper_percentage: amount to taper ends of waveform
     """
@@ -215,7 +213,7 @@ def preproc(mgmt, choice, water_level=60, taper_percentage=0.05):
 
     # Get rid of extra long period signals which may adversely affect processing
     st.detrend("simple").taper(taper_percentage)
-    st.filter("highpass", freq=1/(mgmt.config.max_period * 2))
+    st.filter("highpass", freq=1 / (mgmt.config.max_period * 2))
 
     # Observed specific data preprocessing includes response and rotating to ZNE
     if choice == "obs" and not mgmt.config.synthetics_only:
@@ -232,15 +230,6 @@ def preproc(mgmt, choice, water_level=60, taper_percentage=0.05):
 
         # Rotate streams if not in ZNE, e.g. Z12
         st.rotate(method="->ZNE", inventory=mgmt.inv)
-
-    # Synthetic specific data processing
-    else:
-        # Change units of synthetics if necessary
-        if mgmt.config.unit_output != mgmt.config.synthetic_unit:
-            logger.debug("unit output and synthetic output do not match, "
-                         "adjusting")
-            st = change_syn_units(st, current=mgmt.config.unit_output,
-                                  desired=mgmt.config.synthetic_unit)
 
     # Try to ensure that end points touch 0 before filtering
     st.detrend("simple").detrend("demean").taper(taper_percentage)
@@ -283,6 +272,9 @@ def preproc(mgmt, choice, water_level=60, taper_percentage=0.05):
 
 def change_syn_units(st, current, desired):
     """
+    Deprecated: Package assumes that the UNIT_OUTPUT is the same as the
+                synthetic units
+
     Change the synthetic units based on the desired unit output and the current
     unit output
 
@@ -314,6 +306,7 @@ def change_syn_units(st, current, desired):
             method="gradient")
 
     return st_diff
+
 
 def stf_convolve(st, half_duration, source_decay=4., time_shift=None,
                  time_offset=None):

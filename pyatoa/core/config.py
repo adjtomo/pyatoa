@@ -6,7 +6,6 @@ Contains non-class functions for setting Config objects of Pyflex and Pyadjoint.
 import yaml
 from pyatoa import logger
 from pyatoa.utils.form import format_iter, format_step
-from pyatoa.core.pyaflowa import pyaflowa_kwargs
 from pyatoa.plugins.pyflex_presets import pyflex_presets
 
 from pyflex import Config as PyflexConfig
@@ -72,8 +71,6 @@ class Config:
             for use by data gathering class
         :type end_pad: int
         :param end_pad: seconds after event origintime to grab waveform data
-        :type synthetic_unit: str
-        :param synthetic_unit: units of Specfem synthetics, 'DISP', 'VEL', 'ACC'
         :type synthetics_only: bool
         :param synthetics_only: If the user is doing a synthetic-synthetic
             example, e.g. in a checkerboard test, this will tell the internal
@@ -109,7 +106,6 @@ class Config:
         self.client = client
         self.rotate_to_rtz = rotate_to_rtz
         self.unit_output = unit_output.upper()
-        self.synthetic_unit = synthetic_unit.upper()
         self.observed_tag = observed_tag
         
         # Allow manual override of synthetic tag, but keep internal and rely 
@@ -154,7 +150,7 @@ class Config:
         Separate into similar labels for easier reading.
         """
         # Model and step need to be formatted before printing
-        str_out = ("Config\n"
+        str_out = ("CONFIG\n"
                    f"    {'iter:':<25}{self.iter_tag}\n"
                    f"    {'step:':<25}{self.step_tag}\n"
                    f"    {'event:':<25}{self.event_id}\n"
@@ -162,8 +158,7 @@ class Config:
         # Format the remainder of the keys identically
         key_dict = {"Gather": ["client", "start_pad", "end_pad", "save_to_ds"],
                     "Process": ["min_period", "max_period", "filter_corners",
-                                "unit_output", "synthetic_unit",
-                                "rotate_to_rtz", "win_amp_ratio",
+                                "unit_output", "rotate_to_rtz", "win_amp_ratio",
                                 "synthetics_only"],
                     "Labels": ["component_list", "observed_tag",
                                "synthetic_tag", "cfgpaths"],
@@ -229,9 +224,6 @@ class Config:
         assert(self.unit_output in acceptable_units), \
             f"unit_output should be in {acceptable_units}"
 
-        assert(self.synthetic_unit in acceptable_units), \
-            f"synthetic_unit should be in {acceptable_units}"
-
         # Check that paths are in the proper format, dictated by Pyatoa
         required_keys = ['synthetics', 'waveforms', 'responses']
         assert(isinstance(self.cfgpaths, dict)), "paths should be a dict"
@@ -272,9 +264,6 @@ class Config:
 
         # Check for unnused kwargs
         unused_kwargs = []
-        for kwarg in unused_kwargs_pf:
-            if kwarg in unused_kwargs_pa and kwarg not in pyaflowa_kwargs:
-                unused_kwargs.append(kwarg)
         if unused_kwargs:
             raise ValueError(f"{unused_kwargs} are not keyword arguments in "
                              f"Pyatoa, Pyflex or Pyadjoint.")

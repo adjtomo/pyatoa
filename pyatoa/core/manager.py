@@ -793,8 +793,6 @@ class Manager:
 
         return self
 
-    def write_adjoint_(self, )
-
     def save_windows(self):
         """
         Convenience function to save collected misfit windows into an 
@@ -864,7 +862,6 @@ class Manager:
                                                 component=comp)[0].stats.npts]]
 
         return adjoint_windows
-
 
     def plot(self, save=None, show=True, **kwargs):
         """

@@ -30,7 +30,6 @@ rejected_window_colors = {
     }
 
 
-
 class ManagerPlotter:
     """
     Standardized waveform figures featuring observed and synthetic traces, 
@@ -42,7 +41,8 @@ class ManagerPlotter:
         Introduce class-wide objects that accessed for plotting the figure
 
         :Keyword Arguments:
-            figsize (tuple): size of the figure, defaults A4 (11.689, 8.27)
+            figsize (tuple): size of the figure, defaults (800, 200) pixels
+                per channel
             dpi (float): dots per inch of the figure, defaults 100
             linewidth (float): line width for all lines on plot, default 1.6
             xlim_s (list): time axis bounds of the plot, defaults to full length
@@ -104,20 +104,20 @@ class ManagerPlotter:
         """
         Dynamically set up plots according to number_of given
 
-        :type number_of: int
-        :param number_of: number of subplots to generate using gridspec
-        :type twax: bool
-        :param twax: whether or not twin x axes are required
+        Calculate the figure size based on DPI, (800, 250) pixels per channel
+
+        :type twax_off: bool
+        :param twax_off: if True, dont instantiate a twin-x axis
         :rtype (tw)axes: matplotlib axes
         :return (tw)axes: axis objects
         """
         # general kwargs
-        figsize = self.kwargs.get("figsize", (11.689, 8.27))  # A4
         dpi = self.kwargs.get("dpi", 100)
+        figsize = self.kwargs.get("figsize",
+                                  (800 / dpi, 200 * len(self.st_obs) / dpi)
+                                  )
         fontsize = self.kwargs.get("fontsize", 8)
         axes_linewidth = self.kwargs.get("axes_linewidth", 1)
-
-        # For removing labels and tick markers
 
         # Initiate the figure and fill it up with grids
         f = plt.figure(figsize=figsize, dpi=dpi)
@@ -263,7 +263,7 @@ class ManagerPlotter:
         window_anno_alternate = self.kwargs.get("window_anno_alternate", None)
         window_color = self.kwargs.get("window_color", "orange")
         window_anno_fontsize = self.kwargs.get("window_anno_fontsize", 8)
-        window_anno_height = self.kwargs.get("window_anno_height", 0.65)  
+        window_anno_height = self.kwargs.get("window_anno_height", 0.5)
         alternate_anno_height = self.kwargs.get("alternate_anno_height", None)
         window_anno_rotation = self.kwargs.get("window_anno_rotation", 0)
         window_anno_fontcolor = self.kwargs.get("window_anno_fontcolor", "k")
@@ -276,7 +276,7 @@ class ManagerPlotter:
         ymin, ymax = ax.get_ylim()
         y_anno = window_anno_height * (ymax - ymin) + ymin
         if alternate_anno_height is not None:
-            y_anno_alt= (alternate_anno_height) * (ymax - ymin) + ymin
+            y_anno_alt = alternate_anno_height * (ymax - ymin) + ymin
         else:
             y_anno_alt = y_anno
 
@@ -307,8 +307,9 @@ class ManagerPlotter:
                                    fc=window_color, ec="k", 
                                    alpha=(window.max_cc_value ** 2) * 0.25,
                                    zorder=10
-                )
-            )
+                                   )
+                         )
+
             # Outline the rectangle with solid black lines
             for x_ in [tleft, tright]:
                 ax.axvline(x=x_, ymin=0, ymax=1, color="k", alpha=1., zorder=11)
@@ -347,7 +348,6 @@ class ManagerPlotter:
             # After the first window, set the alternate window anno str
             if j == 0:
                 window_anno = window_anno_alternate
-
 
     def plot_rejected_windows(self, ax, rejected_windows, windows=None,
                               skip_tags=["water_level"]):
@@ -461,7 +461,6 @@ class ManagerPlotter:
                       )
         return [b1]
 
-
     def plot_amplitude_threshold(self, ax, obs):
         """
         Plot a line to show the amplitude threshold criteria used by Pyatoa
@@ -537,8 +536,9 @@ class ManagerPlotter:
         formats the axes nicely
         """
         # Distribute some kwargs before starting
-        figsize = self.kwargs.get("figsize", (11.689, 8.27))  # A4
         dpi = self.kwargs.get("dpi", 100)
+        figsize = self.kwargs.get("figsize",
+                                  (800 / dpi, 200 * len(self.st_obs) / dpi))
         fontsize = self.kwargs.get("fontsize", 8)
         legend_fontsize = self.kwargs.get("legend_fontsize", 8)
         append_title = self.kwargs.get("append_title", None)
@@ -557,7 +557,6 @@ class ManagerPlotter:
         plot_waterlevel = self.kwargs.get("plot_waterlevel", True)
         plot_arrivals = self.kwargs.get("plot_arrivals", True)
         plot_legend = self.kwargs.get("legend", True)
-
 
         # If nothing on the twin axis, this will turn off tick marks
         twax_off = bool(not plot_staltas or not plot_adjsrcs)
@@ -635,7 +634,6 @@ class ManagerPlotter:
                                   fontsize=fontsize)
         else:
             axes[0].set_title(set_title, fontsize=fontsize)
-        
 
         if xlim_s is not None:
             axes[0].set_xlim(xlim_s)
@@ -665,6 +663,7 @@ class ManagerPlotter:
         self.f = f
         self.axes = axes
 
+
 def align_yaxes(ax1, ax2):
     """
     Plotting tool to adjust ax2 ylimit so that v2 in ax2 is aligned to v1 in ax1
@@ -685,7 +684,8 @@ def align_yaxes(ax1, ax2):
     ax2.set_ylim(ymin_a2+dy, ymax_a2+dy)
 
 
-def pretty_grids(input_ax, twax=False, grid=False, fontsize=8, linewidth=1):
+def pretty_grids(input_ax, twax=False, grid=False, fontsize=8, linewidth=1,
+                 sci_format=True):
     """
     Standard plot skeleton formatting, thick lines and internal tick marks etc.
 
@@ -695,7 +695,8 @@ def pretty_grids(input_ax, twax=False, grid=False, fontsize=8, linewidth=1):
     :param twax: If twax (twin axis), do not set grids
     """
     input_ax.set_axisbelow(True)
-    input_ax.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
+    if sci_format:
+        input_ax.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
     # Ensure the twin axis doesn't clash with ticks of the main axis
     if twax:
         left = False
