@@ -6,494 +6,270 @@ Functions used to produce maps using Basemap that have a standard look across
 the Pyatoa workflow.
 """
 import numpy as np
-import matplotlib as mpl
-import matplotlib.cm as cm
 import matplotlib.pyplot as plt
 
 from mpl_toolkits.basemap import Basemap
 from obspy.imaging.beachball import beach
 from obspy.geodetics.flinnengdahl import FlinnEngdahl
-from scipy.interpolate import griddata
+from obspy.core.event.catalog import Catalog
 
 from pyatoa.utils.srcrcv import gcd_and_baz
-from pyatoa.utils.calculate import myround
 
 
-def legend():
+class MapMaker:
     """
-    Create a legend on the current axes with astandard look
+    A class to call on the Basemap package to generate a map with
+    source-receiver information
     """
-    leg = plt.legend(loc="lower right")
-    leg.get_frame().set_edgecolor('k')
-    leg.get_frame().set_linewidth(1)
-
-
-def place_scalebar(m, map_corners, **kwargs):
-    """
-    Put the scale bar in a corner at a reasonable distance from each edge
-
-    Handy reminder for moving the scalebar around:
-        latitude is up, down
-        longitude is right, left
-
-    :type m: Basemap
-    :param m: basemap object
-    :type map_corners: dict of floats
-    :param map_corners: [lat_bot,lat_top,lon_left,lon_right]
-    :type loc: str
-    :param loc: location of scalebar, 'upper-right' or 'lower-right'
-    """
-    loc = kwargs.get("scalebar_location", "upper-right")
-    fontsize = kwargs.get("legend_fontsize", 13)
-
-    mc = map_corners
-    if loc == "upper-right":
-        latscale = mc['lat_min'] + (mc['lat_max'] - mc['lat_min']) * 0.94
-        lonscale = mc['lon_min'] + (mc['lon_max'] - mc['lon_min']) * 0.875
-    if loc == "lower-right":
-        latscale = mc['lat_min'] + (mc['lat_max'] - mc['lat_min']) * 0.04
-        lonscale = mc['lon_min'] + (mc['lon_max'] - mc['lon_min']) * 0.9
-    m.drawmapscale(lonscale, latscale, lonscale, latscale, 100,
-                   yoffset=0.01 * (m.ymax-m.ymin), zorder=100, linewidth=2,
-                   fontsize=fontsize
-                   )
-
-
-def build_colormap(array, cmap=cm.jet_r):
-    """
-    Build a custom range colormap. Round values before.
-
-    :type array: numpy.array
-    :param array: array to build colormap from
-    :type cmap: matplotlib colormap
-    :param cmap: colormap to create a custom range for
-    :rtype colormap: matplotlib.cm.ScalarMappable
-    :return colormap: custom colormap
-    """
-    vmax = myround(np.nanmax(array), base=1, choice='up')
-    vmin = myround(np.nanmin(array), base=1, choice='down')
-    norm = mpl.colors.Normalize(vmin=vmin, vmax=vmax)
-    colormap = cm.ScalarMappable(norm=norm, cmap=cmap)
-
-    return colormap
-
-
-def event_beachball(m, event, fm_type="focal_mechanism", zorder=90, **kwargs):
-    """
-    Plot event beachball for a given moment tensor attribute from event object.
-
-    Note:
-    if strike_dip_rake chosen, nodal plane 1 is used for focal mechanism,
-    assuming that is the preferred plane
-
-    :type m: Basemap
-    :param m: basemap object
-    :type fm_type: str
-    :param fm_type: focal mech. type, 'focal_mechanism' or 'strike_dip_rake'
-    :type event: obspy.core.event.Event
-    :param event: event object which should contain focal mechanism
-    """
-    width = kwargs.get("src_width", 60)
-
-    src_marker = kwargs.get("src_marker", "o")
-    src_markercolor = kwargs.get("src_markercolor", "r")
-    src_markersize = kwargs.get("src_markersize", 105)
-    src_linewidth = kwargs.get("src_linewidth", 1.75)
-
-    eventx, eventy = m(event.preferred_origin().longitude,
-                       event.preferred_origin().latitude
-                       )
-
-    # No focal mechanism? Just plot a ploint, same as connect_source_receiver()
-    if not hasattr(event, 'focal_mechanisms'):
-        m.scatter(eventx, eventy, marker=src_marker, color=src_markercolor,
-                  edgecolor="k", s=src_markersize, linewidth=src_linewidth,
-                  zorder=90)
-
-    else:
-        if fm_type == "focal_mechanism":
-            fm = event.focal_mechanisms[0].moment_tensor.tensor or \
-                 event.preferred_focal_mechanism().moment_tensor.tensor
-            beach_input = [fm['m_rr'], fm['m_tt'], fm['m_pp'],
-                           fm['m_rt'], fm['m_rp'], fm['m_tp']
-                           ]
-        elif fm_type == "strike_dip_rake":
-            nod_plane = event.focal_mechanisms[0].nodal_planes or \
-                        event.preferred_focal_mechanism().nodal_planes
-            # try determine the preferred nodal plane, default to 1
-            try:
-                sdr = nod_plane[f"nodal_plane_{nod_plane.preferred_plane}"]
-            except AttributeError:
-                sdr = nod_plane.nodal_plane_1
-            beach_input = [sdr.strike, sdr.dip, sdr.rake]
-
-        b = beach(beach_input, xy=(eventx, eventy), width=width,
-                  linewidth=src_linewidth, facecolor=src_markercolor,
-                  axes=plt.gca()
-                  )
-        b.set_zorder(zorder)
-        plt.gca().add_collection(b)
-
-
-def plot_stations(m, inv, event=None, annotate_names=False,
-                  color_by_network=False, **kwargs):
-    """
-    Fill map with stations based on station availability and network
-
-    :type m: Basemap
-    :param m: basemap object
-    :type inv: obspy.core.inventory.Inventory
-    :param inv: inventory containing relevant network and stations
-    :type event: obspy.core.event.Event
-    :param event: event object which should contain focal mechanism
-    :type annotate_names: bool
-    :param annotate_names: whether or not station names should placed nearby
-    :type color_by_network: bool
-    :param color_by_network: decided the coloring of different networks
-    """
-    marker = kwargs.get("station_marker", "v")
-    color = kwargs.get("station_markercolor", "None")
-    size = kwargs.get("station_markersize", 80)
-    linewidth = kwargs.get("station_linewidth", 1.25)
-
-    # Sort the networks by station name
-    code, num_sta = [], []
-    for net in inv:
-        code.append(net.code)
-        num_sta.append(len(net))
-    num_sta, network_codes = zip(*sorted(zip(num_sta, code)))
-
-    # Plot stations
-    for i, net_code in enumerate(network_codes):
-        if color_by_network:
-            c = f"C{i}"
+    def __init__(self, cat, inv, fig=None, m=None, corners=None, **kwargs):
+        """
+        Initiate recurring parameters and parse out a few parameters for
+        easier access
+        """
+        if isinstance(cat, Catalog):
+            self.event = cat[0]
         else:
-            c = color
+            self.event = cat
 
-        net = inv.select(net_code)[0]
-        # For legend
-        m.scatter(0, 0, marker=marker, color=color, linestyle='-', s=size, 
-                  linewidth=linewidth, zorder=1, label=code)
+        self.inv = inv
+        self.kwargs = kwargs
+        self.fig = fig
+        self.m = m
 
-        for sta in net:
-            # If an event is given, check that the station is active at time
-            if event and not sta.is_active(time=event.preferred_origin().time):
-                continue
+        # To be filled in by initiate()
+        self.ev_x = None
+        self.ev_y = None
+        self.sta_x = None
+        self.sta_y = None
 
-            x, y = m(sta.longitude, sta.latitude)
-            m.scatter(x, y, marker=marker, color=c, edgecolor="k", 
-                      linestyle='-', s=size, linewidth=linewidth, zorder=60
-                      )
+        # Set up a few useful parameters that will be called repeatedly
+        self.ev_lat = self.event.preferred_origin().latitude
+        self.ev_lon = self.event.preferred_origin().longitude
+        self.sta_lat = inv[0][0][0].latitude
+        self.sta_lon = inv[0][0][0].longitude
 
-            # Annotate the station name next to the station
-            if annotate_names:
-                plt.annotate(f"{net.code}.{sta.code}", xy=(x, y), 
-                             xytext=(x, y), zorder=60, fontsize=7, 
-                             bbox=dict(facecolor='w', edgecolor='k', 
-                                       boxstyle='round')
-                             )
+        if corners is None:
+            # If no corners are given, provide a reasonable buffer around the
+            # source and receiver locations
+            lon_min = min(self.ev_lon, self.sta_lon)
+            lon_max = max(self.ev_lon, self.sta_lon)
+            d_lon = 0.5 * (lon_max - lon_min)
+            self.lon_min = lon_min - d_lon
+            self.lon_max = lon_max + d_lon
 
+            lat_min = min(self.ev_lat, self.sta_lat)
+            lat_max = max(self.ev_lat, self.sta_lat)
+            d_lat = 0.5 * (lat_max - lat_min)
+            self.lat_min = lat_min - d_lat
+            self.lat_max = lat_max + d_lat
+        else:
+            # Parse the corners into usable values
+            assert(isinstance(corners, dict))
+            self.lat_min = corners["lat_min"]
+            self.lat_max = corners["lat_max"]
+            self.lon_min = corners["lon_min"]
+            self.lon_max = corners["lon_max"]
 
-def plot_stations_simple(m, lats, lons):
-    """
-    Fill map with stations based on latitude longitude values, nothing fancy
+    def initiate(self):
+        """
+        Set up the basemap object with a certain defined look
+        """
+        # Matplotlib kwargs
+        dpi = self.kwargs.get("dpi", 100)
+        figsize = self.kwargs.get("figsize", (800 / dpi, 800 / dpi))
 
-    :type m: Basemap
-    :param m: basemap object
-    :type lats: np.ndarray
-    :param lats: array of latitude values
-    :type lons: np.ndarray
-    :param lons: array of longitude values
-    """
-    x, y = m(lons, lats)
-    m.scatter(x, y, marker='v', color='None', edgecolor='k', linestyle='-',
-              s=95, linewidth=1.75, zorder=70
-              )
+        # Basemap kwargs
+        area_thresh = self.kwargs.get("area_thresh", None)
+        continent_color = self.kwargs.get("contininent_color", "w")
+        lake_color = self.kwargs.get("lake_color", "w")
+        coastline_zorder = self.kwargs.get("coastline_zorder", 5)
+        coastline_linewidth = self.kwargs.get("coastline_linewidth", 2.0)
+        fill_color = self.kwargs.get("fill_color", "w")
+        plw = self.kwargs.get("parallel_linewidth", 0.)
+        mlw = self.kwargs.get("meridian_linewidth", 0.)
+        projection = self.kwargs.get("projection", "stere")
+        resolution = self.kwargs.get("resolution", "c")
 
+        # Initiate matplotlib instances
+        self.fig = plt.figure(figsize=figsize, dpi=dpi)
+        self.fig.tight_layout()
 
-def annotate_srcrcv_information(m, event, inv, **kwargs):
-    """
-    Annotate event receiver information into bottom right corner of the map
-
-    :type m: Basemap
-    :param m: basemap object
-    :type event: obspy.core.event.Event
-    :param event: event object
-    :type inv: obspy.core.inventory.Inventory
-    :param inv: inventory containing relevant network and stations
-    """
-    fontsize = kwargs.get("anno_fontsize", 12)
-    x = kwargs.get("anno_x", 0.95)
-    y = kwargs.get("anno_y", 0.105)
-
-    event.origins[0].time.precision = 0
-    gcdist, baz = gcd_and_baz(event, inv[0][0])
-    event_id = event.resource_id.id.split('/')[1]
-    origin_time = event.preferred_origin().time
-    region = FlinnEngdahl().get_region(self.ev_lon, self.ev_lat)
-
-
-    plt.text(s=(f"{event_id} / {inv[0].code}.{inv[0][0].code}\n"
-                f"{origin_time.format_iris_web_service()}\n"
-                f"{event.preferred_magnitude().magnitude_type}="
-                f"{event.preferred_magnitude().mag:.2f}\n"
-                f"Depth(km)={event.preferred_origin().depth*1E-3:.2f}\n"
-                f"Dist(km)={gcdist:.2f}\n"
-                f"BAz(deg)={baz:.2f}"),
-             x=x, y=y, horizontalalignment="right",
-             verticalalignment="top", transform=plt.gca().transAxes,
-             fontsize=fontsize
-             )
-
-
-def connect_source_receiver(m, event, sta, **kwargs):
-    """
-    Draw a dashed line connecting the station and receiver, highlight station
-    with a colored marker. Useful for visualizing a source-receiver pair.
-
-    :type m: Basemap
-    :param m: basemap object
-    :type event: obspy.core.event.Event
-    :param event: event object
-    :type sta: obspy.core.inventory.Inventory
-    :param sta: inventory containing relevant network and stations
-    """
-    linestyle = kwargs.get("srcrcv_linestyle", "--")
-    linewidth = kwargs.get("srcrcv_linewidth", 1.5)
-    linecolor = kwargs.get("srcrcv_color", "k")
-    rcv_marker = kwargs.get("rcv_marker", "v")
-    rcv_markercolor = kwargs.get("rcv_markercolor", "r")
-    rcv_markersize = kwargs.get("rcv_markersize", 75)
-    rcv_linewidth = kwargs.get("rcv_linewidth", 1.5)
-    src_marker = kwargs.get("src_marker", "o")
-    src_markercolor = kwargs.get("src_markercolor", "r")
-    src_markersize = kwargs.get("src_markersize", 105)
-    src_linewidth = kwargs.get("src_linewidth", 1.75)
-    
-    zorder = kwargs.get("zorder", 70)
-
-    # Get coordinates in map extent
-    event_x, event_y = m(event.preferred_origin().longitude,
-                         event.preferred_origin().latitude
+        # Initiate map and draw in style
+        self.m = Basemap(projection=projection, resolution=resolution,
+                         rsphere=6371200,
+                         lat_0=(self.lat_min + self.lat_max)/2,
+                         lon_0=(self.lon_min + self.lon_max)/2,
+                         llcrnrlat=self.lat_min, urcrnrlat=self.lat_max,
+                         llcrnrlon=self.lon_min, urcrnrlon=self.lon_max,
+                         area_thresh=area_thresh
                          )
-    station_x, station_y = m(sta.longitude, sta.latitude)
 
-    # Connecting line
-    m.plot([event_x, station_x], [event_y, station_y], linestyle=linestyle, 
-           linewidth=linewidth, c=linecolor, zorder=zorder-10)
+        # By default, no meridan or parallel lines
+        self.m.drawparallels(np.arange(int(self.lat_min), int(self.lat_max), 1),
+                             labels=[1, 0, 0, 0], linewidth=plw
+                             )
+        self.m.drawmeridians(
+            np.arange(int(self.lon_min), int(self.lon_max) + 1, 1),
+            labels=[0, 0, 0, 1], linewidth=mlw
+        )
 
-    # Receiver
-    m.scatter(station_x, station_y, marker=rcv_marker, color=rcv_markercolor,
-              linewidth=rcv_linewidth, edgecolor="k", s=rcv_markersize, 
-              zorder=zorder)
+        # Create auxiliary parts of the map for clarity
+        self.m.drawcoastlines(linewidth=coastline_linewidth, zorder=coastline_zorder)
+        self.m.fillcontinents(color=continent_color, lake_color=lake_color)
+        self.m.drawmapboundary(fill_color=fill_color)
+        self.scalebar()
 
-    # Source, should be overwritten by focal mechanism
-    m.scatter(event_x, event_y, marker=src_marker, color=src_markercolor, 
-              edgecolor="k", s=src_markersize, zorder=zorder, 
-              linewidth=src_linewidth)
+        # Calculate the source-receiver locations based on map coordinates
+        self.ev_x, self.ev_y = self.m(self.ev_lon, self.ev_lat)
+        self.sta_x, self.sta_y = self.m(self.sta_lon, self.sta_lat)
 
+    def scalebar(self):
+        """
+        Put the scale bar in a corner at a reasonable distance from each edge
+        """
+        loc = self.kwargs.get("scalebar_location", "upper-right")
+        fontsize = self.kwargs.get("scalebar_fontsize", 13)
+        lw = self.kwargs.get("scalebar_linewidth", 2)
 
-def interpolate_and_contour(m, x, y, z, len_xi, len_yi, fill=True,
-                            cbar_label='', colormap='viridis',
-                            interpolation_method='cubic', marker='o'):
-    """
-    Interpolate over scatter points on a regular grid, and create a contour plot
+        if loc == "upper-right":
+            lat_pct = 0.94
+            lon_pct = 0.875
+        elif loc == "lower-right":
+            lat_pct = 0.04
+            lon_pct = 0.9
 
-    Station locations are irregular over the map and it's sometimes difficult to
-    visualize data based soley on the colors of the station markers. This
-    function will interpolate the station values (e.g. misfit) over the area
-    covered by the stations, and create a contour plot that can be overlaid onto
-    the map object
+        # Place the scalebar based on the the corners given in lat/lon
+        lat = self.lat_min + (self.lat_max - self.lat_min) * lat_pct
+        lon = self.lon_min + (self.lon_max - self.lon_min) * lon_pct
 
-    :type m: Basemap
-    :param m: basemap object
-    :type x: list
-    :param x: x coordinates
-    :type y: list
-    :param y: y coordinates
-    :type z: list
-    :param z: values to interpolate
-    :type len_xi: int
-    :param len_xi: x-axis length of the regular grid to interpolate onto
-    :type len_yi: int
-    :param len_yi: y-axis length of the regular grid to interpolate onto
-    :type fill: bool
-    :param fill: contourf or countour
-    :type cbar_label: str
-    :param cbar_label: custom label for the colorbar
-    :type colormap: str
-    :param colormap: matplotlib colorscale to be shared between contour, scatter
-    :type interpolation_method: str
-    :param interpolation_method: 'linear', 'nearest', 'cubic', passed to
-        scipy.interpolate.griddata
-    :type marker: str
-    :param marker: marker type for the station scatterplot
-    """
-    # Create a grid of data to interpolate data onto
-    xi, yi = np.mgrid[min(x):max(y):len_xi,
-                      min(x):max(y):len_yi]
+        self.m.drawmapscale(lon, lat, lon, lat, 100,
+                            yoffset=0.01 * (self.m.ymax - self.m.ymin),
+                            zorder=100, linewidth=lw, fontsize=fontsize
+                            )
 
-    # np meshgrid can also be used, but it gives a jagged edge to contourf
-    # xi, yi = np.meshgrid(np.linspace(min(x), max(y), len_xi),
-    #                      np.linspace(min(x), max(y), len_yi)
-    #                      )
+    def source(self, fm_type="focal_mechanism"):
+        """
+        Plot the source, either as a focal mechanism, moment tensor, or as a
+        simple point, based on the input.
 
-    # Interpolate the data and plot as a contour overlay
-    zi = griddata((x, y), z, (xi, yi), method=interpolation_method)
+        :type fm_type: str
+        :param fm_type: choice to plot
+            focal_mechanism: 6 component focal mechanism
+            strike_dip_rake: classic double couple look
+        """
+        marker = self.kwargs.get("source_marker", "o")
+        color = self.kwargs.get("source_color", "r")
+        lw = self.kwargs.get("source_lw", 1.75)
+        width = self.kwargs.get("source_width", 60)
 
-    # Use contourf, for filled contours
-    if fill:
-        m.contourf(xi, yi, zi, vmin=0, zorder=100, alpha=0.6, cmap=colormap)
-        # Add a colorbar
-        max_value = myround(np.nan_to_num(zi).max(), base=10, choice='up')
-        cmap = plt.cm.ScalarMappable(cmap=colormap)
-        cmap.set_array(zi)
-        cmap.set_clim(0., max_value)
-        cbar = plt.colorbar(cmap, boundaries=np.arange(0, max_value+10, 10),
-                            shrink=0.8, extend='min')
-        cbar.set_label(cbar_label, rotation=270)
+        # No focal mechanism? Just plot a marker
+        self.m.scatter(self.ev_x, self.ev_y, marker=marker,
+                       color=color, edgecolor="k", linewidth=lw)
 
-    # Use contour for only lines, places values inline with contour
-    else:
-        cs = m.contour(xi, yi, zi, vmin=0, zorder=100, alpha=0.6, cmap=colormap)
-        # Label the contour values
-        plt.clabel(cs, cs.levels, fontsize=8, inline=True, fmt='%.1E')
+        if hasattr(self.event, "focal_mechanisms"):
+            if fm_type == "focal_mechanism":
+                fm = self.event.focal_mechanisms[0].moment_tensor.tensor or \
+                     self.event.preferred_focal_mechanism().moment_tensor.tensor
+                beach_input = [fm['m_rr'], fm['m_tt'], fm['m_pp'],
+                               fm['m_rt'], fm['m_rp'], fm['m_tp']
+                               ]
+            elif fm_type == "strike_dip_rake":
+                nod_plane = self.event.focal_mechanisms[0].nodal_planes or \
+                            self.event.preferred_focal_mechanism().nodal_planes
+                # try determine the preferred nodal plane, default to 1
+                try:
+                    sdr = nod_plane[f"nodal_plane_{nod_plane.preferred_plane}"]
+                except AttributeError:
+                    sdr = nod_plane.nodal_plane_1
+                beach_input = [sdr.strike, sdr.dip, sdr.rake]
+            else:
+                raise ValueError("fm_type must be 'focal_mechanism' or "
+                                 "'strike_dip_rake")
 
-    # Plot the points that were used in the interpolation
-    m.scatter(x, y, c=z, alpha=1., edgecolor='k', linestyle='-', s=100,
-              cmap=colormap, linewidth=2, zorder=101, marker=marker
-              )
+            b = beach(beach_input, xy=(self.ev_x, self.ev_y), width=width,
+                      linewidth=lw, facecolor=color, axes=plt.gca())
+            b.set_zorder(10)
+            plt.gca().add_collection(b)
 
+    def receiver(self):
+        """
+        Plot the receiver with a standard look
+        """
+        marker = self.kwargs.get("station_marker", "v")
+        color = self.kwargs.get("station_color", "w")
+        size = self.kwargs.get("station_size", 80)
+        lw = self.kwargs.get("station_lw", 1.25)
 
-def initiate_basemap(map_corners=None, scalebar=True, **kwargs):
-    """
-    Set up the basemap object in the same way each time
+        self.m.scatter(self.sta_x, self.sta_y, marker=marker, color=color,
+                       linewidth=lw, s=size, edgecolor="k", zorder=10)
 
-    :type map_corners: dict of floats
-    :param map_corners: {lat_min,lat_max,lon_min,lon_max}
-    :type scalebar: bool
-    :param scalebar: add a scalebar to the map
-    :rtype m: Basemap
-    :return m: basemap object
-    """
-    area_thresh = kwargs.get("area_thresh", None)
-    continent_color = kwargs.get("contininent_color", "w")
-    lake_color = kwargs.get("lake_color", "w")
-    coastline_zorder = kwargs.get("coastline_zorder", 5)
-    coastline_linewidth = kwargs.get("coastline_linewidth", 2.0)
-    fill_color = kwargs.get("fill_color", "w")
-    latlon_linewidth = kwargs.get("latlon_linewidth", 0.)   
+    def connect(self):
+        """
+        Plot a connecting line between source and receiver
+        """
+        ls = self.kwargs.get("srcrcv_linestyle", "--")
+        lw = self.kwargs.get("srcrcv_linewidth", 1.5)
+        lc = self.kwargs.get("srcrcv_color", "k")
 
-    # Initiate map and draw in style. Stereographic projection if regional
-    # corners are given, otherwise world map
-    if map_corners:
-        m = Basemap(projection='stere', resolution='c', rsphere=6371200,
-                    lat_0=(map_corners['lat_min'] + map_corners['lat_max'])/2,
-                    lon_0=(map_corners['lon_min'] + map_corners['lon_max'])/2,
-                    llcrnrlat=map_corners['lat_min'],
-                    urcrnrlat=map_corners['lat_max'],
-                    llcrnrlon=map_corners['lon_min'],
-                    urcrnrlon=map_corners['lon_max'],
-                    area_thresh=area_thresh
-                    )
-        m.drawparallels(np.arange(int(map_corners['lat_min']),
-                                  int(map_corners['lat_max']), 1),
-                        labels=[1, 0, 0, 0], linewidth=latlon_linewidth,
-                        )
-        m.drawmeridians(np.arange(int(map_corners['lon_min']),
-                                  int(map_corners['lon_max']) + 1, 1),
-                        labels=[0, 0, 0, 1], linewidth=latlon_linewidth,
-                        )
-    else:
-        m = Basemap(projection='cyl', resolution='c', llcrnrlat=-90,
-                    urcrnrlat=90, llcrnrlon=-180, urcrnrlon=180,
-                    area_thresh=area_thresh
-                    )
+        self.m.plot([self.ev_x, self.sta_x], [self.ev_y, self.sta_y],
+                    linestyle=ls, linewidth=lw, c=lc, zorder=8)
 
-    m.drawcoastlines(linewidth=coastline_linewidth, zorder=coastline_zorder)
-    m.fillcontinents(color=continent_color, lake_color=lake_color)
-    m.drawmapboundary(fill_color=fill_color)
+    def annotate(self):
+        """
+        Annotate event receiver information into bottom right corner of the map
+        """
+        fontsize = self.kwargs.get("anno_fontsize", 12)
+        x = self.kwargs.get("anno_x", 0.95)
+        y = self.kwargs.get("anno_y", 0.105)
 
-    if scalebar and map_corners:
-        place_scalebar(m, map_corners, **kwargs)
+        # Collect some useful information
+        event_id = self.event.resource_id.id.split('/')[1]
+        sta_id = f"{self.inv[0].code}.{self.inv[0][0].code}"
+        gc_dist, baz = gcd_and_baz(self.event, self.inv[0][0])
+        origin_time = self.event.origins[0].time
+        depth = self.event.preferred_origin().depth * 1E-3
+        magnitude = self.event.preferred_magnitude().mag
+        mag_type = self.event.preferred_magnitude().magnitude_type
+        region = FlinnEngdahl().get_region(self.ev_lon, self.ev_lat)
 
-    return m
+        self.ax.text(s=(f"{region.title()}\n"
+                        f"Dist: {gc_dist:.2f} km / BAz: {baz:.2f}\n"
+                        f"{'-'*10}\n"
+                        f"{event_id} ({self.ev_lat:.2f}, {self.ev_lon:.2f})\n"
+                        f"   Start: {origin_time.format_iris_web_service()}\n"
+                        f"   Mag: {mag_type} {magnitude:.2f}\n"
+                        f"   Depth: {depth:.2f} km\n"
+                        f"{'-'*10}\n"
+                        f"{sta_id} ({self.sta_lat:.2f}, {self.sta_lon:.2f})\n"
+                        ),
+                     x=x, y=y, horizontalalignment="left",
+                     verticalalignment="top", transform=self.ax.transAxes,
+                     zorder=5, fontsize=fontsize
+                     )
 
+    def plot(self, show=True, save=None):
+        """
+        Main function to generate the basemap, plot all the components, and
+        show or save the figure
 
-def manager_map(map_corners, inv=None, event=None, stations=None,
-                annotate_names=False, color_by_network=False, show=True,
-                save=None, **kwargs):
-    """
-    Initiate and populate a basemap object.
+        :type show: bool
+        :param show: show the figure in the gui
+        :type save: str
+        :param save: if not None, save to the given path stored in this var.
+        """
+        # Matplotlib kwargs
+        dpi = self.kwargs.get("dpi", 100)
+        figsize = self.kwargs.get("figsize", (800 / dpi, 800 / dpi))
 
-    Functionality to manually ignore stations based on user quality control
-    Choice to annotate station and receiver which correspond to waveforms
-    Calls beachball and fault tracer (optional) to populate basemap
+        self.initiate()
+        self.source()
+        self.receiver()
+        self.connect()
+        self.annotate()
 
-    :type map_corners: dict of floats
-    :param map_corners: {lat_min,lat_max,lon_min,lon_max}
-    :type event: obspy.core.event.Event
-    :param event: event object
-    :type inv: obspy.core.inventory.Inventory
-    :param inv: inventory containing relevant network and stations
-    :type stations: obspy.core.inventory.Inventory or numpy.ndarray
-    :param stations: background stations to plot on the map that will not
-        interact with the source. if given as an inventory object, plotting
-        will be more complex.
-    :type annotate_names: bool
-    :param annotate_names: annotate station names next to markers
-    :type color_by_network: bool
-    :param color_by_network: color station markers based on network name
-    :type show: bool
-    :param show: show the plot once generated, defaults to False
-    :type save: str
-    :param save: absolute filepath and filename if figure should be saved
-    :rtype f: matplotlib figure
-    :return f: figure object
-    :rtype m: Basemap
-    :return m: basemap object
-    """
-    figsize = kwargs.get("figsize", (6, 8))
-    dpi = kwargs.get("dpi", 100)
-
-    # Initiate matplotlib instances
-    f = plt.figure(figsize=figsize, dpi=dpi)
-    m = initiate_basemap(map_corners=map_corners, scalebar=True, **kwargs)
-
-    # If given, plot all background stations for this given event.
-    if stations is not None:
-        if isinstance(stations, np.ndarray):
-            plot_stations_simple(m, lats=stations[:, 0], lons=stations[:, 1],
-                                 **kwargs)
-        else:
-            plot_stations(m, inv=stations, event=event,
-                          annotate_names=annotate_names,
-                          color_by_network=color_by_network,
-                          )
-
-    # Plot the connected station
-    if inv is not None:
-        plot_stations(m, inv, **kwargs)
-
-    # If an event is given, try to plot the focal-mechanism beachball
-    if event is not None:
-        event_beachball(m, event, **kwargs)
-
-    # If an inventory object is given, plot source receiver line, and info
-    if (inv and event) is not None:
-        connect_source_receiver(m, event=event, sta=inv[0][0], **kwargs)
-        annotate_srcrcv_information(m, event=event, inv=inv, **kwargs)
-
-    # Finality
-    f.tight_layout()
-    if save:
-        plt.savefig(save, figsize=figsize, dpi=dpi)
-    if show:
-        if show == "hold":
-            return (f, m)
-        else:
+        if show:
             plt.show()
-    else:
-        plt.close()
+        if save:
+            plt.savefig(save, dpi=dpi, figsize=figsize)
 
 
