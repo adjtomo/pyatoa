@@ -87,6 +87,10 @@ class MapMaker:
         else:
             # Parse the corners into usable values
             assert(isinstance(corners, dict))
+
+            # Lower the corner keys to allow for upper and lower key entries
+            corners = {key.lower(): val for key, val in corners.items()}
+
             self.lat_min = corners["lat_min"]
             self.lat_max = corners["lat_max"]
             self.lon_min = corners["lon_min"]
@@ -337,10 +341,12 @@ class MapMaker:
         self.receiver()
         self.connect()
         self.annotate(location)
-
-        if show:
-            plt.show()
+        
         if save:
             plt.savefig(save, dpi=dpi, figsize=figsize)
+        if show:
+            plt.show()
+        else:
+            plt.close()
 
 

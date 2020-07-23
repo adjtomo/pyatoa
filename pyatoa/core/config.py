@@ -151,9 +151,9 @@ class Config:
         """
         # Model and step need to be formatted before printing
         str_out = ("CONFIG\n"
-                   f"    {'iter:':<25}{self.iter_tag}\n"
-                   f"    {'step:':<25}{self.step_tag}\n"
-                   f"    {'event:':<25}{self.event_id}\n"
+                   f"    {'iteration:':<25}{self.iter_tag}\n"
+                   f"    {'step_count:':<25}{self.step_tag}\n"
+                   f"    {'event_id:':<25}{self.event_id}\n"
                    )
         # Format the remainder of the keys identically
         key_dict = {"Gather": ["client", "start_pad", "end_pad", "save_to_ds"],

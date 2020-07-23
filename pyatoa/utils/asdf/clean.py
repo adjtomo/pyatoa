@@ -28,7 +28,7 @@ def clean_dataset(ds, iteration=None, step_count=None, fix_windows=False):
     else:
         retain = []
 
-    del_auxiliary_data(ds=ds, iter_tag=iter_tag, step_tag=step_tag, 
+    del_auxiliary_data(ds=ds, iteration=iteration, step_count=step_count, 
                        retain=retain)
 
 

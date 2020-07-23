@@ -155,4 +155,6 @@ class ManagerPlotter:
             plt.savefig(save)
         if show:
             plt.show()
+        else:
+            plt.close()
 

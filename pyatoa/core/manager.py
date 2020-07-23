@@ -586,7 +586,7 @@ class Manager:
 
         return self
 
-    def window(self, fixed=False, model=None, step=None, force=False,
+    def window(self, fix_windows=False, model=None, step=None, force=False,
                save=True):
         """
         Evaluate misfit windows using Pyflex. Save windows to ASDFDataSet.
@@ -597,8 +597,8 @@ class Manager:
             -All windows are saved into the ASDFDataSet, even if retrieved.
             -STA/LTA information is collected and stored internally.
 
-        :type fixed: bool
-        :param fixed: do not pick new windows, but load windows from the
+        :type fix_windows: bool
+        :param fix_windows: do not pick new windows, but load windows from the
             given dataset
         :type force: bool
         :param force: ignore flag checks and run function, useful if e.g.
@@ -609,10 +609,10 @@ class Manager:
 
         if not self.stats.standardized and not force:
             raise ManagerError("cannot window, waveforms not standardized")
-        if fixed and not self.ds:
+        if fix_windows and not self.ds:
             logger.warning("cannot fix window, no dataset")
-            fixed = False
-        elif fixed and (model is None or step is None):
+            fix_windows = False
+        elif fix_windows and (model is None or step is None):
             raise ManagerError("fixed windows require 'model' and 'step'")
 
         # Synthetic STA/LTA as Pyflex WindowSelector.calculate_preliminaries()
@@ -627,7 +627,7 @@ class Manager:
                 continue
 
         # Find misfit windows, from a dataset or through window selection
-        if fixed:
+        if fix_windows:
             self.retrieve_windows(model, step)
         else:
             self.select_windows_plus()
