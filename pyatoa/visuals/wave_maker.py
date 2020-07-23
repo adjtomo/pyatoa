@@ -638,8 +638,6 @@ class WaveMaker:
                         ax.axes.yaxis.set_ticklabels([])
                         ax.set_ylabel("")
 
-        self.fig.tight_layout()
-
         if save:
             plt.savefig(self.save, figsize=figsize, dpi=dpi)
         if show:

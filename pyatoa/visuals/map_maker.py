@@ -120,8 +120,6 @@ class MapMaker:
         else:
             self.fig = figure
 
-        self.fig.tight_layout()
-
         # Initiate map and draw in style
         self.m = Basemap(projection=projection, resolution=resolution,
                          rsphere=6371200,
@@ -190,7 +188,7 @@ class MapMaker:
             strike_dip_rake: classic double couple look
         """
         marker = self.kwargs.get("source_marker", "o")
-        color = self.kwargs.get("source_color", "r")
+        color = self.kwargs.get("source_color", "indianred")
         lw = self.kwargs.get("source_lw", 1.75)
         width = self.kwargs.get("source_width", 35)
 
@@ -228,8 +226,8 @@ class MapMaker:
         Plot the receiver with a standard look
         """
         marker = self.kwargs.get("station_marker", "v")
-        color = self.kwargs.get("station_color", "w")
-        size = self.kwargs.get("station_size", 80)
+        color = self.kwargs.get("station_color", "forestgreen")
+        size = self.kwargs.get("station_size", 90)
         lw = self.kwargs.get("station_lw", 1.5)
 
         self.m.scatter(self.sta_x, self.sta_y, marker=marker, color=color,
