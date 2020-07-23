@@ -121,7 +121,8 @@ class Config:
         self.win_amp_ratio = win_amp_ratio
         self.start_pad = int(start_pad)
         self.end_pad = int(end_pad)
-        self.component_list = component_list or ["Z", "N", "E"]
+        self.component_list = component_list
+        
         self.save_to_ds = save_to_ds
 
         # These are filled in with actual Config objects by _check()
@@ -224,12 +225,20 @@ class Config:
             if key not in self.cfgpaths.keys():
                 self.cfgpaths[key] = []
 
-        # Rotate component list if necessary
+        # Set the component list. Rotate component list if necessary
         if self.rotate_to_rtz:
             logger.debug("Components changed ZNE -> ZRT")
-            for comp in ["N", "E"]:
-                assert(comp not in self.component_list), \
-                        f"rotated component list cannot include '{comp}'"
+            if not self.component_list:
+                logger.debug("Component list set to R/T/Z")
+                self.component_list = ["R", "T", "Z"]
+            else:
+                for comp in ["N", "E"]:
+                    assert(comp not in self.component_list), \
+                            f"rotated component list cannot include '{comp}'"
+        else:
+            if not self.component_list:
+                logger.debug("Component list set to E/N/Z")
+                self.component_list = ["E", "N", "Z"]
 
         # Check that the amplitude ratio is a reasonable number
         if self.win_amp_ratio > 0:

@@ -211,7 +211,7 @@ class Pyaflowa:
                 del kwargs[key]
         self.__dict__.update(kwargs)
 
-    def eval_func(self, event_id, overwrite=None):
+    def eval_func(self, event_id, overwrite=None, preclean=False):
         """
         High level function to interact with Seisflows.
 
@@ -224,13 +224,18 @@ class Pyaflowa:
         :type overwrite: function
         :param overwrite: preprocessing overwrite function that can be passed
             from Seisflows, if None, default Pyatoa preproc function used.
+        :type preclean: bool
+        :param preclean: clean the auxiliary data in the dataset of any existing
+            synthetics and auxiliary data before processing. if True, prevents 
+            any old windows or synthetics from accidentally getting used, but
+            will wipe out old data and overwrite with new data.
         """
         self._set_logging()
 
         # Set up the machinery for a single workflow instnace
         config, paths = self.prepare_event(event_id)
         with pyasdf.ASDFDataSet(paths["dataset"]) as ds:
-            status = self.process_event(ds, config, paths, overwrite)
+            status = self.process_event(ds, config, paths, overwrite, preclean)
             if status:
                 self.prepare_eval_grad(ds, paths)
 
@@ -309,7 +314,7 @@ class Pyaflowa:
 
         return config, paths
 
-    def process_event(self, ds, config, paths, overwrite=None):
+    def process_event(self, ds, config, paths, overwrite=None, preclean=False):
         """
         Mid-level functionality to gather, preprocess data for a given dataset
 
@@ -332,7 +337,8 @@ class Pyaflowa:
         logger.info(f"Fix windows: {fix_windows}")
 
         # Make sure the ASDFDataSet doesn't already contain auxiliary_data
-        clean_ds(ds=ds, model=self.model, step=self.step)
+        if preclean:
+            clean_ds(ds=ds, model=self.model, step=self.step)
 
         # Set up the Manager and get station information
         config.write(write_to=ds)
@@ -378,6 +384,9 @@ class Pyaflowa:
                                            show=False, save=map_fid)
                 except pyatoa.ManagerError as e:
                     logger.warning(e)
+                    continue
+                except Exception as e:
+                    logger.warning(e, exc_info=True)
                     continue
 
         logger.info(f"Pyaflowa processed {processed} stations")
