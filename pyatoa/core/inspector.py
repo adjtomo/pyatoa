@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
-A class to analyze misfit windows using Pandas.
+A class to aggregate time windows, source-receiver information and misfit
+using Pandas.
 """
 import os
 import pyasdf
@@ -22,7 +23,7 @@ class Inspector(InspectorPlotter):
     Inherits plotting capabilities from InspectorPlotter class to reduce clutter
     """
 
-    def __init__(self, tag=None, path=None):
+    def __init__(self, tag=None, verbose=False):
         """
         Inspector only requires the path to the datasets, it will then read in
         all the datasets and store the data internally. This is a long process
@@ -31,33 +32,14 @@ class Inspector(InspectorPlotter):
         :type tag: str
         :param tag: tag of a previously saved workflow to be used for reading
             in existing data from disk
-        :type path: str
-        :param path: path to the ASDFDataSets that were outputted
-            by Pyaflowa in the Seisflows workflow
+        :type verbose: bool
+        :param verbose: detail the files that are being read and their status
         """
         self.windows = pd.DataFrame()
         self.sources = pd.DataFrame()
         self.receivers = pd.DataFrame()
-
-        if tag is not None:
-            # If a tag is given, load rather than reading from datasets
-            try:
-                self.read(tag)
-            except FileNotFoundError:
-                print("file not found")
-        elif path is not None:
-            # If no tag given, read in HDF5 files from path
-            dsfids = glob(os.path.join(path, "*.h5"))
-            for i, dsfid in enumerate(dsfids):
-                print(f"{os.path.basename(dsfid):<25} {i:0>2}/{len(dsfids)}",
-                      end="...")
-                try:
-                    self.append(dsfid)
-                    print("done")
-                except KeyError as e:
-                    print(f"error: {e}")
-                    traceback.print_exc()
-                    continue
+        self.tag = tag
+        self.verbose = verbose
 
     def _get_str(self):
         """
@@ -287,10 +269,42 @@ class Inspector(InspectorPlotter):
         self.windows = pd.concat([self.windows, pd.DataFrame(window)],
                                  ignore_index=True)
 
+    def discover(self, path="./"):
+        """
+        Allow the Inspector to scour through a path and find relevant files,
+        appending them to the internal structure as necessary.
+
+        :type path: str
+        :param path: path to the ASDFDataSets that were outputted
+            by Pyaflowa in the Seisflows workflow
+        """
+        # If a tag is given, try to load an already created Inspector
+        if self.tag is not None:
+            try:
+                self.read(self.tag)
+            except FileNotFoundError:
+                pass
+
+        # Read in PyASDF datasets and append information into the dataset
+        dsfids = glob(os.path.join(path, "*.h5"))
+        for i, dsfid in enumerate(dsfids):
+            if self.verbose:
+                print(f"{os.path.basename(dsfid):<25} {i:0>2}/{len(dsfids)}",
+                      end="...")
+            try:
+                self.append(dsfid)
+                if self.verbose:
+                    print("done")
+            except KeyError as e:
+                if self.verbose:
+                    print(f"error: {e}")
+                    traceback.print_exc()
+                continue
+
     def append(self, dsfid, srcrcv=True, windows=True):
         """
-        Append a new pyasdf.ASDFDataSet file to the current set of internal
-        statistics.
+        Simple function to append information from new pyasdf.ASDFDataSet file
+        to the current set of internal statistics.
 
         :type dsfid: str
         :param dsfid: fid of the dataset
@@ -307,10 +321,13 @@ class Inspector(InspectorPlotter):
                     try:
                         self._get_windows_from_dataset(ds)
                     except AttributeError as e:
-                        print("error: missing auxiliary data")
+                        if self.verbose:
+                            print("error reading dataset: "
+                                  "missing auxiliary data")
                 return
         except OSError:
-            print(f"error: already open")
+            if self.verbose:
+                print(f"error reading dataset: already open")
             return
 
     def save(self, tag, path="./", fmt="csv"):
