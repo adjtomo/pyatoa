@@ -61,29 +61,46 @@ class MapMaker:
         self.lon_min = None
         self.lon_max = None
 
-    def check_corners(self, corners=None):
+    def check_corners(self, corners=None, buffer=5.):
         """
         Distribute the corners provided by the user, or determine corners
-        using the event and station locations
+        using the event and station locations with a reasonable buffer.
 
         :type corners: dict
         :param corners: dict containing corner points, if None, lat lon values
             to be determiend by station and receiver locations
+        :type buffer: float
+        :param buffer: if no corners are given, put a buffer of length 'buffer'
+            in units of degrees, around the min and max lat and lon values,
+            to ensure that atleast some extra extent of map is covered.
+            Defaults to 1 deg or roughly 111.11 km. But, if the distance covered
+            between source and receiver is greater than 'buffer', than a quarter
+            that distance will be used as the buffer. Confusing?
         """
         if corners is None:
             # If no corners are given, provide a reasonable buffer around the
-            # source and receiver locations
-            lon_min = min(self.ev_lon, self.sta_lon)
-            lon_max = max(self.ev_lon, self.sta_lon)
-            d_lon = 0.5 * (lon_max - lon_min)
-            self.lon_min = lon_min - d_lon
-            self.lon_max = lon_max + d_lon
-
+            # source and receiver locations.
             lat_min = min(self.ev_lat, self.sta_lat)
             lat_max = max(self.ev_lat, self.sta_lat)
-            d_lat = 0.5 * (lat_max - lat_min)
+
+            d_lat = max(buffer, 0.25 * (lat_max - lat_min))
             self.lat_min = lat_min - d_lat
             self.lat_max = lat_max + d_lat
+
+            # Crude scaling for longitude based on max latitude value to get a
+            # roughly square buffer domain around the source and receiver
+            if abs(lat_max) < 23:
+                lon_scale = 1
+            elif 23 <= abs(lat_max) < 45:
+                lon_scale = 1.4
+            else:
+                lon_scale = 2.5
+
+            lon_min = min(self.ev_lon, self.sta_lon)
+            lon_max = max(self.ev_lon, self.sta_lon)
+            d_lon = lon_scale * max(buffer, 0.25 * (lon_max - lon_min))
+            self.lon_min = lon_min - d_lon
+            self.lon_max = lon_max + d_lon
         else:
             # Parse the corners into usable values
             assert(isinstance(corners, dict))
@@ -334,8 +351,9 @@ class MapMaker:
         dpi = self.kwargs.get("dpi", 100)
         figsize = self.kwargs.get("figsize", (600 / dpi, 600 / dpi))
         location = self.kwargs.get("anno_location", "lower-right")
+        corner_buffer_deg = self.kwargs.get("corner_buffer_deg", 2)
 
-        self.check_corners(corners)
+        self.check_corners(corners, buffer=corner_buffer_deg)
         self.initiate(dpi, figsize)
         self.source()
         self.receiver()
@@ -346,7 +364,5 @@ class MapMaker:
             plt.savefig(save, dpi=dpi, figsize=figsize)
         if show:
             plt.show()
-        else:
-            plt.close()
 
 

@@ -38,15 +38,18 @@ class Inspector(InspectorPlotter):
         self.windows = pd.DataFrame()
         self.sources = pd.DataFrame()
         self.receivers = pd.DataFrame()
+        if tag is None:
+            tag = "default"
+            if verbose:
+                print("no 'tag' given, setting 'tag' to 'default'")
         self.tag = tag
         self.verbose = verbose
 
-        # If a tag is given, try to load an already created Inspector
-        if self.tag is not None:
-            try:
-                self.read(self.tag)
-            except FileNotFoundError:
-                pass
+        # Try to load an already created Inspector
+        try:
+            self.read(tag=self.tag)
+        except FileNotFoundError:
+            pass
 
     def _get_str(self):
         """
@@ -339,19 +342,23 @@ class Inspector(InspectorPlotter):
                 print(f"error reading dataset: already open")
             return
 
-    def save(self, tag, path="./", fmt="csv"):
+    def save(self, path="./", fmt="csv", tag=None):
         """
         Save the downloaded attributes into JSON files for easier re-loading.
 
         fmt == 'hdf' requires 'pytables'
 
         :type tag: str
-        :param tag: unique naming tag for saving json files
+        :param tag: tag to use to save files, defaults to the class tag
+            but allows for the option of overwriting that
         :type path: str
         :param path: optional path to save to, defaults to cwd
         :type fmt: str
         :param fmt: format of the files to write, default csv
         """
+        if tag is None:
+            tag = self.tag
+
         if fmt == "csv":
             if not self.sources.empty:
                 self.sources.to_csv(os.path.join(path, f"{tag}_src.csv"))
@@ -368,16 +375,17 @@ class Inspector(InspectorPlotter):
         else:
             raise NotImplementedError
 
-    def write(self, tag, **kwargs):
+    def write(self, **kwargs):
         """Same as Inspector.save(), but I kept writing .write()"""
-        self.save(tag, **kwargs)
+        self.save(**kwargs)
 
     def read(self, path="./", fmt=None, tag=None):
         """
         Load previously saved attributes to avoid re-processing data.
 
         :type tag: str
-        :param tag: tag to look for json files
+        :param tag: tag to use to look for files, defaults to the class tag
+            but allows for the option of overwriting that
         :type path: str
         :param path: optional path to file, defaults to cwd
         :type fmt: str
@@ -411,6 +419,15 @@ class Inspector(InspectorPlotter):
                 self.windows = s["windows"]
         else:
             raise NotImplementedError
+
+    def reset(self):
+        """
+        Simple function to wipe out all the internal attributes, not super
+        useful but may come in handy somewhere
+        """
+        self.windows = pd.DataFrame()
+        self.sources = pd.DataFrame()
+        self.receivers = pd.DataFrame()
 
     def get_models(self, discards=False):
         """

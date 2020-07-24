@@ -110,6 +110,7 @@ class ManagerPlotter:
         # Call on window making function to produce waveform plots
         wm = WaveMaker(mgmt=self.mgmt, **kwargs)
         wm.plot(show=show, save=save)
+        plt.close()
 
     def plot_map(self, corners=None, save=None, show=True, **kwargs):
         """
@@ -127,6 +128,7 @@ class ManagerPlotter:
         # Call external function to generate map
         mm = MapMaker(inv=self.mgmt.inv, cat=self.mgmt.event, **kwargs)
         mm.plot(corners=corners, show=show, save=save)
+        plt.close()
 
     def plot(self, corners=None, dpi=100, figsize=None, show=True, save=False,
              **kwargs):
