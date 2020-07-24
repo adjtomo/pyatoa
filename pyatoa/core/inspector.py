@@ -41,6 +41,13 @@ class Inspector(InspectorPlotter):
         self.tag = tag
         self.verbose = verbose
 
+        # If a tag is given, try to load an already created Inspector
+        if self.tag is not None:
+            try:
+                self.read(self.tag)
+            except FileNotFoundError:
+                pass
+
     def _get_str(self):
         """
         Get the string representation once and save as internal attribute
@@ -158,7 +165,7 @@ class Inspector(InspectorPlotter):
         :return source: single row Dataframe containing event info from dataset
         :rtype receivers: multiindexed dataframe containing unique station info
         """
-        # Create a dataframe with source information
+        # Create a dataframe with source information, ignore duplicates
         event_id = format_event_name(ds)
         if event_id not in self.sources.index:
             src = {
@@ -179,7 +186,7 @@ class Inspector(InspectorPlotter):
         # Loop through all the stations in the dataset to create a dataframe
         networks, stations, latitudes, longitudes = [], [], [], []
         for sta, sta_info in ds.get_all_coordinates().items():
-            # Append station information one time globally
+            # Append station information one time globally by checking name
             net, sta = sta.split(".")
             if not (net, sta) in self.receivers.index:
                 networks.append(net)
@@ -233,6 +240,12 @@ class Inspector(InspectorPlotter):
 
         for iter_ in misfit_windows.list():
             for step in misfit_windows[iter_].list():
+                # If any entries exist for a given event/model/step
+                # ignore appending them to the internal structure as they've
+                # already been collected
+                if not self.isolate(iter_, step, eid).empty:
+                    continue
+
                 for win in misfit_windows[iter_][step]:
                     # pick apart information from this window
                     cha_id = win.parameters["channel_id"]
@@ -264,10 +277,12 @@ class Inspector(InspectorPlotter):
                         win.parameters["relative_endtime"] -
                         win.parameters["relative_starttime"]
                     )
-        window.update(winfo)
 
-        self.windows = pd.concat([self.windows, pd.DataFrame(window)],
-                                 ignore_index=True)
+        # Only add to internal structure if something was collected
+        if window["event"]:
+            window.update(winfo)
+            self.windows = pd.concat([self.windows, pd.DataFrame(window)],
+                                     ignore_index=True)
 
     def discover(self, path="./"):
         """
@@ -278,14 +293,6 @@ class Inspector(InspectorPlotter):
         :param path: path to the ASDFDataSets that were outputted
             by Pyaflowa in the Seisflows workflow
         """
-        # If a tag is given, try to load an already created Inspector
-        if self.tag is not None:
-            try:
-                self.read(self.tag)
-            except FileNotFoundError:
-                pass
-
-        # Read in PyASDF datasets and append information into the dataset
         dsfids = glob(os.path.join(path, "*.h5"))
         for i, dsfid in enumerate(dsfids):
             if self.verbose:
@@ -363,7 +370,7 @@ class Inspector(InspectorPlotter):
         """Same as Inspector.save(), but I kept writing .write()"""
         self.save(tag, **kwargs)
 
-    def read(self, tag, path="./", fmt=None):
+    def read(self, path="./", fmt=None, tag=None):
         """
         Load previously saved attributes to avoid re-processing data.
 
@@ -374,6 +381,9 @@ class Inspector(InspectorPlotter):
         :type fmt: str
         :param fmt: format of the files to read, default csv
         """
+        if tag is None:
+            self.tag = tag
+
         # Dynamically determine file format
         if not fmt:
             tag = tag.split(".")[0]  # remove extension if there is one
@@ -410,13 +420,13 @@ class Inspector(InspectorPlotter):
         a mapping of step count to model number to help make sense of this.
 
         Example: Given three iterations
-        m00: [s00, s01, s02]
-        m01: [s00, s01]
-        m02: [s01]
+        i00: [s00, s01, s02]
+        i01: [s00, s01]
+        i02: [s01]
 
         At m02, the gradient is well scaled and s00 is skipped.
         We therefore have three models as opposed to the two suggested, 
-        {m00: m00s00, m01: m01s00, m02: m01s01, m03: m02s01}
+        {i00: i00s00, i01: i01s00, i02: i01s01, i03: i02s01}
 
         Confusing aye? This needs to be adjusted in Pyatoa...
         """
@@ -445,8 +455,8 @@ class Inspector(InspectorPlotter):
             # Get the discarded steps by searching the previous model
             if discards:
                 if iter_ in self.steps:
-                    all_steps = [f"{iter_}/{step}" for step in 
-                                         self.steps[iter_] if "s00" not in step]
+                    all_steps = [f"{iter_}/{step}" for step in self.steps[iter_]
+                                 if "s00" not in step]
                 dict_out[f"i{i:0>2}_all"] = all_steps
 
         return dict_out
@@ -681,9 +691,6 @@ class Inspector(InspectorPlotter):
         backazimuth and theoretical traveltimes for a 1D Earth model.
 
         Return a DataFrame that can be used as a lookup table.
-
-        :type taupy_model_name: str
-        :param taupy_model_name: 1D model for obspy.taupy.TauPyModel
         """
         if self.sources.empty or self.receivers.empty:
             return []
