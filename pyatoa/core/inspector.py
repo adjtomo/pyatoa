@@ -205,7 +205,7 @@ class Inspector(InspectorPlotter):
                                      )
             self.receivers = pd.concat([self.receivers, receivers.T])
 
-    def _get_windows_from_dataset(self, ds, adj_src_fmt="{net}_{sta}_BX{cmp}"):
+    def _get_windows_from_dataset(self, ds, adj_src_fmt="{net}_{sta}_{cha}"):
         """
         Get window and misfit information from dataset auxiliary data
         Model and Step information should match between the two
@@ -243,7 +243,8 @@ class Inspector(InspectorPlotter):
                 # If any entries exist for a given event/model/step
                 # ignore appending them to the internal structure as they've
                 # already been collected
-                if not self.isolate(iter_, step, eid).empty:
+                if not self.windows.empty and \
+                        not self.isolate(iter_, step, eid).empty:
                     continue
 
                 for win in misfit_windows[iter_][step]:
@@ -255,7 +256,7 @@ class Inspector(InspectorPlotter):
                     # get information from corresponding adjoint source
                     # This will be the same for multiple windows
                     adj_src = adjoint_sources[iter_][step][adj_src_fmt.format(
-                        net=net, sta=sta, cmp=component
+                        net=net, sta=sta, cha=cha
                     )]
                     window["misfit"].append(adj_src.parameters["misfit_value"])
 
@@ -296,8 +297,9 @@ class Inspector(InspectorPlotter):
         dsfids = glob(os.path.join(path, "*.h5"))
         for i, dsfid in enumerate(dsfids):
             if self.verbose:
-                print(f"{os.path.basename(dsfid):<25} {i:0>2}/{len(dsfids)}",
-                      end="...")
+                print(
+                    f"{os.path.basename(dsfid):<25} {i:0>3}/{len(dsfids):0>3}",
+                    end="...")
             try:
                 self.append(dsfid)
                 if self.verbose:
@@ -382,7 +384,7 @@ class Inspector(InspectorPlotter):
         :param fmt: format of the files to read, default csv
         """
         if tag is None:
-            self.tag = tag
+            tag = self.tag
 
         # Dynamically determine file format
         if not fmt:
