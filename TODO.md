@@ -86,14 +86,16 @@
 - [X] Move tools and visualize out of utils dir into main dir
 
 #### Visuals
-- [ ] Automatically combine map and waveform plot in matplotlib, rather than after generating .png's
-- [ ] More info in manager plotter title, such as event depth, magnitude, srcrcv distance, baz
 - [ ] Manager plotter use a separate smaller subplot for window information, including sta/lta, rejected windows, etc.
 - [ ] Kwargs in docstrings and raise TypeError for undefined kwargs
 - [ ] Lower alpha of legend in waveform plotter
 - [ ] Show the extent of the window search criteria from Pyflex
 - [ ] Plot c_0 * stalta_waterlevel for water level rejection
 - [ ] Allow plotting time dependent rejection criteria from Pyflex
+- [X] Automatically combine map and waveform plot in matplotlib, rather than after generating .png's
+     *Done with GridSpec and a MangerPlotter class, works pretty good!*
+- [X] More info in manager plotter title, such as event depth, magnitude, srcrcv distance, baz
+     *Not needed now that map and wav plots are combined*
 - [X] Depth cross section of a Catalog object  
       *In pyaflowa artist *  
 - [ ] ~~Plot output optim only show models, maybe iterations as smaller points, or plot both~~  
@@ -103,7 +105,7 @@
 - [X] Remove rcParams and explicitely set all plot attributes in calls
 - [x] Windows extend the height of the waveform plot
 
-#### Pyaflowa:
+#### Pyaflowa (Deprecated):
 - [X] fix windows within a single iteration  
 - [ ] ~~source receiver json file with event-station information such as lat/lon, dist and BAz, only once for m00s00~~  
      *This is taken care of by the Inspector class, don't need to perform twice*  
