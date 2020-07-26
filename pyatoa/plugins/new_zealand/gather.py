@@ -10,7 +10,7 @@ from pyatoa import logger
 from pyatoa.utils.srcrcv import mt_transform, half_duration_from_m0
 
 
-def get_geonet_moment_tensor(event_id):
+def get_geonet_moment_tensor(event_id, csv_fid=None):
     """
     Get moment tensor information from a internal csv file,
     or from an external github repository query.
@@ -19,22 +19,32 @@ def get_geonet_moment_tensor(event_id):
 
     :type event_id: str
     :param event_id: unique event identifier
+    :type csv_fid: str
+    :param csv_fid: optional path to GeoNet CMT solution file that is stored 
+        locally on disk, will be accessed before querying web service
     :rtype moment_tensor: dict
     :return moment_tensor: dictionary created from rows of csv file
     """
-    # Request and open the CSV file. Assumed that GeoNet will keep their
-    # moment-tensor information in their GitHub repository
-    # Last accessed 23.6.19
-    geonet_mt_csv = (
-        "https://raw.githubusercontent.com/GeoNet/data/master/"
-        "moment-tensor/GeoNet_CMT_solutions.csv"
-    )
-    response = requests.get(geonet_mt_csv)
-    if not response.ok:
-        raise FileNotFoundError(f"Response from {geonet_mt_csv} not ok")
+    csv_file = None
+    if csv_fid is not None:
+        try:
+            reader = csv.reader(open(csv_fid, 'r'), delimiter=',')
+        except FileNotFoundError:
+            pass
 
-    # Use CSV to parse through the returned response
-    reader = csv.reader(response.text.splitlines(), delimiter=',')
+    if reader is None:
+        # Request and open the CSV file. Assumed that GeoNet will keep their
+        # moment-tensor information in their GitHub repository
+        # Last accessed 23.6.19
+        geonet_mt_csv = (
+            "https://raw.githubusercontent.com/GeoNet/data/master/"
+            "moment-tensor/GeoNet_CMT_solutions.csv"
+        )
+        response = requests.get(geonet_mt_csv)
+        if not response.ok:
+            raise FileNotFoundError(f"Response from {geonet_mt_csv} not ok")
+
+        reader = csv.reader(response.text.splitlines(), delimiter=',')
 
     # Parse the CSV file
     for i, row in enumerate(reader):
@@ -60,7 +70,7 @@ def get_geonet_moment_tensor(event_id):
         raise AttributeError(f"no geonet moment tensor found for: {event_id}")
 
 
-def geonet_focal_mechanism(event_id, event=None):
+def geonet_focal_mechanism(event_id, event=None, csv_fid=None):
     """
     Focal mechanisms created by John Ristau are written to a .csv file
     located on Github. This function will append information from the .csv file
@@ -74,7 +84,7 @@ def geonet_focal_mechanism(event_id, event=None):
     :rtype focal_mechanism: obspy.core.event.FocalMechanism
     :return focal_mechanism: generated focal mechanism
     """
-    mtlist = get_geonet_moment_tensor(event_id)
+    mtlist = get_geonet_moment_tensor(event_id, csv_fid=csv_fid)
 
     # Match the identifier with Goenet
     id_template = f"smi:local/geonetcsv/{mtlist['PublicID']}/{{}}"
