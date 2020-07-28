@@ -57,6 +57,20 @@ pyflex_presets = {
         "c_4a": 2.5,
         "c_4b": 12.0
     },
+    # For use with testing the workflow using a homogeneous halfspace example
+    "homogeneous_halfspace": {
+        "stalta_waterlevel": 0.05, 
+        "tshift_acceptance_level": 15.0,
+        "dlna_acceptance_level": 2.0,
+        "s2n_limit": 3.,
+        "min_surface_wave_velocity": 1.5,
+        "c_0": 0.7,
+        "c_1": 2., 
+        "c_3a": 3.0,
+        "c_3b": 2.0,
+        "c_4a": 2.5,
+        "c_4b": 12.0
+    },
     # nznorth: From the New Zealand group doing local studies of North Island
     # For the 1D velocity model, windowing parameters need to be very loose to
     # pick the large time shifts

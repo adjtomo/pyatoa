@@ -25,7 +25,7 @@ def get_geonet_moment_tensor(event_id, csv_fid=None):
     :rtype moment_tensor: dict
     :return moment_tensor: dictionary created from rows of csv file
     """
-    csv_file = None
+    reader = None
     if csv_fid is not None:
         try:
             reader = csv.reader(open(csv_fid, 'r'), delimiter=',')
