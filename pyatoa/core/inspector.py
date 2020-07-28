@@ -127,6 +127,11 @@ class Inspector(InspectorPlotter):
             )
         except KeyError:
             return []
+    
+    @property
+    def models(self):
+        """Return a dict of model numbers related to a unique iteration/step"""
+        return self.get_models(discards=False)
 
     @property
     def evaluations(self):
@@ -358,6 +363,12 @@ class Inspector(InspectorPlotter):
         """
         if tag is None:
             tag = self.tag
+        if fmt == "hdf":
+            try:
+                import pytables
+            except ImportError:
+                fmt = "csv"
+                print("format 'hdf' requires pytables, defaulting to 'csv'")
 
         if fmt == "csv":
             if not self.sources.empty:
@@ -431,23 +442,30 @@ class Inspector(InspectorPlotter):
 
     def get_models(self, discards=False):
         """
-        Once the L-BFGS optimization is well scaled, the function evaluation in
-        the line search of the previous model 'm-1' is used as the function 
-        evaluation of the current model 'm' meaning the forward simulation of 
-        model 'm' is skipped. 
+        In a Seisflows Thrifty Inversion, once the L-BFGS optimization is well 
+        scaled, the function evaluation in the line search of the previous model 
+        'm-1' is used as the function evaluation of the current iteration 'i',
+        meaning the forward simulation 's00' of iteration 'i' is skipped. 
+
         This can lead to some confusing naming schema. So this function creates 
         a mapping of step count to model number to help make sense of this.
 
-        Example: Given three iterations
-        i00: [s00, s01, s02]
-        i01: [s00, s01]
-        i02: [s01]
+        Example: Given three iterations with the following line searches
+            i00: [s00, s01, s02]
+            i01: [s00, s01]
+            i02: [s01]
 
-        At m02, the gradient is well scaled and s00 is skipped.
-        We therefore have three models as opposed to the two suggested, 
-        {i00: i00s00, i01: i01s00, i02: i01s01, i03: i02s01}
+            At i02, the gradient is well scaled and s00 is skipped,
+            We therefore have three viable models:
+            {m00: i00s00, m01: i01s00, m02: i01s01, m03: i02s01}
 
-        Confusing aye? This needs to be adjusted in Pyatoa...
+        :type discards: bool
+        :param discards: returns additional entries in the dict, labelled e.g.
+            'm01_all', which gives all additional trial steps in the line 
+            search. This is useful for plotting.
+        :rtype: dict
+        :return: a dictionary of model numbers corresponding to a unique 
+            iteration and step count combination
         """
         dict_out = {}
         i = 0
@@ -462,7 +480,7 @@ class Inspector(InspectorPlotter):
                 last_iter_last_step = self.steps[prev_iter][-1]
                 selected_iteration = f"{prev_iter}/{last_iter_last_step}"
 
-            dict_out[f"i{i:0>2}"] = selected_iteration
+            dict_out[f"m{i:0>2}"] = selected_iteration
 
             # Set the new model count
             i += 1
@@ -476,7 +494,7 @@ class Inspector(InspectorPlotter):
                 if iter_ in self.steps:
                     all_steps = [f"{iter_}/{step}" for step in self.steps[iter_]
                                  if "s00" not in step]
-                dict_out[f"i{i:0>2}_all"] = all_steps
+                dict_out[f"m{i:0>2}_all"] = all_steps
 
         return dict_out
 

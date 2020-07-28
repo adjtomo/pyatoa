@@ -134,7 +134,7 @@ class ExternalGetter:
         :rtype stream: obspy.core.stream.Stream
         :return stream: waveform contained in a stream
         """
-        if not self.Client:
+        if not self.Client or self.config.synthetics_only:
             return None
 
         logger.debug(f"querying client {self.config.client}")
@@ -145,8 +145,8 @@ class ExternalGetter:
                 starttime=self.origintime - (self.config.start_pad + 10),
                 endtime=self.origintime + (self.config.end_pad + 10)
             )
-            # Sometimes FDSN queries return improperly cut start and end times, so
-            # we retrieve +/-10 seconds and then cut down
+            # Sometimes FDSN queries return improperly cut start and end times,
+            # so we retrieve +/-10 seconds and then cut down
             st.trim(starttime=self.origintime - self.config.start_pad,
                     endtime=self.origintime + self.config.end_pad)
             return st
