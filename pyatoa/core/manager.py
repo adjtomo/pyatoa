@@ -392,7 +392,8 @@ class Manager:
         self._check()
         return self
 
-    def flow(self, fix_windows=False, preprocess_overwrite=None):
+    def flow(self, fix_windows=False, preprocess_overwrite=None, iteration=None,
+             step_count=None):
         """
         A convenience function to run the full workflow with a single command.
         Does not include gathering as that could be from gather() or load()
@@ -408,10 +409,11 @@ class Manager:
         """
         self.standardize()
         self.preprocess(overwrite=preprocess_overwrite)
-        self.window(fix_windows=fix_windows)
+        self.window(fix_windows=fix_windows, iteration=iteration,
+                    step_count=step_count)
         self.measure()
 
-    def gather(self, station_code, choice=None):
+    def gather(self, station_code, choice=None, query_fdsn=True):
         """
         Gather station dataless and waveform data using the Gatherer class.
         In order collect observed waveforms, dataless, and finally synthetics.
@@ -586,8 +588,8 @@ class Manager:
 
         return self
 
-    def window(self, fix_windows=False, model=None, step=None, force=False,
-               save=True):
+    def window(self, fix_windows=False, iteration=None, step_count=None,
+               force=False, save=True):
         """
         Evaluate misfit windows using Pyflex. Save windows to ASDFDataSet.
         Allows previously defined windows to be retrieved from ASDFDataSet.
@@ -599,10 +601,20 @@ class Manager:
 
         :type fix_windows: bool
         :param fix_windows: do not pick new windows, but load windows from the
-            given dataset
+            given dataset from 'iteration' and 'step_count'
+        :type iteration: int or str
+        :param iteration: if 'fix_windows' is True, look for windows in this
+            iteration. If None, will check the latest iteration/step_count
+            in the given dataset
+        :type step_count: int or str
+        :param step_count: if 'fix_windows' is True, look for windows in this
+            step_count. If None, will check the latest iteration/step_count
+            in the given dataset
         :type force: bool
         :param force: ignore flag checks and run function, useful if e.g.
             external preprocessing is used that doesn't meet flag criteria
+        :type save: bool
+        :param save: save the gathered windows to an ASDF Dataset
         """
         # Pre-check to see if data has already been standardized
         self._check()
@@ -612,8 +624,17 @@ class Manager:
         if fix_windows and not self.ds:
             logger.warning("cannot fix window, no dataset")
             fix_windows = False
-        elif fix_windows and (model is None or step is None):
-            raise ManagerError("fixed windows require 'model' and 'step'")
+        elif fix_windows and (iteration is None or step_count is None):
+            # If no iteration/step_count values are given, automatically search
+            # the previous step_count for windows in relation to the current
+            # iteration/step_count
+            iteration = self.config.iteration
+            step_count = self.config.step_count
+            return_previous_step = True
+        else:
+            # If fix windows and iteration/step_count are given, search the
+            # dataset for windows under the current iteration/step_count
+            return_previous_step = False
 
         # Synthetic STA/LTA as Pyflex WindowSelector.calculate_preliminaries()
         for comp in self.config.component_list:
@@ -628,28 +649,40 @@ class Manager:
 
         # Find misfit windows, from a dataset or through window selection
         if fix_windows:
-            self.retrieve_windows(model, step)
+            self.retrieve_windows(iteration, step_count, return_previous_step)
         else:
             self.select_windows_plus()
+
         if save:
             self.save_windows()
         logger.info(f"{self.stats.nwin} window(s) total found")
 
         return self
 
-    def retrieve_windows(self, iteration, step_count):
+    def retrieve_windows(self, iteration, step_count, return_previous_step):
         """
         Mid-level window selection function that retrieves windows from a 
         PyASDF Dataset, recalculates window criteria, and attaches window 
-        information to Manager. 
-        No access to rejected window information unfortunately.
+        information to Manager. No access to rejected window information.
+
+        :type iteration: int or str
+        :param iteration: retrieve windows from the given iteration
+        :type step_count: int or str
+        :param step_count: retrieve windows from the given step count
+            in the given dataset
+        :type return_previous_step: bool
+        :param return_previous_step: if True: return windows from the previous
+            step count in relation to the given iteration/step_count.
+            if False: return windows from the given iteration/step_count
         """
-        logger.info(f"retrieving windows from dataset {iteration}{step_count}")
+        logger.info(f"retrieving windows from dataset")
 
         net, sta, _, _ = self.st_obs[0].get_id().split(".")
+        # Function will return empty dictionary if no acceptable windows found
         windows = windows_from_dataset(ds=self.ds, net=net, sta=sta,
                                        iteration=iteration,
-                                       step_count=step_count
+                                       step_count=step_count,
+                                       return_previous_step=return_previous_step
                                        )
 
         # Recalculate window criteria for new values for cc, tshift, dlnA etc...

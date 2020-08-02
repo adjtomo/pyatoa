@@ -8,7 +8,7 @@ from obspy import UTCDateTime
 
 
 def windows_from_dataset(ds, net, sta, iteration, step_count, 
-                         previous_step=False):
+                         return_previous_step=False):
     """
     Returns misfit windows from an ASDFDataSet for a given iteration, step,
     network and station, as well as a count of windows returned.
@@ -40,9 +40,9 @@ def windows_from_dataset(ds, net, sta, iteration, step_count,
     :param iteration: current iteration, will be formatted by the function
     :type step_count: int or str
     :param step_count: step count, will be formatted by the function
-    :type check_previous: bool
-    :param check_previous: if no windows are found for the given iteration, 
-        step, search the dataset for available windows from the previous step
+    :type return_previous_step: bool
+    :param return_previous_step: search the dataset for available windows from
+        the previous iteration/step given the current iteration/step
     :rtype window_dict: dict
     :return window_dict: dictionary containing misfit windows, in a format
         expected by Pyatoa Manager class
@@ -53,15 +53,15 @@ def windows_from_dataset(ds, net, sta, iteration, step_count,
     windows = ds.auxiliary_data.MisfitWindows
 
     window_dict = {}    
-    if previous_step:
-        # Attempt to retrieve windows from previous iter/step
-        prev_windows = _return_windows_from_previous_step(windows=windows, 
-                                                          iteration=iteration, 
-                                                          step_count=step_count
-                                                          )
-        window_dict = dataset_windows_to_pyflex_windows(
-            windows=prev_windows, network=net, station=sta
-            )  
+    if return_previous_step:
+        # Retrieve windows from previous iter/step
+        prev_windows = return_windows_from_previous_step(windows=windows,
+                                                         iteration=iteration,
+                                                         step_count=step_count
+                                                         )
+        window_dict = dataset_windows_to_pyflex_windows(windows=prev_windows,
+                                                        network=net, station=sta
+                                                        )
     else:
         if hasattr(windows, iteration) and \
                             hasattr(windows[iteration], step_count):
@@ -84,6 +84,10 @@ def dataset_windows_to_pyflex_windows(windows, network, station):
 
     :type windows: pyasdf.utils.AuxiliaryDataAccessor
     :param windows: ds.auxiliary_data.MisfitWindows[iter][step]
+    :type network: str
+    :param network: network of the station related to the windows
+    :type station: str
+    :param station: station related to the windows
     :rtype window_dict: dict
     :return window_dict: dictionary of window attributes in the same format
         that Pyflex outputs
@@ -125,7 +129,9 @@ def dataset_windows_to_pyflex_windows(windows, network, station):
                  f"{network}.{station}")
     return window_dict
 
-def _return_windows_from_previous_step(windows, iteration, step_count):
+
+def return_windows_from_previous_step(windows, iteration, step_count,
+                                       continuous_search=False):
     """
     Given an iteration and step count, find windows from the previous step
     count. If none are found for the given iteration, return the most recently
@@ -138,10 +144,15 @@ def _return_windows_from_previous_step(windows, iteration, step_count):
     :param iteration: the current iteration 
     :type step_count: int or str
     :param step_count: the current step count
+    :type continuous_search: bool
+    :param continuous_search: allow the search to wind back through all
+        available iterations/step_counts until an acceptable set of windows is
+        found. Preferable to not allow this, but I wrote it so might as well
+        keep it around.
     :rtype: pyasdf.utils.AuxiliaryDataAccessor
     :return: ds.auxiliary_data.MisfitWindows
     """
-    # Ensure were working with integer values for indexing, e.g. 's00' -> 0
+    # Ensure we're working with integer values for indexing, e.g. 's00' -> 0
     if isinstance(iteration, str):
         iteration = int(iteration[1:])
     if isinstance(step_count, str):
@@ -156,17 +167,23 @@ def _return_windows_from_previous_step(windows, iteration, step_count):
 
     current = (iteration, step_count)
     if current in iters:
+        # Windows have been found in the previous iteration/step_count
         prev_iter, prev_step = iters[iters.index(current) - 1]
-    else:
+    elif continuous_search:
         # Wind back the step to see if any windows in this given iteration
-        while step >= 0:
+        while step_count >= 0:
             if (iteration, step_count) in iters:
                 prev_iter, prev_step = iteration, step_count
                 break
-            step -= 1
+            step_count -= 1
         else:
             # If nothing is found return the most recent windows available
             prev_iter, prev_step = iters[-1]
+    else:
+        # Dont allow continous search, simply return empty dictionary
+        logger.debug(f"no previous windows found w.r.t "
+                     f"{format_iter(iteration)}{format_step(step_count)}")
+        return {}
 
     prev_iter = format_iter(prev_iter)
     prev_step = format_step(prev_step)
