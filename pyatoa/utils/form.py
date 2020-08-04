@@ -66,8 +66,6 @@ def format_event_name(ds_or_event):
 
     :type ds_or_event: pyasdf.ASDFDataSet or obspy.core.event.Event
     :param ds_or_event: get dataset event name from the filename
-    :type event: obspy.core.event.Event
-    :param event: get event name from the resource id
     :rtype: str
     :return: the event name to be used for naming schema in the workflow
     """
