@@ -630,11 +630,11 @@ class Manager:
             # iteration/step_count
             iteration = self.config.iteration
             step_count = self.config.step_count
-            return_previous_step = True
+            return_previous = True
         else:
             # If fix windows and iteration/step_count are given, search the
             # dataset for windows under the current iteration/step_count
-            return_previous_step = False
+            return_previous = False
 
         # Synthetic STA/LTA as Pyflex WindowSelector.calculate_preliminaries()
         for comp in self.config.component_list:
@@ -649,7 +649,7 @@ class Manager:
 
         # Find misfit windows, from a dataset or through window selection
         if fix_windows:
-            self.retrieve_windows(iteration, step_count, return_previous_step)
+            self.retrieve_windows(iteration, step_count, return_previous)
         else:
             self.select_windows_plus()
 
@@ -659,7 +659,7 @@ class Manager:
 
         return self
 
-    def retrieve_windows(self, iteration, step_count, return_previous_step):
+    def retrieve_windows(self, iteration, step_count, return_previous):
         """
         Mid-level window selection function that retrieves windows from a 
         PyASDF Dataset, recalculates window criteria, and attaches window 
@@ -670,8 +670,8 @@ class Manager:
         :type step_count: int or str
         :param step_count: retrieve windows from the given step count
             in the given dataset
-        :type return_previous_step: bool
-        :param return_previous_step: if True: return windows from the previous
+        :type return_previous: bool
+        :param return_previous: if True: return windows from the previous
             step count in relation to the given iteration/step_count.
             if False: return windows from the given iteration/step_count
         """
@@ -682,7 +682,7 @@ class Manager:
         windows = windows_from_dataset(ds=self.ds, net=net, sta=sta,
                                        iteration=iteration,
                                        step_count=step_count,
-                                       return_previous_step=return_previous_step
+                                       return_previous=return_previous
                                        )
 
         # Recalculate window criteria for new values for cc, tshift, dlnA etc...
