@@ -8,7 +8,7 @@ from obspy import UTCDateTime
 
 
 def windows_from_dataset(ds, net, sta, iteration, step_count, 
-                         return_previous_windows=False):
+                         return_previous=False):
     """
     Returns misfit windows from an ASDFDataSet for a given iteration, step,
     network and station, as well as a count of windows returned.
@@ -40,8 +40,8 @@ def windows_from_dataset(ds, net, sta, iteration, step_count,
     :param iteration: current iteration, will be formatted by the function
     :type step_count: int or str
     :param step_count: step count, will be formatted by the function
-    :type return_previous_windows: bool
-    :param return_previous_windows: search the dataset for available windows
+    :type return_previous: bool
+    :param return_previous: search the dataset for available windows
         from the previous iteration/step given the current iteration/step
     :rtype window_dict: dict
     :return window_dict: dictionary containing misfit windows, in a format
@@ -53,7 +53,7 @@ def windows_from_dataset(ds, net, sta, iteration, step_count,
     windows = ds.auxiliary_data.MisfitWindows
 
     window_dict = {}    
-    if return_previous_windows:
+    if return_previous:
         # Retrieve windows from previous iter/step
         prev_windows = previous_windows(windows=windows, iteration=iteration,
                                         step_count=step_count
