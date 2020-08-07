@@ -70,7 +70,7 @@ def get_geonet_moment_tensor(event_id, csv_fid=None):
         raise AttributeError(f"no geonet moment tensor found for: {event_id}")
 
 
-def geonet_focal_mechanism(event_id, event=None, csv_fid=None):
+def geonet_focal_mechanism(event_id, units, event=None, csv_fid=None):
     """
     Focal mechanisms created by John Ristau are written to a .csv file
     located on Github. This function will append information from the .csv file
@@ -79,11 +79,17 @@ def geonet_focal_mechanism(event_id, event=None, csv_fid=None):
 
     :type event_id: str
     :param event_id: unique event identifier
+    :type units: str
+    :param units: output units of the focal mechanism, either: 
+        'dynecm': for dyne*cm  or 
+        'nm': for Newton*meter
     :type event: obspy.core.event.Event
     :param event: event to append focal mechanism to
     :rtype focal_mechanism: obspy.core.event.FocalMechanism
     :return focal_mechanism: generated focal mechanism
     """
+    assert(units in ["dynecm", "nm"]), "units must be 'dynecm' or 'nm'"
+
     mtlist = get_geonet_moment_tensor(event_id, csv_fid=csv_fid)
 
     # Match the identifier with Goenet
@@ -115,8 +121,14 @@ def geonet_focal_mechanism(event_id, event=None, csv_fid=None):
     )
 
     # Create the Moment Tensor object with correct units and scaling
-    cv = 1E20 * 1E-7  # convert non-units, to dyne*cm, to N*m
-    seismic_moment_in_nm = mtlist['Mo'] * 1E-7
+    if units == "nm":
+        c = 1E-7  # conversion from dyne*cm to N*m
+    elif units == "dynecm":
+        c = 1
+
+    # CV is the conversion from non-units to the desired output units
+    cv = 1E20 * c
+    seismic_moment_in_nm = mtlist['Mo'] * c
 
     # Convert the XYZ coordinate system of GeoNet to an RTP coordinate system
     # expected in the CMTSOLUTION file of Specfem

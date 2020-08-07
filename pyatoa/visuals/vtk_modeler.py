@@ -21,7 +21,7 @@ class VTKModeler:
     """
     A Class to automatically visualize slices of a model saved in .vtk
     """
-    def __init__(self, figsize=(400, 350), zero_origin=False, scale_axes=1,
+    def __init__(self, figsize=(500, 500), zero_origin=False, scale_axes=1,
                  offscreen=False, logging=True, **kwargs):
         """
         :type figsize: tuple of float

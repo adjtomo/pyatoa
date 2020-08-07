@@ -12,9 +12,9 @@ import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
   
-from pyatoa import  Manager, logger
+from pyatoa import Manager, logger
 from pyatoa.utils.form import format_event_name
-from pyatoa.visuals.manager_plotter import format_axis
+from pyatoa.visuals.wave_maker import format_axis
 from pyflex import logger as pflogger
 
 pflogger.setLevel("DEBUG")
@@ -46,54 +46,62 @@ class WaveformImprovement:
         self.windows = None
         self.time_axis = None
 
-    def sort_steps(self):
+    def get_models(self):
         """
-        Figure out which step goes to which model
+        Figure out which step goes to which iteration to get model numbers
         """
-        model_dict = {"m00": "m00/s00"}
-        models = self.ds.auxiliary_data.MisfitWindows.list()
-        for model in models:
-            steps = self.ds.auxiliary_data.MisfitWindows[model]
-            if model in model_dict:
+        models = {"m00": "i00/s00"}
+        iterations = self.ds.auxiliary_data.MisfitWindows.list()
+        for iter_ in iterations:
+            steps = self.ds.auxiliary_data.MisfitWindows[iter_]
+            if iter_.replace("i", "m") in models:
                 continue
             elif "s00" in steps.list():
-                model_dict[model] = f"{model}/s00"
+                models[iter_.replace("i", "m")] = f"{iter_}/s00"
             else:
-                model_dict[model] = f"{prev_model}/{prev_steps.list()[-1]}"
-            prev_model = model
+                models[iter_.replace("i", "m")] = \
+                    f"{prev_iter}/{prev_steps.list()[-1]}"
+            prev_iter = iter_
             prev_steps = steps
 
         # Get the last step
         if prev_steps.list()[-1] != "s00":
-            final_model = f"m{int(prev_model.split('m')[-1]) + 1:0>2}"
-            model_dict[final_model] = f"{prev_model}/{prev_steps.list()[-1]}"
+            final_model = f"m{int(prev_iter.split('i')[-1]) + 1:0>2}"
+            models[final_model] = f"{prev_iter}/{prev_steps.list()[-1]}"
 
-        return model_dict
-
+        return models
 
     def gather(self, sta, min_period, max_period, rotate_to_rtz=False,
-               synthetics_only=False, fix_windows=False, pyflex_preset=False):
+               fix_windows=False, pyflex_preset=False):
         """
         Parse dataset for given station, gather observed and synthetic data, 
         preprocess data and return as stream objects.
 
-        :type synthetics_only: bool
-        :param synthetics_only: synthetics only parameter to be passed to the
+        :type sta: str
+        :param sta: station to gather data for
+        :type min_period: float
+        :param min_period: minimum filter period in seconds
+        :type max_period: float
+        :param max_period: maximum filter period in seconds
+        :type rotate_to_rtz: bool
+        :param rotate_to_rtz: rotate components from NEZ to RTZ
             Config. if False, instrument response will be removed from obs.
+        :type fix_windows: bool
+        :param fix_windows: dont recalculate windows when gathering
+        :type pyflex_preset: str
+        :param pyflex_preset: overwrite the pyflex preset provided in the
+            Config object
         """
         if min_period is None or max_period is None:
             raise TypeError("must specify 'min_period' and 'max_period'")
 
         assert(sta in self.ds.waveforms.list()), f"{sta} not in ASDFDataSet"
 
-        network, station = sta.split(".")
-        models = self.ds.auxiliary_data.MisfitWindows.list()
-
-        model_dict = self.sort_steps()
+        models = self.get_models()
 
         # Preprocess all traces using Pyatoa and store in dict
         st_obs, synthetics, windows = None, {}, {}
-        for model, path in model_dict.items():
+        for model, path in models.items():
             # Gather synthetic data
             mgmt = Manager(ds=self.ds)   
             print(path)
@@ -112,8 +120,9 @@ class WaveformImprovement:
 
             mgmt.standardize()
             mgmt.preprocess() 
-            mod_, step_ = path.split("/")
-            mgmt.window(fixed=fix_windows, model=mod_, step=step_)
+            iter_, step_ = path.split("/")
+            mgmt.window(fix_windows=fix_windows, iteration=iter_,
+                        step_count=step_)
 
             windows[model] = mgmt.windows
             synthetics[model] = mgmt.st_syn.copy() 
@@ -130,7 +139,7 @@ class WaveformImprovement:
             reftime=st_obs[0].stats.starttime - mgmt.stats.time_offset_sec
             ) 
 
-    def setup_plot(self, nrows, ncols, label_units=False, **kwargs):
+    def setup_plot(self, nrows, ncols, **kwargs):
         """
         Dynamically set up plots according to number_of given
         Returns a list of lists of axes objects
@@ -140,10 +149,6 @@ class WaveformImprovement:
         :param nrows: number of rows in the gridspec
         :type ncols: int
         :param ncols: number of columns in the gridspec
-        :type label_units: bool
-        :param label_units: label the y-axis units and tick marks. can get messy
-            if there are multiple models plotted together, so usually best to 
-            leave it off.
         :rtype axes: matplotlib axes
         :return axes: axis objects
         """
@@ -192,47 +197,31 @@ class WaveformImprovement:
         for row in axes[:-1]:
             for col in row:
                 plt.setp(col.get_xticklabels(), visible=False)
-        
-        # Deprecated, prefer to just set ticks to empty, will probably never
-        # need to show y-values/labels if showing lots of waveforms
-        # 
-        # # remove y-tick labels except for first axis
-        # if label_units:
-        #     for i, row in enumerate(axes):
-        #         for j, col in enumerate(row):
-        #             if j != 0: 
-        #                 plt.setp(col.get_yticklabels(), visible=False)
-        #             else:    
-        #                 col.ticklabel_format(style='sci', axis='y', 
-        #                                      scilimits=(0,0))
-        # else:
-        #     for i, row in enumerate(axes):
-        #         for col in row:
-        #             plt.setp(col.get_yticklabels(), visible=False)
 
         return f, axes
 
     def plot(self, sta=None, min_period=None, max_period=None, 
              plot_windows=False, trace_length=None, show=True, save=False, 
              **kwargs):
-
         """
         Plot waveforms iterative based on model updates
 
-        :type ds: pyasdf.ASDFDataSet
-        :param dsfid: dataset containing waveform information
+        :type sta: str
+        :param sta: station to gather data for, if None, skips gathering
+            assuming data has already been gathered
         :type min_period: float
         :param min_period: minimum filter period for waveforms
         :type max_period: float
         :param max_period: maximum filter period for waveforms
-        :type synthetics_only: bool
-        :param synthetics_only: synthetics only parameter to be passed to the
-            Config. if False, instrument response will be removed from obs.
+        :type plot_windows: bool
+        :param plot_windows: plot misfit windows above waveforms
         :type trace_length: list of floats
         :param trace_length: [trace_start, trace_end] will be used to set the x
             limit on the waveform data. If none, no xlim will be set
         :type show: bool
         :param show: Show the plot or do not
+        :type save: str
+        :param save: if given, save the figure to this path
         """
         linewidth = kwargs.get("linewidth", 2)
         fontsize = kwargs.get("fontsize", 10)

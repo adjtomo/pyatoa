@@ -40,6 +40,7 @@ def write_events(ds, path="./"):
                     format="QUAKEML"
                     )
 
+
 def write_stations(ds, path="./"):
     """
     Write Stations dataless files as STATIONXML files
@@ -53,6 +54,7 @@ def write_stations(ds, path="./"):
         ds.waveforms[sta_name].StationXML.write(
             os.path.join(path, f"{sta_name.replace('.','_')}.xml"), 
             format="STATIONXML")
+
 
 def write_waveforms(ds, path="./"):
     """
@@ -109,6 +111,7 @@ def write_windows(ds, path="./"):
                 json.dump(window_dict, f, cls=WindowEncoder, indent=4, 
                           separators=(',', ':')
                           )   
+
 
 def write_adjoint_sources(ds, path="./"):
     """

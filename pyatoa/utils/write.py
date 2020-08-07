@@ -104,7 +104,7 @@ def write_stations_adjoint(ds, iteration, specfem_station_file, step_count=None,
     # Check which stations have adjoint sources
     stas_with_adjsrcs = []
     adj_srcs = ds.auxiliary_data.AdjointSources[format_iter(iteration)]
-    if step:
+    if step_count:
         adj_srcs = adj_srcs[format_step(step_count)]
 
     for code in adj_srcs.list():
@@ -145,8 +145,8 @@ def write_adj_src_to_ascii(ds, iteration, step_count=None, pathout=None,
     :param ds: dataset containing adjoint sources
     :type iteration: str or int
     :param iteration: iteration number, e.g. "i00". Will be formatted so int ok.
-    :type step: str or int
-    :param step: step count e.g. "s00". Will be formatted so int ok.
+    :type step_count: str or int
+    :param step_count: step count e.g. "s00". Will be formatted so int ok.
     :type pathout: str
     :param pathout: path to write the adjoint sources to
     :type comp_list: list of str
@@ -179,7 +179,7 @@ def write_adj_src_to_ascii(ds, iteration, step_count=None, pathout=None,
 
     # Shortcuts
     adjsrcs = ds.auxiliary_data.AdjointSources[format_iter(iteration)]
-    if step:
+    if step_count:
         adjsrcs = adjsrcs[format_step(step_count)]
 
     # Set the path to write the data to.

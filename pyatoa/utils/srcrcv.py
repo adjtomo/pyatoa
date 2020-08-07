@@ -65,7 +65,7 @@ def mt_transform(mt, method):
         2) [mxx,myy,mzz,mxy,mxz,myz]
         3) [mrr,mtt,mpp,mrt,mrp,mtp]
 
-    Based on equation ?? from Aki and Richards Quantitative Seismology
+    Based on Equation ?? from Aki and Richards: Quantitative Seismology
     TO DO: find the correct equation number
 
     :type mt: dict
@@ -75,6 +75,9 @@ def mt_transform(mt, method):
     :rtype: dict
     :return: converted moment tensor dictionary
     """
+    assert(method in ["xyz2rtp", "rtp2xyz"]), \
+        "method must be 'xyz2rtp' or 'rtp2xyz'"
+
     if method == "xyz2rtp":
         if "m_xx" not in mt.keys():
             print("for xyz2rtp, dict must have keys in xyz")
@@ -97,14 +100,11 @@ def mt_transform(mt, method):
         m_yz = -1 * mt["m_rp"]
         return {"m_xx": m_xx, "m_yy": m_yy, "m_zz": m_zz, "m_xy": m_xy,
                 "m_xz": m_xz, "m_yz": m_yz}
-    else:
-        print("Invalid transformation method, xyz2rtp or rtp2xyz")
-        return None
 
 
 def lonlat_utm(lon_or_x, lat_or_y, utm_zone=None, inverse=False):
     """
-    Convert latitude and longitude coordinates to UTM projection
+    Convert latitude and longitude coordinates to UTM projection using PyProj
 
     :type lon_or_x: float or int
     :param lon_or_x: longitude value in WGS84 or X in UTM-'zone' projection
@@ -133,6 +133,7 @@ def lonlat_utm(lon_or_x, lat_or_y, utm_zone=None, inverse=False):
         direction = "south"
     else:
         direction = "north"
+
     # Proj doesn't accept negative zones
     utm_zone = abs(utm_zone)
 
@@ -183,7 +184,7 @@ def gcd_and_baz(event, sta):
                                       lat2=sta.latitude,
                                       lon2=sta.longitude
                                       )
-    return gcdist*1E-3, baz
+    return gcdist * 1E-3, baz
 
 
 def merge_inventories(inv_a, inv_b):

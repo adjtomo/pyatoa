@@ -21,8 +21,6 @@ def add_misfit_windows(windows, ds, path):
     :type path: str
     :param path: internal pathing to save location of auxiliary data
     """
-
-
     # Save windows by component
     for comp in windows.keys():
         for i, win in enumerate(windows[comp]):

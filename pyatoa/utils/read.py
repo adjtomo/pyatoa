@@ -61,7 +61,7 @@ def read_sem(path, origintime=None, location=''):
     :rtype st: obspy.Stream.stream
     :return st: stream containing header and data info taken from ascii file
     """
-    # This was tested up to version 6895e2f7
+    # This was tested up to SPECFEM3D Cartesian git version 6895e2f7
     try:
         times = np.loadtxt(fname=path, usecols=0)
         data = np.loadtxt(fname=path, usecols=1)
@@ -186,45 +186,10 @@ def read_cmtsolution(path_to_cmtsolution, rtype="event"):
     :rtype: obspy.core.event.Event or obspy.core.event.Catalog
     :return: converted CMTSOLUTION into an Event, or a Catalog object.
     """
+    from pyatoa.utils.srcrcv import seismic_moment, moment_magnitude
+
     assert(rtype in ["event", "catalog"]), \
         "Return type must be 'event' or 'catalog'"
-
-    def seismic_moment(mt):
-        """
-        Return the seismic moment based on a moment tensor. Can take a list of
-        tensor components, or a Tensor object from ObsPy.
-
-        Same as pyatoa.utils.srcrcv.seismic_moment()
-
-        :type mt: list of floats or obspy.core.event.source.Tensor
-        :param mt: the components of the moment tensor M_ij
-        :rtype: float
-        :return: the seismic moment, in units of N*m
-        """
-        if isinstance(mt, Tensor):
-            # Little one liner to spit out moment tensor components into a list
-            mt_temp = [getattr(mt, key) for key in mt.keys()
-                       if not key.endswith("errors")]
-            assert(len(mt_temp) == 6), "Moment tensor should have 6 components"
-            mt = mt_temp
-        return 1/np.sqrt(2) * np.sqrt(sum([_**2 for _ in mt]))
-
-    def moment_magnitude(moment, c=10.7):
-        """
-        Return the moment magitude based on a seismic moment, from
-        Hanks & Kanamori (1979)
-
-        Same as pyatoa.utils.srcrcv.moment_magnitude()
-
-        :type c: float
-        :param c: correction factor for conversion, 10.7 for units of N*m,
-            16.1 for units of dyne*cm
-        :type moment: float
-        :param moment: the seismic moment, in units of N*m
-        :rtype: float
-        :return: moment magnitude, M_w
-        """
-        return 2/3 * np.log10(moment) - c
 
     # Read in header and body
     header = np.genfromtxt(path_to_cmtsolution, dtype="str",

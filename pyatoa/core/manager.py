@@ -261,6 +261,10 @@ class Manager:
         :type idx: int
         :param idx: if `event` is a Catalog, idx allows user to specify
             which index in Catalog to choose event from. Default is 0.
+        :type append_focal_mechanism: bool
+        :param append_focal_mechanism: attempt to automatically retrieve
+            focal mechanism information. Currently only searches GeoNet and
+            GCMT focal mechanism catalogs.
         """
         if self.config is None:
             logger.info("no Config found, initiating default")
@@ -392,8 +396,7 @@ class Manager:
         self._check()
         return self
 
-    def flow(self, fix_windows=False, preprocess_overwrite=None, iteration=None,
-             step_count=None):
+    def flow(self, **kwargs):
         """
         A convenience function to run the full workflow with a single command.
         Does not include gathering as that could be from gather() or load()
@@ -401,19 +404,24 @@ class Manager:
         Will raise ManagerError for controlled exceptions meaning workflow 
         cannot continue.
 
-        :type fix_windows: bool
-        :param fix_windows: do not pick new windows, but load windows from the
-            given dataset
-        :type preprocess_overwrite: function
-        :param preprocess_overwrite: overwrite the core preprocess functionality
+        Takes kwargs to pass to underlying functions
         """
-        self.standardize()
-        self.preprocess(overwrite=preprocess_overwrite)
-        self.window(fix_windows=fix_windows, iteration=iteration,
-                    step_count=step_count)
-        self.measure()
+        force = kwargs.get("force", False)
+        standardize_to = kwargs.get("standardize_to", "syn")
+        fix_windows = kwargs.get("fix_windows", False)
+        iteration = kwargs.get("iteration", None)
+        step_count = kwargs.get("step_count", None)
+        overwrite = kwargs.get("overwrite", None)
+        which = kwargs.get("which", "both")
+        save = kwargs.get("save", True)
 
-    def gather(self, station_code, choice=None, query_fdsn=True):
+        self.standardize(standardize_to=standardize_to, force=force)
+        self.preprocess(overwrite=overwrite, which=which)
+        self.window(fix_windows=fix_windows, iteration=iteration,
+                    step_count=step_count, force=force, save=save)
+        self.measure(force=force, save=save)
+
+    def gather(self, station_code, choice=None):
         """
         Gather station dataless and waveform data using the Gatherer class.
         In order collect observed waveforms, dataless, and finally synthetics.
@@ -439,7 +447,6 @@ class Manager:
             if self.gatherer is None:
                 # Instantiate Gatherer and retrieve Event information
                 self.setup()
-            net, sta, loc, cha = station_code.split(".")
             logger.info(f"gathering data for {station_code}")
             if "st_obs" in choice:
                 # Ensure observed waveforms gathered first, as if this fails
@@ -621,6 +628,8 @@ class Manager:
 
         if not self.stats.standardized and not force:
             raise ManagerError("cannot window, waveforms not standardized")
+
+        # Determine how to treat fixed windows
         if fix_windows and not self.ds:
             logger.warning("cannot fix window, no dataset")
             fix_windows = False
@@ -758,7 +767,7 @@ class Manager:
         self.rejwins = reject_dict
         self.stats.nwin = nwin
 
-    def measure(self, force=False):
+    def measure(self, force=False, save=True):
         """
         Measure misfit and calculate adjoint sources using PyAdjoint.
 
@@ -778,6 +787,8 @@ class Manager:
         :type force: bool
         :param force: ignore flag checks and run function, useful if e.g.
             external preprocessing is used that doesn't meet flag criteria
+        :type save: bool
+        :param save: save adjoint sources to ASDFDataSet
         :rtype: bool
         :return: status of the function, 1: successful / 0: failed
         """
@@ -816,7 +827,8 @@ class Manager:
 
         # Save adjoint source internally and to dataset
         self.adjsrcs = adjoint_sources
-        self.save_adjsrcs()
+        if save:
+            self.save_adjsrcs()
 
         # Run check to get total misfit
         self._check()
@@ -898,9 +910,11 @@ class Manager:
         """
         Plot observed and synthetics waveforms, misfit windows, STA/LTA and
         adjoint sources for all available components. Append information
-        about misfit, windows and window selection.
+        about misfit, windows and window selection. Also as subplot create a
+        source receiver map which contains annotated information detailing
+        src-rcv relationship like distance and BAz. Options to plot either or.
 
-        For valid key word arguments see ManagerPlotter
+        For valid key word arguments see ManagerPlotter and MapMaker
 
         :type show: bool
         :param show: show the plot once generated, defaults to False

@@ -368,8 +368,10 @@ class Config:
         :type filename: str
         :param filename: filename to save yaml file
         """
+        from os.path import splitext
+
         # Ensure file ending
-        if os.path.splitext(filename)[1] != ".yaml":
+        if splitext(filename)[1] != ".yaml":
             filename += ".yaml"
         with open(filename, "w") as f:
             yaml.dump(vars(self), f, default_flow_style=False, sort_keys=False)
@@ -405,7 +407,8 @@ class Config:
                     vars_ = item
                 # Prepend a prefix for easier read-back, also convert NoneTypes
                 vars_ = {f"{key}_{k}": ('' if i is None else i)
-                                                for k, i in vars_.items()}
+                         for k, i in vars_.items()
+                         }
                 del_attrs.append(key)
                 add_attrs.update(vars_)
 

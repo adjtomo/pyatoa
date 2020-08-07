@@ -4,7 +4,6 @@ Used for preprocessing data through filtering and tapering, zero padding etc.
 Also contains tools for synthetic traces such as source time function
 convolutions
 """
-import warnings
 import numpy as np
 
 from pyatoa import logger
@@ -19,6 +18,10 @@ def zero_pad(st, pad_length_in_seconds, before=True, after=True):
     :param st: stream to be zero padded
     :type pad_length_in_seconds: int
     :param pad_length_in_seconds: length of padding front and back
+    :type before: bool
+    :param before: pad the stream before the origin time
+    :type after: bool
+    :param after: pad the stream after the last sample
     :rtype st: obspy.stream.Stream
     :return st: stream with zero padded data object
     """
@@ -37,6 +40,7 @@ def zero_pad(st, pad_length_in_seconds, before=True, after=True):
         tr.data = np.pad(array, (pad_before, pad_after), mode='constant')
         tr.stats.starttime -= pad_length_in_seconds
         logger.debug(f"new starttime {tr.id}: {tr.stats.starttime}")
+
     return st_pad
 
 
@@ -94,14 +98,13 @@ def trim_streams(st_a, st_b, precision=1E-3, force=None):
         st.trim(start_set, end_set)
 
     # Trimming doesn't always make the starttimes exactly equal if the precision
-    # of the UTCDateTime object is set too high. Pyatoa used to restrict 
-    # precision to 2 sigfigs but ObsPy doesn't like that anymore.
-    # Instead we will artificially shift the starttime of the streams
-    # iff the amount shifted is less than sampling rate
+    # of the UTCDateTime object is set too high.
+    # Artificially shift the starttime of the streams iff the amount shifted
+    # is less than the sampling rate
     for st in [st_a_out, st_b_out]:
         for tr in st:
             dt = start_set - tr.stats.starttime
-            if dt > 0 and dt < tr.stats.sampling_rate:
+            if 0 < dt < tr.stats.sampling_rate:
                 logger.debug(f"shifting {tr.id} starttime by {dt}s")
                 tr.stats.starttime = start_set
             elif dt >= tr.stats.delta:
@@ -119,7 +122,7 @@ def match_npts(st_a, st_b, force=None):
     discontinuities.
 
     Note:
-        its assumed that all traces within a stream have the same `npts`
+        its assumed that all traces within a single stream have the same `npts`
 
     :type st_a: obspy.stream.Stream
     :param st_a: one stream to match samples with
@@ -157,10 +160,11 @@ def match_npts(st_a, st_b, force=None):
 
 def is_preprocessed(st):
     """
-    Small check to make sure a stream object has not yet been run through
-    preprocessing. Simple, as it assumes that a fresh stream will have no
-    processing attribute in their stats, or if they do, will not have been
-    filtered (getting cut waveforms from FDSN appends a 'trim' stat).
+    Check to make sure a stream object has not yet been run through
+    preprocessing.
+    Assumes that a fresh stream will have no processing attribute in their
+    stats, or if they do, will not have been filtered
+    (getting cut waveforms from FDSN appends a 'trim' stat).
 
     :type st: obspy.stream.Stream
     :param st: stream to check processing on
@@ -208,8 +212,8 @@ def preproc(mgmt, choice, water_level=60, taper_percentage=0.05):
                        "data if source receiver distance is short")
     elif taper_amount < abs(mgmt.stats.time_offset_sec):
         logger.info("adjusting taper to cover time offset")
-        taper_percentage = (abs(mgmt.stats.time_offset_sec) / 
-                                    st[0].stats.npts * st[0].stats.delta)
+        taper_percentage = (abs(mgmt.stats.time_offset_sec) /
+                            st[0].stats.npts * st[0].stats.delta)
 
     # Get rid of extra long period signals which may adversely affect processing
     st.detrend("simple").taper(taper_percentage)
@@ -239,7 +243,8 @@ def preproc(mgmt, choice, water_level=60, taper_percentage=0.05):
         st.rotate(method="NE->RT", back_azimuth=mgmt.baz)
         logger.debug(f"rotating NE->RT by {mgmt.baz} degrees")
 
-    # Filter data using ObsPy Butterworth filters. Zerophase avoids phase shift
+    # Bandpass data using ObsPy Butterworth filters.
+    # Zerophase argument avoids phase shift
     if mgmt.config.min_period and mgmt.config.max_period:
         st.filter("bandpass", corners=mgmt.config.filter_corners, 
                   zerophase=True,
@@ -257,7 +262,7 @@ def preproc(mgmt, choice, water_level=60, taper_percentage=0.05):
                   corners=mgmt.config.filter_corners, zerophase=True)
         logger.debug(f"highpass {mgmt.config.min_period}s w/ "
                      f"{mgmt.config.filter_corners} corners")
-    # Highpass if only minimum period given
+    # Lowpass if only minimum period given
     elif mgmt.config.max_period:
         st.filter("lowpass", freq=mgmt.config.max_period, 
                   corners=mgmt.config.filter_corners, zerophase=True)
@@ -268,44 +273,6 @@ def preproc(mgmt, choice, water_level=60, taper_percentage=0.05):
     st.detrend("simple").detrend("demean").taper(0.1)
 
     return st
-
-
-def change_syn_units(st, current, desired):
-    """
-    Deprecated: Package assumes that the UNIT_OUTPUT is the same as the
-                synthetic units
-
-    Change the synthetic units based on the desired unit output and the current
-    unit output
-
-    :type st: obspy.stream.Stream
-    :param st: obspy stream with synthetic data
-    :type current: str
-    :param current: current units, 'DISP', 'VEL', or 'ACC'
-    :type desired: str
-    :param desired: desired unit output key, same keys as `current`
-    :rtype: obspy.stream.Stream
-    :return: stream with desired units
-    """
-    # Copy to avoid editing in place
-    st_diff = st.copy()
-
-    # Determine the difference between synthetic unit and observed unit
-    diff_dict = {"DISP": 1, "VEL": 2, "ACC": 3}
-    difference = diff_dict[current] - diff_dict[desired]
-
-    # Integrate or differentiate stream to retrieve correct units
-    if difference == 1:
-        st_diff.integrate(method="cumtrapz")
-    elif difference == 2:
-        st_diff.integrate(method="cumtrapz").integrate(method="cumtrapz")
-    elif difference == -1:
-        st_diff.differentiate(method="gradient")
-    elif difference == -2:
-        st_diff.differentiate(method="gradient").differentiate(
-            method="gradient")
-
-    return st_diff
 
 
 def stf_convolve(st, half_duration, source_decay=4., time_shift=None,
@@ -361,3 +328,6 @@ def stf_convolve(st, half_duration, source_decay=4., time_shift=None,
     logger.debug(f"convolved data w/ Gaussian (t/2={half_duration:.2f}s)")
 
     return st_out
+
+
+

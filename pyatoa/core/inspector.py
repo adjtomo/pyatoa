@@ -498,7 +498,7 @@ class Inspector(InspectorPlotter):
 
         return dict_out
 
-    def isolate(self, iteration=None, step=None,  event=None, network=None,
+    def isolate(self, iteration=None, step_count=None,  event=None, network=None,
                 station=None, channel=None, comp=None, keys=None, 
                 exclude=None, unique_key=None):
         """
@@ -509,8 +509,8 @@ class Inspector(InspectorPlotter):
         :param event: event id e.g. '2018p130600' (optional
         :type iteration: str
         :param iteration: iteration e.g. 'i00' (optional)
-        :type step: str
-        :param step: step count e.g. 's00' (optional)
+        :type step_count: str
+        :param step_count: step count e.g. 's00' (optional)
         :type station: str
         :param station: station name e.g. 'BKZ' (optional)
         :type network: str
@@ -536,7 +536,7 @@ class Inspector(InspectorPlotter):
         df = df.loc[(df["event"] == (event or df["event"].to_numpy())) &
                     (df["iteration"] == (
                                     iteration or df["iteration"].to_numpy())) &
-                    (df["step"] == (step or df["step"].to_numpy())) &
+                    (df["step"] == (step_count or df["step"].to_numpy())) &
                     (df["station"] == (station or df["station"].to_numpy())) &
                     (df["network"] == (network or df["network"].to_numpy())) &
                     (df["channel"] == (channel or df["channel"].to_numpy())) &
