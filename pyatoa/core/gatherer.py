@@ -53,23 +53,24 @@ class ExternalGetter:
         if not self.Client:
             return None
 
-        event = None
+        event, origintime = None, None
         if self.config.event_id is not None:
             try:
-                # Get events via event id, only available through certain clients
+                # Get events via event id, only available from certain clients
                 logger.debug(f"event ID: {self.config.event_id}, querying "
                              f"client {self.config.client}")
                 event = self.Client.get_events(eventid=self.config.event_id)[0]
-                self.origintime = event.preferred_origin().time
+                origintime = event.preferred_origin().time
             except FDSNException:
                 pass
-        if self.origintime and event is None:
+        if origintime and event is None:
             try:
                 # If getting by event id doesn't work, try based on origintime
-                logger.debug(f"origintime: {self.origintime}, querying"
+                logger.debug(f"origintime: {origintime}, querying"
                              f"client {self.config.client}")
-                event = self.Client.get_events(starttime=self.origintime,
-                                               endtime=self.origintime)
+                event = self.Client.get_events(starttime=origintime,
+                                               endtime=origintime
+                                               )
                 if len(event) > 1:
                     # Getting by origin time may result in multiple events 
                     # found in the catalog, this is hard to control and will
@@ -83,7 +84,7 @@ class ExternalGetter:
                 pass
         return event
 
-    def station_get(self, station_code, level="response"):
+    def station_get(self, station_code, **kwargs):
         """
         Call for ObsPy FDSN client to download station dataless information.
         Defaults to retrieving response information.
@@ -94,11 +95,16 @@ class ExternalGetter:
             L=location, C=channel). Allows for wildcard naming. By default
             the pyatoa workflow wants three orthogonal components in the N/E/Z
             coordinate system. Example station code: NZ.OPRZ.10.HH?
-        :type level: str
-        :param level: level argument to be passed to obspy
         :rtype: obspy.core.inventory.Inventory
         :return: inventory containing relevant network and stations
+
+        Keyword Arguments:
+            :type station_level: str
+            :param station_level: level argument to be passed to ObsPy, defaults
+                to 'response'
         """
+        level = kwargs.get("station_level", "response")
+
         if not self.Client:
             return None
 
@@ -182,7 +188,6 @@ class InternalFetcher:
         :return event: event object
         """
         event = self.ds.events[0]
-        self.origintime = event.preferred_origin().time
         logger.debug(f"matching event found: {format_event_name(event)}")
         return event
 
@@ -231,9 +236,7 @@ class InternalFetcher:
         net, sta, loc, cha = station_code.split(".")
         return self.ds.waveforms[f"{net}_{sta}"][tag].select(component=cha[-1])
 
-    def fetch_resp_by_dir(self, station_code, paths_to_responses=None,
-                          dir_structure="{sta}.{net}",
-                          file_template="RESP.{net}.{sta}.{loc}.{cha}"):
+    def fetch_resp_by_dir(self, station_code, **kwargs):
         """
         Fetch station dataless via directory structure on disk.
         Will search through all paths given until StationXML found.
@@ -250,20 +253,25 @@ class InternalFetcher:
             L=location, C=channel). Allows for wildcard naming. By default
             the pyatoa workflow wants three orthogonal components in the N/E/Z
             coordinate system. Example station code: NZ.OPRZ.10.HH?
-        :type paths_to_responses: list of str
-        :param paths_to_responses: absolute pathways for response file locations
-        :type dir_structure: str
-        :param dir_structure: a hardcoded directory structure to search for
-            response files. Follows the SEED convention
-        :type file_template: str
-        :param file_template: a hardcoded file naming template to search for
-            response files. Follows the SEED convention
         :rtype inv: obspy.core.inventory.Inventory or None
         :return inv: inventory containing relevant network and stations
+
+        Keyword Arguments:
+            :type resp_dir_template: str
+            :param resp_dir_template: a hardcoded directory structure to search
+                for response files. By default follows the SEED convention,
+                'path/to/RESPONSE/{sta}.{net}'
+            :type resp_fid_template: str
+            :param resp_fid_template: a hardcoded file naming template to search
+                for response files. By default, follows the SEED convention
+                'RESP.{net}.{sta}.{loc}.{cha}'
         """
+        dir_structure = kwargs.get("resp_dir_template", "{sta}.{net}")
+        file_template = kwargs.get("resp_fid_template",
+                                   "RESP.{net}.{sta}.{loc}.{cha}")
+
         inv = None
-        if not paths_to_responses:
-            paths_to_responses = self.config.cfgpaths["responses"]
+        paths_to_responses = self.config.cfgpaths["responses"]
 
         net, sta, loc, cha = station_code.split('.')
         for path_ in paths_to_responses:
@@ -287,10 +295,7 @@ class InternalFetcher:
 
         return inv
 
-    def fetch_obs_by_dir(
-            self, station_code, paths_to_waveforms=None,
-            dir_structure="{year}/{net}/{sta}/{cha}*",
-            file_template="{net}.{sta}.{loc}.{cha}*{year}.{jday:0>3}"):
+    def fetch_obs_by_dir(self, station_code, **kwargs):
         """
         Fetch observation waveforms via directory structure on disk.
 
@@ -307,21 +312,27 @@ class InternalFetcher:
             L=location, C=channel). Allows for wildcard naming. By default
             the pyatoa workflow wants three orthogonal components in the N/E/Z
             coordinate system. Example station code: NZ.OPRZ.10.HH?
-        :type paths_to_waveforms: list of str
-        :param paths_to_waveforms: absolute pathways for mseed file locations
-        :type dir_structure: str
-        :param dir_structure: a hardcoded directory structure to search for
-            observation data. Follows the SEED convention
-        :type file_template: str
-        :param file_template: a hardcoded file naming template to search for
-            observation data. Follows the SEED convention
+
         :rtype stream: obspy.core.stream.Stream or None
         :return stream: stream object containing relevant waveforms, else None
+
+        Keyword Arguments:
+            :type obs_dir_template: str
+            :param obs_dir_template: a hardcoded directory structure to search
+                for observation data. Follows the SEED convention
+            :type obs_fid_template: str
+            :param obs_fid_template: a hardcoded file naming template to search
+                for observation data. Follows the SEED convention
         """
+        dir_structure = kwargs.get("obs_dir_template",
+                                   "{year}/{net}/{sta}/{cha}*")
+        file_template = kwargs.get("obs_fid_template",
+                                   "{net}.{sta}.{loc}.{cha}*{year}.{jday:0>3}")
+
         if self.origintime is None:
             raise AttributeError("'origintime' must be specified")
-        if paths_to_waveforms is None:
-            paths_to_waveforms = self.config.cfgpaths['waveforms']
+
+        paths_to_obs = self.config.cfgpaths["waveforms"]
 
         net, sta, loc, cha = station_code.split('.')
         # If waveforms contain midnight, multiple files need to be read
@@ -329,7 +340,7 @@ class InternalFetcher:
                                  start_pad=self.config.start_pad,
                                  end_pad=self.config.end_pad
                                  )
-        for path_ in paths_to_waveforms:
+        for path_ in paths_to_obs:
             if not os.path.exists(path_):
                 continue
             full_path = os.path.join(path_, dir_structure, file_template)
@@ -354,9 +365,7 @@ class InternalFetcher:
         else:
             return None
 
-    def fetch_syn_by_dir(self, station_code, event_id="", pathname="synthetics",
-                         specfem_fid_template="{net}.{sta}.*{cmp}.sem{dva}",
-                         synthetic_unit="?"):
+    def fetch_syn_by_dir(self, station_code, **kwargs):
         """
         Fetch synthetic waveforms from Specfem3D via directory structure on
         disk, if necessary convert native ASCII format to Stream object.
@@ -367,24 +376,36 @@ class InternalFetcher:
             L=location, C=channel). Allows for wildcard naming. By default
             the pyatoa workflow wants three orthogonal components in the N/E/Z
             coordinate system. Example station code: NZ.OPRZ.10.HH?
-        :type specfem_fid_template: str
-        :param specfem_fid_template: The naming template of Specfem ascii files
-        :type event_id: str
-        :param event_id: The event id, if given, this function will search
-            the directory for the event id first, rather than just searching the
-            given directory. Useful for when data is stored by event id
-            e.g. /path/to/synthetics/{event_id}/*
-        :type synthetic_unit: str
-        :param synthetic_unit: optional argument to specify the letter used to 
-            identify the units of the synthetic data: ["d", "v", "a", "?"]
-            Specfem denotes the units of synthetic traces by the naming of the
-            ASCII files, corresponding to 'd' for displacement, 
-            'v' for velocity, and 'a' for acceleration. Wildcards okay
-        :type pathname: str
-        :param pathname: the key in cfgpaths dictionary to search for data
         :rtype stream: obspy.core.stream.Stream
         :return stream: stream object containing relevant waveforms
+
+        Keyword Arguments:
+            :type syn_pathname: str
+            :param syn_pathname: the key in cfgpaths dictionary to search for
+                synthetic data. Defaults the 'synthetics', but for the
+                synthetic-synthetic inversion case, may need to be set to
+                'waveforms'
+            :type syn_tag: str
+            :param syn_tag: optional path prepend for unique synthetic tags,
+                usually will take the form of an event id. e.g.
+                path/to/synthetics/{syn_tag}/{syn_fid_template}
+            :type syn_unit: str
+            :param syn_unit: optional argument to specify the letter used
+                to identify the units of the synthetic data:
+                ["d", "v", "a", "?"]
+                Specfem denotes the units of synthetic traces by the naming of
+                the ASCII files, corresponding to 'd' for displacement,
+                'v' for velocity, and 'a' for acceleration. Wildcards okay
+            :type syn_fid_template: str
+            :param syn_fid_template: The naming template of Specfem files
         """
+        pathname = kwargs.get("syn_pathname", "synthetics")
+        syn_tag = kwargs.get("syn_tag", "")
+        syn_unit = kwargs.get("syn_unit", "?")
+        syn_fid_template = kwargs.get("syn_fid_template",
+                                      "{net}.{sta}.*{cmp}.sem{dva}"
+                                      )
+
         if self.origintime is None:
             raise AttributeError("'origintime' must be specified")
 
@@ -398,10 +419,10 @@ class InternalFetcher:
 
             # Here the path is determined for search. If event_id is given,
             # the function will search for an event_id directory.
-            full_path = os.path.join(path_, event_id, specfem_fid_template)
+            full_path = os.path.join(path_, syn_tag, syn_fid_template)
             st = Stream()
             for filepath in glob.glob(full_path.format(
-                    net=net, sta=sta, cmp=cha[2:], dva=synthetic_unit.lower())):
+                    net=net, sta=sta, cmp=cha[2:], dva=syn_unit.lower())):
                 try:
                     # Convert the ASCII file to a miniseed
                     st += read_sem(filepath, self.origintime)
@@ -418,7 +439,7 @@ class InternalFetcher:
         else:
             return None
 
-    def obs_waveform_fetch(self, station_code):
+    def obs_waveform_fetch(self, station_code, **kwargs):
         """
         Mid-level internal fetching function for observation waveform data.
 
@@ -445,7 +466,7 @@ class InternalFetcher:
         if self.config.synthetics_only:
             return self.fetch_syn_by_dir(station_code, pathname="waveforms")
         else:
-            return self.fetch_obs_by_dir(station_code)
+            return self.fetch_obs_by_dir(station_code, **kwargs)
 
     def syn_waveform_fetch(self, station_code):
         """
@@ -477,7 +498,7 @@ class InternalFetcher:
         logger.debug("searching local filesystem")
         return self.fetch_syn_by_dir(station_code)
 
-    def station_fetch(self, station_code):
+    def station_fetch(self, station_code, **kwargs):
         """
         Mid-level internal fetching function for station dataless information.
         Search ASDFDataSet for corresponding dataless, else look on disk.
@@ -500,7 +521,7 @@ class InternalFetcher:
             except (KeyError, AttributeError):
                 pass
         logger.debug("searching local filesystem")
-        return self.fetch_resp_by_dir(station_code)
+        return self.fetch_resp_by_dir(station_code, **kwargs)
 
 
 class Gatherer(InternalFetcher, ExternalGetter):
@@ -546,13 +567,17 @@ class Gatherer(InternalFetcher, ExternalGetter):
                 # If dataset is given, search for event in ASDFDataSet. If event
                 # is in ASDFDataSet already, it has already been gathered and
                 # should already have a focal mechanism
-                return self.asdf_event_fetch()
+
+                event = self.asdf_event_fetch()
+                self.origintime = event.preferred_origin().time
+                return event
             except (AttributeError, IndexError):
                 pass
 
         # No data in ASDFDataSet, query FDSN
         if self.Client:
             event = self.event_get()
+            self.origintime = event.preferred_origin().time
         if event is None:
             raise GathererNoDataException(f"no Event information found for "
                                           f"{self.config.event_id}")
@@ -612,7 +637,7 @@ class Gatherer(InternalFetcher, ExternalGetter):
 
         return event
 
-    def gather_station(self, station_code):
+    def gather_station(self, station_code, **kwargs):
         """
         Gather station dataless information. Check disk then query webservices.
         Save station information to ASDFDataSet if requested.
@@ -627,10 +652,9 @@ class Gatherer(InternalFetcher, ExternalGetter):
         :return: inventory containing relevant network and stations
         """
         logger.info("gathering StationXML")
-        inv = self.station_fetch(station_code)
+        inv = self.station_fetch(station_code, **kwargs)
         if inv is None:
-            inv = self.station_get(station_code)
-            new_data = True
+            inv = self.station_get(station_code, **kwargs)
             if inv is None:
                 raise GathererNoDataException(
                     f"no StationXML for {station_code} found"
@@ -647,7 +671,7 @@ class Gatherer(InternalFetcher, ExternalGetter):
 
         return inv
 
-    def gather_observed(self, station_code):
+    def gather_observed(self, station_code, **kwargs):
         """
         Gather observed waveforms as ObsPy streams.
         Check disk, else query webservice. Save to ASDFDataSet if requested.
@@ -662,7 +686,7 @@ class Gatherer(InternalFetcher, ExternalGetter):
         :return: stream object containing relevant waveforms
         """
         logger.info("gathering observed waveforms")
-        st_obs = self.obs_waveform_fetch(station_code)
+        st_obs = self.obs_waveform_fetch(station_code, **kwargs)
         if st_obs is None:
             st_obs = self.obs_waveform_get(station_code)
             if st_obs is None:
@@ -670,21 +694,11 @@ class Gatherer(InternalFetcher, ExternalGetter):
                     f"no observed waveforms for {station_code} found"
                     )
         logger.info("matching observed waveforms found")
-        if (self.ds is not None) and self.config.save_to_ds:
-            # Catch ASDFWarning that occurs when data already exists
-            with warnings.catch_warnings():
-                warnings.filterwarnings("error")
-                try:
-                    self.ds.add_waveforms(waveform=st_obs,
-                                          tag=self.config.observed_tag)
-                    logger.info(f"saved to ASDFDataSet with tag "
-                                 f"'{self.config.observed_tag}'")
-                except ASDFWarning:
-                    pass
+        self._save_waveforms_to_dataset(st_obs, self.config.observed_tag)
 
         return st_obs
 
-    def gather_synthetic(self, station_code):
+    def gather_synthetic(self, station_code, **kwargs):
         """
         Gather synthetic waveforms as ObsPy streams.
         Only possible to check ASDFDataSet and local filesystem.
@@ -701,25 +715,36 @@ class Gatherer(InternalFetcher, ExternalGetter):
         :return: stream object containing relevant waveforms
         """
         logger.info("gathering synthetic waveforms")
-        st_syn = self.syn_waveform_fetch(station_code)
+        st_syn = self.syn_waveform_fetch(station_code, **kwargs)
         if st_syn is None:
             raise GathererNoDataException(f"no synthetic waveforms found "
                                           f"for {station_code}"
                                           )
         logger.info("matching synthetic waveforms found")
+        self._save_waveform_to_dataset(st_syn, self.config.synthetic_tag)
+
+        return st_syn
+
+    def _save_waveforms_to_dataset(self, st, tag):
+        """
+        Save waveformsm to the ASDFDataSet with a simple check for existence
+        of dataset and save parameter. Passes if waveforms already exist while
+        ignoring the PyASDF warning that gets thrown if waveforms exist.
+
+        :type st: obspy.core.stream.Stream
+        :param st: Stream object to be saved into the dataset
+        :type tag: str
+        :param tag: unique identifier to save the waveforms under
+        """
         if (self.ds is not None) and self.config.save_to_ds:
             # Catch ASDFWarning that occurs when data already exists
             with warnings.catch_warnings():
                 warnings.filterwarnings("error")
                 try:
-                    self.ds.add_waveforms(waveform=st_syn,
-                                          tag=self.config.synthetic_tag)
-                    logger.info(f"saved to ASDFDataSet with tag "
-                                 f"'{self.config.synthetic_tag}'")               
+                    self.ds.add_waveforms(waveform=st, tag=tag)
+                    logger.info(f"saved to ASDFDataSet with tag '{tag}'")
                 except ASDFWarning:
                     pass
-
-        return st_syn
 
 
 def get_gcmt_moment_tensor(origintime, magnitude, time_wiggle_sec=120,
