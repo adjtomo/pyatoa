@@ -27,7 +27,7 @@ class Config:
                  component_list=None, adj_src_type="cc_traveltime_misfit", 
                  start_pad=20, end_pad=500, observed_tag="observed", 
                  synthetic_tag=None, synthetics_only=False, win_amp_ratio=0., 
-                 cfgpaths=None, save_to_ds=True, **kwargs):
+                 paths=None, save_to_ds=True, **kwargs):
         """
         Allows the user to control the parameters of the workflow, including:
         setting the Config objects for Pyflex and Pyadjoint, and the paths for
@@ -84,8 +84,8 @@ class Config:
         :param synthetic_tag: Tag to use for asdf dataset to label and search
             for obspy streams of synthetic data. Default 'synthetic_{model_num}'
             Tag must be formatted before use.
-        :type cfgpaths: dict of str
-        :param cfgpaths: any absolute paths for Pyatoa to search for
+        :type paths: dict of str
+        :param paths: any absolute paths for Pyatoa to search for
             waveforms in. If path does not exist, it will automatically be
             skipped. Allows for work on multiple machines, by giving multiple
             paths for the same set of data, without needing to change config.
@@ -126,13 +126,13 @@ class Config:
         self.pyadjoint_config = None
 
         # Make sure User provided paths are list objects
-        if cfgpaths:
-            for key in cfgpaths:
-                if not isinstance(cfgpaths[key], list):
-                    cfgpaths[key] = [cfgpaths[key]]
-            self.cfgpaths = cfgpaths
+        if paths:
+            for key in paths:
+                if not isinstance(paths[key], list):
+                    paths[key] = [paths[key]]
+            self.paths = paths
         else:
-            self.cfgpaths = {"waveforms": [], "synthetics": [], "responses": []}
+            self.paths = {"waveforms": [], "synthetics": [], "responses": []}
 
         # Overwrite config parameters from .yaml if given
         if yaml_fid:
@@ -161,7 +161,7 @@ class Config:
                                 "unit_output", "rotate_to_rtz", "win_amp_ratio",
                                 "synthetics_only"],
                     "Labels": ["component_list", "observed_tag",
-                               "synthetic_tag", "cfgpaths"],
+                               "synthetic_tag", "paths"],
                     "External": ["pyflex_preset", "adj_src_type",
                                  "pyflex_config", "pyadjoint_config"
                                  ]
@@ -226,15 +226,15 @@ class Config:
 
         # Check that paths are in the proper format, dictated by Pyatoa
         required_keys = ['synthetics', 'waveforms', 'responses']
-        assert(isinstance(self.cfgpaths, dict)), "paths should be a dict"
-        for key in self.cfgpaths.keys():
+        assert(isinstance(self.paths, dict)), "paths should be a dict"
+        for key in self.paths.keys():
             assert(key in required_keys), \
                 f"path keys can only be in {required_keys}"
 
         # Make sure that all the required keys are given in the dictionary
         for key in required_keys:
-            if key not in self.cfgpaths.keys():
-                self.cfgpaths[key] = []
+            if key not in self.paths.keys():
+                self.paths[key] = []
 
         # Rotate component list if necessary
         if self.rotate_to_rtz:
@@ -465,9 +465,9 @@ class Config:
         kwargs = {}
         for key, item in attr_list:
             if hasattr(self, key.lower()):
-                # Special case: ensure cfgpaths don't overwrite, but append
-                if key == "cfgpaths":
-                    for cfgkey, cfgitem in self.cfgpaths.items():
+                # Special case: ensure paths don't overwrite, but append
+                if key == "paths":
+                    for cfgkey, cfgitem in self.paths.items():
                         item[cfgkey] += cfgitem
                 setattr(self, key.lower(), item)
             else:
@@ -498,7 +498,7 @@ class Config:
             cfgin = ds.auxiliary_data.Configs[path].parameters
 
         # Parameters from flattened dictionaries will need special treatment
-        cfgpaths, pyflex_config, pyadjoint_config = {}, {}, {}
+        paths, pyflex_config, pyadjoint_config = {}, {}, {}
 
         for key, item in cfgin.items():
             # Convert the item into expected native Python objects
@@ -511,9 +511,9 @@ class Config:
                     item = item.tolist()
 
             # Put the item in the correct dictionary
-            if "cfgpaths" in key:
-                # e.g. cfgpaths_waveforms -> waveforms
-                cfgpaths[key.split('_')[1]] = item
+            if "paths" in key:
+                # e.g. paths_waveforms -> waveforms
+                paths[key.split('_')[1]] = item
             elif "pyflex_config" in key:
                 pyflex_config["_".join(key.split('_')[2:])] = item
             elif "pyadjoint_config" in key:
@@ -524,7 +524,7 @@ class Config:
                 setattr(self, key, item)
 
         # Assign the flattened dictionaries back into nested dictionaries
-        setattr(self, "cfgpaths", cfgpaths)
+        setattr(self, "paths", paths)
 
         pyflex_config, _ = set_pyflex_config(**pyflex_config, choice=None)
         setattr(self, "pyflex_config", pyflex_config)

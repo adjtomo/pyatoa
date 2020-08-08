@@ -100,8 +100,8 @@ class ExternalGetter:
 
         Keyword Arguments:
             :type station_level: str
-            :param station_level: level argument to be passed to ObsPy, defaults
-                to 'response'
+            :param station_level: The level of the station metadata if retrieved
+                using the ObsPy Client. Defaults to 'response'
         """
         level = kwargs.get("station_level", "response")
 
@@ -258,12 +258,12 @@ class InternalFetcher:
 
         Keyword Arguments:
             :type resp_dir_template: str
-            :param resp_dir_template: a hardcoded directory structure to search
+            :param resp_dir_template: Directory structure template to search
                 for response files. By default follows the SEED convention,
-                'path/to/RESPONSE/{sta}.{net}'
+                'path/to/RESPONSE/{sta}.{net}/'
             :type resp_fid_template: str
-            :param resp_fid_template: a hardcoded file naming template to search
-                for response files. By default, follows the SEED convention
+            :param resp_fid_template: Response file naming template to search
+                for station dataless. By default, follows the SEED convention
                 'RESP.{net}.{sta}.{loc}.{cha}'
         """
         dir_structure = kwargs.get("resp_dir_template", "{sta}.{net}")
@@ -271,7 +271,7 @@ class InternalFetcher:
                                    "RESP.{net}.{sta}.{loc}.{cha}")
 
         inv = None
-        paths_to_responses = self.config.cfgpaths["responses"]
+        paths_to_responses = self.config.paths["responses"]
 
         net, sta, loc, cha = station_code.split('.')
         for path_ in paths_to_responses:
@@ -318,11 +318,13 @@ class InternalFetcher:
 
         Keyword Arguments:
             :type obs_dir_template: str
-            :param obs_dir_template: a hardcoded directory structure to search
-                for observation data. Follows the SEED convention
+            :param obs_dir_template:  directory structure to search for
+                observation data. Follows the SEED convention.
+                'path/to/obs_data/{year}/{net}/{sta}/{cha}'
             :type obs_fid_template: str
-            :param obs_fid_template: a hardcoded file naming template to search
-                for observation data. Follows the SEED convention
+            :param obs_fid_template: File naming template to search for
+                observation data. Follows the SEED convention.
+                '{net}.{sta}.{loc}.{cha}*{year}.{jday:0>3}'
         """
         dir_structure = kwargs.get("obs_dir_template",
                                    "{year}/{net}/{sta}/{cha}*")
@@ -332,7 +334,7 @@ class InternalFetcher:
         if self.origintime is None:
             raise AttributeError("'origintime' must be specified")
 
-        paths_to_obs = self.config.cfgpaths["waveforms"]
+        paths_to_obs = self.config.paths["waveforms"]
 
         net, sta, loc, cha = station_code.split('.')
         # If waveforms contain midnight, multiple files need to be read
@@ -381,27 +383,25 @@ class InternalFetcher:
 
         Keyword Arguments:
             :type syn_pathname: str
-            :param syn_pathname: the key in cfgpaths dictionary to search for
-                synthetic data. Defaults the 'synthetics', but for the
-                synthetic-synthetic inversion case, may need to be set to
-                'waveforms'
-            :type syn_tag: str
-            :param syn_tag: optional path prepend for unique synthetic tags,
-                usually will take the form of an event id. e.g.
-                path/to/synthetics/{syn_tag}/{syn_fid_template}
+            :param syn_pathname: Config.paths key to search for synthetic
+                data. Defaults to 'synthetics', but for the may need to be set
+                to 'waveforms' in certain use-cases.
             :type syn_unit: str
-            :param syn_unit: optional argument to specify the letter used
+            :param syn_unit: Optional argument to specify the letter used
                 to identify the units of the synthetic data:
-                ["d", "v", "a", "?"]
-                Specfem denotes the units of synthetic traces by the naming of
-                the ASCII files, corresponding to 'd' for displacement,
-                'v' for velocity, and 'a' for acceleration. Wildcards okay
+                For Specfem3D: ["d", "v", "a", "?"]
+                'd' for displacement, 'v' for velocity,  'a' for acceleration.
+                Wildcards okay. Defaults to '?'
+            :type syn_dir_template: str
+            :param syn_dir_template: Directory structure template to search
+                for synthetic waveforms. Defaults to empty string
             :type syn_fid_template: str
-            :param syn_fid_template: The naming template of Specfem files
+            :param syn_fid_template: The naming template of synthetic waveforms
+                defaults to "{net}.{sta}.*{cmp}.sem{syn_unit}"
         """
         pathname = kwargs.get("syn_pathname", "synthetics")
-        syn_tag = kwargs.get("syn_tag", "")
         syn_unit = kwargs.get("syn_unit", "?")
+        syn_dir_template = kwargs.get("syn_dir_template", "")
         syn_fid_template = kwargs.get("syn_fid_template",
                                       "{net}.{sta}.*{cmp}.sem{dva}"
                                       )
@@ -413,13 +413,13 @@ class InternalFetcher:
         net, sta, loc, cha = station_code.split('.')
 
         # Check through paths given in Config
-        for path_ in self.config.cfgpaths[pathname]:
+        for path_ in self.config.paths[pathname]:
             if not os.path.exists(path_):
                 continue
 
             # Here the path is determined for search. If event_id is given,
             # the function will search for an event_id directory.
-            full_path = os.path.join(path_, syn_tag, syn_fid_template)
+            full_path = os.path.join(path_, syn_dir_template, syn_fid_template)
             st = Stream()
             for filepath in glob.glob(full_path.format(
                     net=net, sta=sta, cmp=cha[2:], dva=syn_unit.lower())):
