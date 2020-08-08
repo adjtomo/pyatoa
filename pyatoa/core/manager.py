@@ -73,10 +73,9 @@ class Manager:
     generate misfit windows, and calculate adjoint sources. Has a variety of
     internal sanity checks to ensure that the workflow stays on the rails.
     """
-    def __init__(self, config=None, ds=None, empty=True, station_code=None,
-                 event=None, st_obs=None, st_syn=None, inv=None, windows=None,
-                 staltas=None, adjsrcs=None, gcd=None, baz=None,
-                 gatherer=None):
+    def __init__(self, config=None, ds=None, event=None, st_obs=None,
+                 st_syn=None, inv=None, windows=None, staltas=None,
+                 adjsrcs=None, gcd=None, baz=None, gatherer=None):
         """
         If no pyasdf dataset is given in the initiation of the Manager, all
         data fetching will happen via given pathways in the config file,
@@ -87,12 +86,6 @@ class Manager:
             to run through the Pyatoa workflow
         :type ds: pyasdf.asdf_data_set.ASDFDataSet
         :param ds: ASDF data set from which to read and write data
-        :type empty: bool
-        :param empty: Do not instantiate Gatherer or look for event.
-            Useful for when User provides own event object. if 'event' is given
-            then this parameter does not do anything.
-        :type station_code: str
-        :param station_code: station code for data gather, e.g. 'NZ.BFZ.10.HH?'
         :type event: obspy.core.event.Event
         :param event: An event object containing relevant earthquake information
         :type st_obs: obspy.core.stream.Stream
@@ -115,14 +108,34 @@ class Manager:
         :param gatherer: A previously instantiated Gatherer class.
             Should not have to be passed in by User, but is used for reset()
         """
-        # Main workflow requirements
-        if config:
+        self.ds = ds
+        self.inv = inv
+
+        # Instantiate a Config object
+        if config is not None:
             self.config = config
         else:
-            self.config = None
-        self.ds = ds
+            logger.info("no Config found, initiating default")
+            self.config = Config()
+
+        # Ensure any user-provided event is an Event object
+        if isinstance(event, obspy.core.event.catalog.Catalog):
+            logger.info(f"event given as catalog, taking zeroth entry")
+            event = event[0]
+        self.event = event
+
+        # Try to get origin time information from the event
+        if self.event is not None:
+            origintime = self.event.preferred_origin().time
+        else:
+            origintime = None
+
+        # Instantiate a Gatherer object and pass along info
         self.gatherer = gatherer
-        self.inv = inv
+        if self.gatherer is None:
+            self.gatherer = Gatherer(config=self.config, ds=self.ds,
+                                     origintime=origintime)
+
         # Copy Streams to avoid affecting original data
         if st_obs is not None:
             self.st_obs = st_obs.copy()
@@ -132,6 +145,7 @@ class Manager:
             self.st_syn = st_syn.copy()
         else:
             self.st_syn = None
+
         # Data produced by the workflow
         self.gcd = gcd
         self.baz = baz
@@ -142,13 +156,6 @@ class Manager:
 
         # Internal statistics to keep track of the workflow progress
         self.stats = ManagerStats()
-
-        # If event ID set, launch gatherer, gather an event
-        if not empty or event is not None:
-            self.setup(event=event)
-        else:
-            # If 'empty' or no event, dont launch gatherer, event is None
-            self.event = None
 
         # Run internal checks on data
         self._check()
@@ -249,46 +256,6 @@ class Manager:
         if not self.stats.misfit and self.adjsrcs is not None:
             self.stats.misfit = sum([_.misfit for _ in self.adjsrcs.values()])
 
-    def setup(self, event=None, idx=0, append_focal_mechanism=True):
-        """
-        One-time setup of the Manager class.
-
-        Assigns or instantiates required auxiliary classes necessary for the
-        Manger to function, including the Config, Gatherer and Event attributes.
-
-        :type event: obspy.core.event.Event or obspy.core.event.catalog.Catalog
-        :param event: event or Catalog to use for the central event attribute
-        :type idx: int
-        :param idx: if `event` is a Catalog, idx allows user to specify
-            which index in Catalog to choose event from. Default is 0.
-        :type append_focal_mechanism: bool
-        :param append_focal_mechanism: attempt to automatically retrieve
-            focal mechanism information. Currently only searches GeoNet and
-            GCMT focal mechanism catalogs.
-        """
-        if self.config is None:
-            logger.info("no Config found, initiating default")
-            self.config = Config()
-
-        # Launch or reset the Gatherer
-        if self.gatherer is None:
-            self.gatherer = Gatherer(config=self.config, ds=self.ds)
-
-        # Determine event information
-        if event is not None:
-            # User provided Event/Catalog object should be distributed
-            if isinstance(event, obspy.core.event.catalog.Catalog):
-                logger.info(f"event given as catalog, taking entry {idx}")
-                event = event[idx]
-            self.event = event
-            self.gatherer.origintime = event.preferred_origin().time
-        else:
-            # No User provided event, gather based on event id
-            if self.config.event_id is not None:
-                self.event = self.gatherer.gather_event(
-                    append_focal_mechanism=append_focal_mechanism
-                    )
-
     def reset(self):
         """
         Restart workflow by deleting all collected data in the Manager, but
@@ -340,15 +307,15 @@ class Manager:
         else:
             raise NotImplementedError
 
-    def load(self, station_code, path=None, ds=None, synthetic_tag=None,
+    def load(self, code, path=None, ds=None, synthetic_tag=None,
              observed_tag=None):
         """
         Populate the manager using a previously populated ASDFDataSet.
         Useful for re-instantiating an existing workflow that has already 
         gathered data and saved it to an ASDFDataSet.
 
-        :type station_code: str
-        :param station_code: SEED conv. code, e.g. NZ.BFZ.10.HHZ
+        :type code: str
+        :param code: SEED conv. code, e.g. NZ.BFZ.10.HHZ
         :type path: str
         :param path: if no Config object is given during init, the User
             can specify the config path here to load data from the dataset.
@@ -376,13 +343,13 @@ class Manager:
                 self.config = Config(ds=ds, path=path)
                 logger.info(f"loading config from dataset {path}")
 
-        assert len(station_code.split('.')) == 2, \
-            "station_code must be in form 'NN.SSS'"
+        assert len(code.split('.')) == 2, \
+            "code must be in form 'NN.SSS'"
 
         # Reset and populate using the dataset
         self.__init__(config=self.config, ds=ds, empty=True)
         self.event = ds.events[0]
-        net, sta = station_code.split('.')
+        net, sta = code.split('.')
         sta_tag = f"{net}.{sta}"
         if sta_tag in ds.waveforms.list():
             self.inv = ds.waveforms[sta_tag].StationXML
@@ -421,15 +388,15 @@ class Manager:
                     step_count=step_count, force=force, save=save)
         self.measure(force=force, save=save)
 
-    def gather(self, station_code, choice=None):
+    def gather(self, code=None, choice=None, **kwargs):
         """
         Gather station dataless and waveform data using the Gatherer class.
         In order collect observed waveforms, dataless, and finally synthetics.
 
         If any part of gathering fails, raise ManagerError
 
-        :type station_code: str
-        :param station_code: Station code following SEED naming convention.
+        :type code: str
+        :param code: Station code following SEED naming convention.
             This must be in the form NN.SSSS.LL.CCC (N=network, S=station,
             L=location, C=channel). Allows for wildcard naming. By default
             the pyatoa workflow wants three orthogonal components in the N/E/Z
@@ -437,25 +404,67 @@ class Manager:
         :type choice: list
         :param choice: allows user to gather individual bits of data, rather
             than gathering all. Allowed: 'inv', 'st_obs', 'st_syn'
-        :rtype: bool
-        :return: status of the function, 1: successful / 0: failed
+
+        Keyword Arguments:
+            :type try_fm: bool
+            :param try_fm: Try to retrieve and append focal mechanism
+                information to the Event object.
+            :type station_level: str
+            :param station_level: The level of the station metadata if retrieved
+                using the ObsPy Client. Defaults to 'response'
+            :type resp_dir_template: str
+            :param resp_dir_template: Directory structure template to search
+                for response files. By default follows the SEED convention,
+                'path/to/RESPONSE/{sta}.{net}/'
+            :type resp_fid_template: str
+            :param resp_fid_template: Response file naming template to search
+                for station dataless. By default, follows the SEED convention
+                'RESP.{net}.{sta}.{loc}.{cha}'
+            :type obs_dir_template: str
+            :param obs_dir_template:  directory structure to search for
+                observation data. Follows the SEED convention.
+                'path/to/obs_data/{year}/{net}/{sta}/{cha}'
+            :type obs_fid_template: str
+            :param obs_fid_template: File naming template to search for
+                observation data. Follows the SEED convention.
+                '{net}.{sta}.{loc}.{cha}*{year}.{jday:0>3}'
+            :type syn_pathname: str
+            :param syn_pathname: Config.cfgpaths key to search for synthetic
+                data. Defaults to 'synthetics', but for the may need to be set
+                to 'waveforms' in certain use-cases.
+            :type syn_unit: str
+            :param syn_unit: Optional argument to specify the letter used
+                to identify the units of the synthetic data:
+                For Specfem3D: ["d", "v", "a", "?"]
+                'd' for displacement, 'v' for velocity,  'a' for acceleration.
+                Wildcards okay. Defaults to '?'
+            :type syn_dir_template: str
+            :param syn_dir_template: Directory structure template to search
+                for synthetic waveforms. Defaults to empty string
+            :type syn_fid_template: str
+            :param syn_fid_template: The naming template of synthetic waveforms
+                defaults to "{net}.{sta}.*{cmp}.sem{syn_unit}"
         """
-        # Default to gathering all data.
+        try_fm = kwargs.get("try_fm", True)
+
+        # Default to gathering all data
         if choice is None:
-            choice = ["st_obs", "inv", "st_syn"]
+            choice = ["event", "inv", "st_obs", "st_syn"]
         try:
-            if self.gatherer is None:
-                # Instantiate Gatherer and retrieve Event information
-                self.setup()
-            logger.info(f"gathering data for {station_code}")
-            if "st_obs" in choice:
-                # Ensure observed waveforms gathered first, as if this fails
-                # then there is no point to gathering the rest
-                self.st_obs = self.gatherer.gather_observed(station_code)
-            if "inv" in choice:
-                self.inv = self.gatherer.gather_station(station_code)
-            if "st_syn" in choice:
-                self.st_syn = self.gatherer.gather_synthetic(station_code)
+            # Attempt to gather event information before waveforms/metadata
+            if "event" in choice and self.event is None:
+                if self.config.event_id is not None:
+                    self.event = self.gatherer.gather_event(try_fm=try_fm)
+            if code is not None:
+                logger.info(f"gathering data for {code}")
+                if "st_obs" in choice:
+                    # Ensure observed waveforms gathered before synthetics and
+                    # metadata. If this fails, no point to gathering the rest
+                    self.st_obs = self.gatherer.gather_observed(code, **kwargs)
+                if "inv" in choice:
+                    self.inv = self.gatherer.gather_station(code, **kwargs)
+                if "st_syn" in choice:
+                    self.st_syn = self.gatherer.gather_synthetic(code, **kwargs)
 
             return self
         except GathererNoDataException as e:
