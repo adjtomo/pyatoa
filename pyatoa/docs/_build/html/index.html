@@ -4,7 +4,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta charset="utf-8" />
-    <title>Python’s Adjoint Tomography Operations Assistant &#8212; Pyatoa  documentation</title>
+    <title>PYATOA &#8212; Pyatoa  documentation</title>
     <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
     <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
@@ -12,10 +12,11 @@
     <script type="text/javascript" src="_static/underscore.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
     <script type="text/javascript" src="_static/language_data.js"></script>
+    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <link rel="shortcut icon" href="_static/pyatoa_favicon.png"/>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Tutorials" href="tutorials.html" />
+    <link rel="next" title="Config" href="config.html" />
    
   <link rel="stylesheet" href="_static/custom.css" type="text/css" />
   
@@ -32,20 +33,18 @@
 
           <div class="body" role="main">
             
-  <div class="section" id="pythons-adjoint-tomography-operations-assistant">
-<h1>Python’s Adjoint Tomography Operations Assistant<a class="headerlink" href="#pythons-adjoint-tomography-operations-assistant" title="Permalink to this headline">¶</a></h1>
-<p><code class="docutils literal notranslate"><span class="pre">Pyatoa</span></code> is a misfit quantification toolbox for the modern
-tomographer. It provides abstraction over key Python packages to
-facilitate data gathering, preprocessing, misfit analysis and
-visualization in a seismic tomography problem. The design of <code class="docutils literal notranslate"><span class="pre">Pyatoa</span></code>
-was inspired by <code class="docutils literal notranslate"><span class="pre">Obspy</span></code>, translating to a design ethos of rapid
-development, through scripting or shell interaction, and useful
-abstractions to accomplish tasks in tomography.</p>
+  <div class="section" id="pyatoa">
+<h1>PYATOA<a class="headerlink" href="#pyatoa" title="Permalink to this headline">¶</a></h1>
+<p><code class="docutils literal notranslate"><span class="pre">Pyatoa</span></code> is Python’s Adjoint Tomography Operations Assistant, a
+Python-based toolbox for misfit assessment in seismic tomography.
+<code class="docutils literal notranslate"><span class="pre">Pyatoa</span></code> is built to tackle the adjoint tomography problem by
+addressing data gathering, waveform standardization and preprocessing,
+waveform time-windowing, misfit measurement, misfit assesment, and
+visualization.</p>
 <hr class="docutils" />
-<p>The source code of <code class="docutils literal notranslate"><span class="pre">Pyatoa</span></code> can be found here:
-<a class="reference external" href="https://github.com/bch0w/pyatoa">https://github.com/bch0w/pyatoa</a></p>
+<p>The source code of can be found here: <a class="reference external" href="https://github.com/bch0w/pyatoa">https://github.com/bch0w/pyatoa</a></p>
 <hr class="docutils" />
-<p><code class="docutils literal notranslate"><span class="pre">Pyatoa</span></code> is built around a handful of Python packages:</p>
+<p><code class="docutils literal notranslate"><span class="pre">Pyatoa</span></code> is built ontop of the following Python packages:</p>
 <div class="line-block">
 <div class="line"><a class="reference external" href="https://github.com/obspy/obspy/wiki">Obspy:</a> for seismic data
 fetching, handling, processing and organization.</div>
@@ -55,11 +54,8 @@ Flexwin, an automatic time window selection algorithm.</div>
 calculating misfit and creating adjoint sources.</div>
 <div class="line"><a class="reference external" href="https://seismicdata.github.io/pyasdf/">PyASDF:</a> heirarchical data
 storage for seismic data.</div>
-<div class="line"><a class="reference external" href="https://matplotlib.org/">Matplotlib:</a> 2D plotting library for
-visualization of waveforms, statistics, misfit etc</div>
-<div class="line"><a class="reference external" href="https://matplotlib.org/basemap/">Basemap:</a> A mapping library for
-source receiver distributions, raypaths, etc. (deprecated, Cartopy in
-the future).</div>
+<div class="line"><a class="reference external" href="https://pandas.pydata.org/">Pandas:</a> data analysis and
+manipulation tool for misfit assessment.</div>
 </div>
 </div>
 <hr class="docutils" />
@@ -81,15 +77,36 @@ $ python setup.py install
 <h1>Doc Contents<a class="headerlink" href="#doc-contents" title="Permalink to this headline">¶</a></h1>
 <div class="toctree-wrapper compound">
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="tutorials.html">Tutorials</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="tutorials.html#tutorial-1-core-classes-general-workflow">Tutorial 1: core classes; general workflow</a></li>
-<li class="toctree-l2"><a class="reference internal" href="tutorials.html#tutorial-2-custom-configs-for-pyflex-and-pyadjoint">Tutorial 2: custom configs for Pyflex and Pyadjoint</a></li>
-<li class="toctree-l2"><a class="reference internal" href="tutorials.html#tutoral-3-dynamic-data-gathering">Tutoral 3: dynamic data gathering</a></li>
-<li class="toctree-l2"><a class="reference internal" href="tutorials.html#tutorial-4-interacting-with-pyasdf">Tutorial 4: interacting with pyasdf</a></li>
-<li class="toctree-l2"><a class="reference internal" href="tutorials.html#tutorial-6-visualization">Tutorial 6: visualization</a></li>
-<li class="toctree-l2"><a class="reference internal" href="tutorials.html#tutorial-7-export-to-specfem3d">Tutorial 7: export to Specfem3D</a></li>
-<li class="toctree-l2"><a class="reference internal" href="tutorials.html#tutorial-8-plugin-to-seisflows">Tutorial 8: plugin to Seisflows</a></li>
-<li class="toctree-l2"><a class="reference internal" href="tutorials.html#tutorial-9-misfit-statistics">Tutorial 9: misfit statistics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="config.html">Config</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="config.html#initialization">Initialization</a></li>
+<li class="toctree-l2"><a class="reference internal" href="config.html#external-configurations">External Configurations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="config.html#reading-writing">Reading / Writing</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="config.html#logger">Logger</a></li>
+<li class="toctree-l1"><a class="reference internal" href="gathering.html">Data Gathering</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="gathering.html#gathering-event-metadata">Gathering Event metadata</a></li>
+<li class="toctree-l2"><a class="reference internal" href="gathering.html#gathering-observed-waveforms">Gathering observed waveforms</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="manager.html">Manager</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="manager.html#initialization">Initialization</a></li>
+<li class="toctree-l2"><a class="reference internal" href="manager.html#standardization">Standardization</a></li>
+<li class="toctree-l2"><a class="reference internal" href="manager.html#plotting">Plotting</a></li>
+<li class="toctree-l2"><a class="reference internal" href="manager.html#preprocessing">Preprocessing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="manager.html#custom-preprocessing-function">Custom Preprocessing Function</a></li>
+<li class="toctree-l2"><a class="reference internal" href="manager.html#time-windowing-using-pyflex">Time Windowing (using Pyflex)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="manager.html#misfit-measurement-adjoint-source-generation-with-pyadjoint">Misfit Measurement / Adjoint Source Generation (with Pyadjoint)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="manager.html#flow">Flow</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="storage.html">Data Storage using PyASDF</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="storage.html#initializing">Initializing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="storage.html#manually-writing-data">Manually writing data</a></li>
+<li class="toctree-l2"><a class="reference internal" href="storage.html#automatically-written-data">Automatically written data</a></li>
+<li class="toctree-l2"><a class="reference internal" href="storage.html#accessing-saved-data-using-pyasdf">Accessing saved data using PyASDF</a></li>
+<li class="toctree-l2"><a class="reference internal" href="storage.html#re-loading-data-using-the-manager">Re-loading data using the Manager</a></li>
+<li class="toctree-l2"><a class="reference internal" href="storage.html#saving-data-during-an-inversion">Saving data during an inversion</a></li>
 </ul>
 </li>
 </ul>
@@ -103,10 +120,9 @@ $ python setup.py install
       </div>
       <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
         <div class="sphinxsidebarwrapper">
-            <p class="logo"><a href="#">
               <img class="logo" src="_static/pyatoa_logo.png" alt="Logo"/>
-            </a></p>
-<h1 class="logo"><a href="#"></a></h1>
+            </a>
+<h1 class="logo"><a href="#">Pyatoa</a></h1>
 
 
 
@@ -117,14 +133,18 @@ $ python setup.py install
 
 <h3>Navigation</h3>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="tutorials.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="config.html">Config</a></li>
+<li class="toctree-l1"><a class="reference internal" href="config.html#logger">Logger</a></li>
+<li class="toctree-l1"><a class="reference internal" href="gathering.html">Data Gathering</a></li>
+<li class="toctree-l1"><a class="reference internal" href="manager.html">Manager</a></li>
+<li class="toctree-l1"><a class="reference internal" href="storage.html">Data Storage using PyASDF</a></li>
 </ul>
 
 <div class="relations">
 <h3>Related Topics</h3>
 <ul>
   <li><a href="#">Documentation overview</a><ul>
-      <li>Next: <a href="tutorials.html" title="next chapter">Tutorials</a></li>
+      <li>Next: <a href="config.html" title="next chapter">Config</a></li>
   </ul></li>
 </ul>
 </div>

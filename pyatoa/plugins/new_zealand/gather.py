@@ -123,8 +123,10 @@ def geonet_focal_mechanism(event_id, units, event=None, csv_fid=None):
     # Create the Moment Tensor object with correct units and scaling
     if units == "nm":
         c = 1E-7  # conversion from dyne*cm to N*m
+        logger.debug(f"GeoNet moment tensor is in units of Newton*meters")
     elif units == "dynecm":
         c = 1
+        logger.debug(f"GeoNet moment tensor is in units of dyne*cm")
 
     # CV is the conversion from non-units to the desired output units
     cv = 1E20 * c

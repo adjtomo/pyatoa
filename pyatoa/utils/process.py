@@ -185,7 +185,7 @@ def is_preprocessed(st):
 def preproc(mgmt, choice, water_level=60, taper_percentage=0.05):
     """
     Preprocess waveform data from a Manager class given a few extra processing
-    parameters.
+    parameters. Preprocessing is slightly different for obs and syn waveforms.
 
     :type mgmt: pyatoa.core.manager.Manager
     :param mgmt: Manager class that should contain a Config object as well as
@@ -197,6 +197,8 @@ def preproc(mgmt, choice, water_level=60, taper_percentage=0.05):
     :param water_level: water level for response removal
     :type taper_percentage: float
     :param taper_percentage: amount to taper ends of waveform
+    :rtype: obspy.core.stream.Stream
+    :return: preprocessed stream object pertaining to `choice`
     """
     # Copy the stream to avoid editing in place
     if choice == "syn":
