@@ -580,9 +580,7 @@ class Gatherer(InternalFetcher, ExternalGetter):
             raise GathererNoDataException(f"no Event information found for "
                                           f"{self.config.event_id}")
         else:
-            logger.debug("matching event found: "
-                         f"{format_event_name(event)}"
-                         )
+            logger.debug(f"matching event found: {format_event_name(event)}")
             self.origintime = event.preferred_origin().time
             # Append extra information and save event before returning
             if try_fm:
@@ -619,7 +617,7 @@ class Gatherer(InternalFetcher, ExternalGetter):
                 from pyatoa.plugins.new_zealand.gather import \
                                                     geonet_focal_mechanism
                 event, _ = geonet_focal_mechanism(event_id=self.config.event_id,
-                                                  event=event
+                                                  event=event, units="nm"
                                                   )
                 logger.info("GeoNet moment tensor appended to Event")
             else:
@@ -799,13 +797,13 @@ def get_gcmt_moment_tensor(origintime, magnitude, time_wiggle_sec=120,
     # Filtering may remove all events from catalog, return multiple events, or
     # may return the event of choice
     if not len(cat_filt):
-        logger.info(f"no gcmt event found for {datetime} and M{magnitude}")
+        logger.info(f"no GCMT event found for {datetime} and M{magnitude}")
         raise FileNotFoundError("No events found")
     elif len(cat_filt) > 1:
         logger.info(f"multiple events found for {datetime} and M{magnitude}")
         print(f"{len(cat_filt)} events found, choosing first")
         return cat_filt[0]
     else:
-        logger.info("gcmt event found matching criteria")
+        logger.info("GCMT event found matching criteria")
         return cat_filt[0]
 

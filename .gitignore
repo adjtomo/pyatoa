@@ -70,7 +70,9 @@ coverage.xml
 *.log
 
 # Sphinx documentation
-docs/_build/
+pyatoa/docs/_build/*
+pyatoa/docs/*rst
+pyatoa/docs/*_files
 
 # PyBuilder
 target/

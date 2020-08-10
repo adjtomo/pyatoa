@@ -343,8 +343,7 @@ class Manager:
                 self.config = Config(ds=ds, path=path)
                 logger.info(f"loading config from dataset {path}")
 
-        assert len(code.split('.')) == 2, \
-            "code must be in form 'NN.SSS'"
+        assert len(code.split('.')) == 2, "'code' must be in form 'NN.SSS'"
 
         # Reset and populate using the dataset
         self.__init__(config=self.config, ds=ds, empty=True)
