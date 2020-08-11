@@ -9,6 +9,7 @@ import traceback
 import numpy as np
 import pandas as pd
 from glob import glob
+from fnmatch import filter as fnf
 from obspy.geodetics import gps2dist_azimuth
 from pyatoa.utils.form import format_event_name
 from pyatoa.visuals.inspector_plotter import InspectorPlotter
@@ -23,7 +24,7 @@ class Inspector(InspectorPlotter):
     Inherits plotting capabilities from InspectorPlotter class to reduce clutter
     """
 
-    def __init__(self, tag=None, verbose=False):
+    def __init__(self, tag="default", verbose=True):
         """
         Inspector only requires the path to the datasets, it will then read in
         all the datasets and store the data internally. This is a long process
@@ -38,10 +39,6 @@ class Inspector(InspectorPlotter):
         self.windows = pd.DataFrame()
         self.sources = pd.DataFrame()
         self.receivers = pd.DataFrame()
-        if tag is None:
-            tag = "default"
-            if verbose:
-                print("no 'tag' given, setting 'tag' to 'default'")
         self.tag = tag
         self.verbose = verbose
 
@@ -213,7 +210,7 @@ class Inspector(InspectorPlotter):
                                      )
             self.receivers = pd.concat([self.receivers, receivers.T])
 
-    def _get_windows_from_dataset(self, ds, adj_src_fmt="{net}_{sta}_{cha}"):
+    def _get_windows_from_dataset(self, ds):
         """
         Get window and misfit information from dataset auxiliary data
         Model and Step information should match between the two
@@ -221,10 +218,6 @@ class Inspector(InspectorPlotter):
 
         :type ds: pyasdf.ASDFDataSet
         :param ds: dataset to query for misfit:
-        :type adj_src_fmt: str
-        :param adj_src_fmt: adjoint sources will be named different to the
-            channel naming they are derived from. This string will be formatted
-            in order to access the corresponding AdjointSource auxiliary data.
         :rtype: pandas.DataFrame
         :return: a dataframe object containing information per misfit window
         """
@@ -261,12 +254,20 @@ class Inspector(InspectorPlotter):
                     net, sta, loc, cha = cha_id.split(".")
                     component = cha[-1]
 
-                    # get information from corresponding adjoint source
-                    # This will be the same for multiple windows
-                    adj_src = adjoint_sources[iter_][step][adj_src_fmt.format(
-                        net=net, sta=sta, cha=cha
-                    )]
-                    window["misfit"].append(adj_src.parameters["misfit_value"])
+                    try:
+                        # Workaround for potential mismatch between channel
+                        # names of windows and adjsrcs, search for w/ wildcard
+                        adj_tag = fnf(adjoint_sources[iter_][step].list(),
+                                      f"{net}_{sta}_*{component}"
+                                      )[0]
+
+                        # This misfit value will be the same for mult windows
+                        window["misfit"] = adjoint_sources[iter_][step][
+                            adj_tag].parameters["misfit_value"]
+                    except IndexError:
+                        if self.verbose:
+                            print(f"No matching adjoint source for {cha_id}")
+                        window["misfit"] = np.nan
 
                     # winfo keys match the keys of the Pyflex Window objects
                     for par in winfo:
