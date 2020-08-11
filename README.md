@@ -6,7 +6,7 @@ Documentation can be found here (in development): https://pyatoa.rtfd.io
 
 ---
 <p align="center">
-  <img src="pyatoa/docs/pyatoa_logo.png" />
+  <img src="pyatoa/docs/pyatoa_logo_w_text.png" />
 </p>
 
 Pyatoa is a waveform-based misfit quantification package, with additional tools for measurement aggregation, and visualizations of inversion results. It is meant to facilitate the assessment of seismic inversions. Under the hood, Pyatoa is built on a few key Python packages:
