@@ -6,6 +6,7 @@ will look for response information from individual components and individual
 stations. Distrubute this dataless information into the necessary components
 """
 import os
+import sys
 from obspy import read_inventory
 
 def distribute_dataless(inv, path="./"):
@@ -45,6 +46,5 @@ def distribute_dataless(inv, path="./"):
 
 if __name__ == "__main__":
     path = "./"
-    inv = read_inventory("XML FILE NAME HERE")
-
+    inv = read_inventory(sys.argv[1])
     distribute_dataless(inv, path)     

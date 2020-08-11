@@ -464,11 +464,11 @@ class InternalFetcher:
                 pass
         logger.debug("searching local filesystem")
         if self.config.synthetics_only:
-            return self.fetch_syn_by_dir(code, pathname="waveforms")
+            return self.fetch_syn_by_dir(code, pathname="waveforms", **kwargs)
         else:
             return self.fetch_obs_by_dir(code, **kwargs)
 
-    def syn_waveform_fetch(self, code):
+    def syn_waveform_fetch(self, code, **kwargs):
         """
         Mid-level internal fetching function for synthetic waveform data.
 
@@ -496,7 +496,7 @@ class InternalFetcher:
             except KeyError:
                 pass
         logger.debug("searching local filesystem")
-        return self.fetch_syn_by_dir(code)
+        return self.fetch_syn_by_dir(code, **kwargs)
 
     def station_fetch(self, code, **kwargs):
         """
@@ -718,7 +718,7 @@ class Gatherer(InternalFetcher, ExternalGetter):
                                           f"for {code}"
                                           )
         logger.info("matching synthetic waveforms found")
-        self._save_waveform_to_dataset(st_syn, self.config.synthetic_tag)
+        self._save_waveforms_to_dataset(st_syn, self.config.synthetic_tag)
 
         return st_syn
 

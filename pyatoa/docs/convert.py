@@ -6,8 +6,9 @@ Copied and edited from Pyflex documentation
 import io
 import os
 import sys
+import glob
 
-from IPython.nbformat import current
+from nbformat import current
 
 
 def clean_for_doc(nb):
@@ -71,5 +72,9 @@ def convert_nb(nbname):
 
 
 if __name__ == "__main__":
-    for nbname in sys.argv[1:]:
-        convert_nb(nbname)
+    if sys.argv[1:]:
+        for nbname in sys.argv[1:]:
+            convert_nb(nbname)
+    else:
+        for nbname in glob.glob("./*ipynb"):
+            convert_nb(nbname)

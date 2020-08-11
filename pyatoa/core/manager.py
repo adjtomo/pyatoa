@@ -346,7 +346,7 @@ class Manager:
         assert len(code.split('.')) == 2, "'code' must be in form 'NN.SSS'"
 
         # Reset and populate using the dataset
-        self.__init__(config=self.config, ds=ds, empty=True)
+        self.__init__(config=self.config, ds=ds)
         self.event = ds.events[0]
         net, sta = code.split('.')
         sta_tag = f"{net}.{sta}"
@@ -387,7 +387,7 @@ class Manager:
                     step_count=step_count, force=force, save=save)
         self.measure(force=force, save=save)
 
-    def gather(self, code=None, choice=None, **kwargs):
+    def gather(self, code=None, choice=None, origintime=None, **kwargs):
         """
         Gather station dataless and waveform data using the Gatherer class.
         In order collect observed waveforms, dataless, and finally synthetics.
@@ -403,6 +403,10 @@ class Manager:
         :type choice: list
         :param choice: allows user to gather individual bits of data, rather
             than gathering all. Allowed: 'inv', 'st_obs', 'st_syn'
+        :type origintime: obspy.UTCDateTime
+        :param origintime: an optional origintime if the Manager does not have
+            an Event object. Will not overwrite the event origintime if an event
+            attribute is present.
 
         Keyword Arguments:
             :type try_fm: bool
