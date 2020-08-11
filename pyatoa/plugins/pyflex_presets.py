@@ -113,11 +113,7 @@ pyflex_presets = {
         "cc_acceptance_level": 0.7,
         "s2n_limit": 3.,
         "max_time_before_first_arrival": 5.,
-<<<<<<< HEAD
-        "min_surface_wave_velocity": 1.4,  # Default is 3.0
-=======
         "min_surface_wave_velocity": 1.2,  # Default is 3.0, chow et al.= 1.4
->>>>>>> d46e959baae37860ef10881ee3c4bf7cbbeedb16
         "check_global_data_quality": True,  # Default is False
         "c_0": 0.7,
         "c_1": 2.0, 
