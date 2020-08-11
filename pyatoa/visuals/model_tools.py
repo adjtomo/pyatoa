@@ -49,19 +49,19 @@ def get_coordinates(fid):
     return coords
 
 
-def get_ranges(coords, convert=False, zero_origin=False):
+def get_ranges(coords, scale_axes=False, zero_origin=False):
     """
     Get a list of ranges to use for setting Axes elements by generating an empty
     axis object. A bit hacky but it works within the context of Mayavi.
 
-    Option to convert the units of range by some constant value.
+    Option to scale the axes to the units of range by some constant value.
     Option to set the origin to zero.
 
     :type coords: np.array
     :param coords: Nx4 numpy array with columns representing x, y, z, v, the
         output of get_coordinates()
-    :type convert: float
-    :param convert: constant value to multiply against all ranges, to e.g.
+    :type scale_axes: float
+    :param scale_axes: constant value to multiply against all ranges, to e.g.
         change units from 'm' to 'km'
     :type zero_origin: bool
     :param zero_origin: sets X and Y origin to 0, Z stays the same
@@ -79,8 +79,8 @@ def get_ranges(coords, convert=False, zero_origin=False):
         ranges = [xmin, xmax, ymin, ymax, zmin, zmax]
 
     # Convert the range
-    if convert:
-        ranges = [_ * convert for _ in ranges]
+    if scale_axes:
+        ranges = [_ * scale_axes for _ in ranges]
 
     return ranges
 
@@ -96,16 +96,22 @@ def colorscale(orientation, **kwargs):
     Keyword arguments:
         :type cmap: str
         :param cmap: colorscale to use, matches names from Matplotlib
+            defaults to 'RdYlBu' for Red-Yellow-Blue
         :type reverse: bool
-        :param reverse: reverse the colorscale
+        :param reverse: reverse the colorscale, defaults to True
         :type min_max: list
-        :param min_max: min and max values for color scale as [min, max]
+        :param min_max: min and max values for color scale as [min, max],
+            defaults to None, use the values set by the model
         :type colorbar: bool
-        :param colorbar: create and show a colorbar
+        :param colorbar: create and show a colorbar, defaults to True
         :type title: str
-        :param title: colorbar title
-        :type nb_labels: int
-        :param nb_labels: number of labels to put on the colorbar
+        :param title: colorbar title, defaults to None
+        :type num_clabels: int
+        :param num_clabels: number of labels to put on the colorbar,
+            defaults to Mayavi default
+        :type round_to: int
+        :param round_to: Round the range values of the colorbar to a given
+            base value `round_to` to get rid of decimals or weird values.
     """
     cmap = kwargs.get("cmap", "RdYlBu")
     reverse = kwargs.get("reverse", True)
@@ -121,15 +127,14 @@ def colorscale(orientation, **kwargs):
     cbar = mlab.colorbar(title=title, orientation=orientation,
                          label_fmt="%-#.2f", nb_labels=num_labels)
     cbar.lut_mode = cmap
-    logger.debug(f"Creating colorbar with colormap {cmap}")
+    logger.debug(f"Creating colorbar with colormap: '{cmap}'")
     cbar.reverse_lut = reverse
     if reverse:
         logger.debug(f"Reversing colorscale")
     cbar.number_of_colors = num_colors
 
     # Bound the colorscale
-    logger.debug(f"Data bounds are set to {cbar.data_range}")
-    print(f"\t{cbar.data_range}", end="->")
+    logger.debug(f"Colorbar bounds currently set to: {cbar.data_range}")
     if default_range:
         # Round the default min and max bounds of the dataset
         if round_to:
@@ -160,8 +165,7 @@ def colorscale(orientation, **kwargs):
     if max(cbar.data_range) < .01:
         cbar.scalar_bar.label_format = "%-#.2E"
 
-    print(cbar.data_range)
-    logger.debug(f"Data bounds have been set to to {cbar.data_range}")
+    logger.debug(f"Colorbar bounds have been set to: {cbar.data_range}")
 
     # Create colorbar
     cbar.show_scalar_bar = colorbar

@@ -11,36 +11,36 @@ from pyasdf import ASDFDataSet
 from obspy.core.event import Event
 
 
-def format_model_number(iteration):
+def format_iter(iteration):
     """
-    The model number is based on the current iteration and should be formatted
-    with a leading 'm' character and two digits. Inputs can be strings or
-    integers. Assuming model numbers won't go above 99.
+    Format the iteration to be used in internal path naming and labelling.
+    Standard is to format with a leading 'i' character followed by two digits. 
+    Inputs can be strings or integers. Assumes iterations won't go above 99.
 
     :type iteration: str or int
-    :param iteration: input model number, e.g. 0, '0', 'm0', 'm00'
+    :param iteration: input model number, e.g. 0, '0', 'i0', 'i00'
     :rtype: str
-    :return: formatted model number, e.g. 'm00', or None if no matching format
+    :return: formatted model number, e.g. 'i00', or None if no matching format
     """
     if isinstance(iteration, str):
-        # If e.g. model_number = "0"
-        if not iteration[0] == "m":
-            mdlnmbr = f"m{iteration:0>2}"
-        # If e.g. model_number = "m00"
+        # If e.g. iteration = "0"
+        if not iteration[0] == "i":
+            iternum = f"i{iteration:0>2}"
+        # If e.g. iteration = "m00"
         else:
-            mdlnmbr = iteration
-    # If e.g. model_number = 0
+            iternum = iteration
+    # If e.g. iteration = 0
     elif isinstance(iteration, int):
-        mdlnmbr = f"m{iteration:0>2}"
+        iternum = f"i{iteration:0>2}"
     else:
-        mdlnmbr = None
+        iternum = None
 
-    return mdlnmbr
+    return iternum
 
 
-def format_step_count(count):
+def format_step(count):
     """
-    Same as for model number but step count is formatted with a leading 's'
+    Same as for iteration but step count is formatted with a leading 's'
 
     :type count: str or int
     :param count: input model number, e.g. 0, '0', 's0', 's00'
@@ -66,8 +66,6 @@ def format_event_name(ds_or_event):
 
     :type ds_or_event: pyasdf.ASDFDataSet or obspy.core.event.Event
     :param ds_or_event: get dataset event name from the filename
-    :type event: obspy.core.event.Event
-    :param event: get event name from the resource id
     :rtype: str
     :return: the event name to be used for naming schema in the workflow
     """
@@ -107,68 +105,4 @@ def channel_code(dt):
     else:
         print("Channel code does not exist for this value of 'dt'")
         return None
-
-
-def distribute_dataless(path_to_response, inv):
-    """
-    Response files written through Obspy come out as a single object, but Pyatoa
-    will look for response information from individual components and individual
-    stations. Distrubute this dataless information into the necessary components
-
-    Note: The template here is hardcoded with SEED convention
-
-    :type path_to_response: str
-    :param path_to_response: path to save the new response files to
-    :type inv: obspy.core.inventory.Inventory
-    :param inv: inventory with response to be delinieated into separate objects
-    """
-    inner_folder = "{STA}.{NET}"
-    fid_template = "RESP.{NET}.{STA}.{LOC}.{CHA}"
-    full_template = os.path.join(path_to_response, inner_folder, fid_template)
-    for net in inv:
-        for sta in net:
-            try:
-                # Create the container directory unless it exists
-                os.mkdir(os.path.join(path_to_response, inner_folder.format(
-                    STA=sta.code, NET=net.code))
-                    )
-            except FileExistsError:
-                pass
-            for cha in sta:
-                # Write the individual channel as a STATIONXML file
-                inv_temp = inv.select(network=net.code, station=sta.code,
-                                      location=cha.location_code,
-                                      channel=cha.code)
-                inv_temp.write(full_template.format(
-                    STA=sta.code, NET=net.code, LOC=cha.location_code,
-                    CHA=cha.code),
-                    format='STATIONXML'
-                    )
-
-
-def create_window_dictionary(window):
-    """
-    HDF5 doesnt play nice with nonstandard objects in dictionaries, e.g.
-    nested dictionaries, UTCDateTime objects. So remake the Pyflex window
-    JSON dictionary into something that will sit well in a Pyasdf object
-
-    :type window: pyflex.Window
-    :param window: misfit window calcualted by pyflex
-    :rtype win_dict: dict
-    :return win_dict: formatted dictionary of values for pyasdf auxiliary data
-    """
-    win_dict = window._get_json_content()
-
-    # change UTCDateTime objects into strings
-    win_dict["absolute_endtime"] = str(win_dict["absolute_endtime"])
-    win_dict["absolute_starttime"] = str(win_dict["absolute_starttime"])
-    win_dict["time_of_first_sample"] = str(win_dict["time_of_first_sample"])
-
-    phase_arrivals = win_dict["phase_arrivals"]
-    for phase in phase_arrivals:
-        win_dict["phase_arrival_{}".format(phase["name"])] = phase["time"]
-    win_dict.pop("phase_arrivals")
-
-    return win_dict
-
 

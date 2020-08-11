@@ -1,15 +1,9 @@
 # Mac specific
 *.DS_Store
 
-# IPython notebooks from Docs
-.ipynb_checkpoints
-
 #Pyatoa files
 pyatoa/visuals/fault_coordinates/hikurangi_trench.npz
 pyatoa/plugins/seisflows/sfconfig.json
-pyatoa/docs/.ipynb_checkpoints/*	
-pyatoa/docs/*ipynb
-pyatoa/old_tests
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -70,7 +64,11 @@ coverage.xml
 *.log
 
 # Sphinx documentation
-docs/_build/
+pyatoa/docs/.ipynb_checkpoints
+pyatoa/docs/_build
+pyatoa/docs/_build/*
+pyatoa/docs/*rst
+pyatoa/docs/*_files
 
 # PyBuilder
 target/

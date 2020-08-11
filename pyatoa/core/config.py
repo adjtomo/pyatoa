@@ -5,8 +5,7 @@ Contains non-class functions for setting Config objects of Pyflex and Pyadjoint.
 """
 import yaml
 from pyatoa import logger
-from pyatoa.utils.form import format_model_number, format_step_count
-from pyatoa.core.seisflows.pyaflowa import pyaflowa_kwargs
+from pyatoa.utils.form import format_iter, format_step
 from pyatoa.plugins.pyflex_presets import pyflex_presets
 
 from pyflex import Config as PyflexConfig
@@ -21,14 +20,14 @@ class Config:
     read from and write to external files in various formats, or explicitely
     defined through scripts or interactive shells.
     """
-    def __init__(self, yaml_fid=None, ds=None, path=None, model=None, step=None,
-                 event_id=None, min_period=10, max_period=30, filter_corners=2,
-                 client=None, rotate_to_rtz=False, unit_output="DISP",
-                 pyflex_preset="default", component_list=None,
-                 adj_src_type="cc_traveltime_misfit", start_pad=20, end_pad=500,
-                 synthetic_unit="DISP", observed_tag="observed",
-                 synthetic_tag="synthetic", synthetics_only=False,
-                 win_amp_ratio=0., cfgpaths=None, save_to_ds=True, **kwargs):
+    def __init__(self, yaml_fid=None, ds=None, path=None, iteration=None, 
+                 step_count=None, event_id=None, min_period=10, max_period=30, 
+                 filter_corners=2, client=None, rotate_to_rtz=False, 
+                 unit_output="DISP", pyflex_preset="default", 
+                 component_list=None, adj_src_type="cc_traveltime_misfit", 
+                 start_pad=20, end_pad=500, observed_tag="observed", 
+                 synthetic_tag=None, synthetics_only=False, win_amp_ratio=0., 
+                 paths=None, save_to_ds=True, **kwargs):
         """
         Allows the user to control the parameters of the workflow, including:
         setting the Config objects for Pyflex and Pyadjoint, and the paths for
@@ -40,10 +39,14 @@ class Config:
 
         :type yaml_fid: str
         :param yaml_fid: id for .yaml file if config is to be loaded externally
-        :type model: int
-        :param model: model number, will be formatted for use in tags 
-        :type step: int
-        :param step: step count, will be formatted for use in tags
+        :type iteration: int
+        :param iteration: if running an inversion, the current iteration. Used 
+            for internal path naming, as well as interaction with Seisflows via
+            Pyaflowa.
+        :type step_count: int
+        :param step: if running an inversion, the current step count in the
+            line search, will be used for internal path naming, and interaction
+            with Seisflows via Pyaflowa.
         :type event_id: str
         :param event_id: unique event identifier for data gathering, annotations
         :type: min_period: float
@@ -68,8 +71,6 @@ class Config:
             for use by data gathering class
         :type end_pad: int
         :param end_pad: seconds after event origintime to grab waveform data
-        :type synthetic_unit: str
-        :param synthetic_unit: units of Specfem synthetics, 'DISP', 'VEL', 'ACC'
         :type synthetics_only: bool
         :param synthetics_only: If the user is doing a synthetic-synthetic
             example, e.g. in a checkerboard test, this will tell the internal
@@ -83,8 +84,8 @@ class Config:
         :param synthetic_tag: Tag to use for asdf dataset to label and search
             for obspy streams of synthetic data. Default 'synthetic_{model_num}'
             Tag must be formatted before use.
-        :type cfgpaths: dict of str
-        :param cfgpaths: any absolute paths for Pyatoa to search for
+        :type paths: dict of str
+        :param paths: any absolute paths for Pyatoa to search for
             waveforms in. If path does not exist, it will automatically be
             skipped. Allows for work on multiple machines, by giving multiple
             paths for the same set of data, without needing to change config.
@@ -96,8 +97,8 @@ class Config:
             contains data is passed to the Manager, but you don't want to
             overwrite the data inside while you do some temporary processing.
         """
-        self.model = model
-        self.step = step
+        self.iteration = iteration
+        self.step_count = step_count
         self.event_id = event_id
         self.min_period = float(min_period)
         self.max_period = float(max_period)
@@ -105,15 +106,11 @@ class Config:
         self.client = client
         self.rotate_to_rtz = rotate_to_rtz
         self.unit_output = unit_output.upper()
-        self.synthetic_unit = synthetic_unit.upper()
         self.observed_tag = observed_tag
-
-        self.synthetic_tag = synthetic_tag
-        if self.model:
-            # Tag based on model number and step count, e.g. synthetic_m00s00
-            self.synthetic_tag += (f"_{self.model_number}"
-                                   f"{self.step_count or ''}"
-                                   )
+        
+        # Allow manual override of synthetic tag, but keep internal and rely 
+        # on calling property for actual value
+        self._synthetic_tag = synthetic_tag
 
         self.pyflex_preset = pyflex_preset
         self.adj_src_type = adj_src_type
@@ -130,13 +127,13 @@ class Config:
         self.pyadjoint_config = None
 
         # Make sure User provided paths are list objects
-        if cfgpaths:
-            for key in cfgpaths:
-                if not isinstance(cfgpaths[key], list):
-                    cfgpaths[key] = [cfgpaths[key]]
-            self.cfgpaths = cfgpaths
+        if paths:
+            for key in paths:
+                if not isinstance(paths[key], list):
+                    paths[key] = [paths[key]]
+            self.paths = paths
         else:
-            self.cfgpaths = {"waveforms": [], "synthetics": [], "responses": []}
+            self.paths = {"waveforms": [], "synthetics": [], "responses": []}
 
         # Overwrite config parameters from .yaml if given
         if yaml_fid:
@@ -154,19 +151,18 @@ class Config:
         Separate into similar labels for easier reading.
         """
         # Model and step need to be formatted before printing
-        str_out = ("Config\n"
-                   f"    {'model:':<25}{self.model_number}\n"
-                   f"    {'step:':<25}{self.step_count}\n"
-                   f"    {'event:':<25}{self.event_id}\n"
+        str_out = ("CONFIG\n"
+                   f"    {'iteration:':<25}{self.iter_tag}\n"
+                   f"    {'step_count:':<25}{self.step_tag}\n"
+                   f"    {'event_id:':<25}{self.event_id}\n"
                    )
         # Format the remainder of the keys identically
         key_dict = {"Gather": ["client", "start_pad", "end_pad", "save_to_ds"],
                     "Process": ["min_period", "max_period", "filter_corners",
-                                "unit_output", "synthetic_unit",
-                                "rotate_to_rtz", "win_amp_ratio",
+                                "unit_output", "rotate_to_rtz", "win_amp_ratio",
                                 "synthetics_only"],
                     "Labels": ["component_list", "observed_tag",
-                               "synthetic_tag", "cfgpaths"],
+                               "synthetic_tag", "paths"],
                     "External": ["pyflex_preset", "adj_src_type",
                                  "pyflex_config", "pyadjoint_config"
                                  ]
@@ -182,20 +178,38 @@ class Config:
         return self.__str__()
 
     @property
-    def model_number(self):
-        """string formatted version of model, e.g. 'm00'"""
-        if self.model is not None:
-            return format_model_number(self.model)
+    def iter_tag(self):
+        """string formatted version of iteration, e.g. 'i00'"""
+        if self.iteration is not None:
+            return format_iter(self.iteration)
         else:
             return None
 
     @property
-    def step_count(self):
+    def step_tag(self):
         """string formatted version of step, e.g. 's00'"""
-        if self.step is not None:
-            return format_step_count(self.step)
+        if self.step_count is not None:
+            return format_step(self.step_count)
         else:
             return None
+
+    @property
+    def synthetic_tag(self):
+        """tag to be used for synthetic data, uses iteration and step count"""
+        if self._synthetic_tag is not None:
+            return self._synthetic_tag
+
+        # If no override value given, fall back to default
+        tag = self._get_aux_path(default=None, separator='')
+        if tag is not None:
+            return f"synthetic_{tag}"
+        else:
+            return "synthetic"
+
+    @property
+    def aux_path(self):
+        """property to quickly get a bog-standard aux path e.g. i00/s00"""
+        return self._get_aux_path()
 
     def _check(self, **kwargs):
         """
@@ -211,19 +225,17 @@ class Config:
         assert(self.unit_output in acceptable_units), \
             f"unit_output should be in {acceptable_units}"
 
-        assert(self.synthetic_unit in acceptable_units), \
-            f"synthetic_unit should be in {acceptable_units}"
-
         # Check that paths are in the proper format, dictated by Pyatoa
         required_keys = ['synthetics', 'waveforms', 'responses']
-        assert(isinstance(self.cfgpaths, dict)), "paths should be a dict"
-        for key in self.cfgpaths.keys():
+        assert(isinstance(self.paths, dict)), "paths should be a dict"
+        for key in self.paths.keys():
             assert(key in required_keys), \
                 f"path keys can only be in {required_keys}"
+
         # Make sure that all the required keys are given in the dictionary
         for key in required_keys:
-            if key not in self.cfgpaths.keys():
-                self.cfgpaths[key] = []
+            if key not in self.paths.keys():
+                self.paths[key] = []
 
         # Set the component list. Rotate component list if necessary
         if self.rotate_to_rtz:
@@ -261,12 +273,33 @@ class Config:
 
         # Check for unnused kwargs
         unused_kwargs = []
-        for kwarg in unused_kwargs_pf:
-            if kwarg in unused_kwargs_pa and kwarg not in pyaflowa_kwargs:
-                unused_kwargs.append(kwarg)
         if unused_kwargs:
             raise ValueError(f"{unused_kwargs} are not keyword arguments in "
                              f"Pyatoa, Pyflex or Pyadjoint.")
+
+    def _get_aux_path(self, default="default", separator="/"):
+        """
+        Pre-formatted path to be used for tagging and identification in 
+        ASDF dataset auxiliary data. Internal function to be called by property
+        aux_path.
+
+        :type default: str
+        :param default: if no iteration or step information is given, path will
+            default to this string. By default it is 'default'.
+        :type separator: str
+        :param separator: if an iteration and step_count are available, 
+            separator will be placed between. Defaults to '/', use '' for no
+            separator.
+        """
+        if (self.iter_tag is not None) and self.step_tag is not None:
+            # model/step/window_tag
+            path = separator.join([self.iter_tag, self.step_tag])
+        elif self.iter_tag is not None:
+            path = self.iter_tag
+        else:
+            path = default
+
+        return path
 
     @staticmethod
     def _check_io_format(fid, fmt=None):
@@ -344,56 +377,57 @@ class Config:
         :type filename: str
         :param filename: filename to save yaml file
         """
+        from os.path import splitext
+
         # Ensure file ending
-        if filename[-5:] != ".yaml":
+        if splitext(filename)[1] != ".yaml":
             filename += ".yaml"
         with open(filename, "w") as f:
             yaml.dump(vars(self), f, default_flow_style=False, sort_keys=False)
 
     def _write_asdf(self, ds):
         """
-        Save the config values as a dictionary in the pyasdf data format
-        for easy lookback
+        Save the Config values as a parameter dictionary in the ASDF Data set
+        Converts types to play nice with ASDF Auxiliary Data.
+        Flattens dictionaries and external Config objects for easy storage.
 
         :type ds: pyasdf.ASDFDataSet
         :param ds: dataset to save the config file to
         """
         # Lazy imports because this function isn't always called
         from numpy import array
-        from obspy import UTCDateTime
         from copy import deepcopy
 
-        # Add/standardize some variables before passing to dataset
-        # deep copy to ensure that we aren't editing the Config parameters
+        # Deep copy to ensure that we aren't editing the Config parameters
         attrs = vars(deepcopy(self))
-
-        # Auxiliary data doesn't like NoneType objects
+        
+        add_attrs = {}
+        del_attrs = []
         for key, item in attrs.items():
             if item is None:
-                attrs[key] = ''
+                # HDF doesn't support NoneType so convert to string        
+                attrs[key] = "None"
+            elif isinstance(item, (dict, PyflexConfig, PyadjointConfig)):
+                # Flatten dictionaries, add prefix, delete original
+                try:
+                    # Config objects will need to be converted to dictionaries
+                    vars_ = vars(item)
+                except TypeError:
+                    vars_ = item
+                # Prepend a prefix for easier read-back, also convert NoneTypes
+                vars_ = {f"{key}_{k}": ('' if i is None else i)
+                         for k, i in vars_.items()
+                         }
+                del_attrs.append(key)
+                add_attrs.update(vars_)
 
-        attrs["creation_time"] = str(UTCDateTime())
-        attrs["cfgpaths_waveforms"] = self.cfgpaths["waveforms"]
-        attrs["cfgpaths_synthetics"] = self.cfgpaths["synthetics"]
-        attrs["cfgpaths_responses"] = self.cfgpaths["responses"]
-
-        # remove Config objects because pyASDF won't recognize dicts or objects
-        # these will be reinstated by _check() if/when read back in
-        del attrs["pyflex_config"]
-        del attrs["pyadjoint_config"]
-        del attrs["cfgpaths"]
-
-        # Figure out how to tag the data in the dataset
-        if self.model and self.step:
-            # model/step/window_tag
-            path = f"{self.model}/{self.step}"
-        elif self.model:
-            path = self.model
-        else:
-            path = "default"
+        # Update the dictionary after the fact
+        for key in del_attrs:
+            attrs.pop(key)
+        attrs.update(add_attrs)
 
         ds.add_auxiliary_data(data_type="Configs", data=array([True]),
-                              path=path, parameters=attrs
+                              path=self.aux_path, parameters=attrs
                               )
 
     def _write_ascii(self, filename):
@@ -440,9 +474,9 @@ class Config:
         kwargs = {}
         for key, item in attr_list:
             if hasattr(self, key.lower()):
-                # Special case: ensure cfgpaths don't overwrite, but append
-                if key == "cfgpaths":
-                    for cfgkey, cfgitem in self.cfgpaths.items():
+                # Special case: ensure paths don't overwrite, but append
+                if key == "paths":
+                    for cfgkey, cfgitem in self.paths.items():
                         item[cfgkey] += cfgitem
                 setattr(self, key.lower(), item)
             else:
@@ -472,22 +506,40 @@ class Config:
         else:
             cfgin = ds.auxiliary_data.Configs[path].parameters
 
-        cfgpaths = {}
-        for key, item in cfgin.items():
-            if "cfgpaths" in key:
-                cfgpaths[key.split('_')[1]] = item.any() or []
-            else:
-                # Convert numpy objects into native python objects to avoid
-                # any confusion when reading from ASDF format
-                try:
-                    setattr(self, key, item.item())
-                except ValueError:
-                    setattr(self, key, item.tolist())
-                except AttributeError:
-                    setattr(self, key, item)
-        setattr(self, "cfgpaths", cfgpaths)
+        # Parameters from flattened dictionaries will need special treatment
+        paths, pyflex_config, pyadjoint_config = {}, {}, {}
 
-        self._check()
+        for key, item in cfgin.items():
+            # Convert the item into expected native Python objects
+            if isinstance(item, str):
+                item = None if item == "None" else item
+            else:
+                try:
+                    item = item.item()
+                except ValueError:
+                    item = item.tolist()
+
+            # Put the item in the correct dictionary
+            if "paths" in key:
+                # e.g. paths_waveforms -> waveforms
+                paths[key.split('_')[1]] = item
+            elif "pyflex_config" in key:
+                pyflex_config["_".join(key.split('_')[2:])] = item
+            elif "pyadjoint_config" in key:
+                # e.g. pyadjoint_config_dlna_sigma_min -> dlna_sigma_min
+                pyadjoint_config["_".join(key.split('_')[2:])] = item
+            else:
+                # Normal Config attribute
+                setattr(self, key, item)
+
+        # Assign the flattened dictionaries back into nested dictionaries
+        setattr(self, "paths", paths)
+
+        pyflex_config, _ = set_pyflex_config(**pyflex_config, choice=None)
+        setattr(self, "pyflex_config", pyflex_config)
+
+        pyadjoint_config, _ = set_pyadjoint_config(**pyadjoint_config)
+        setattr(self, "pyadjoint_config", pyadjoint_config)
 
 
 def set_pyflex_config(min_period, max_period, choice=None, **kwargs):

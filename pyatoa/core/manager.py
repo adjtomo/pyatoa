@@ -7,7 +7,6 @@ import warnings
 import obspy
 import pyflex
 import pyadjoint
-import traceback
 from os.path import basename
 from obspy.signal.filter import envelope
 
@@ -17,12 +16,11 @@ from pyatoa.core.gatherer import Gatherer, GathererNoDataException
 from pyatoa.utils.process import is_preprocessed
 from pyatoa.utils.asdf.fetch import windows_from_dataset
 from pyatoa.utils.window import reject_on_global_amplitude_ratio
-from pyatoa.utils.srcrcv import gcd_and_baz, seismogram_length
+from pyatoa.utils.srcrcv import gcd_and_baz
 from pyatoa.utils.asdf.add import add_misfit_windows, add_adjoint_sources
 from pyatoa.utils.process import (preproc, trim_streams, stf_convolve, zero_pad, 
                                   match_npts)
 
-from pyatoa.visuals.map_maker import manager_map
 from pyatoa.visuals.manager_plotter import ManagerPlotter
 
 
@@ -75,10 +73,9 @@ class Manager:
     generate misfit windows, and calculate adjoint sources. Has a variety of
     internal sanity checks to ensure that the workflow stays on the rails.
     """
-    def __init__(self, config=None, ds=None, empty=True, station_code=None,
-                 event=None, st_obs=None, st_syn=None, inv=None, windows=None,
-                 staltas=None, adjsrcs=None, gcd=None, baz=None,
-                 gatherer=None):
+    def __init__(self, config=None, ds=None, event=None, st_obs=None,
+                 st_syn=None, inv=None, windows=None, staltas=None,
+                 adjsrcs=None, gcd=None, baz=None, gatherer=None):
         """
         If no pyasdf dataset is given in the initiation of the Manager, all
         data fetching will happen via given pathways in the config file,
@@ -89,12 +86,6 @@ class Manager:
             to run through the Pyatoa workflow
         :type ds: pyasdf.asdf_data_set.ASDFDataSet
         :param ds: ASDF data set from which to read and write data
-        :type empty: bool
-        :param empty: Do not instantiate Gatherer or look for event.
-            Useful for when User provides own event object. if 'event' is given
-            then this parameter does not do anything.
-        :type station_code: str
-        :param station_code: station code for data gather, e.g. 'NZ.BFZ.10.HH?'
         :type event: obspy.core.event.Event
         :param event: An event object containing relevant earthquake information
         :type st_obs: obspy.core.stream.Stream
@@ -117,14 +108,34 @@ class Manager:
         :param gatherer: A previously instantiated Gatherer class.
             Should not have to be passed in by User, but is used for reset()
         """
-        # Main workflow requirements
-        if config:
+        self.ds = ds
+        self.inv = inv
+
+        # Instantiate a Config object
+        if config is not None:
             self.config = config
         else:
-            self.config = None
-        self.ds = ds
+            logger.info("no Config found, initiating default")
+            self.config = Config()
+
+        # Ensure any user-provided event is an Event object
+        if isinstance(event, obspy.core.event.catalog.Catalog):
+            logger.info(f"event given as catalog, taking zeroth entry")
+            event = event[0]
+        self.event = event
+
+        # Try to get origin time information from the event
+        if self.event is not None:
+            origintime = self.event.preferred_origin().time
+        else:
+            origintime = None
+
+        # Instantiate a Gatherer object and pass along info
         self.gatherer = gatherer
-        self.inv = inv
+        if self.gatherer is None:
+            self.gatherer = Gatherer(config=self.config, ds=self.ds,
+                                     origintime=origintime)
+
         # Copy Streams to avoid affecting original data
         if st_obs is not None:
             self.st_obs = st_obs.copy()
@@ -134,23 +145,17 @@ class Manager:
             self.st_syn = st_syn.copy()
         else:
             self.st_syn = None
+
         # Data produced by the workflow
         self.gcd = gcd
         self.baz = baz
         self.windows = windows
         self.staltas = staltas or {}
         self.adjsrcs = adjsrcs
-        self._rej_win = {}
+        self.rejwins = {}
 
         # Internal statistics to keep track of the workflow progress
         self.stats = ManagerStats()
-
-        # If event ID set, launch gatherer, gather an event
-        if not empty or event is not None:
-            self.setup(event=event)
-        else:
-            # If 'empty' or no event, dont launch gatherer, event is None
-            self.event = None
 
         # Run internal checks on data
         self._check()
@@ -246,48 +251,10 @@ class Manager:
         # Count how many misfit windows are contained in the dataset
         if self.stats.nwin is None and self.windows is not None:
             self.stats.nwin = sum([len(_) for _ in self.windows.values()])
-   
-        # Determine the unscaled misfit. Scale if windows have been chosen
+
+        # Determine the unscaled misfit
         if not self.stats.misfit and self.adjsrcs is not None:
             self.stats.misfit = sum([_.misfit for _ in self.adjsrcs.values()])
-            if self.stats.nwin:
-                self.stats.misfit /= (2 * self.stats.nwin)
-
-    def setup(self, event=None, idx=0, append_focal_mechanism=True):
-        """
-        One-time setup of the Manager class.
-
-        Assigns or instantiates required auxiliary classes necessary for the
-        Manger to function, including the Config, Gatherer and Event attributes.
-
-        :type event: obspy.core.event.Event or obspy.core.event.catalog.Catalog
-        :param event: event or Catalog to use for the central event attribute
-        :type idx: int
-        :param idx: if `event` is a Catalog, idx allows user to specify
-            which index in Catalog to choose event from. Default is 0.
-        """
-        if self.config is None:
-            logger.info("no Config found, initiating default")
-            self.config = Config()
-
-        # Launch or reset the Gatherer
-        if self.gatherer is None:
-            self.gatherer = Gatherer(config=self.config, ds=self.ds)
-
-        # Determine event information
-        if event is not None:
-            # User provided Event/Catalog object should be distributed
-            if isinstance(event, obspy.core.event.catalog.Catalog):
-                logger.info(f"event given as catalog, taking entry {idx}")
-                event = event[idx]
-            self.event = event
-            self.gatherer.origintime = event.preferred_origin().time
-        else:
-            # No User provided event, gather based on event id
-            if self.config.event_id is not None:
-                self.event = self.gatherer.gather_event(
-                    append_focal_mechanism=append_focal_mechanism
-                    )
 
     def reset(self):
         """
@@ -340,15 +307,15 @@ class Manager:
         else:
             raise NotImplementedError
 
-    def load(self, station_code, path=None, ds=None, synthetic_tag=None,
+    def load(self, code, path=None, ds=None, synthetic_tag=None,
              observed_tag=None):
         """
         Populate the manager using a previously populated ASDFDataSet.
         Useful for re-instantiating an existing workflow that has already 
         gathered data and saved it to an ASDFDataSet.
 
-        :type station_code: str
-        :param station_code: SEED conv. code, e.g. NZ.BFZ.10.HHZ
+        :type code: str
+        :param code: SEED conv. code, e.g. NZ.BFZ.10.HHZ
         :type path: str
         :param path: if no Config object is given during init, the User
             can specify the config path here to load data from the dataset.
@@ -367,28 +334,27 @@ class Manager:
             ds = self.ds
         else:
             raise TypeError("load requires a Dataset")
-       
+
         # If no Config object in Manager, load from dataset 
         if self.config is None:
             if path is None:
                 raise TypeError("load requires Config or 'path'")
             else:
-                self.config = Config(ds=ds, path=path) 
+                self.config = Config(ds=ds, path=path)
                 logger.info(f"loading config from dataset {path}")
 
-        assert len(station_code.split('.')) == 2, \
-            "station_code must be in form 'NN.SSS'"
+        assert len(code.split('.')) == 2, "'code' must be in form 'NN.SSS'"
 
         # Reset and populate using the dataset
-        self.__init__(config=self.config, ds=ds, empty=True)
+        self.__init__(config=self.config, ds=ds)
         self.event = ds.events[0]
-        net, sta = station_code.split('.')
+        net, sta = code.split('.')
         sta_tag = f"{net}.{sta}"
         if sta_tag in ds.waveforms.list():
             self.inv = ds.waveforms[sta_tag].StationXML
-            self.st_syn = ds.waveforms[sta_tag][synthetic_tag or 
+            self.st_syn = ds.waveforms[sta_tag][synthetic_tag or
                                                 self.config.synthetic_tag]
-            self.st_obs = ds.waveforms[sta_tag][observed_tag or 
+            self.st_obs = ds.waveforms[sta_tag][observed_tag or
                                                 self.config.observed_tag]
         else:
             logger.warning(f"no data for {sta_tag} found in dataset")
@@ -396,7 +362,7 @@ class Manager:
         self._check()
         return self
 
-    def flow(self, fix_windows=False, preprocess_overwrite=None):
+    def flow(self, **kwargs):
         """
         A convenience function to run the full workflow with a single command.
         Does not include gathering as that could be from gather() or load()
@@ -404,26 +370,32 @@ class Manager:
         Will raise ManagerError for controlled exceptions meaning workflow 
         cannot continue.
 
-        :type fix_windows: bool
-        :param fix_windows: do not pick new windows, but load windows from the
-            given dataset
-        :type preprocess_overwrite: function
-        :param preprocess_overwrite: overwrite the core preprocess functionality
+        Takes kwargs to pass to underlying functions
         """
-        self.standardize()
-        self.preprocess(overwrite=preprocess_overwrite)
-        self.window(fix_windows=fix_windows)
-        self.measure()
+        force = kwargs.get("force", False)
+        standardize_to = kwargs.get("standardize_to", "syn")
+        fix_windows = kwargs.get("fix_windows", False)
+        iteration = kwargs.get("iteration", None)
+        step_count = kwargs.get("step_count", None)
+        overwrite = kwargs.get("overwrite", None)
+        which = kwargs.get("which", "both")
+        save = kwargs.get("save", True)
 
-    def gather(self, station_code, choice=None):
+        self.standardize(standardize_to=standardize_to, force=force)
+        self.preprocess(overwrite=overwrite, which=which)
+        self.window(fix_windows=fix_windows, iteration=iteration,
+                    step_count=step_count, force=force, save=save)
+        self.measure(force=force, save=save)
+
+    def gather(self, code=None, choice=None, origintime=None, **kwargs):
         """
         Gather station dataless and waveform data using the Gatherer class.
         In order collect observed waveforms, dataless, and finally synthetics.
 
         If any part of gathering fails, raise ManagerError
 
-        :type station_code: str
-        :param station_code: Station code following SEED naming convention.
+        :type code: str
+        :param code: Station code following SEED naming convention.
             This must be in the form NN.SSSS.LL.CCC (N=network, S=station,
             L=location, C=channel). Allows for wildcard naming. By default
             the pyatoa workflow wants three orthogonal components in the N/E/Z
@@ -431,28 +403,73 @@ class Manager:
         :type choice: list
         :param choice: allows user to gather individual bits of data, rather
             than gathering all. Allowed: 'inv', 'st_obs', 'st_syn'
-        :rtype: bool
-        :return: status of the function, 1: successful / 0: failed
+        :type origintime: obspy.UTCDateTime
+        :param origintime: an optional origintime if the Manager does not have
+            an Event object. Will not overwrite the event origintime if an event
+            attribute is present.
+
+        Keyword Arguments:
+            :type try_fm: bool
+            :param try_fm: Try to retrieve and append focal mechanism
+                information to the Event object.
+            :type station_level: str
+            :param station_level: The level of the station metadata if retrieved
+                using the ObsPy Client. Defaults to 'response'
+            :type resp_dir_template: str
+            :param resp_dir_template: Directory structure template to search
+                for response files. By default follows the SEED convention,
+                'path/to/RESPONSE/{sta}.{net}/'
+            :type resp_fid_template: str
+            :param resp_fid_template: Response file naming template to search
+                for station dataless. By default, follows the SEED convention
+                'RESP.{net}.{sta}.{loc}.{cha}'
+            :type obs_dir_template: str
+            :param obs_dir_template:  directory structure to search for
+                observation data. Follows the SEED convention.
+                'path/to/obs_data/{year}/{net}/{sta}/{cha}'
+            :type obs_fid_template: str
+            :param obs_fid_template: File naming template to search for
+                observation data. Follows the SEED convention.
+                '{net}.{sta}.{loc}.{cha}*{year}.{jday:0>3}'
+            :type syn_pathname: str
+            :param syn_pathname: Config.cfgpaths key to search for synthetic
+                data. Defaults to 'synthetics', but for the may need to be set
+                to 'waveforms' in certain use-cases.
+            :type syn_unit: str
+            :param syn_unit: Optional argument to specify the letter used
+                to identify the units of the synthetic data:
+                For Specfem3D: ["d", "v", "a", "?"]
+                'd' for displacement, 'v' for velocity,  'a' for acceleration.
+                Wildcards okay. Defaults to '?'
+            :type syn_dir_template: str
+            :param syn_dir_template: Directory structure template to search
+                for synthetic waveforms. Defaults to empty string
+            :type syn_fid_template: str
+            :param syn_fid_template: The naming template of synthetic waveforms
+                defaults to "{net}.{sta}.*{cmp}.sem{syn_unit}"
         """
-        # Default to gathering all data.
+        try_fm = kwargs.get("try_fm", True)
+
+        # Default to gathering all data
         if choice is None:
-            choice = ["st_obs", "inv", "st_syn"]
+            choice = ["event", "inv", "st_obs", "st_syn"]
         try:
-            if self.gatherer is None:
-                # Instantiate Gatherer and retrieve Event information
-                self.setup()
-            net, sta, loc, cha = station_code.split(".")
-            logger.info(f"gathering data for {station_code}")
-            if "st_obs" in choice:
-                # Ensure observed waveforms gathered first, as if this fails
-                # then there is no point to gathering the rest
-                self.st_obs = self.gatherer.gather_observed(station_code)
-            if "inv" in choice:
-                self.inv = self.gatherer.gather_station(station_code)
-            if "st_syn" in choice:
-                self.st_syn = self.gatherer.gather_synthetic(station_code)
-                
-            return self 
+            # Attempt to gather event information before waveforms/metadata
+            if "event" in choice and self.event is None:
+                if self.config.event_id is not None:
+                    self.event = self.gatherer.gather_event(try_fm=try_fm)
+            if code is not None:
+                logger.info(f"gathering data for {code}")
+                if "st_obs" in choice:
+                    # Ensure observed waveforms gathered before synthetics and
+                    # metadata. If this fails, no point to gathering the rest
+                    self.st_obs = self.gatherer.gather_observed(code, **kwargs)
+                if "inv" in choice:
+                    self.inv = self.gatherer.gather_station(code, **kwargs)
+                if "st_syn" in choice:
+                    self.st_syn = self.gatherer.gather_synthetic(code, **kwargs)
+
+            return self
         except GathererNoDataException as e:
             # Catch the Gatherer exception and redirect as ManagerError 
             # so that it can be caught by flow()
@@ -500,13 +517,13 @@ class Manager:
 
         # Match start and endtimes
         self.st_obs, self.st_syn = trim_streams(
-            st_a=self.st_obs, st_b=self.st_syn, 
+            st_a=self.st_obs, st_b=self.st_syn,
             force={"obs": "a", "syn": "b"}[standardize_to]
             )
 
         # Match the number of samples 
         self.st_obs, self.st_syn = match_npts(
-            st_a=self.st_obs, st_b=self.st_syn, 
+            st_a=self.st_obs, st_b=self.st_syn,
             force={"obs": "a", "syn": "b"}[standardize_to]
             )
 
@@ -578,7 +595,7 @@ class Manager:
             self.st_syn = preproc_fx(self, choice="syn")
             if self.stats.half_dur:
                 # Convolve synthetics with a Gaussian source time function
-                self.st_syn = stf_convolve(st=self.st_syn, 
+                self.st_syn = stf_convolve(st=self.st_syn,
                                            half_duration=self.stats.half_dur
                                            )
 
@@ -590,7 +607,8 @@ class Manager:
 
         return self
 
-    def window(self, fix_windows=False, force=False):
+    def window(self, fix_windows=False, iteration=None, step_count=None,
+               force=False, save=True):
         """
         Evaluate misfit windows using Pyflex. Save windows to ASDFDataSet.
         Allows previously defined windows to be retrieved from ASDFDataSet.
@@ -602,19 +620,42 @@ class Manager:
 
         :type fix_windows: bool
         :param fix_windows: do not pick new windows, but load windows from the
-            given dataset
+            given dataset from 'iteration' and 'step_count'
+        :type iteration: int or str
+        :param iteration: if 'fix_windows' is True, look for windows in this
+            iteration. If None, will check the latest iteration/step_count
+            in the given dataset
+        :type step_count: int or str
+        :param step_count: if 'fix_windows' is True, look for windows in this
+            step_count. If None, will check the latest iteration/step_count
+            in the given dataset
         :type force: bool
         :param force: ignore flag checks and run function, useful if e.g.
             external preprocessing is used that doesn't meet flag criteria
+        :type save: bool
+        :param save: save the gathered windows to an ASDF Dataset
         """
         # Pre-check to see if data has already been standardized
         self._check()
 
         if not self.stats.standardized and not force:
             raise ManagerError("cannot window, waveforms not standardized")
+
+        # Determine how to treat fixed windows
         if fix_windows and not self.ds:
             logger.warning("cannot fix window, no dataset")
             fix_windows = False
+        elif fix_windows and (iteration is None or step_count is None):
+            # If no iteration/step_count values are given, automatically search
+            # the previous step_count for windows in relation to the current
+            # iteration/step_count
+            iteration = self.config.iteration
+            step_count = self.config.step_count
+            return_previous = True
+        else:
+            # If fix windows and iteration/step_count are given, search the
+            # dataset for windows under the current iteration/step_count
+            return_previous = False
 
         # Synthetic STA/LTA as Pyflex WindowSelector.calculate_preliminaries()
         for comp in self.config.component_list:
@@ -627,24 +668,67 @@ class Manager:
             except IndexError:
                 continue
 
-        # Get misfit windows from dataset or using Pyflex
-        if fix_windows and (hasattr(self.ds, "auxiliary_data") and
-                            hasattr(self.ds.auxiliary_data, "MisfitWindows")):
-            # Attempt to retrieve MisfitWindows from the Dataset
-            net, sta, _, _ = self.st_obs[0].get_id().split(".")
-            self.windows = windows_from_dataset(ds=self.ds, net=net, sta=sta,
-                                                model=self.config.model, 
-                                                step=self.config.step,
-                                                previous_step=True
-                                                )
-            self.stats.nwin = sum(len(_) for _ in self.windows.values())
+        # Find misfit windows, from a dataset or through window selection
+        if fix_windows:
+            self.retrieve_windows(iteration, step_count, return_previous)
         else:
             self.select_windows_plus()
 
-        self.save_windows()
+        if save:
+            self.save_windows()
         logger.info(f"{self.stats.nwin} window(s) total found")
 
         return self
+
+    def retrieve_windows(self, iteration, step_count, return_previous):
+        """
+        Mid-level window selection function that retrieves windows from a 
+        PyASDF Dataset, recalculates window criteria, and attaches window 
+        information to Manager. No access to rejected window information.
+
+        :type iteration: int or str
+        :param iteration: retrieve windows from the given iteration
+        :type step_count: int or str
+        :param step_count: retrieve windows from the given step count
+            in the given dataset
+        :type return_previous: bool
+        :param return_previous: if True: return windows from the previous
+            step count in relation to the given iteration/step_count.
+            if False: return windows from the given iteration/step_count
+        """
+        logger.info(f"retrieving windows from dataset")
+
+        net, sta, _, _ = self.st_obs[0].get_id().split(".")
+        # Function will return empty dictionary if no acceptable windows found
+        windows = windows_from_dataset(ds=self.ds, net=net, sta=sta,
+                                       iteration=iteration,
+                                       step_count=step_count,
+                                       return_previous=return_previous
+                                       )
+
+        # Recalculate window criteria for new values for cc, tshift, dlnA etc...
+        logger.debug("recalculating window criteria")
+        for comp, windows_ in windows.items():
+            try:
+                d = self.st_obs.select(component=comp)[0].data
+                s = self.st_syn.select(component=comp)[0].data
+                for w, win in enumerate(windows_):
+                    # Post the old and new values to the logger for sanity check
+                    logger.debug(f"{comp}{w}_old - "
+                                 f"cc:{win.max_cc_value:.2f} / "
+                                 f"dt:{win.cc_shift:.1f} / "
+                                 f"dlnA:{win.dlnA:.2f}")
+                    win._calc_criteria(d, s)
+                    logger.debug(f"{comp}{w}_new - "
+                                 f"cc:{win.max_cc_value:.2f} / "
+                                 f"dt:{win.cc_shift:.1f} / "
+                                 f"dlnA:{win.dlnA:.2f}")
+            # IndexError thrown when trying to access an empty Stream
+            except IndexError:
+                continue
+
+        self.windows = windows
+        self.stats.nwin = sum(len(_) for _ in self.windows.values())
 
     def select_windows_plus(self):
         """
@@ -666,9 +750,9 @@ class Manager:
 
             # Pyflex throws a TauP warning from ObsPy #2280, ignore that
             with warnings.catch_warnings():
-                warnings.simplefilter("ignore", UserWarning) 
+                warnings.simplefilter("ignore", UserWarning)
                 ws = pyflex.WindowSelector(observed=obs, synthetic=syn,
-                                           config=self.config.pyflex_config, 
+                                           config=self.config.pyflex_config,
                                            event=self.event,
                                            station=self.inv)
                 windows = ws.select_windows()
@@ -678,7 +762,7 @@ class Manager:
             if self.config.win_amp_ratio > 0:
                 windows, ws.rejects["amplitude"] = \
                        reject_on_global_amplitude_ratio(
-                                            data=obs.data, windows=windows, 
+                                            data=obs.data, windows=windows,
                                             ratio=self.config.win_amp_ratio
                                             )
             # ^^^ Further window filtering can be applied here ^^^
@@ -690,13 +774,12 @@ class Manager:
             # Count windows and tell User
             logger.info(f"{len(windows)} window(s) selected for comp {comp}")
             nwin += len(windows)
-            
+
         self.windows = window_dict
-        self._rej_win = reject_dict
+        self.rejwins = reject_dict
         self.stats.nwin = nwin
 
-
-    def measure(self, force=False):
+    def measure(self, force=False, save=True):
         """
         Measure misfit and calculate adjoint sources using PyAdjoint.
 
@@ -716,6 +799,8 @@ class Manager:
         :type force: bool
         :param force: ignore flag checks and run function, useful if e.g.
             external preprocessing is used that doesn't meet flag criteria
+        :type save: bool
+        :param save: save adjoint sources to ASDFDataSet
         :rtype: bool
         :return: status of the function, 1: successful / 0: failed
         """
@@ -754,7 +839,8 @@ class Manager:
 
         # Save adjoint source internally and to dataset
         self.adjsrcs = adjoint_sources
-        self.save_adjsrcs()
+        if save:
+            self.save_adjsrcs()
 
         # Run check to get total misfit
         self._check()
@@ -770,7 +856,7 @@ class Manager:
         Auxiliary data tag is hardcoded as 'MisfitWindows'
         """
         if self.ds is None:
-            logger.warning("Manager has no ASDFDataSet, cannot save windows") 
+            logger.warning("Manager has no ASDFDataSet, cannot save windows")
         elif not self.windows:
             logger.warning("Manager has no windows to save")
         elif not self.config.save_to_ds:
@@ -778,9 +864,7 @@ class Manager:
                            "will not save windows")
         else:
             logger.debug("saving misfit windows to ASDFDataSet")
-            add_misfit_windows(self.windows, self.ds, 
-                               path=self._get_path_for_aux_data()
-                               )
+            add_misfit_windows(self.windows, self.ds, path=self.config.aux_path)
 
     def save_adjsrcs(self):
         """
@@ -791,7 +875,7 @@ class Manager:
         """
         if self.ds is None:
             logger.warning("Manager has no ASDFDataSet, cannot save "
-                           "adjoint sources") 
+                           "adjoint sources")
         elif not self.adjsrcs:
             logger.warning("Manager has no adjoint sources to save")
         elif not self.config.save_to_ds:
@@ -799,28 +883,9 @@ class Manager:
                            "will not save adjoint sources")
         else:
             logger.debug("saving adjoint sources to ASDFDataSet")
-            add_adjoint_sources(adjsrcs=self.adjsrcs, ds=self.ds, 
-                                path=self._get_path_for_aux_data(), 
+            add_adjoint_sources(adjsrcs=self.adjsrcs, ds=self.ds,
+                                path=self.config.aux_path,
                                 time_offset=self.stats.time_offset_sec)
-
-    def _get_path_for_aux_data(self):
-        """
-        Determine the path to save MisfitWindows and AdjointSources auxiliary 
-        data based on model number and step count if available
-
-        :rtype: str
-        :return: path for auxiliary data saving
-        """
-        if self.config.model_number and self.config.step_count:
-            # model/step/window_tag
-            path = "/".join([self.config.model_number, self.config.step_count])
-        elif self.config.model_number:
-            # model/window_tag
-            path = self.config.model_number
-        else:
-            path = "default"
-
-        return path
 
     def _format_windows(self):
         """
@@ -853,68 +918,43 @@ class Manager:
 
         return adjoint_windows
 
-
-    def plot(self, save=None, show=True, **kwargs):
+    def plot(self, choice="both", save=None, show=True, corners=None, **kwargs):
         """
         Plot observed and synthetics waveforms, misfit windows, STA/LTA and
         adjoint sources for all available components. Append information
-        about misfit, windows and window selection.
+        about misfit, windows and window selection. Also as subplot create a
+        source receiver map which contains annotated information detailing
+        src-rcv relationship like distance and BAz. Options to plot either or.
 
-        For valid key word arguments see ManagerPlotter
+        For valid key word arguments see ManagerPlotter and MapMaker
 
         :type show: bool
         :param show: show the plot once generated, defaults to False
         :type save: str
         :param save: absolute filepath and filename if figure should be saved
+        :param corners: {lat_min, lat_max, lon_min, lon_max}
+            corners to cut the map to, otherwise a global map is provided
+        :type choice: str
+        :param choice: choice for what to plot:
+            'wav': plot waveform figure only
+            'map': plot a source-receiver map only
+            'both' (default): plot waveform and source-receiver map together
         """
-        # Precheck for waveform data
         self._check()
-        if not self.stats.standardized:
+        # Precheck for correct data to plot
+        if choice in ["wav", "both"] and not self.stats.standardized:
             raise ManagerError("cannot plot, waveforms not standardized")
-        logger.info("plotting waveform")
 
-        # Call on window making function to produce waveform plots
-        mp = ManagerPlotter(mgmt=self, show=show, save=save, **kwargs)
-        mp.plot()
-        return mp
+        if choice in ["map", "both"] and (self.inv is None or
+                                          self.event is None):
+            raise ManagerError("cannot plot map, no event and/or inv found")
 
-    def srcrcvmap(self, save=None, show=True, map_corners=None, stations=None, 
-                  annotate_names=False, color_by_network=False,
-                  figsize=(8, 8.27), dpi=100, **kwargs):
-        """
-        Generate a basemap for a given target region. Plot station and receiver
-        stored internally. Annotate source-receiver information. 
+        mp = ManagerPlotter(mgmt=self)
+        if choice == "wav":
+            mp.plot_wav(show=show, save=save, **kwargs)
+        elif choice == "map":
+            mp.plot_map(corners=corners, show=show, save=save,  **kwargs)
+        elif choice == "both":
+            mp.plot(corners=corners, show=show, save=save, **kwargs)
 
-        :type map_corners: dict
-        :param map_corners: {lat_min, lat_max, lon_min, lon_max}
-        :type stations: obspy.core.inventory.Inventory
-        :param stations: background stations to plot on the map that will
-            not interact with the source
-        :type annotate_names: bool
-        :param annotate_names: annotate station names
-        :type color_by_network: bool
-        :param color_by_network: color based on network name
-        :type show: bool
-        :param show: show the plot once generated, defaults to False
-        :type save: str
-        :param save: absolute filepath and filename if figure should be saved
-        :type figsize: tuple of floats
-        :param figsize: length and width of the figure
-        :type dpi: int
-        :param dpi: dots per inch of the figure
-        """
-        self._check()
-        logger.info("plotting map")
- 
-        # Warn user if no inventory is given
-        if not isinstance(self.inv, obspy.Inventory):
-            logger.warning("no inventory given, plotting blank map")
 
-        # Call external function to generate map
-        f = manager_map(map_corners=map_corners, inv=self.inv, 
-                        event=self.event, stations=stations, 
-                        color_by_network=color_by_network,
-                        annotate_names=annotate_names, show=show, 
-                        figsize=figsize, dpi=dpi, save=save, **kwargs
-                        )
-        return f

@@ -58,8 +58,8 @@ def overlapping_days(origin_time, start_pad=20, end_pad=200):
     """
     if (origin_time - start_pad).julday != origin_time.julday:
         return [(origin_time-start_pad).julday, origin_time.julday]
-    elif (origin_time + end_pad*2).julday != origin_time.julday:
-        return [origin_time.julday, (origin_time+end_pad*2).julday]
+    elif (origin_time + end_pad * 2).julday != origin_time.julday:
+        return [origin_time.julday, (origin_time+end_pad * 2).julday]
     else:
         return [origin_time.julday]
 
@@ -103,9 +103,9 @@ def amplitude_anomaly(a, b, dt):
     :rtype: float
     :return: the value of DlnA, the amplitude anomaly
     """
-    integral_a = np.trapz(a**2, dx=dt)
-    integral_b = np.trapz(b**2, dx=dt)
+    integral_a = np.trapz(a ** 2, dx=dt)
+    integral_b = np.trapz(b ** 2, dx=dt)
     
-    return 0.5 * np.log(integral_a/integral_b)
+    return 0.5 * np.log(integral_a / integral_b)
 
 

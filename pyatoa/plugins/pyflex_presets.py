@@ -57,9 +57,37 @@ pyflex_presets = {
         "c_4a": 2.5,
         "c_4b": 12.0
     },
+    # For use with testing the workflow using a homogeneous halfspace example
+    "homogeneous_halfspace": {
+        "stalta_waterlevel": 0.05, 
+        "tshift_acceptance_level": 15.0,
+        "dlna_acceptance_level": 2.0,
+        "s2n_limit": 3.,
+        "min_surface_wave_velocity": 1.5,
+        "c_0": 0.7,
+        "c_1": 2., 
+        "c_3a": 3.0,
+        "c_3b": 2.0,
+        "c_4a": 2.5,
+        "c_4b": 12.0
+    },
     # nznorth: From the New Zealand group doing local studies of North Island
     # For the 1D velocity model, windowing parameters need to be very loose to
     # pick the large time shifts
+    "nznorth_2-30s_loose": {
+        "stalta_waterlevel": 0.10, 
+        "tshift_acceptance_level": 8.0,  # based on sign-flip
+        "dlna_acceptance_level": 3.0,
+        "cc_acceptance_level": 0.5,
+        "s2n_limit": 3.,
+        "max_time_before_first_arrival": 5.,
+        "c_0": 0.4,
+        "c_1": 2.0, 
+        "c_3a": 3.0,
+        "c_3b": 2.0,
+        "c_4a": 2.5,
+        "c_4b": 12.0
+    },
     "nznorth_1D": {
         "stalta_waterlevel": 0.07, 
         "tshift_acceptance_level": 10.0,
@@ -77,18 +105,22 @@ pyflex_presets = {
         "c_4a": 2.5,
         "c_4b": 12.0
     },
-    # Additional Parameters
+    # Additional Parameters 
     "nznorth_10-30s_plus": {
-        "stalta_waterlevel": 0.10,
+        "stalta_waterlevel": 0.10, 
         "tshift_acceptance_level": 8.0,  # based on sign-flip
         "dlna_acceptance_level": 2.0,
         "cc_acceptance_level": 0.7,
         "s2n_limit": 3.,
         "max_time_before_first_arrival": 5.,
+<<<<<<< HEAD
         "min_surface_wave_velocity": 1.4,  # Default is 3.0
+=======
+        "min_surface_wave_velocity": 1.2,  # Default is 3.0, chow et al.= 1.4
+>>>>>>> d46e959baae37860ef10881ee3c4bf7cbbeedb16
         "check_global_data_quality": True,  # Default is False
         "c_0": 0.7,
-        "c_1": 2.0,
+        "c_1": 2.0, 
         "c_3a": 3.0,
         "c_3b": 2.0,
         "c_4a": 2.5,
@@ -119,6 +151,23 @@ pyflex_presets = {
         "max_time_before_first_arrival": 0.,  # minimum starting before P-wave
         "c_0": 0.7,
         "c_1": 2.5,  # min_win_len = c_1 * min_period
+        "c_3a": 3.0,
+        "c_3b": 2.0,
+        "c_4a": 2.5,
+        "c_4b": 12.0
+    },
+    # North Island, 2-30s
+    "nznorth_2-30s": {
+        "stalta_waterlevel": 0.1,
+        "tshift_acceptance_level": 8.0,  # based on sign-flip
+        "dlna_acceptance_level": 2.,
+        "cc_acceptance_level": 0.7,
+        "s2n_limit": 3.,
+        "max_time_before_first_arrival": 5.,
+        "min_surface_wave_velocity": 1.4,  # Default is 3.0
+        "check_global_data_quality": True,  # Default is False
+        "c_0": 0.7,
+        "c_1": 5.,  # min_win_len = c_1 * min_period
         "c_3a": 3.0,
         "c_3b": 2.0,
         "c_4a": 2.5,

@@ -10,7 +10,7 @@ from IPython import embed
 from pyasdf import ASDFDataSet
 from pyatoa import logger, Config, Manager
 from pyatoa.utils.write import write_stream_sem
-from pyatoa.core.seisflows.pyaflowa import Pyaflowa
+from pyatoa.core.pyaflowa import Pyaflowa
 from obspy import read, read_events, read_inventory
 
 logger.setLevel("DEBUG")
@@ -102,9 +102,9 @@ def pyaflowa(tmpdir):
     """
     pars = json.load(open("./test_data/test_seisflows_parameters.json"))
     paths = {"PYATOA_IO": os.path.join(tmpdir, "pyatoa.io"),
-             "WORKDIR": "./test_data", "SPECFEM_DATA": "./test_data"
+             "WORKDIR": "./test_data", "SPECFEM_DATA": "./test_data",
              }
-    return Pyaflowa(pars, paths)
+    return Pyaflowa(pars, paths, config_file="test_seisflows_parameters.yaml")
 
 
 def test_check_for_fixed_windows(pyaflowa, ds):

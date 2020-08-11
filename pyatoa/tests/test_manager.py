@@ -297,7 +297,7 @@ def test_save_windows_and_use_fixed_windows_from_dataset(tmpdir, mgmt_post):
         # Delete windows, iterate step, retrieve fixed windows
         mgmt_post.windows = None
         mgmt_post.config.step += 1
-        mgmt_post.window(fix_windows=True)
+        mgmt_post.window(fixed=True)
 
         # Just check some parameter for each window to make sure all goods
         for comp in mgmt_post.windows:
@@ -323,17 +323,6 @@ def test_save_adjsrcs(tmpdir, mgmt_post, adjoint_source):
         # Ensure the data and time arrays are as expected
         assert((t == t_check).all())
         assert((data == data_check).all())
-
-
-def test_get_path_for_aux_data(mgmt_pre):
-    """
-    Ensure that path naming works as advertise
-    """
-    assert(mgmt_pre._get_path_for_aux_data() == "default")        
-    mgmt_pre.config.model = "m00"
-    assert(mgmt_pre._get_path_for_aux_data() == "m00")  
-    mgmt_pre.config.step = "s00"
-    assert(mgmt_pre._get_path_for_aux_data() == "m00/s00")  
 
 
 def test_format_windows():

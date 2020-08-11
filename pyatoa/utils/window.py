@@ -59,10 +59,13 @@ def reject_on_global_amplitude_ratio(data, windows, ratio=0.2):
     This was created in order to suppress windows containing long period direct 
     arrivals, which were creating high-frequency adjoint sources.
 
-    :type array: np.ndarray
-    :param array: data array to query amplitude values from
+    :type data: np.ndarray
+    :param data: data array to query amplitude values from
     :type windows: list of pyflex.window.Window
     :param windows: list of window objects to check
+    :type ratio: float
+    :param ratio: percentage threshold of the peak value within a given window
+        and the global peak value in the data array. Defaults to 0.2
     :rtype: tuple of lists of pyflex.window.Window
     :return: lists of accepted and rejected windows
     """
