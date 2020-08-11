@@ -1,10 +1,11 @@
 ## For Version 0.2.0
 
 #### Features
+- [ ] Introduce multiprocessing with concurrent.futures or multiprocessing packages.
 - [X] Use Pandas in the Inspector class to do the large-scale data analysis required for all the misfit windows, etc.
 
 #### Bugs
-- [ ] Pyflex value Error is being thrown (pyflex.window_selector() line 427 np.abs(noise).max() zero size array)
+- [ ] Pyflex value Error is being thrown (pyflex.window_selector() line 427 np.abs(noise).max() zero size array). Very close source-receiver distances means P-wave arrival is within the first wavelength, meaning no noise amplitude calculations can take place, and windows are not picked even for good waveforms. Can this be reconciled in Pyflex, or do we need to exclude distances <100km e.g.?
 - [X] FDSNException in gatherer.gather_observed( Uknown Error (timeout))  
       *Added catch for FDSNException in gather_observed() and return st_obs=None*
 - [X] Pyaflowa exit gracefully if no data is gathered for an entire event, currently finalize is throwing uncaught errors  
@@ -15,9 +16,9 @@
       *removed the step count requirement in the if statement*
       
 #### Questions
-- [ ] Fixed windowing might encounter some problems because the synthetic trace is changing, so the values of max_cc_, cc_shift and dlnA are not being re-evaluated. Can this be remedied? Can we add some functionality to Pyflex to reevaluate misfit values based on waveforms?
 - [ ] Is weighting adjoint sources by station proximity something that Pyatoa should do, how could it be implemented?
-- [ ] Pyflex: Very close source-receiver distances means P-wave arrival is within the first wavelength, meaning no noise amplitude calculations can take place, and windows are not picked even for good waveforms. Can this be reconciled in Pyflex, or do we need to exclude distances <100km e.g.?
+- [X] Fixed windowing might encounter some problems because the synthetic trace is changing, so the values of max_cc_, cc_shift and dlnA are not being re-evaluated. Can this be remedied? Can we add some functionality to Pyflex to reevaluate misfit values based on waveforms?
+*Pyflex already had an option to recalculate window parameters for a given set of windows, this is now implemented in Pyatoa*
 - [X] Should we be able to export ASDFDataSets to hardcoded directory structures. This would provide a form of 'backwards compatability' to old styles of tomography, but if the User already can access a Dataset, do they need this functionality?
 
 
@@ -31,6 +32,7 @@
      make maps all in one go given CMTSOLUTIONS and STATION file list. Or use ObsPy mapping functionality to replace Manager.srcrcvmap()? Current Basemap calling is a bit 
      rough.
 - [ ] Make network calls optional in e.g. Inspector(), search for station name only and maybe if multiple stations have the same name, then require network code. Station should be enough to identify.
+- [ ] Allow additional windowing criteria that avoids choosing windows for stations that are too close/too far from one another.
 - [ ] Documentation, tutorials, examples and API
 - [ ] Tests with PyTest
 - [X] ipynb in gitignore
@@ -43,17 +45,21 @@
      *config, manager, pyaflowa... todo: inspector  
 
 #### Config
-- [ ] Include UTM projection into config and propogate into scripts
+- [ ] Include a set() function to prevent incorrect parameter sets or overwriting read-only parameters
+- [ ] ~~Include UTM projection into config and propogate into scripts~~
 - [X] Change 'model_number' to model
 
 #### Manager
+- [ ] Calculate full waveform difference and save in ASDFDataSet, for use in variance reduction
 - [ ] Remove window_amplitude_ratio() from Manager, Pyflex already has this with 'check_global_data_quality'
 - [ ] Check if convolve_stf properly performs the time shift  
 - [ ] Enforce zero padding front and back of waveforms for short source-receiver distance, as windowing ignores these because the stalta starts too early.
 - [ ] Log statement stating fid when saving figures
 - [ ] Manager.load() should allow loading misfit windows and adjoint sources as well, will need a warning statement to say waveforms are not processed
-- [ ] Functions return self to allow chaining
 - [ ] Custom error messages, or specific error messages from Manager rather than returning 0 or 1
+- [X] Functions return self to allow chaining
+- [ ] ~~Include window weights into adjoint source calculation~~
+     *Pyflex only uses User-input window weight functions, no instrinsic weighting is provided*
 - [X] Initialize an empty Manager with an empty Config to remove the need to call Config separately
 - [X] Move window by amplitude in Manager.window() into its own function  
      *moved into pyatoa.utils.window and import by Manager*
@@ -79,20 +85,27 @@
 - [X] Move all hardcoded stuff into plugins, e.g. fault_coordinates, geonet_moment_tensor
 - [X] Move tools and visualize out of utils dir into main dir
 
-
 #### Visuals
+- [ ] Manager plotter use a separate smaller subplot for window information, including sta/lta, rejected windows, etc.
+- [ ] Kwargs in docstrings and raise TypeError for undefined kwargs
+- [ ] Lower alpha of legend in waveform plotter
+- [ ] Show the extent of the window search criteria from Pyflex
+- [ ] Plot c_0 * stalta_waterlevel for water level rejection
+- [ ] Allow plotting time dependent rejection criteria from Pyflex
+- [X] Automatically combine map and waveform plot in matplotlib, rather than after generating .png's
+     *Done with GridSpec and a MangerPlotter class, works pretty good!*
+- [X] More info in manager plotter title, such as event depth, magnitude, srcrcv distance, baz
+     *Not needed now that map and wav plots are combined*
 - [X] Depth cross section of a Catalog object  
       *In pyaflowa artist *  
 - [ ] ~~Plot output optim only show models, maybe iterations as smaller points, or plot both~~  
      *this is okay, Inspector can make more detailed plots if we want, just want a quick visualization**  
 - [X] VTK plotter  
      *VTK plotter using mayavi has been started, but needs fine tuning, and implementation into the greater workflow*  
-- [ ] ~~Remove rcParams and explicitely set all plot attributes in calls~~   
-     *let sleeping dogs lie for now, hopefully this is okay but maybe change in future if it causes problems*  
+- [X] Remove rcParams and explicitely set all plot attributes in calls
 - [x] Windows extend the height of the waveform plot
-- [ ] Plot c_0 * stalta_waterlevel for water level rejection
 
-#### Pyaflowa:
+#### Pyaflowa (Deprecated):
 - [X] fix windows within a single iteration  
 - [ ] ~~source receiver json file with event-station information such as lat/lon, dist and BAz, only once for m00s00~~  
      *This is taken care of by the Inspector class, don't need to perform twice*  
@@ -112,5 +125,8 @@
 - [X] Inspector convergence plot should plot line search models as non-connected points as in Krischer et al. 2018(?)
 
 #### Inspector:
+- [ ] Inspector should be able to append new data only, rather than having to aggregate from scratch/
 - [ ] Automatically create a list of windows corresponding to largest time shift, or misfit or dlnA
+- [ ] misfits() should default to misfit per model, not step, needs to be done after the name change of model > iteration 
+- [ ] save focal mechanism attributes from sources if available
 
