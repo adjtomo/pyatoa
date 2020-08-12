@@ -8,10 +8,6 @@ import numpy as np
 from obspy import Stream, Trace, UTCDateTime, Inventory
 from obspy.core.inventory.network import Network
 from obspy.core.inventory.station import Station
-from obspy.core.event import CreationInfo, Event, Catalog, EventDescription
-from obspy.core.event.origin import Origin
-from obspy.core.event.magnitude import Magnitude
-from obspy.core.event.source import Tensor, MomentTensor, FocalMechanism
 
 
 def read_fortran_binary(path):
