@@ -3,5 +3,5 @@ ipykernel
 nbsphinx
 pyasdf
 obspy
-yaml
+pyyaml
 pandas
