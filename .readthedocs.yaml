@@ -9,5 +9,5 @@ python:
     install:
         - requirements: pyatoa/docs/requirements.txt
         - method: setuptools
-          path: package
+          path: .
 
