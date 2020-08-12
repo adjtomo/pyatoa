@@ -7,5 +7,5 @@ setup(name='pyatoa',
       author='Bryant Chow',
       author_email='bryant.chow@vuw.ac.nz',
       license='GPL',
-      packages=['pyatoa'],
+      packages=['pyatoa', 'pyatoa.core', 'pyatoa.utils', 'pyatoa.visuals'],
       zip_safe=False)
