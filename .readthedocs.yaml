@@ -8,6 +8,6 @@ python:
     version: 3.7
     install:
         - requirements: pyatoa/docs/requirements.txt
+        - method: setuptools
+          path: package
 
-# conda:
-#     file: pyatoa/docs/environment.yml
