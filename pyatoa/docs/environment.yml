@@ -1,5 +1,9 @@
 channels:
     - conda-forge
 dependencies:
+    - numpy
+    - obspy
+    - matplotlib
+    - ipykernel
     - nbsphinx
     - jupyter_client
