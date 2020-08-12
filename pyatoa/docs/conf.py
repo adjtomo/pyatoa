@@ -15,16 +15,16 @@
 import os
 import sys
 sys.path.insert(0, os.path.abspath('..'))
-
+sys.path.insert(0, os.path.abspath('../..'))
 
 # -- Project information -----------------------------------------------------
 
 project = 'Pyatoa'
-copyright = '2019, Bryant Chow'
+copyright = '2020, Bryant Chow'
 author = 'Bryant Chow'
 
 # The short X.Y version
-version = ''
+version = '0.1'
 # The full version, including alpha/beta/rc tags
 release = ''
 
@@ -162,7 +162,7 @@ man_pages = [
 #  dir menu entry, description, category)
 texinfo_documents = [
     (master_doc, 'Pyatoa', 'Pyatoa Documentation',
-     author, 'Pyatoa', 'One line description of project.',
+     author, 'Pyatoa', 'Pythons Adjoint Tomography Operations Assistant',
      'Miscellaneous'),
 ]
 
