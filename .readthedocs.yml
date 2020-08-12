@@ -1,0 +1,9 @@
+version: 2
+
+sphinx:
+    configuration: pyatoa/doc/conf.py
+
+python:
+    version: 3.7
+# conda:
+#     file: pyatoa/docs/environment.yml
