@@ -87,7 +87,6 @@ def preproc(mgmt, choice, water_level=60, corners=4, taper_percentage=0.05):
     elif choice == "obs":
         st = mgmt.st_obs.copy()
         st_check = mgmt.st_syn.copy()
-
     if is_preprocessed(st):
         return st
 
@@ -134,7 +133,7 @@ def preproc(mgmt, choice, water_level=60, corners=4, taper_percentage=0.05):
 
     # Rotate the given stream from standard NEZ to RTZ
     if mgmt.baz:
-        st.rotate(method="NE->RT", back_azimuth=baz)
+        st.rotate(method="NE->RT", back_azimuth=mgmt.baz)
         logger.debug(f"rotating NE->RT by {baz} degrees")
 
     # Filter data using ObsPy Butterworth filters. Zerophase avoids phase shift

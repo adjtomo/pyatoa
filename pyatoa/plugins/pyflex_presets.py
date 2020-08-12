@@ -96,6 +96,8 @@ pyflex_presets = {
         "tshift_reference": 4.,
         "s2n_limit": 3.,
         "max_time_before_first_arrival": 5.,
+        "min_surface_wave_velocity": 1.7,  # Default is 3.0
+        "check_global_data_quality": True,  # Default is False
         "c_0": 0.7,
         "c_1": 2., 
         "c_3a": 3.0,
