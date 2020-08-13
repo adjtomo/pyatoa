@@ -2,7 +2,7 @@
 *.DS_Store
 
 # Pyatoa files
-pyatoa/tests/test_data/big_test_data
+pyatoa/tests/test_data/scratch
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

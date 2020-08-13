@@ -16,15 +16,23 @@ import os
 import sys
 sys.path.insert(0, os.path.abspath('..'))
 
-
+# Hacky way to get PROJ_LIB set for a fresh conda install
+on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
+if on_rtd:
+    os.environ['PROJ_LIB'] = (
+        f"{os.environ['CONDA_ENVS_PATH']}/{os.environ['CONDA_DEFAULT_ENV']}/share/proj"
+    )
+else:
+    os.environ['PROJ_LIB'] = f"{os.environ['CONDA_PREFIX']}/share/proj"
+    
 # -- Project information -----------------------------------------------------
 
 project = 'Pyatoa'
-copyright = '2019, Bryant Chow'
+copyright = '2020, Bryant Chow'
 author = 'Bryant Chow'
 
 # The short X.Y version
-version = ''
+version = '0.1'
 # The full version, including alpha/beta/rc tags
 release = ''
 
@@ -162,7 +170,7 @@ man_pages = [
 #  dir menu entry, description, category)
 texinfo_documents = [
     (master_doc, 'Pyatoa', 'Pyatoa Documentation',
-     author, 'Pyatoa', 'One line description of project.',
+     author, 'Pyatoa', 'Pythons Adjoint Tomography Operations Assistant',
      'Miscellaneous'),
 ]
 
