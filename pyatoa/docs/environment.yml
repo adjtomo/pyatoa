@@ -12,5 +12,5 @@ dependencies:
     - pyyaml=5.3.1
     - proj4=5.2.0
     - pip
-      - git+https://github.com/bch0w/pyflex/tarball/return_reject_windows
-      - git+https://github.com/krischer/pyadjoint/tarball/master
+      - git+https://github.com/bch0w/pyflex.git@749f0cdd81a4505c418d484d6db29d1f6a5aa328#egg=return_reject_windows
+      - git+https://github.com/krischer/pyadjoint.git@8a20e47bdd2796ff1e8266cf5a9d2fce8e084e9a#egg=master
