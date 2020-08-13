@@ -17,8 +17,14 @@ import sys
 sys.path.insert(0, os.path.abspath('..'))
 
 # Hacky way to get PROJ_LIB set for a fresh conda install
-os.environ["PROJ_LIB"] = os.path.join(os.environ["CONDA_PREFIX"], "share", "proj")
-
+on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
+if on_rtd:
+    os.environ['PROJ_LIB'] = (
+        "{os.environ['CONDA_ENVS_PATH']}/{os.environ['CONDA_DEFAULT_ENV']}/share/proj"
+    )
+else:
+    os.environ['PROJ_LIB'] = "{os.environ['CONDA_PREFIX']}/share/proj"
+    
 # -- Project information -----------------------------------------------------
 
 project = 'Pyatoa'
