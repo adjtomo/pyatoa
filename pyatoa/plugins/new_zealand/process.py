@@ -9,7 +9,7 @@ Also contains tools for synthetic traces such as source time function
 convolutions
 """
 from pyatoa import logger
-from pyatoa.utils.process import is_preprocessed, change_syn_units
+from pyatoa.utils.process import is_preprocessed
 
 
 def scale_beacon_amplitudes(st, st_syn):

@@ -18,8 +18,8 @@ from pyatoa.utils.asdf.fetch import windows_from_dataset
 from pyatoa.utils.window import reject_on_global_amplitude_ratio
 from pyatoa.utils.srcrcv import gcd_and_baz
 from pyatoa.utils.asdf.add import add_misfit_windows, add_adjoint_sources
-from pyatoa.utils.process import (preproc, trim_streams, stf_convolve, zero_pad, 
-                                  match_npts)
+from pyatoa.utils.process import (default_process, trim_streams, stf_convolve,
+                                  zero_pad, match_npts)
 
 from pyatoa.visuals.manager_plotter import ManagerPlotter
 
@@ -540,7 +540,7 @@ class Manager:
 
         return self
 
-    def preprocess(self, which="both", overwrite=None):
+    def preprocess(self, which="both", overwrite=None, **kwargs):
         """
         Preprocessing of observed and synthetic data in place.
 
@@ -567,7 +567,7 @@ class Manager:
             assert(hasattr(overwrite, '__call__')), "overwrite must be function"
             preproc_fx = overwrite
         else:
-            preproc_fx = preproc
+            preproc_fx = process
 
         # If required, will rotate based on source receiver lat/lon values
         if self.config.rotate_to_rtz:
@@ -581,7 +581,7 @@ class Manager:
         if self.st_obs is not None and not self.stats.obs_filtered and \
                 which.lower() in ["obs", "both"]:
             logger.info("preprocessing observation data")
-            self.st_obs = preproc_fx(self, choice="obs")
+            self.st_obs = preproc_fx(self, choice="obs", **kwargs)
             if self.config.synthetics_only and self.stats.half_dur:
                 # A synthetic-synthetic case means observed needs STF too
                 self.st_obs = stf_convolve(st=self.st_obs,
@@ -592,7 +592,7 @@ class Manager:
         if self.st_syn is not None and not self.stats.syn_filtered and \
                 which.lower() in ["syn", "both"]:
             logger.info("preprocessing synthetic data")
-            self.st_syn = preproc_fx(self, choice="syn")
+            self.st_syn = preproc_fx(self, choice="syn", **kwargs)
             if self.stats.half_dur:
                 # Convolve synthetics with a Gaussian source time function
                 self.st_syn = stf_convolve(st=self.st_syn,
