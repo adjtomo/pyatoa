@@ -7,7 +7,10 @@ sphinx:
 python:
     version: 3.7
     install:
+        - requirements: pyatoa/docs/requirements.txt
         - requirements: requirements.txt
         - method: setuptools
           path: .
 
+conda:
+    environment: pyatoa/docs/environment.yaml
