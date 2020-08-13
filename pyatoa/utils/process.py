@@ -59,7 +59,8 @@ def default_process(mgmt, choice, **kwargs):
         logger.debug(f"rotating NE->RT by {mgmt.baz} degrees")
 
     st = filters(st, min_period=mgmt.config.min_period,
-                 max_period=mgmt.config.max_period)
+                 max_period=mgmt.config.max_period
+                 )
 
     # Taper again to ensure final waveforms are clean
     st.detrend("simple").detrend("demean").taper(0.1)
