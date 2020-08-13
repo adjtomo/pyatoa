@@ -3,3 +3,5 @@ ipykernel
 nbsphinx
 pyasdf
 obspy
+pyyaml
+pandas
