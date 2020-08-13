@@ -2,7 +2,7 @@ name: pyatoa
 channels:
     - conda-forge
 dependencies:
-    - nbsphinx>=1.4
+    - sphinx>=1.4
     - ipykernel=5.3.4
     - nbsphinx=0.7.1
     - python=3.7
