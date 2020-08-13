@@ -1,4 +1,15 @@
+name: pyatoa
+
 channels:
     - conda-forge
 dependencies:
-    - basemap
+    - basemap=1.2.2
+    - obspy=1.2.2
+    - matplotlib=3.1.1
+    - pyasdf=0.7.2
+    - pandas=1.1.0
+    - pyyaml=5.3.1
+    - proj4=5.2.0
+    - pip
+      - "--editable=git+http://github.com/bch0w/pyflex/tarball/return_reject_windows"
+      - "--editable=git+http://github.com/krischer/pyadjoint/tarball/master"
