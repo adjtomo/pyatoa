@@ -13,5 +13,5 @@ dependencies:
     - proj4=5.2.0
     - pip
     - pip:
-      - -e git+https://github.com/bch0w/pyflex.git#egg=return_reject_windows
-      - -e git+https://github.com/krischer/pyadjoint.git#egg=master
+      - git+https://github.com/bch0w/pyflex.git#egg=return_reject_windows
+      - git+https://github.com/krischer/pyadjoint.git#egg=master
