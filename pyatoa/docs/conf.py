@@ -20,10 +20,10 @@ sys.path.insert(0, os.path.abspath('..'))
 on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
 if on_rtd:
     os.environ['PROJ_LIB'] = (
-        "{os.environ['CONDA_ENVS_PATH']}/{os.environ['CONDA_DEFAULT_ENV']}/share/proj"
+        f"{os.environ['CONDA_ENVS_PATH']}/{os.environ['CONDA_DEFAULT_ENV']}/share/proj"
     )
 else:
-    os.environ['PROJ_LIB'] = "{os.environ['CONDA_PREFIX']}/share/proj"
+    os.environ['PROJ_LIB'] = f"{os.environ['CONDA_PREFIX']}/share/proj"
     
 # -- Project information -----------------------------------------------------
 
