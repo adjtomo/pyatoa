@@ -43,16 +43,9 @@ def default_process(mgmt, choice, **kwargs):
 
     # Observed specific data preprocessing includes response and rotating to ZNE
     if choice == "obs" and not mgmt.config.synthetics_only:
-        try:
-            st.remove_response(inventory=mgmt.inv,
-                               output=mgmt.config.unit_output,
-                               water_level=water_level,
-                               plot=False)
-            logger.debug(f"remove response, units of {mgmt.config.unit_output}")
-        except ValueError:
-            # ValueErrors may occur due to mismatched codes in stream and inv
-            logger.warning(f"error removing response from {st[0].get_id()}")
-            return st
+        logger.debug(f"removing response, units of {mgmt.config.unit_output}")
+        st.remove_response(inventory=mgmt.inv, output=mgmt.config.unit_output,
+                           water_level=water_level, plot=False)
 
         # Rotate streams if not in ZNE, e.g. Z12
         st.rotate(method="->ZNE", inventory=mgmt.inv)
@@ -98,6 +91,8 @@ def filters(st, min_period=None, max_period=None, min_freq=None, max_freq=None,
     :type corners: int
     :param corners: number of filter corners to be passed to ObsPy
         filter functions
+    :type zerophase: bool
+    :param zerophase: 
     :return:
     """
     if not min_period and max_freq:
