@@ -13,4 +13,4 @@ python:
           path: .
 
 conda:
-    environment: pyatoa/docs/environment.yaml
+    environment: pyatoa/docs/environment.yml

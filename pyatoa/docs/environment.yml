@@ -3,6 +3,7 @@ name: pyatoa
 channels:
     - conda-forge
 dependencies:
+    - python=3.7
     - basemap=1.2.2
     - obspy=1.2.2
     - matplotlib=3.1.1
