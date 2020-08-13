@@ -41,10 +41,6 @@ def default_process(mgmt, choice, **kwargs):
     if is_preprocessed(st):
         return st
 
-    # Get rid of extra long period signals which may adversely affect processing
-    st.detrend("simple").taper(taper_percentage)
-    st.filter("highpass", freq=1 / (mgmt.config.max_period * 2))
-
     # Observed specific data preprocessing includes response and rotating to ZNE
     if choice == "obs" and not mgmt.config.synthetics_only:
         try:
@@ -69,6 +65,8 @@ def default_process(mgmt, choice, **kwargs):
         st.rotate(method="NE->RT", back_azimuth=mgmt.baz)
         logger.debug(f"rotating NE->RT by {mgmt.baz} degrees")
 
+    st = filters(st, min_period=mgmt.config.min_period,
+                 max_period=mgmt.config.max_period)
 
     # Taper again to ensure final waveforms are clean
     st.detrend("simple").detrend("demean").taper(0.1)
@@ -85,9 +83,21 @@ def filters(st, min_period=None, max_period=None, min_freq=None, max_freq=None,
 
     Filters the stream in place.
 
-    :param st:
-    :param min_period:
-    :param max_period:
+    :type st: obspy.core.stream.Stream
+    :param st: stream object to be filtered
+    :type min_period: float
+    :param min_period: minimum filter bound in units of seconds
+    :type max_period: float
+    :param max_period: maximum filter bound in units of seconds
+    :type min_freq: float
+    :param min_freq: optional minimum filter bound in units of Hz, will be
+        overwritten by `max_period` if given
+    :type max_freq: float
+    :param max_freq: optional maximum filter bound in units of Hz, will be
+        overwritten by `min_period` if given
+    :type corners: int
+    :param corners: number of filter corners to be passed to ObsPy
+        filter functions
     :return:
     """
     if not min_period and max_freq:
