@@ -12,5 +12,6 @@ dependencies:
     - pyyaml=5.3.1
     - proj4=5.2.0
     - pip
-      - git+https://github.com/bch0w/pyflex.git@return_reject_windows
-      - git+https://github.com/krischer/pyadjoint.git@master
+    - pip
+      - -e git+https://github.com/bch0w/pyflex.git#egg=return_reject_windows
+      - -e git+https://github.com/krischer/pyadjoint.git#egg=master
