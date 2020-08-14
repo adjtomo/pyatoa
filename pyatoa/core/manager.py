@@ -382,7 +382,7 @@ class Manager:
         save = kwargs.get("save", True)
 
         self.standardize(standardize_to=standardize_to, force=force)
-        self.preprocess(overwrite=overwrite, which=which)
+        self.preprocess(overwrite=overwrite, which=which, **kwargs)
         self.window(fix_windows=fix_windows, iteration=iteration,
                     step_count=step_count, force=force, save=save)
         self.measure(force=force, save=save)
