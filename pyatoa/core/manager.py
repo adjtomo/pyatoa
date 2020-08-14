@@ -18,8 +18,8 @@ from pyatoa.utils.asdf.fetch import windows_from_dataset
 from pyatoa.utils.window import reject_on_global_amplitude_ratio
 from pyatoa.utils.srcrcv import gcd_and_baz
 from pyatoa.utils.asdf.add import add_misfit_windows, add_adjoint_sources
-from pyatoa.utils.process import (default_process, trim_streams, stf_convolve,
-                                  zero_pad, match_npts)
+from pyatoa.utils.process import (default_process, trim_streams, zero_pad,
+                                  match_npts)
 
 from pyatoa.visuals.manager_plotter import ManagerPlotter
 
