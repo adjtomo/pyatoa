@@ -48,8 +48,8 @@ class ManagerStats(dict):
         self.half_dur = 0
         self.time_offset_sec = 0
         self.standardized = False 
-        self.obs_filtered = False 
-        self.syn_filtered = False
+        self.obs_processed = False
+        self.syn_processed = False
 
     def __setattr__(self, key, value):
         self[key] = value
@@ -175,8 +175,8 @@ class Manager:
                 f"    half_dur:              {self.stats.half_dur}\n"
                 f"    time_offset_sec:       {self.stats.time_offset_sec}\n"
                 f"    standardized:          {self.stats.standardized}\n"
-                f"    obs_filtered:          {self.stats.obs_filtered}\n"
-                f"    syn_filtered:          {self.stats.syn_filtered}\n"
+                f"    obs_processed:         {self.stats.obs_processed}\n"
+                f"    syn_processed:         {self.stats.syn_processed}\n"
                 f"    nwin (windows):        {self.stats.nwin}\n"
                 f"    misfit (adjsrcs):      {self.stats.misfit:.2E}\n"
                 )
@@ -224,11 +224,11 @@ class Manager:
         # Check if waveforms are Stream objects, and if preprocessed
         if self.st_obs is not None:
             self.stats.len_obs = len(self.st_obs)
-            self.stats.obs_filtered = is_preprocessed(self.st_obs)
+            self.stats.obs_processed = is_preprocessed(self.st_obs)
 
         if self.st_syn is not None:
             self.stats.len_syn = len(self.st_syn)
-            self.stats.syn_filtered = is_preprocessed(self.st_syn)
+            self.stats.syn_processed = is_preprocessed(self.st_syn)
 
         # Check standardization by comparing waveforms against the first
         if not self.stats.standardized and self.st_obs and self.st_syn:
@@ -560,6 +560,21 @@ class Manager:
             the new function. This allows for customized preprocessing
         :rtype: bool
         :return: status of the function, 1: successful / 0: failed
+
+        default_process() Keyword Arguments:
+            :type water_level: int
+            :param water_level: water level for response removal
+            :type taper_percentage: float
+            :param taper_percentage: amount to taper ends of waveform
+            :type remove_response: bool
+            :param remove_response: remove instrument response using the
+                Manager's inventory object. Defaults to True
+            :type apply_filter: bool
+            :param apply_filter: filter the waveforms using the Config's
+                min_period and max_period parameters. Defaults to True
+            :type convolve_with_stf: bool
+            :param convolve_with_stf: Convolve synthetic data with a Gaussian
+                source time function if a half duration is provided.
         """
         if not self.inv and not self.config.synthetics_only:
             raise ManagerError("cannot preprocess, no inventory")
@@ -567,7 +582,7 @@ class Manager:
             assert(hasattr(overwrite, '__call__')), "overwrite must be function"
             preproc_fx = overwrite
         else:
-            preproc_fx = process
+            preproc_fx = default_process
 
         # If required, will rotate based on source receiver lat/lon values
         if self.config.rotate_to_rtz:
@@ -578,32 +593,22 @@ class Manager:
                                                  sta=self.inv[0][0])
 
         # Preprocess observation waveforms
-        if self.st_obs is not None and not self.stats.obs_filtered and \
+        if self.st_obs is not None and not self.stats.obs_processed and \
                 which.lower() in ["obs", "both"]:
             logger.info("preprocessing observation data")
             self.st_obs = preproc_fx(self, choice="obs", **kwargs)
-            if self.config.synthetics_only and self.stats.half_dur:
-                # A synthetic-synthetic case means observed needs STF too
-                self.st_obs = stf_convolve(st=self.st_obs,
-                                           half_duration=self.stats.half_dur
-                                           )
+            self.stats.obs_processed = True
 
         # Preprocess synthetic waveforms
-        if self.st_syn is not None and not self.stats.syn_filtered and \
+        if self.st_syn is not None and not self.stats.syn_processed and \
                 which.lower() in ["syn", "both"]:
             logger.info("preprocessing synthetic data")
             self.st_syn = preproc_fx(self, choice="syn", **kwargs)
-            if self.stats.half_dur:
-                # Convolve synthetics with a Gaussian source time function
-                self.st_syn = stf_convolve(st=self.st_syn,
-                                           half_duration=self.stats.half_dur
-                                           )
+            self.stats.syn_processed = True
 
         # Set stats
         self.stats.len_obs = len(self.st_obs)
         self.stats.len_syn = len(self.st_syn)
-        self.stats.obs_filtered = True
-        self.stats.syn_filtered = True
 
         return self
 
@@ -809,7 +814,7 @@ class Manager:
         # Check that data has been filtered and standardized
         if not self.stats.standardized and not force:
             raise ManagerError("cannot measure misfit, not standardized")
-        elif not (self.stats.obs_filtered and self.stats.syn_filtered) \
+        elif not (self.stats.obs_processed and self.stats.syn_processed) \
                 and not force:
             raise ManagerError("cannot measure misfit, not filtered")
         elif not self.stats.nwin and not force:

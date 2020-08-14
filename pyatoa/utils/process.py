@@ -21,49 +21,79 @@ def default_process(mgmt, choice, **kwargs):
     :type choice: str
     :param choice: option to preprocess observed, synthetic or both
         available: 'obs', 'syn'
-    :rtype: obspy.core.stream.Stream
-    :return: preprocessed stream object pertaining to `choice`
 
     Keyword Arguments:
         :type water_level: int
         :param water_level: water level for response removal
         :type taper_percentage: float
         :param taper_percentage: amount to taper ends of waveform
+        :type remove_response: bool
+        :param remove_response: remove instrument response using the Manager's
+            inventory object. Defaults to True
+        :type apply_filter: bool
+        :param apply_filter: filter the waveforms using the Config's min_period and
+            max_period parameters. Defaults to True
+        :type convolve_with_stf: bool
+        :param convolve_with_stf: Convolve synthetic data with a Gaussian
+            source time function if a half duration is provided.
+        :rtype: obspy.core.stream.Stream
+        :return: preprocessed stream object pertaining to `choice`
     """
+    assert choice in ["obs", "syn"], "choice must be 'obs' or 'syn"
+
     water_level = kwargs.get("water_level", 60)
     taper_percentage = kwargs.get("taper_percentage", 0.05)
+    corners = kwargs.get("corners", 2)
+    zerophase = kwargs.get("zerophase", True)
+    remove_response = kwargs.get("remove_response", True)
+    apply_filter = kwargs.get("apply_filter", True)
+    convolve_with_stf = kwargs.get("convolve_with_stf", True)
 
-    # Copy the stream to avoid editing in place
+    # Copy the stream to avoid editing in place. Synthetic variable used to
+    # denote if the waveforms are synthetic or not, these require special
+    # processing steps.
     if choice == "syn":
         st = mgmt.st_syn.copy()
+        is_synthetic_data = True
     elif choice == "obs":
         st = mgmt.st_obs.copy()
+        is_synthetic_data = mgmt.config.synthetics_only
+
     if is_preprocessed(st):
         return st
 
+    # Get rid of any long period trends that may affect that data
+    st.detrend("simple").detrend("demean").taper(taper_percentage)
+    st = taper_time_offset(st, taper_percentage, mgmt.stats.time_offset_sec)
+
     # Observed specific data preprocessing includes response and rotating to ZNE
-    if choice == "obs" and not mgmt.config.synthetics_only:
-        logger.debug(f"removing response, units of {mgmt.config.unit_output}")
+    if remove_response and not is_synthetic_data:
+        logger.debug(f"removing response, units to {mgmt.config.unit_output}")
         st.remove_response(inventory=mgmt.inv, output=mgmt.config.unit_output,
                            water_level=water_level, plot=False)
 
-        # Rotate streams if not in ZNE, e.g. Z12
+        # Rotate streams if not in ZNE, e.g. Z12. Only necessary for observed
         st.rotate(method="->ZNE", inventory=mgmt.inv)
+        st.detrend("simple").detrend("demean").taper(taper_percentage)
 
-    # Try to ensure that end points touch 0 before filtering
-    st.detrend("simple").detrend("demean").taper(taper_percentage)
-
-    # Rotate the given stream from standard NEZ to RTZ
+    # Rotate the given stream from standard NEZ to RTZ if BAz given
     if mgmt.baz:
-        st.rotate(method="NE->RT", back_azimuth=mgmt.baz)
         logger.debug(f"rotating NE->RT by {mgmt.baz} degrees")
+        st.rotate(method="NE->RT", back_azimuth=mgmt.baz)
 
-    st = filters(st, min_period=mgmt.config.min_period,
-                 max_period=mgmt.config.max_period
-                 )
+    # Filter data based on the given period bounds
+    if apply_filter:
+        st = filters(st, min_period=mgmt.config.min_period,
+                     max_period=mgmt.config.max_period, corners=corners,
+                     zerophase=zerophase
+                     )
+        st.detrend("simple").detrend("demean").taper(taper_percentage)
+    else:
+        logger.debug(f"no filter applied to data")
 
-    # Taper again to ensure final waveforms are clean
-    st.detrend("simple").detrend("demean").taper(0.1)
+    # Convolve synthetic data with a Gaussian source time function
+    if convolve_with_stf and is_synthetic_data and mgmt.stats.half_dur:
+        st = stf_convolve(st=st, half_duration=mgmt.stats.half_dur)
 
     return st
 
@@ -126,25 +156,38 @@ def filters(st, min_period=None, max_period=None, min_freq=None, max_freq=None,
     return st
 
 
-def taper_ends(st, taper_percentage=0.05, time_offset_sec):
+def taper_time_offset(st, taper_percentage=0.05, time_offset_sec=0):
     """
+    Taper the ends of the waveform. If a time offset is given, e.g. 20s before
+    the event origin time (T_0), taper all the way up from T=0 to T=T_0, to
+    ensure that there are no unncessary signals prior to the event origin.
 
-    :return:
+    :type st: obspy.core.stream.Stream
+    :param st: Stream object to be tapered
+    :type taper_percentage: float
+    :param taper_percentage: default taper percentage
+    :type time_offset_sec: float
+    :param time_offset_sec: Any time offset between the start of the stream to
+        the event origin time. All time between these two points will be tapered
+        to reduce any signals prior to the event origin.
+    :rtype: obspy.core.stream.Stream
+    :return: tapered Stream object
     """
     taper_amount = st[0].stats.npts * taper_percentage * st[0].stats.delta
 
-    if taper_amount > abs(mgmt.stats.time_offset_sec):
+    if taper_amount > abs(time_offset_sec):
         logger.warning("taper amount exceeds time offset, taper may affect "
                        "data if source receiver distance is short")
-    elif taper_amount < abs(mgmt.stats.time_offset_sec):
-        logger.info("adjusting taper to cover time offset")
-        taper_percentage = (abs(mgmt.stats.time_offset_sec) /
+    elif taper_amount < abs(time_offset_sec):
+        logger.info(f"adjusting taper to cover time offset {time_offset_sec}")
+        taper_percentage = (abs(time_offset_sec) /
                             st[0].stats.npts * st[0].stats.delta)
 
     # Get rid of extra long period signals which may adversely affect processing
-    st.detrend("simple").taper(taper_percentage)
+    st.detrend("simple").taper(taper_percentage, side="left")
 
     return st
+
 
 def zero_pad(st, pad_length_in_seconds, before=True, after=True):
     """
@@ -348,6 +391,8 @@ def stf_convolve(st, half_duration, source_decay=4., time_shift=None,
     :rtype: obspy.stream.Stream
     :return: stream object which has been convolved with a source time function
     """
+    logger.debug(f"convolving data w/ Gaussian (t/2={half_duration:.2f}s)")
+
     sampling_rate = st[0].stats.sampling_rate
     half_duration_in_samples = round(half_duration * sampling_rate)
 
@@ -368,8 +413,6 @@ def stf_convolve(st, half_duration, source_decay=4., time_shift=None,
             tr.stats.starttime += time_shift
         data_out = np.convolve(tr.data, gaussian_stf, mode="same")
         tr.data = data_out
-
-    logger.debug(f"convolved data w/ Gaussian (t/2={half_duration:.2f}s)")
 
     return st_out
 

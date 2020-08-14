@@ -60,16 +60,15 @@ class ExternalGetter:
                 logger.debug(f"event ID: {self.config.event_id}, querying "
                              f"client {self.config.client}")
                 event = self.Client.get_events(eventid=self.config.event_id)[0]
-                origintime = event.preferred_origin().time
             except FDSNException:
                 pass
-        if origintime and event is None:
+        if self.origintime and event is None:
             try:
                 # If getting by event id doesn't work, try based on origintime
-                logger.debug(f"origintime: {origintime}, querying"
+                logger.debug(f"origintime: {self.origintime}, querying"
                              f"client {self.config.client}")
-                event = self.Client.get_events(starttime=origintime,
-                                               endtime=origintime
+                event = self.Client.get_events(starttime=self.origintime,
+                                               endtime=self.origintime
                                                )
                 if len(event) > 1:
                     # Getting by origin time may result in multiple events 
