@@ -83,14 +83,12 @@ def add_adjoint_sources(adjsrcs, ds, path, time_offset):
     for key, adj_src in adjsrcs.items():
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-
-            # The tag hardcodes an X as the second channel index
-            # to signify that these are synthetic, required by Specfem3D
-            adj_src_tag = "{net}_{sta}_{ban}X{cmp}".format(
-                net=adj_src.network, sta=adj_src.station,
-                ban=channel_code(adj_src.dt),
-                cmp=adj_src.component[-1]
-            )
+            
+            # Create the standardized tag that identifies the adjoint source
+            # Assumes the component is formatted properly
+            adj_src_tag = "_".join([adj_src.network,
+                                    adj_src.station,
+                                    adj_src.component])
 
             # Convert the adjoint source to SPECFEM format
             srclen = len(adj_src.adjoint_source)

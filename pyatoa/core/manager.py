@@ -13,6 +13,7 @@ from obspy.signal.filter import envelope
 from pyatoa import logger
 from pyatoa.core.config import Config
 from pyatoa.core.gatherer import Gatherer, GathererNoDataException
+from pyatoa.utils.form import channel_code
 from pyatoa.utils.process import is_preprocessed
 from pyatoa.utils.asdf.fetch import windows_from_dataset
 from pyatoa.utils.window import reject_on_global_amplitude_ratio
@@ -834,6 +835,10 @@ class Manager:
                     synthetic=self.st_syn.select(component=comp)[0],
                     window=adj_win, plot=False
                     )
+
+                # Re-format component name to reflect SPECFEM convention
+                adj_src.component = f"{channel_code(adj_src.dt)}X{comp}"
+
                 # Save adjoint sources in dictionary object. Sum total misfit
                 adjoint_sources[comp] = adj_src
                 logger.info(f"{adj_src.misfit:.3f} misfit for comp {comp}")
