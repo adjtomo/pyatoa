@@ -43,7 +43,6 @@ def default_process(mgmt, choice, **kwargs):
 
     water_level = kwargs.get("water_level", 60)
     taper_percentage = kwargs.get("taper_percentage", 0.05)
-    corners = kwargs.get("corners", 2)
     zerophase = kwargs.get("zerophase", True)
     remove_response = kwargs.get("remove_response", True)
     apply_filter = kwargs.get("apply_filter", True)
@@ -84,7 +83,8 @@ def default_process(mgmt, choice, **kwargs):
     # Filter data based on the given period bounds
     if apply_filter:
         st = filters(st, min_period=mgmt.config.min_period,
-                     max_period=mgmt.config.max_period, corners=corners,
+                     max_period=mgmt.config.max_period, 
+                     corners=mgmt.config.filter_corners,
                      zerophase=zerophase
                      )
         st.detrend("simple").detrend("demean").taper(taper_percentage)
