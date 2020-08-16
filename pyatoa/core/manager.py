@@ -115,7 +115,7 @@ class Manager:
         if config is not None:
             self.config = config
         else:
-            logger.info("no Config found, initiating default")
+            logger.info("no config provided, initiating default")
             self.config = Config()
 
         # Ensure any user-provided event is an Event object
@@ -308,7 +308,7 @@ class Manager:
             raise NotImplementedError
 
     def load(self, code, path=None, ds=None, synthetic_tag=None,
-             observed_tag=None):
+             observed_tag=None, load_config=True):
         """
         Populate the manager using a previously populated ASDFDataSet.
         Useful for re-instantiating an existing workflow that has already 
@@ -328,6 +328,9 @@ class Manager:
         :type observed_tag: str
         :param observed_tag: waveform tag of the observed data in the dataset
             e.g. 'observed'
+        :type load_config: bool
+        :param load_config: load config from the dataset, defaults to True but 
+            can be set False if Config should be instantiated by the User
         """
         # Allows a ds to be provided outside the attribute
         if self.ds and ds is None:
@@ -336,13 +339,14 @@ class Manager:
             raise TypeError("load requires a Dataset")
 
         # If no Config object in Manager, load from dataset 
-        if self.config is None:
+        if load_config:
             if path is None:
-                raise TypeError("load requires Config or 'path'")
-            else:
-                self.config = Config(ds=ds, path=path)
-                logger.info(f"loading config from dataset {path}")
+                raise TypeError("load requires valid 'path' argument")
+            logger.info(f"loading config from dataset {path}")
+            self.config = Config(ds=ds, path=path)
 
+
+        assert(self.config is not None), "Config object required for load"
         assert len(code.split('.')) == 2, "'code' must be in form 'NN.SSS'"
 
         # Reset and populate using the dataset

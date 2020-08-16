@@ -126,14 +126,15 @@ def filters(st, min_period=None, max_period=None, min_freq=None, max_freq=None,
     :param zerophase: 
     :return:
     """
+    # Ensure that the frequency and period bounds are the same
     if not min_period and max_freq:
         min_period = 1 / max_freq
     if not max_period and min_freq:
         max_period = 1 / min_freq
     if not max_freq:
-        max_freq = min_period
+        max_freq = 1/ min_period
     if not min_freq:
-        min_freq = max_period
+        min_freq = 1 / max_period
 
     # Bandpass if both bounds given
     if min_period and max_period:
