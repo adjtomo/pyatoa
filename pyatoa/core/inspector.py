@@ -255,6 +255,7 @@ class Inspector(InspectorPlotter):
                     component = cha[-1]
 
                     try:
+
                         # Workaround for potential mismatch between channel
                         # names of windows and adjsrcs, search for w/ wildcard
                         adj_tag = fnf(adjoint_sources[iter_][step].list(),
@@ -262,12 +263,12 @@ class Inspector(InspectorPlotter):
                                       )[0]
 
                         # This misfit value will be the same for mult windows
-                        window["misfit"] = adjoint_sources[iter_][step][
-                            adj_tag].parameters["misfit_value"]
+                        window["misfit"].append(adjoint_sources[iter_][step][
+                            adj_tag].parameters["misfit_value"])
                     except IndexError:
                         if self.verbose:
                             print(f"No matching adjoint source for {cha_id}")
-                        window["misfit"] = np.nan
+                        window["misfit"].append(np.nan)
 
                     # winfo keys match the keys of the Pyflex Window objects
                     for par in winfo:
@@ -318,6 +319,8 @@ class Inspector(InspectorPlotter):
                     print(f"error: {e}")
                     traceback.print_exc()
                 continue
+
+        return self
 
     def append(self, dsfid, srcrcv=True, windows=True):
         """
