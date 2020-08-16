@@ -140,19 +140,19 @@ def filters(st, min_period=None, max_period=None, min_freq=None, max_freq=None,
     if min_period and max_period:
         st.filter("bandpass", corners=corners, zerophase=zerophase,
                   freqmin=min_freq, freqmax=max_freq)
-        logger.debug(f"bandpass filter {min_period}-{max_period}s w/ "
+        logger.debug(f"bandpass filter: {min_period} - {max_period}s w/ "
                      f"{corners} corners")
 
     # Highpass if only minimum period given
     elif min_period:
         st.filter("highpass", freq=max_freq, corners=corners,
                   zerophase=zerophase)
-        logger.debug(f"highpass {min_period}s w/ {corners} corners")
+        logger.debug(f"highpass filter: {min_period}s w/ {corners} corners")
 
     # Lowpass if only minimum period given
     elif max_period:
         st.filter("lowpass", freq=min_freq, corners=corners, zerophase=True)
-        logger.debug(f"lowpass {max_period}s w/ {corners} corners")
+        logger.debug(f"lowpass filter: {max_period}s w/ {corners} corners")
 
     return st
 
