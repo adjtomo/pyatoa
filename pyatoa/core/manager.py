@@ -77,9 +77,12 @@ class Manager:
                  st_syn=None, inv=None, windows=None, staltas=None,
                  adjsrcs=None, gcd=None, baz=None, gatherer=None):
         """
-        If no pyasdf dataset is given in the initiation of the Manager, all
-        data fetching will happen via given pathways in the config file,
-        or through external getting via FDSN pathways
+        Initiate the Manager class with or without pre-defined attributes.
+
+        Note:
+            If `ds` is not given in data can only be gathered via the
+            config.paths attribute or using the ObsPy client service.
+            Data will also not be saved.
 
         :type config: pyatoa.core.config.Config
         :param config: configuration object that contains necessary parameters
@@ -171,7 +174,7 @@ class Manager:
                 f"    station   [inv]:       {self.stats.inv_name}\n"
                 f"    observed  [st_obs]:    {self.stats.len_obs}\n"
                 f"    synthetic [st_syn]:    {self.stats.len_syn}\n"
-                "Stats and Status\n"  
+                "Stats & Status\n"  
                 f"    half_dur:              {self.stats.half_dur}\n"
                 f"    time_offset_sec:       {self.stats.time_offset_sec}\n"
                 f"    standardized:          {self.stats.standardized}\n"
@@ -272,15 +275,16 @@ class Manager:
         or to individual files (not implemented).
 
         :type write_to: str
-        :param write_to: choice to write data to, if "ds" writes to
-            Pyasdf Dataset
+        :param write_to: choice to write data to, if "ds" writes to a
+            pyasdf.asdf_data_set.ASDFDataSet
 
-        write_to == "ds"
-            If `gather` is skipped but data should still be saved into an
-            ASDFDataSet for data storage, this function will fill that dataset
-            in the same fashion as the Gatherer class
-        write_to == "/path/to/output"
-            write out all the internal data of the manager to a path
+        Options:
+            write_to == "ds"
+                If `gather` is skipped but data should still be saved into an
+                ASDFDataSet for data storage, this function will fill that
+                dataset in the same fashion as the Gatherer class
+            write_to == "/path/to/output"
+                write out all the internal data of the manager to a path
         """
         if write_to == "ds":
             if self.event:
@@ -320,7 +324,7 @@ class Manager:
         :param path: if no Config object is given during init, the User
             can specify the config path here to load data from the dataset.
             This skips the need to initiate a separate Config object.
-        :type ds: None or pyasdf.ASDFDataSet
+        :type ds: None or pyasdf.asdf_data_set.ASDFDataSet
         :param ds: dataset can be given to load from, will not set the ds
         :type synthetic_tag: str
         :param synthetic_tag: waveform tag of the synthetic data in the dataset
@@ -365,12 +369,10 @@ class Manager:
     def flow(self, **kwargs):
         """
         A convenience function to run the full workflow with a single command.
-        Does not include gathering as that could be from gather() or load()
+        Does not include gathering. Takes kwargs related to all underlying
+        functions.
 
-        Will raise ManagerError for controlled exceptions meaning workflow 
-        cannot continue.
-
-        Takes kwargs to pass to underlying functions
+        :raises ManagerError: for any controlled exceptions
         """
         force = kwargs.get("force", False)
         standardize_to = kwargs.get("standardize_to", "syn")
@@ -486,15 +488,13 @@ class Manager:
         Ensures Streams have the same starttime, endtime, sampling rate, npts.
 
         :type force: bool
-        :param force: allow the User to force the functino to run even if checks
+        :param force: allow the User to force the function to run even if checks
             say that the two Streams are already standardized
         :type standardize_to: str
         :param standardize_to: allows User to set which Stream conforms to which
             by default the Observed traces should conform to the Synthetic ones
             because exports to Specfem should be controlled by the Synthetic
             sampling rate, npts, etc.
-        :rtype: bool
-        :return: status of the function, 1: successful / 0: failed
         """
         self._check()
         if not self.stats.len_obs or not self.stats.len_syn:
@@ -558,8 +558,6 @@ class Manager:
             standard preprocessing function. All arguments that are given
             to the standard preprocessing function will be passed as kwargs to
             the new function. This allows for customized preprocessing
-        :rtype: bool
-        :return: status of the function, 1: successful / 0: failed
         """
         if not self.inv and not self.config.synthetics_only:
             raise ManagerError("cannot preprocess, no inventory")
@@ -757,7 +755,6 @@ class Manager:
                                            station=self.inv)
                 windows = ws.select_windows()
 
-            # vvv Further window filtering can be applied here vvv
             # Suppress windows that contain low-amplitude signals
             if self.config.win_amp_ratio > 0:
                 windows, ws.rejects["amplitude"] = \
@@ -765,7 +762,7 @@ class Manager:
                                             data=obs.data, windows=windows,
                                             ratio=self.config.win_amp_ratio
                                             )
-            # ^^^ Further window filtering can be applied here ^^^
+            # NOTE: Additional windowing criteria may be added here if necessary
             if windows:
                 window_dict[comp] = windows
             if ws.rejects:
@@ -801,8 +798,6 @@ class Manager:
             external preprocessing is used that doesn't meet flag criteria
         :type save: bool
         :param save: save adjoint sources to ASDFDataSet
-        :rtype: bool
-        :return: status of the function, 1: successful / 0: failed
         """
         self._check()
 

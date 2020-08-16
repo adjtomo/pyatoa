@@ -61,3 +61,4 @@ Package manager installation coming soon.
    inspector
    utilities
    logging
+   modules/core.manager

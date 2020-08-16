@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Configuration class that controls User-set parameters within the package.
-Contains non-class functions for setting Config objects of Pyflex and Pyadjoint.
+Configuration of User-set parameters within the package.
+Contains external functions to set Config objects of Pyflex and Pyadjoint.
 """
 import yaml
 from pyatoa import logger
@@ -15,10 +15,9 @@ from pyadjoint import Config as PyadjointConfig
 class Config:
     """
     The Config class is the main interaction object between the User and
-    workflow. Fed into the Manager class for workflow management, and also used
-    for information sharing between objects and functions. Has the ability to
-    read from and write to external files in various formats, or explicitely
-    defined through scripts or interactive shells.
+    workflow. It is used by the Manager class for workflow management, and also
+    for information sharing between Pyatoa objects and functions.
+    The Config can be read to and written from external files and ASDFDataSets.
     """
     def __init__(self, yaml_fid=None, ds=None, path=None, iteration=None, 
                  step_count=None, event_id=None, min_period=10, max_period=30, 
@@ -29,13 +28,9 @@ class Config:
                  synthetic_tag=None, synthetics_only=False, win_amp_ratio=0., 
                  paths=None, save_to_ds=True, **kwargs):
         """
-        Allows the user to control the parameters of the workflow, including:
-        setting the Config objects for Pyflex and Pyadjoint, and the paths for
-        input data, and output figures and results from Pyflex and Pyadjoint.
-        Reasonable default values set on initation
-
-        Kwargs are passed to Pyflex and Pyadjoint config objects so those can be
-        set by the User through this Config object
+        Initiate the Config object. Kwargs are passed to Pyflex and Pyadjoint
+        Fonfig objects so that they can be set by the User through this Config
+        object.
 
         :type yaml_fid: str
         :param yaml_fid: id for .yaml file if config is to be loaded externally
@@ -96,6 +91,8 @@ class Config:
             is gathered/collected. This is useful, e.g. if a dataset that
             contains data is passed to the Manager, but you don't want to
             overwrite the data inside while you do some temporary processing.
+        :raises ValueError: If kwargs do not match Pyatoa, Pyflex or Pyadjoint
+            attribute names.
         """
         self.iteration = iteration
         self.step_count = step_count
@@ -174,7 +171,7 @@ class Config:
         return str_out
 
     def __repr__(self):
-        """Simply call string representation"""
+        """Simple call string representation"""
         return self.__str__()
 
     @property
@@ -354,7 +351,7 @@ class Config:
         """
         Wrapper for read functions
 
-        :type read_from: str or pyasdf.ASDFDataSet
+        :type read_from: str or pyasdf.asdf_data_set.ASDFDataSet
         :param read_from: filename to read config from, or ds to read from
         :type path: str
         :param path: if fmt='asdf', path to the config in the aux data
@@ -391,7 +388,7 @@ class Config:
         Converts types to play nice with ASDF Auxiliary Data.
         Flattens dictionaries and external Config objects for easy storage.
 
-        :type ds: pyasdf.ASDFDataSet
+        :type ds: pyasdf.asdf_data_set.ASDFDataSet
         :param ds: dataset to save the config file to
         """
         # Lazy imports because this function isn't always called
@@ -491,7 +488,7 @@ class Config:
         dataset, which will be the case if the write_to_asdf() function was used
         Assumes some things about the structure of the auxiliary data.
 
-        :type ds: pyasdf.ASDFDataSet
+        :type ds: pyasdf.asdf_data_set.ASDFDataSet
         :param ds: dataset with config parameter to read
         :type path: str
         :param path: model number e.g. 'm00' or 'default', or 'm00/s00'
@@ -623,12 +620,11 @@ def format_adj_src_type(choice):
     input to provide the correct input for that function. Allows for various
     spellings and variations of the same name.
 
-    Throws ValueError if choice isn't in the provided lists.
-
     :type choice: str
     :param choice: pyatoa.Config.adj_src_type
     :rtype: str
     :return: pyadjoint adj_src_type
+    :raises ValueError:  if choice isn't in the provided lists
     """
     if choice in ["cc", "cc_traveltime_misfit", "cross_correlation"]:
         adj_src_type = "cc_traveltime_misfit"
