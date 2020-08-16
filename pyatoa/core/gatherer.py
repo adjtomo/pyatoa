@@ -362,7 +362,12 @@ class InternalFetcher:
                 st.trim(starttime=self.origintime-self.config.start_pad,
                         endtime=self.origintime+self.config.end_pad
                         )
-                return st
+                # Check if trimming retains data
+                if len(st) > 0:
+                    return st   
+                else:
+                    logger.warning("data does not fit origin time +/- pad time")
+                    return None
         else:
             return None
 
