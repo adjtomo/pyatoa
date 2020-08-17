@@ -597,7 +597,7 @@ class Inspector(InspectorPlotter):
         windows.sort_values(group_list, inplace=True)
 
         group = windows.groupby(group_list[:-1]).length_s
-        return pd.concat([group.apply(len).rename("n_win"), group.sum()],
+        return pd.concat([group.apply(len).rename("nwin"), group.sum()],
                          axis=1)
 
     def misfits(self, level="step"):
@@ -624,7 +624,7 @@ class Inspector(InspectorPlotter):
 
         # Count the number of windows on a per station basis
         nwin = misfits.groupby(
-                group_list[:-1]).misfit.apply(len).rename("n_win")
+                group_list[:-1]).misfit.apply(len).rename("nwin")
 
         # Misfit is unique per component, not window, drop repeat components
         misfits.drop_duplicates(subset=group_list[:-1], keep="first", 
@@ -640,14 +640,14 @@ class Inspector(InspectorPlotter):
         # misfit for a given station, divided by number of windows
         if level == "station":
             df["misfit"] = df.apply(
-                lambda row: row.unscaled_misfit / row.n_win, axis=1
+                lambda row: row.unscaled_misfit / row.nwin, axis=1
             )
         # Event misfit function defined by Tape et al. (2010) Eq. 6
         elif level in ["event", "step"]:
             # Group misfits to the event level and sum together windows, misfit
             df = df.groupby(group_list[:3]).sum() 
             df["misfit"] = df.apply(
-                lambda row: row.unscaled_misfit / (2 * row.n_win), axis=1
+                lambda row: row.unscaled_misfit / (2 * row.nwin), axis=1
             )
             if level == "step":
                 # Sum the event misfits if step-wise misfit is requested
