@@ -6,6 +6,9 @@
 
 #### Bugs
 - [ ] Pyflex value Error is being thrown (pyflex.window_selector() line 427 np.abs(noise).max() zero size array). Very close source-receiver distances means P-wave arrival is within the first wavelength, meaning no noise amplitude calculations can take place, and windows are not picked even for good waveforms. Can this be reconciled in Pyflex, or do we need to exclude distances <100km e.g.?
+- [ ] If Manager.gather() is called after Manager.load() the gatherer attribute has no origintime. Also the synthetic tag is incorrectly set. These need to be properly propogated in the load() command.
+- [ ] Gathered obs data can sometimes have multiple (>1) traces per component. Need to cap this to 1 per component and also let the user know that this is happening.
+- [ ] If windows are fixed, Pyflex no longer controls the maximum criteria within the windows, so e.g. time shift is allowed to exceed the maximum allowed time shift.
 - [X] FDSNException in gatherer.gather_observed( Uknown Error (timeout))  
       *Added catch for FDSNException in gather_observed() and return st_obs=None*
 - [X] Pyaflowa exit gracefully if no data is gathered for an entire event, currently finalize is throwing uncaught errors  
@@ -23,11 +26,12 @@
 
 
 #### General
-- [ ] Big change: Rename 'model' to 'iteration', and start counting iterations from 1 not 0, to match Seisflows.  
+- [X] Big change: Rename 'model' to 'iteration', and start counting iterations from 1 not 0, to match Seisflows.  
       Refer to 'iterations' as 'evaluations', in reference to function evaluations.  
       Use integers to refer to iterations and step counts, only format for print statements, removes a lot of difficult   
       Current implementation is wrong and misleading, as e.g. m00s03 refers to the line search for model 1.
-- [ ] Flag/cache system to tells the Manage/Gatherer/Pyaflowa that an FDSNNoDataException has been thrown, so it won't query FDSN in future iterations
+- [X] Flag/cache system to tell the Manage/Gatherer/Pyaflowa that an FDSNNoDataException has been thrown, so it won't query FDSN in future iterations  
+*Just set client to None in future iterations to stop gathering from FDSN, not as elegant but simpler*
 - [ ] Change mapping to Cartopy or just drop mapping capabilities completely? Seems to make things more difficult for not much gain. Or have a completely indepenent module to 
      make maps all in one go given CMTSOLUTIONS and STATION file list. Or use ObsPy mapping functionality to replace Manager.srcrcvmap()? Current Basemap calling is a bit 
      rough.
@@ -82,6 +86,7 @@
 - [X] Retain step count information for MisfitWindows and AdjointSources
 
 #### Misc.
+- [ ] read_stations should have built in functions to set the order of stations, alphabetical, by lat, by lon?
 - [X] Move all hardcoded stuff into plugins, e.g. fault_coordinates, geonet_moment_tensor
 - [X] Move tools and visualize out of utils dir into main dir
 
@@ -125,8 +130,11 @@
 - [X] Inspector convergence plot should plot line search models as non-connected points as in Krischer et al. 2018(?)
 
 #### Inspector:
-- [ ] Inspector should be able to append new data only, rather than having to aggregate from scratch/
+- [X] Inspector should be able to append new data only, rather than having to aggregate from scratch/
 - [ ] Automatically create a list of windows corresponding to largest time shift, or misfit or dlnA
 - [ ] misfits() should default to misfit per model, not step, needs to be done after the name change of model > iteration 
-- [ ] save focal mechanism attributes from sources if available
+- [ ] save focal mechanism attributes from sources (if available)
+
+#### Possible Inspector Features:
+- [ ] Function to automatically create list of maximum 'key' (e.g. cc_shift_in_seconds') for a given iter/step/event/station etc.  
 
