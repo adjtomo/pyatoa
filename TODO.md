@@ -136,5 +136,6 @@
 - [ ] save focal mechanism attributes from sources (if available)
 
 #### Possible Inspector Features:
+- [ ] Merge() datasets if inversions are run in separate directories, allow one to be appended to the other with change in iteration label.
 - [ ] Function to automatically create list of maximum 'key' (e.g. cc_shift_in_seconds') for a given iter/step/event/station etc.  
 
