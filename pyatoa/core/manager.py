@@ -161,13 +161,13 @@ class Manager:
         self.stats = ManagerStats()
 
         # Run internal checks on data
-        self._check()
+        self.check()
 
     def __str__(self):
         """
         Print statement shows available data detailing workflow
         """
-        self._check()
+        self.check()
         return ("Manager Data\n"
                 f"    dataset   [ds]:        {self.stats.dataset_id}\n"
                 f"    quakeml   [event]:     {self.stats.event_id}\n"
@@ -204,7 +204,7 @@ class Manager:
         else:
             return None
 
-    def _check(self):
+    def check(self):
         """
         (Re)check the stats of the workflow and data within the Manager.
 
@@ -267,7 +267,7 @@ class Manager:
         """
         self.__init__(ds=self.ds, event=self.event, config=self.config,
                       gatherer=self.gatherer)
-        self._check()
+        self.check()
 
     def write(self, write_to="ds"):
         """
@@ -367,7 +367,7 @@ class Manager:
         else:
             logger.warning(f"no data for {sta_tag} found in dataset")
 
-        self._check()
+        self.check()
         return self
 
     def flow(self, **kwargs):
@@ -500,7 +500,7 @@ class Manager:
             because exports to Specfem should be controlled by the Synthetic
             sampling rate, npts, etc.
         """
-        self._check()
+        self.check()
         if not self.stats.len_obs or not self.stats.len_syn:
             raise ManagerError("cannot standardize, not enough waveform data")
         elif self.stats.standardized and not force:
@@ -643,7 +643,7 @@ class Manager:
         :param save: save the gathered windows to an ASDF Dataset
         """
         # Pre-check to see if data has already been standardized
-        self._check()
+        self.check()
 
         if not self.stats.standardized and not force:
             raise ManagerError("cannot window, waveforms not standardized")
@@ -808,7 +808,7 @@ class Manager:
         :type save: bool
         :param save: save adjoint sources to ASDFDataSet
         """
-        self._check()
+        self.check()
 
         # Check that data has been filtered and standardized
         if not self.stats.standardized and not force:
@@ -847,7 +847,7 @@ class Manager:
             self.save_adjsrcs()
 
         # Run check to get total misfit
-        self._check()
+        self.check()
         logger.info(f"total misfit {self.stats.misfit:.3f}")
 
         return self
@@ -944,7 +944,7 @@ class Manager:
             'map': plot a source-receiver map only
             'both' (default): plot waveform and source-receiver map together
         """
-        self._check()
+        self.check()
         # Precheck for correct data to plot
         if choice in ["wav", "both"] and not self.stats.standardized:
             raise ManagerError("cannot plot, waveforms not standardized")
