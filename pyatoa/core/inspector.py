@@ -19,16 +19,15 @@ class Inspector(InspectorPlotter):
     """
     This plugin object will collect information from a Pyatoa run folder and
     allow the User to easily understand statistical information or generate
-    statistical plots to help understand a seismic inversion
+    statistical plots to help understand a seismic inversion.
 
     Inherits plotting capabilities from InspectorPlotter class to reduce clutter
     """
 
     def __init__(self, tag="default", verbose=True):
         """
-        Inspector only requires the path to the datasets, it will then read in
-        all the datasets and store the data internally. This is a long process
-        but should only need to be performed once.
+        Inspector will automatically search for relevant file names using the
+        tag attribute. If nothing is found, internal dataframes will be empty.
 
         :type tag: str
         :param tag: tag of a previously saved workflow to be used for reading
@@ -166,7 +165,7 @@ class Inspector(InspectorPlotter):
 
         :type ds: pyasdf.ASDFDataSet
         :param ds: dataset to query for distances
-        :rtype source: pandas.DataFrame
+        :rtype source: pandas.core.frame.DataFrame
         :return source: single row Dataframe containing event info from dataset
         :rtype receivers: multiindexed dataframe containing unique station info
         """
@@ -300,8 +299,8 @@ class Inspector(InspectorPlotter):
         appending them to the internal structure as necessary.
 
         :type path: str
-        :param path: path to the ASDFDataSets that were outputted
-            by Pyaflowa in the Seisflows workflow
+        :param path: path to the pyasdf.asdf_data_set.ASDFDataSets that were
+            outputted by the Seisflows workflow
         """
         dsfids = glob(os.path.join(path, "*.h5"))
         for i, dsfid in enumerate(dsfids):
@@ -352,7 +351,8 @@ class Inspector(InspectorPlotter):
         """
         Save the downloaded attributes into JSON files for easier re-loading.
 
-        fmt == 'hdf' requires 'pytables'
+        .. note::
+            fmt == 'hdf' requires 'pytables' to be installed in the environment
 
         :type tag: str
         :param tag: tag to use to save files, defaults to the class tag
@@ -503,8 +503,8 @@ class Inspector(InspectorPlotter):
                 station=None, channel=None, comp=None, keys=None, 
                 exclude=None, unique_key=None):
         """
-        Returns a new dataframe that is grouped by a given index
-        if variable is None, defaults to returning all available values
+        Returns a new dataframe that is grouped by a given index if variable is
+        None, defaults to returning all available values
 
         :type event: str
         :param event: event id e.g. '2018p130600' (optional
@@ -567,7 +567,8 @@ class Inspector(InspectorPlotter):
         Find the cumulative length of misfit windows for a given iter/step,
         or the number of misfit windows for a given iter/step.
 
-        Neat trick to select just by station:
+        .. note::
+            Neat trick to select just by station:
             insp.windows(level='station').query("station == 'BFZ'")
 
         :type level: str
@@ -602,9 +603,10 @@ class Inspector(InspectorPlotter):
         Sum the total misfit for a given iteration based on the individual
         misfits for each misfit window, and the number of sources used.
 
-        To get per-station misfit on a per-step basis
-            df = insp.misfits(level="station").query("station == 'TOZ'")
-            df.groupby(['iteration', 'step']).sum()
+        .. note::
+            To get per-station misfit on a per-step basis
+                df = insp.misfits(level="station").query("station == 'TOZ'")
+                df.groupby(['iteration', 'step']).sum()
 
         :type level: str
         :param level:  Default is 'step'
@@ -670,7 +672,6 @@ class Inspector(InspectorPlotter):
         """
         Go through misfits and windows and remove events that fall outside
         a certain bounding box. Return sources that fall within the box.
-
         Bounds are inclusive of given values.
 
         :type lat_min: float
@@ -728,7 +729,9 @@ class Inspector(InspectorPlotter):
         Retrieve information regarding source-receiver pairs including distance,
         backazimuth and theoretical traveltimes for a 1D Earth model.
 
-        Return a DataFrame that can be used as a lookup table.
+        :rtype: pandas.core.frame.DataFrame
+        :return: separate dataframe with distance and backazimuth columns, that
+            may be used as a lookup table
         """
         if self.sources.empty or self.receivers.empty:
             return []

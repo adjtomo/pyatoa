@@ -3,9 +3,10 @@
 Mid and Low level data gathering classes to retrieve data from local filesystems
 or to query data from FDSN webservices via ObsPy.
 
-Fetch: used to denote searching local filesystems for data (internal)
-Get: used to denote querying FDSN webservices via ObsPy (external), naming
-     *convention from the obspy.fdsn.client.Client function names
+.. note::
+    * Fetch: used to denote searching local filesystems for data (internal)
+    * Get: used to denote querying FDSN webservices via ObsPy (external), naming
+    convention from the obspy.fdsn.client.Client function names
 
 Gatherer directly called by the Manager class and shouldn't need to be called
 by the User unless for bespoke data gathering functionality.
@@ -39,13 +40,15 @@ class ExternalGetter:
     """
     Low-level gathering classs to retrieve data via FDSN webservices.
     Calls made through ObsPy. Functionality is inhereted by the Gatherer class.
+
+    .. warning::
+        Not to be used standalone, class attributes are inherted by the
+        mid-level Gatherer class.
     """
     def event_get(self):
         """
         Return event information parameters pertaining to a given event id
         if an event id is given, else by origin time. Catches FDSN exceptions.
-
-        Returns None if no event found.
 
         :rtype event: obspy.core.event.Event or None
         :return event: event object if found, else None.
@@ -97,10 +100,11 @@ class ExternalGetter:
         :rtype: obspy.core.inventory.Inventory
         :return: inventory containing relevant network and stations
 
-        Keyword Arguments:
-            :type station_level: str
-            :param station_level: The level of the station metadata if retrieved
-                using the ObsPy Client. Defaults to 'response'
+        Keyword Arguments
+        ::
+            str station_level:
+                The level of the station metadata if retrieved using the ObsPy
+                Client. Defaults to 'response'
         """
         level = kwargs.get("station_level", "response")
 
@@ -121,11 +125,9 @@ class ExternalGetter:
 
     def obs_waveform_get(self, code):
         """
-        Call for ObsPy FDSN client to download waveform data.
-        
-        raises FDSNException if no data found.
+        Call for ObsPy FDSN webservice client to download waveform data.
 
-        Note:
+        .. Note:
             ObsPy sometimes returns traces with varying sample lengths,
             so we use a 10 second cushion on start and end time and trim after
             retrieval to make sure traces are the same length.
@@ -138,6 +140,7 @@ class ExternalGetter:
             coordinate system. Example station code: NZ.OPRZ.10.HH?
         :rtype stream: obspy.core.stream.Stream
         :return stream: waveform contained in a stream
+        :raises FDSNException: if no data found using Client
         """
         if not self.Client or self.config.synthetics_only:
             return None
@@ -163,28 +166,31 @@ class InternalFetcher:
     """
     Low-level data gatherer to search for data on disk.
     
-    Initially looks through User provided ASDFDataSets, if not available or no
+    * Initially looks through User provided ASDFDataSets, if not available or no
     data locatable, search through the local directories.
+    * Defaults directory structure follows SEED convention but can be
+    overwritten.
 
-    Defaults directory structure follows SEED convention but can be overwritten.
-
-    Class attributes inhereted by the Gatherer class.
+    .. warning::
+        Not to be used standalone, class attributes are inherted by the
+        mid-level Gatherer class.
     """
     def asdf_event_fetch(self):
         """
         Return Event information from ASDFDataSet.
 
-        Assumes that the ASDF Dataset will only contain one event, which is
-        dictated by the structure of Pyatoa.
-
-        Raises AttributeError if no Event attribute in ASDFDataSet
-
-        TO DO: Remove the logger statement, and write corresponding functions
-            1) fetch_event_by_dir: search for QuakeML or CMTSOLUTION files
-            2) event_fetch: calls this function and (1) in succession 
+        .. note::
+            Assumes that the ASDF Dataset will only contain one event, which is
+            dictated by the structure of Pyatoa.
+        .. note::
+            TO DO:
+            * Remove the logger statement, and write to corresponding functions
+            * fetch_event_by_dir: search for QuakeML or CMTSOLUTION files
+            * event_fetch: calls this function and (1) in succession
 
         :rtype event: obspy.core.event.Event
         :return event: event object
+        :raises AttributeError: if no event attribute found in ASDFDataSet
         """
         event = self.ds.events[0]
         logger.debug(f"matching event found: {format_event_name(event)}")
@@ -194,8 +200,6 @@ class InternalFetcher:
         """
         Return StationXML from ASDFDataSet based on station code.
 
-        Raises KeyError if no matching StationXML found.
-
         :type code: str
         :param code: Station code following SEED naming convention.
             This must be in the form NN.SSSS.LL.CCC (N=network, S=station,
@@ -204,6 +208,7 @@ class InternalFetcher:
             coordinate system. Example station code: NZ.OPRZ.10.HH?
         :rtype: obspy.core.inventory.network.Network
         :return: network containing relevant station information
+        :raises KeyError: if no matching StationXML found
         """
         net, sta, loc, cha = code.split(".")
         return self.ds.waveforms[f"{net}_{sta}"].StationXML.select(channel=cha)
@@ -212,14 +217,12 @@ class InternalFetcher:
         """
         Return waveforms as Stream objects based from ASDFDataSet.
 
-        Raises KeyError if no matching waveforms found.
-
-        Note:
-            -Allows for wildcard selection of component (? or *)
-            -Selects by component because synthetic channel naming may differ
+        .. note:
+            * Allows for wildcard selection of component (? or *)
+            * Selects by component because synthetic channel naming may differ
             from observation channels.
-            -Component is assumed to be the last index in the channel, following
-            SEED convention.
+            * Component is assumed to be the last index in the channel,
+            following SEED convention.
 
         :type code: str
         :param code: Station code following SEED naming convention.
@@ -231,6 +234,7 @@ class InternalFetcher:
         :param tag: internal asdf tag labelling waveforms
         :rtype: obspy.core.stream.Stream
         :return: waveform contained in a stream
+        :raises KeyError: if no matching waveforms found.
         """
         net, sta, loc, cha = code.split(".")
         return self.ds.waveforms[f"{net}_{sta}"][tag].select(component=cha[-1])
@@ -240,9 +244,8 @@ class InternalFetcher:
         Fetch station dataless via directory structure on disk.
         Will search through all paths given until StationXML found.
 
-        Returns None if no data found for given directory structure.
-
-        Default path naming follows SEED convention, that is:
+        .. note::
+            Default path naming follows SEED convention, that is:
             path/to/dataless/{NET}.{STA}/RESP.{NET}.{STA}.{LOC}.{CHA}
             e.g. path/to/dataless/NZ.BFZ/RESP.NZ.BFZ.10.HHZ
 
@@ -255,14 +258,15 @@ class InternalFetcher:
         :rtype inv: obspy.core.inventory.Inventory or None
         :return inv: inventory containing relevant network and stations
 
-        Keyword Arguments:
-            :type resp_dir_template: str
-            :param resp_dir_template: Directory structure template to search
-                for response files. By default follows the SEED convention,
+        Keyword Arguments
+        ::
+            str resp_dir_template:
+                Directory structure template to search for response files.
+                By default follows the SEED convention,
                 'path/to/RESPONSE/{sta}.{net}/'
-            :type resp_fid_template: str
-            :param resp_fid_template: Response file naming template to search
-                for station dataless. By default, follows the SEED convention
+            str resp_fid_template:
+                Response file naming template to search for station dataless.
+                By default, follows the SEED convention
                 'RESP.{net}.{sta}.{loc}.{cha}'
         """
         dir_structure = kwargs.get("resp_dir_template", "{sta}.{net}")
@@ -298,10 +302,9 @@ class InternalFetcher:
         """
         Fetch observation waveforms via directory structure on disk.
 
-        Returns None if no data is found for given directory structure
-
-        Default waveform directory structure assumed to follow SEED convention.
-        That is:
+        .. note::
+            Default waveform directory structure assumed to follow SEED
+            convention. That is:
             path/to/data/{YEAR}/{NETWORK}/{STATION}/{CHANNEL}*/{FID}
             e.g. path/to/data/2017/NZ/OPRZ/HHZ.D/NZ.OPRZ.10.HHZ.D
 
@@ -311,18 +314,18 @@ class InternalFetcher:
             L=location, C=channel). Allows for wildcard naming. By default
             the pyatoa workflow wants three orthogonal components in the N/E/Z
             coordinate system. Example station code: NZ.OPRZ.10.HH?
-
         :rtype stream: obspy.core.stream.Stream or None
         :return stream: stream object containing relevant waveforms, else None
 
-        Keyword Arguments:
-            :type obs_dir_template: str
-            :param obs_dir_template:  directory structure to search for
-                observation data. Follows the SEED convention.
+        Keyword Arguments
+        ::
+            str obs_dir_template:
+                directory structure to search for observation data.
+                Follows the SEED convention:
                 'path/to/obs_data/{year}/{net}/{sta}/{cha}'
-            :type obs_fid_template: str
-            :param obs_fid_template: File naming template to search for
-                observation data. Follows the SEED convention.
+            str obs_fid_template:
+                File naming template to search for observation data.
+                Follows the SEED convention:
                 '{net}.{sta}.{loc}.{cha}*{year}.{jday:0>3}'
         """
         dir_structure = kwargs.get("obs_dir_template",
@@ -377,26 +380,26 @@ class InternalFetcher:
             L=location, C=channel). Allows for wildcard naming. By default
             the pyatoa workflow wants three orthogonal components in the N/E/Z
             coordinate system. Example station code: NZ.OPRZ.10.HH?
-        :rtype stream: obspy.core.stream.Stream
+        :rtype stream: obspy.core.stream.Stream or None
         :return stream: stream object containing relevant waveforms
 
-        Keyword Arguments:
-            :type syn_pathname: str
-            :param syn_pathname: Config.paths key to search for synthetic
-                data. Defaults to 'synthetics', but for the may need to be set
-                to 'waveforms' in certain use-cases.
-            :type syn_unit: str
-            :param syn_unit: Optional argument to specify the letter used
-                to identify the units of the synthetic data:
-                For Specfem3D: ["d", "v", "a", "?"]
+        Keyword Arguments
+        ::
+            str syn_pathname:
+                Config.paths key to search for synthetic data. Defaults to
+                'synthetics', but for the may need to be set to 'waveforms'
+                in certain use-cases.
+            str syn_unit:
+                Optional argument to specify the letter used to identify the
+                units of the synthetic data: For Specfem3D: ["d", "v", "a", "?"]
                 'd' for displacement, 'v' for velocity,  'a' for acceleration.
                 Wildcards okay. Defaults to '?'
-            :type syn_dir_template: str
-            :param syn_dir_template: Directory structure template to search
-                for synthetic waveforms. Defaults to empty string
-            :type syn_fid_template: str
-            :param syn_fid_template: The naming template of synthetic waveforms
-                defaults to "{net}.{sta}.*{cmp}.sem{syn_unit}"
+            str syn_dir_template:
+                Directory structure template to search for synthetic waveforms.
+                Defaults to empty string
+            str syn_fid_template:
+                The naming template of synthetic waveforms defaults to
+                "{net}.{sta}.*{cmp}.sem{syn_unit}"
         """
         pathname = kwargs.get("syn_pathname", "synthetics")
         syn_unit = kwargs.get("syn_unit", "?")
@@ -442,8 +445,6 @@ class InternalFetcher:
         """
         Mid-level internal fetching function for observation waveform data.
 
-        Returns None if no internal data is found.
-
         :type code: str
         :param code: Station code following SEED naming convention.
             This must be in the form NN.SSSS.LL.CCC (N=network, S=station,
@@ -471,11 +472,10 @@ class InternalFetcher:
         """
         Mid-level internal fetching function for synthetic waveform data.
 
-        Checks if synthetics are already saved into a ASDFDataSet first.
-        If synthetics are freshly generated from Specfem3D, they should have
-        been placed into folders separated by event id and model iteration.
-
-        Returns None if no data found
+        .. note::
+            Checks if synthetics are already saved into a ASDFDataSet first.
+            If synthetics are freshly generated from Specfem3D, they should have
+            been placed into folders separated by event id and model iteration.
 
         :type code: str
         :param code: Station code following SEED naming convention.
@@ -502,16 +502,15 @@ class InternalFetcher:
         Mid-level internal fetching function for station dataless information.
         Search ASDFDataSet for corresponding dataless, else look on disk.
 
-        Returns None if no data found.
-
         :type code: str
         :param code: Station code following SEED naming convention.
             This must be in the form NN.SSSS.LL.CCC (N=network, S=station,
             L=location, C=channel). Allows for wildcard naming. By default
             the pyatoa workflow wants three orthogonal components in the N/E/Z
             coordinate system. Example station code: NZ.OPRZ.10.HH?
-        :rtype: obspy.core.inventory.Inventory
-        :return: inventory containing relevant network and stations
+        :rtype: obspy.core.inventory.Inventory or None
+        :return: inventory containing relevant network and stations, or None
+            if no data is found
         """
         if self.ds:
             try:
@@ -550,14 +549,15 @@ class Gatherer(InternalFetcher, ExternalGetter):
     def gather_event(self, try_fm=True):
         """
         Gather an ObsPy Event object by searching disk then querying webservices
-        Event need only be retrieved once per Pyatoa workflow.
 
-        Raise GathererNoDataException if no Event information found.
+        .. note::
+            Event inof need only be retrieved once per Pyatoa workflow.
 
         :type try_fm: bool
         :param try_fm: try to find correspondig focal mechanism.
         :rtype: obspy.core.event.Event 
         :return: event retrieved either via internal or external methods
+        :raises GathererNoDataException: if no event information is found.
         """
         logger.debug("gathering event")
         event = None
@@ -593,18 +593,18 @@ class Gatherer(InternalFetcher, ExternalGetter):
         """
         Attempt to find focal mechanism information with a given Event object.
 
-        Raise TypeError if Event is not provided as obspy.core.event.Event
-
-        FDSN fetched events are devoid of a few bits of information that are
-        useful for our applications, e.g. moment tensor, focal mechanisms.
-        This function will perform the conversions and append the necessary
-        information to the event located in the dataset.
+        .. note::
+            FDSN fetched events are devoid of a few bits of information that are
+            useful for our applications, e.g. moment tensor, focal mechanisms.
+            This function will perform the conversions and append the necessary
+            information to the event located in the dataset.
 
         :type event: obspy.core.event.Event
         :param event: Event object to append a focal mechanism to.
         :type overwrite: bool
         :param overwrite: If the event already has a focal mechanism, this will
             overwrite that focal mechanism
+        :raises TypeError: if event is not provided as an obspy.core.event.Event
         """
         if isinstance(event, Event):
             # If the event already has a focal mechanism attribute, don't gather
@@ -699,8 +699,6 @@ class Gatherer(InternalFetcher, ExternalGetter):
         Gather synthetic waveforms as ObsPy streams.
         Only possible to check ASDFDataSet and local filesystem.
 
-        Raise NoDataException if no synthetic data is found.
-
         :type code: str
         :param code: Station code following SEED naming convention.
             This must be in the form NN.SSSS.LL.CCC (N=network, S=station,
@@ -709,6 +707,7 @@ class Gatherer(InternalFetcher, ExternalGetter):
             coordinate system. Example station code: NZ.OPRZ.10.HH?
         :rtype: obspy.core.stream.Stream
         :return: stream object containing relevant waveforms
+        :raises GathererNoDataException: if no synthetic data is found
         """
         logger.info("gathering synthetic waveforms")
         st_syn = self.syn_waveform_fetch(code, **kwargs)

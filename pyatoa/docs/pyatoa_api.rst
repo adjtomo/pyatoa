@@ -12,7 +12,10 @@ Core
 ----
 
 .. toctree::
+    modules/core.config
     modules/core.manager
+    modules/core.gatherer
+    modules/core.inspector
 
 Utils
 -----
