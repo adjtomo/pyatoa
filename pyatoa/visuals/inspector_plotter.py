@@ -168,7 +168,7 @@ class InspectorPlotter:
 
         f, ax = plt.subplots(figsize=(8, 8))
 
-        df = self.misfits(level="station").loc[iteration, step_count]
+        df = self.misfit(level="station").loc[iteration, step_count]
 
         # Get lat/lon information from sources and receivers
         stations = self.receivers.droplevel(0)  # remove network index
@@ -266,7 +266,7 @@ class InspectorPlotter:
         sta = self.receivers.droplevel(0).loc[station]
 
         # Get misfit on a per-station basis 
-        df = self.misfits(level="station").loc[
+        df = self.misfit(level="station").loc[
             iteration, step_count].swaplevel(0, 1)
         df = df.sort_values(by="station").loc[station]
 
@@ -328,7 +328,7 @@ class InspectorPlotter:
                           edgecolors="k", s=20, zorder=100)
 
         # Go through each of the stations corresponding to this source
-        df = self.misfits(level="station").loc[iteration, step_count, event]
+        df = self.misfit(level="station").loc[iteration, step_count, event]
         assert (choice in df.columns), f"choice must be in {df.columns}"
 
         # Get lat lon values for receivers
@@ -729,7 +729,7 @@ class InspectorPlotter:
                 "plot_windows must be: 'nwin; or 'length_s'"
 
         # Get misfit information and window lengths together in a dataframe
-        df = self.misfits()
+        df = self.misfit()
         df = df.merge(self.nwin(), on=["iteration", "step"])
         df.drop(["n_event", "summed_misfit"], axis=1, inplace=True)
         iterations = df.index.get_level_values("iteration").unique().to_numpy()

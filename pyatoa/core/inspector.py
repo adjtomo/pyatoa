@@ -601,7 +601,7 @@ class Inspector(InspectorPlotter):
         return pd.concat([group.apply(len).rename("nwin"), group.sum()],
                          axis=1)
 
-    def misfits(self, level="step"):
+    def misfit(self, level="step"):
         """
         Sum the total misfit for a given iteration based on the individual
         misfits for each misfit window, and the number of sources used.
