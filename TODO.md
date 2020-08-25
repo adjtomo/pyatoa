@@ -131,6 +131,7 @@
 
 #### Inspector:
 - [X] Inspector should be able to append new data only, rather than having to aggregate from scratch/
+- [ ] merge() or += or + function to combine two inspectors which renames iterations of the second inspector incase two different inversion legs are run
 - [ ] Automatically create a list of windows corresponding to largest time shift, or misfit or dlnA
 - [ ] misfits() should default to misfit per model, not step, needs to be done after the name change of model > iteration 
 - [ ] save focal mechanism attributes from sources (if available)
