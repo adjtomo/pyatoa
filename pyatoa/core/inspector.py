@@ -444,63 +444,56 @@ class Inspector(InspectorPlotter):
         self.sources = pd.DataFrame()
         self.receivers = pd.DataFrame()
 
-    def get_models(self, discards=False):
+    def get_models(self):
         """
-        In a Seisflows Thrifty Inversion, once the L-BFGS optimization is well 
-        scaled, the function evaluation in the line search of the previous model 
-        'm-1' is used as the function evaluation of the current iteration 'i',
-        meaning the forward simulation 's00' of iteration 'i' is skipped. 
+        Return a sorted list of misfits which correspond to accepted models,
+        label discards of the line search, and differentiate the final accepted
+        line search evaluation from the previous iteration and the initial
+        evaluation of the current iteration.
 
-        This can lead to some confusing naming schema. So this function creates 
-        a mapping of step count to model number to help make sense of this.
+        .. note::
+            Status is given as:
+            0 == initial function evaluation for the model;
+            1 == final function evaluation for the model;
+            -1 == discarded trial step from line search.
 
-        Example: Given three iterations with the following line searches
-            i00: [s00, s01, s02]
-            i01: [s00, s01]
-            i02: [s01]
-
-            At i02, the gradient is well scaled and s00 is skipped,
-            We therefore have three viable models:
-            {m00: i00s00, m01: i01s00, m02: i01s01, m03: i02s01}
-
-        :type discards: bool
-        :param discards: returns additional entries in the dict, labelled e.g.
-            'm01_all', which gives all additional trial steps in the line 
-            search. This is useful for plotting.
-        :rtype: dict
-        :return: a dictionary of model numbers corresponding to a unique 
-            iteration and step count combination
         """
-        dict_out = {}
-        i = 0
-        prev_iter = None
-        # Hacky way to get an additional model to the end of the model list
-        final_iter = f"i{int(self.iterations[-1][1:])+1:0>2}"
+        misfit = self.misfit()
+        models = {"model": [], "iteration": [], "step_count": [], "misfit": [],
+                  "status": []
+                  }
 
-        for iter_ in np.append(self.iterations, final_iter):
-            if iter_ in self.steps and "s00" in self.steps[iter_]:
-                selected_iteration = f"{iter_}/s00"
-            else:
-                last_iter_last_step = self.steps[prev_iter][-1]
-                selected_iteration = f"{prev_iter}/{last_iter_last_step}"
+        # Model lags iteration by 1
+        for m, iter_ in enumerate(self.iterations):
+            # First we collect misfit values for each step for reference
+            misfits_ = [float(misfit.loc[iter_].loc[_].misfit) for _ in
+                        self.steps[iter_]]
 
-            dict_out[f"m{i:0>2}"] = selected_iteration
+            # Then we loop through the steps and pick out the smallest misfit
+            for s, step in enumerate(self.steps[iter_]):
+                # The first evaluation (M00) needs to be treated differently
+                if iter_ == "i01" and step == "s00":
+                    model = 0
+                else:
+                    model = m + 1
 
-            # Set the new model count
-            i += 1
-            prev_iter = iter_
+                # Initial evaluation, accepted misfits
+                if step == "s00":
+                    status = 0
+                # Line search, mix of discards and final misfit
+                else:
+                    if misfits_[s] == min(misfits_):
+                        status = 1
+                    else:
+                        status = -1
 
-            if i > len(self.iterations):
-                break
+                models["model"].append(f"m{model:0>2}")
+                models["misfit"].append(misfits_[s])
+                models["iteration"].append(iter_)
+                models["step_count"].append(step)
+                models["status"].append(status)
 
-            # Get the discarded steps by searching the previous model
-            if discards:
-                if iter_ in self.steps:
-                    all_steps = [f"{iter_}/{step}" for step in self.steps[iter_]
-                                 if "s00" not in step]
-                dict_out[f"m{i:0>2}_all"] = all_steps
-
-        return dict_out
+        return pd.DataFrame(models)
 
     def isolate(self, iteration=None, step_count=None,  event=None, network=None,
                 station=None, channel=None, comp=None, keys=None, 
