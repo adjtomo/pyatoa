@@ -127,7 +127,7 @@ class Inspector(InspectorPlotter):
     @property
     def models(self):
         """Return a dict of model numbers related to a unique iteration/step"""
-        return self.get_models(discards=False)
+        return self.get_models()
 
     @property
     def evaluations(self):
@@ -457,6 +457,10 @@ class Inspector(InspectorPlotter):
             1 == final function evaluation for the model;
             -1 == discarded trial step from line search.
 
+        :rtype: pandas.core.data_frame.DataFrame
+        :return: a dataframe containing model numbers, their corresponding
+            iteration, step count and misfit value, and the status of the
+            function evaluation.
         """
         misfit = self.misfit()
         models = {"model": [], "iteration": [], "step_count": [], "misfit": [],
@@ -467,21 +471,18 @@ class Inspector(InspectorPlotter):
         for m, iter_ in enumerate(self.iterations):
             # First we collect misfit values for each step for reference
             misfits_ = [float(misfit.loc[iter_].loc[_].misfit) for _ in
-                        self.steps[iter_]]
+                        self.steps[iter_]
+                        ]
 
             # Then we loop through the steps and pick out the smallest misfit
             for s, step in enumerate(self.steps[iter_]):
-                # The first evaluation (M00) needs to be treated differently
-                if iter_ == "i01" and step == "s00":
-                    model = 0
-                else:
-                    model = m + 1
-
                 # Initial evaluation, accepted misfits
                 if step == "s00":
+                    model = m
                     status = 0
                 # Line search, mix of discards and final misfit
                 else:
+                    model = m + 1
                     if misfits_[s] == min(misfits_):
                         status = 1
                     else:

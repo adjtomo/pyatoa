@@ -355,9 +355,9 @@ class InspectorPlotter:
 
         return f, ax
 
-    def hist(self, iteration, step_count, iteration_comp=None,
+    def hist(self, iteration=None, step_count=None, iteration_comp=None,
              step_count_comp=None, f=None, ax=None, event=None, station=None,
-             choice="cc_shift_in_seconds", binsize=1., show=True, save=None,
+             choice="cc_shift_in_seconds", binsize=None, show=True, save=None,
              **kwargs):
         """
         Create a histogram of misfit information for either time shift or
@@ -393,16 +393,6 @@ class InspectorPlotter:
         :type save: str
         :param save: fid to save the figure
         """
-        assert iteration in self.iterations, \
-            f"iteration must be in {self.iterations}"
-        assert step_count in self.steps.loc[iteration], \
-            f"step must be in {self.steps.loc[iteration]}"
-        if iteration_comp is not None:
-            assert iteration_comp in self.iterations, \
-                f"iteration_comp must be in {self.iterations}"
-            assert step_count_comp in self.steps.loc[iteration_comp], \
-                f"step_comp must be in {self.steps.loc[iteration_comp]}"
-
         # Optional kwargs for fine tuning figure parameters
         title = kwargs.get("title", "")
         xlim = kwargs.get("xlim", None)
@@ -423,6 +413,36 @@ class InspectorPlotter:
         label = kwargs.get("label", None)
         label_comp = kwargs.get("label_comp", None)
 
+        # If no arguments are given, default to first and last evaluations
+        if iteration is None and iteration_comp is None:
+            models_ = list(self.models.values())
+            iteration, step_count = models_[0].split("/")
+            iteration_comp, step_count_comp = models_[-1].split("/")
+
+        # Check that the provided values are available in the Inspector
+        assert iteration in self.iterations, \
+            f"iteration must be in {self.iterations}"
+        if step_count is None:
+            assert step_count in self.steps.loc[iteration], \
+                f"step must be in {self.steps.loc[iteration]}"
+        if iteration_comp is not None:
+            assert iteration_comp in self.iterations, \
+                f"iteration_comp must be in {self.iterations}"
+            assert step_count_comp in self.steps.loc[iteration_comp], \
+                f"step_comp must be in {self.steps.loc[iteration_comp]}"
+
+        # Try to set a default binsize that may or may not work 
+        if binsize is None:
+            try:
+                binsize = {"cc_shift_in_seconds": 1,
+                           "dlnA": 0.25,
+                           "max_cc_value": 0.05,
+                           "misfit": 10,
+                           "relative_starttime": 15,
+                           "relative_endtime": 15}[choice]
+            except KeyError:
+                binsize = 1
+
         def get_values(m, s, e, sta):
             """short hand to get the data, and the maximum value in DataFrame"""
             df_a = self.isolate(iteration=m, step_count=s, event=e, station=sta)
@@ -433,15 +453,7 @@ class InspectorPlotter:
             lim_ = max(abs(np.floor(min(val_))), abs(np.ceil(max(val_))))
             return val_, lim_
 
-        # For cleaner formatting of axis labels
-        label_dict = {"cc_shift_in_seconds": "Time Shift (s)",
-                      "dlnA": "$\Delta\ln$(A)",
-                      "misfit": "Misfit",
-                      "length_s": "Window Length (s)",
-                      "max_cc_value": "Peak Cross Correlation",
-                      "relative_starttime": "Relative Start Time (s)",
-                      "relative_endtime": "Relative End Time (s)",
-                      }
+        # Instantiate the plot objects and 'goforyourlifemate'
         if f is None:
             f, ax = plt.subplots(figsize=figsize)
         if ax is None:
@@ -540,9 +552,18 @@ class InspectorPlotter:
             xlab_ = xlabel
         else:
             try:
-                xlab_ = label_dict[choice]
+                # For cleaner formatting of x-axis label
+                xlab_ = {"cc_shift_in_seconds": "Time Shift (s)",
+                         "dlnA": "$\Delta\ln$(A)",
+                         "misfit": "Misfit",
+                         "length_s": "Window Length (s)",
+                         "max_cc_value": "Peak Cross Correlation",
+                         "relative_starttime": "Relative Start Time (s)",
+                         "relative_endtime": "Relative End Time (s)",
+                         }[choice]
             except KeyError:
                 xlab_ = choice
+
         plt.xlabel(xlab_, fontsize=fontsize)
         plt.ylabel("Count", fontsize=fontsize)
         plt.title(title, fontsize=fontsize)
@@ -685,32 +706,28 @@ class InspectorPlotter:
                       linewidth=0.1
                       )
 
-    def convergence(self, plot_windows="length_s", plot_discards=True,
-                    ignore_iterations=False, show=True, save=None,
-                    normalize=False, **kwargs):
+    def convergence(self, windows="length_s", trials=False, show=True,
+                    save=None, normalize=False, **kwargs):
         """
         Plot the convergence rate over the course of an inversion.
         Scatter plot of total misfit against iteration number, or by step count
 
-        :type plot_windows: str or bool
-        :param plot_windows: parameter to use for Inspector.measurements() to
+        :type windows: str or bool
+        :param windows: parameter to use for Inspector.measurements() to
             determine how to illustrate measurement number, either by
             length_s: cumulative window length in seconds
             nwin: number of misfit windows
             None: will not plot window information
-        :type plot_discards: bool
-        :param plot_discards: plot the discarded function evaluations from the
-            line searches. Useful for understanding how efficient the 
+        :type trials: bool
+        :param trials: plot the discarded trial step function evaluations from
+            the line searches. Useful for understanding how efficient the
             optimization algorithm as
-        :type ignore_iterations: list
-        :param ignore_iterations: a list of iterations to be ignored in the
-            plotting
+        :type normalize: bool
+        :param normalize: normalize the objective function values between [0, 1]
         :type show: bool
         :param show: show the plot after making it
         :type save: str
         :param save: file id to save the figure to
-        :type normalize: bool
-        :param normalize: normalize the objective function values between [0, 1]
         """
         f = kwargs.get("f", None)
         ax = kwargs.get("ax", None)
@@ -718,99 +735,105 @@ class InspectorPlotter:
         figsize = kwargs.get("figsize", (8, 6))
         legend = kwargs.get("legend", True)
         misfit_label = kwargs.get("misfit_label", "misfit")
-        discard_label = kwargs.get("discard_label", "discards")
+        trial_label = kwargs.get("trial_label", "trials")
         window_label = kwargs.get("window_label", "windows")
         misfit_color = kwargs.get("misfit_color", "k")
-        discard_color = kwargs.get("discard_color", "r")
+        trial_color = kwargs.get("trial_color", "r")
         window_color = kwargs.get("window_color", "orange")
 
-        if plot_windows:
-            assert (plot_windows in ["nwin", "length_s"]), \
+        if windows:
+            assert (windows in ["nwin", "length_s"]), \
                 "plot_windows must be: 'nwin; or 'length_s'"
 
-        # Get misfit information and window lengths together in a dataframe
-        df = self.misfit()
-        df = df.merge(self.nwin(), on=["iteration", "step"])
-        df.drop(["n_event", "summed_misfit"], axis=1, inplace=True)
-        iterations = df.index.get_level_values("iteration").unique().to_numpy()
+        # It may take a while to calculate models so do it once here
+        models = self.models
+        nwin = self.nwin()
 
+        # Set up the figure
         if f is None:
             f, ax = plt.subplots(figsize=figsize)
         if ax is None:
             ax = plt.gca()
 
-        # Get the actual iteration numbers based on step count
-        true_iterations = self.models
-        discard_iterations = self.get_models(discards=True)
+        # To collect line objects for legend
+        lines = []
 
-        ld, lines = None, []  # For legend lines
-        xvalues, xlabels, misfits, windows = [], [], [], []
-        for x, (iteration, iterstep) in enumerate(true_iterations.items()):
-            if ignore_iterations and iteration in ignore_iterations:
+        x = 0  # x is the x-position on the axis
+        xvals, yvals, xlabs = [], [], []
+        xdiscards, ydiscards, ywindows = [], [], []
+        for j in range(len(models)):
+            i = j - 1 and 0  # don't let 'i' go below 0
+
+            # Status 0 means initial evaluation
+            if models.status[j] == 0:
+                xlab = f"{models.model[j]}_0"
+
+                # Initial eval matches line search final, plot together
+                if models.misfit[i] == models.misfit[j]:
+                    pass
+                # If they differ, plot them as different points
+                else:
+                    x += 1
+            # Status 1 means final evaluation in line search, new X value
+            elif models.status[j] == 1:
+                x += 1
+                xlab = f"{models.model[j]}_1"
+            # Status 0 means discarded trial step, plot on the same X value
+            elif models.status[j] == -1:
+                xdiscards.append(x)
+                ydiscards.append(models.misfit[j])
                 continue
-            i, s = iterstep.split("/")
-            df_temp = df.loc[i, s]
 
-            if plot_windows:
-                misfit, window = df_temp.loc[["misfit",
-                                              plot_windows]].to_numpy()
-                windows.append(window)
-            else:
-                misfit = df_temp.loc["misfit"]
+            xvals.append(x)
+            yvals.append(models.misfit[j])
+            xlabs.append(xlab)
 
-            xvalues.append(x)
-            xlabels.append(iteration)
-            misfits.append(misfit)
-
-            # Plot all discarded misfits that were evaluated during line search
-            # Super hacky, needs to be reworked
-            if plot_discards:
-                discard_tag = f"m{x:0>2}_all"
-                if discard_tag in discard_iterations.keys():
-                    for is_ in discard_iterations[discard_tag]:
-                        i_, s_ = is_.split("/")
-                        misfit_ = df.loc[i_, s_].loc["misfit"]
-                        if misfit_ == misfit:
-                            continue
-                        ld = ax.plot(x, misfit_, 'X', markersize=10,
-                                     c=discard_color, label=discard_label,
-                                     zorder=6)
-
-        # Add single marker to legend
-        if ld:
-            lines += ld
+            # Get the corresponding window number based on iter/step count
+            i_ = models.iteration[j]
+            s_ = models.step_count[j]
+            ywindows.append(nwin.loc[i_].loc[s_][windows])
 
         # Normalize the values to make the starting misfit 1
         if normalize:
-            misfits = [_ / max(misfits) for _ in misfits]
+            yvals = [_ / max(yvals) for _ in yvals]
 
-        lines += ax.plot(xvalues, misfits, 'o-', linewidth=3, markersize=10,
-                         c=misfit_color, label=misfit_label, zorder=10)
+        # Plot the misfit values as a line
+        lines += ax.plot(xvals, yvals, "o-", linewidth=3, markersize=10,
+                         c=misfit_color, label=misfit_label, zorder=10
+                         )
 
+        # Plot number of windows/ window length in a separate axis
+        if windows:
+            ax2 = ax.twinx()
+            lines += ax2.plot(xvals, ywindows, "v:", linewidth=2, markersize=8,
+                              c=window_color, label=window_label, zorder=5
+                              )
+            ydict = {"length_s": "Cumulative Window Length [s]",
+                     "nwin": "Numer of Measurements"}
+            ax2.set_ylabel(f"{ydict[windows]} (dashed)", rotation=270,
+                           labelpad=15., fontsize=fontsize
+                           )
+            ax2.ticklabel_format(style="sci", axis="y", scilimits=(0, 0))
+
+        # Plot the discarded trial steps as x's
+        if trials:
+            sc = ax.scatter(xdiscards, ydiscards, c=trial_color,
+                            marker="x", s=10, zorder=9, label=trial_label
+                            )
+            lines.append(sc)
+
+        # Format the axes
         ax.set_xlabel("Model Number", fontsize=fontsize)
-        ax.xaxis.set_ticks(xvalues)
-        ax.set_xticklabels(xlabels, rotation=45, ha="right")
+        ax.xaxis.set_ticks(xvals)
+        ax.set_xticklabels(xlabs, rotation=45, ha="right")
         ax.set_ylabel("Total Normalized Misfit", fontsize=fontsize)
 
         # Only set ticks on the x-axis
         ax.xaxis.grid(True, which="minor", linestyle=":")
         ax.xaxis.grid(True, which="major", linestyle="-")
 
-        # Plot measurement number/ window length, useful if it was allowed
-        # to vary freely during the inversion, or changes at restarts
-        if windows:
-            ax2 = ax.twinx()
-            ydict = {"length_s": "Cumulative Window Length [s]",
-                     "nwin": "Numer of Measurements"}
-            lines += ax2.plot(xvalues, windows, 'v:', linewidth=2,
-                              markersize=8, c=window_color, label=window_label,
-                              zorder=5)
-            ax2.set_ylabel(f"{ydict[plot_windows]} (dashed)", rotation=270,
-                           labelpad=15., fontsize=fontsize)
-            ax2.ticklabel_format(style="sci", axis="y", scilimits=(0, 0))
-
         if legend:
-            labels = [l.get_label() for l in lines]
+            labels = [line.get_label() for line in lines]
             ax.legend(lines, labels, prop={"size": 12}, loc="upper right")
 
         f.tight_layout()
