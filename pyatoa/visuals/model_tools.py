@@ -5,6 +5,7 @@ import logging
 import numpy as np
 from numpy import array
 from mayavi import mlab
+import matplotlib as mpl
 from pyatoa.utils.calculate import myround
 
 
@@ -128,10 +129,16 @@ def colorscale(orientation, **kwargs):
                          label_fmt="%-#.2f", nb_labels=num_labels)
     cbar.lut_mode = cmap
     logger.debug(f"Creating colorbar with colormap: '{cmap}'")
-    cbar.reverse_lut = reverse
     if reverse:
+        cbar.reverse_lut = reverse
         logger.debug(f"Reversing colorscale")
     cbar.number_of_colors = num_colors
+
+    # Out of bounds colors !!! This doesnt work, porque no?
+    # cbar.lut.use_below_range_color = 1
+    # cbar.lut.above_range_color = array([-1., -1., -1., -1.,])
+    # cbar.lut.use_above_range_color = 1
+    # cbar.lut.below_range_color = array([1., 1., 1., 1.,])
 
     # Bound the colorscale
     logger.debug(f"Colorbar bounds currently set to: {cbar.data_range}")
