@@ -41,6 +41,10 @@ class Inspector(InspectorPlotter):
         self.tag = tag
         self.verbose = verbose
 
+        # Placeholder attributes for getters
+        self._models = None
+        self._srcrcv = None
+
         # Try to load an already created Inspector
         try:
             self.read(tag=self.tag)
@@ -110,6 +114,13 @@ class Inspector(InspectorPlotter):
             return []
 
     @property
+    def srcrcv(self):
+        """Return a dataframe with source-receiver information, dists and baz"""
+        if self._srcrcv is None:
+            self.get_srcrcv()
+        return self._srcrcv
+
+    @property
     def iterations(self):
         """Return an array of all iteration"""
         return self._try_print("iteration")
@@ -127,7 +138,9 @@ class Inspector(InspectorPlotter):
     @property
     def models(self):
         """Return a dict of model numbers related to a unique iteration/step"""
-        return self.get_models()
+        if self._models is None:
+            self.get_models()
+        return self._models
 
     @property
     def evaluations(self):
@@ -444,58 +457,6 @@ class Inspector(InspectorPlotter):
         self.sources = pd.DataFrame()
         self.receivers = pd.DataFrame()
 
-    def get_models(self):
-        """
-        Return a sorted list of misfits which correspond to accepted models,
-        label discards of the line search, and differentiate the final accepted
-        line search evaluation from the previous iteration and the initial
-        evaluation of the current iteration.
-
-        .. note::
-            Status is given as:
-            0 == initial function evaluation for the model;
-            1 == final function evaluation for the model;
-            -1 == discarded trial step from line search.
-
-        :rtype: pandas.core.data_frame.DataFrame
-        :return: a dataframe containing model numbers, their corresponding
-            iteration, step count and misfit value, and the status of the
-            function evaluation.
-        """
-        misfit = self.misfit()
-        models = {"model": [], "iteration": [], "step_count": [], "misfit": [],
-                  "status": []
-                  }
-
-        # Model lags iteration by 1
-        for m, iter_ in enumerate(self.iterations):
-            # First we collect misfit values for each step for reference
-            misfits_ = [float(misfit.loc[iter_].loc[_].misfit) for _ in
-                        self.steps[iter_]
-                        ]
-
-            # Then we loop through the steps and pick out the smallest misfit
-            for s, step in enumerate(self.steps[iter_]):
-                # Initial evaluation, accepted misfits
-                if step == "s00":
-                    model = m
-                    status = 0
-                # Line search, mix of discards and final misfit
-                else:
-                    model = m + 1
-                    if misfits_[s] == min(misfits_):
-                        status = 1
-                    else:
-                        status = -1
-
-                models["model"].append(f"m{model:0>2}")
-                models["misfit"].append(misfits_[s])
-                models["iteration"].append(iter_)
-                models["step_count"].append(step)
-                models["status"].append(status)
-
-        return pd.DataFrame(models)
-
     def isolate(self, iteration=None, step_count=None,  event=None, network=None,
                 station=None, channel=None, comp=None, keys=None, 
                 exclude=None, unique_key=None):
@@ -721,7 +682,59 @@ class Inspector(InspectorPlotter):
 
         return sources
 
-    def calculate_srcrcv(self):
+    def get_models(self):
+        """
+        Return a sorted list of misfits which correspond to accepted models,
+        label discards of the line search, and differentiate the final accepted
+        line search evaluation from the previous iteration and the initial
+        evaluation of the current iteration.
+
+        .. note::
+            Status is given as:
+            0 == initial function evaluation for the model;
+            1 == final function evaluation for the model;
+            -1 == discarded trial step from line search.
+
+        :rtype: pandas.core.data_frame.DataFrame
+        :return: a dataframe containing model numbers, their corresponding
+            iteration, step count and misfit value, and the status of the
+            function evaluation.
+        """
+        misfit = self.misfit()
+        models = {"model": [], "iteration": [], "step_count": [], "misfit": [],
+                  "status": []
+                  }
+
+        # Model lags iteration by 1
+        for m, iter_ in enumerate(self.iterations):
+            # First we collect misfit values for each step for reference
+            misfits_ = [float(misfit.loc[iter_].loc[_].misfit) for _ in
+                        self.steps[iter_]
+                        ]
+
+            # Then we loop through the steps and pick out the smallest misfit
+            for s, step in enumerate(self.steps[iter_]):
+                # Initial evaluation, accepted misfits
+                if step == "s00":
+                    model = m
+                    status = 0
+                # Line search, mix of discards and final misfit
+                else:
+                    model = m + 1
+                    if misfits_[s] == min(misfits_):
+                        status = 1
+                    else:
+                        status = -1
+
+                models["model"].append(f"m{model:0>2}")
+                models["misfit"].append(misfits_[s])
+                models["iteration"].append(iter_)
+                models["step_count"].append(step)
+                models["status"].append(status)
+
+        self._models = pd.DataFrame(models)
+
+    def get_srcrcv(self):
         """
         Retrieve information regarding source-receiver pairs including distance,
         backazimuth and theoretical traveltimes for a 1D Earth model.
@@ -756,7 +769,7 @@ class Inspector(InspectorPlotter):
                 srcrcv_dict["distance_km"].append(gcd * 1E-3)
                 srcrcv_dict["backazimuth"].append(baz)
 
-        return pd.DataFrame(srcrcv_dict)
+        self._srcrcv = pd.DataFrame(srcrcv_dict)
 
 
 
