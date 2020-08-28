@@ -7,6 +7,7 @@ and vertical cross sections which show depth slices of the model.
 Repeatedly used auxiliary functionality contained in model_tools
 """
 import os
+import time
 import numpy as np
 from numpy import array
 from mayavi import mlab
@@ -165,7 +166,10 @@ class VTKModeler:
         """
         assert self.fid, "File ID must be specified before generating figure"
 
-        mlab.close(all=True)
+        if self.fig is not None:
+            time.sleep(1)
+            mlab.close(self.fig)
+
         # Instantiate mlab
         self.fig = mlab.figure(size=self.figsize)
         self.engine = mlab.get_engine()

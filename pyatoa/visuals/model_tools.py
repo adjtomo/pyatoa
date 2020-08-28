@@ -5,7 +5,6 @@ import logging
 import numpy as np
 from numpy import array
 from mayavi import mlab
-import matplotlib as mpl
 from pyatoa.utils.calculate import myround
 
 

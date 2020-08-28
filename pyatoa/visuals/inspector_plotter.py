@@ -415,9 +415,11 @@ class InspectorPlotter:
 
         # If no arguments are given, default to first and last evaluations
         if iteration is None and iteration_comp is None:
-            models_ = list(self.models.values())
-            iteration, step_count = models_[0].split("/")
-            iteration_comp, step_count_comp = models_[-1].split("/")
+            models = self.models
+            iteration = models.iteration.iloc[0]
+            step_count = models.step_count.iloc[0]
+            iteration_comp = models.iteration.iloc[-1]
+            step_count_comp = models.step_count.iloc[-1]
 
         # Check that the provided values are available in the Inspector
         assert iteration in self.iterations, \
@@ -707,7 +709,8 @@ class InspectorPlotter:
                       )
 
     def convergence(self, windows="length_s", trials=False, show=True,
-                    save=None, normalize=False, **kwargs):
+                    save=None, normalize=False, misfit_tolerance=1E-4,
+                    **kwargs):
         """
         Plot the convergence rate over the course of an inversion.
         Scatter plot of total misfit against iteration number, or by step count
@@ -768,9 +771,12 @@ class InspectorPlotter:
             if models.status[j] == 0:
                 xlab = f"{models.model[j]}_0"
 
-                # Initial eval matches line search final, plot together
-                if models.misfit[i] == models.misfit[j]:
-                    pass
+                # If initial eval matches line search final, dont plot
+                # Because these are floats, they wont be exactly equal, so
+                # we need to set some small tolerance in which they can differ
+                if abs(models.misfit[i] - models.misfit[j]) > misfit_tolerance:
+                    continue
+
                 # If they differ, plot them as different points
                 else:
                     x += 1
