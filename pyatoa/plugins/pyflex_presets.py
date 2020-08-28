@@ -29,9 +29,10 @@ For variable descriptions see:
 """
 
 pyflex_presets = {
-    # Empty preset to just use the default Pyflex values
-    "default": {},
-    # example configuration from the Pyflex website, different from default
+    # Empty preset or 'default' will use default init values
+    "default": {
+    },
+    # Example configuration from the Pyflex website
     "example": {
         "stalta_waterlevel": 0.08,
         "tshift_acceptance_level": 15.0,
@@ -44,7 +45,7 @@ pyflex_presets = {
         "c_4a": 3.0,
         "c_4b": 10.0
     },
-    # from the UAF group doing local studies of Alaska
+    # From the UAF group doing regional studies of Alaska
     "alaska": {
         "stalta_waterlevel": 0.18,
         "tshift_acceptance_level": 4.0,
@@ -71,12 +72,10 @@ pyflex_presets = {
         "c_4a": 2.5,
         "c_4b": 12.0
     },
-    # nznorth: From the New Zealand group doing local studies of North Island
-    # For the 1D velocity model, windowing parameters need to be very loose to
-    # pick the large time shifts
+    # NZNORTH: From the New Zealand group doing regional North Island studies
     "nznorth_2-30s_loose": {
         "stalta_waterlevel": 0.10, 
-        "tshift_acceptance_level": 8.0,  # based on sign-flip
+        "tshift_acceptance_level": 8.0,
         "dlna_acceptance_level": 3.0,
         "cc_acceptance_level": 0.5,
         "s2n_limit": 3.,
@@ -88,6 +87,7 @@ pyflex_presets = {
         "c_4a": 2.5,
         "c_4b": 12.0
     },
+    # For the 1D velocity model of Ristau (2008)
     "nznorth_1D": {
         "stalta_waterlevel": 0.07, 
         "tshift_acceptance_level": 10.0,
@@ -105,7 +105,27 @@ pyflex_presets = {
         "c_4a": 2.5,
         "c_4b": 12.0
     },
-    # Additional Parameters 
+    # North Island study area, 15-30s bandpass, for very long period start
+    # !!! NOT YET TESTED, SIMPLY SCALED FROM 'nznorth_10-30s'
+    "nznorth_15-30s": {
+        "stalta_waterlevel": 0.2, 
+        "tshift_acceptance_level": 10.0, 
+        "dlna_acceptance_level": 2.5,
+        "cc_acceptance_level": 0.7,
+        "s2n_limit": 3.,
+        "max_time_before_first_arrival": 5.,
+        "min_surface_wave_velocity": 1.2, 
+        "check_global_data_quality": True,
+        "c_0": 0.5,
+        "c_1": 1.25, 
+        "c_3a": 3.0,
+        "c_3b": 2.0,
+        "c_4a": 2.5,
+        "c_4b": 12.0
+    },
+    # These are the parameters used in Chow et al. (2020)
+    # The 'plus' was used to differentiate from another set of incorrectly set
+    # parameters that is no longer here. These work well for the bandpass.
     "nznorth_10-30s_plus": {
         "stalta_waterlevel": 0.10, 
         "tshift_acceptance_level": 8.0,  # based on sign-flip
@@ -113,7 +133,7 @@ pyflex_presets = {
         "cc_acceptance_level": 0.7,
         "s2n_limit": 3.,
         "max_time_before_first_arrival": 5.,
-        "min_surface_wave_velocity": 1.2,  # Default is 3.0, chow et al.= 1.4
+        "min_surface_wave_velocity": 1.2,  # Default is 3.0, chow et al.==1.4
         "check_global_data_quality": True,  # Default is False
         "c_0": 0.7,
         "c_1": 2.0, 
@@ -122,52 +142,61 @@ pyflex_presets = {
         "c_4a": 2.5,
         "c_4b": 12.0
     },
-    # Parameters are based on bulk misfit assessment. Loosened version of SoCal
-    "nznorth_10-30s": {
+    # North Island study area, 8-30s bandpass
+    # !!! NOT YET TESTED, SIMPLY SCALED FROM 'nznorth_10-30s'
+    "nznorth_8-30s": {
         "stalta_waterlevel": 0.10, 
-        "tshift_acceptance_level": 8.0,  # based on sign-flip
-        "dlna_acceptance_level": 2.0,
+        "tshift_acceptance_level": 8.0,
+        "dlna_acceptance_level": 1.5,
         "cc_acceptance_level": 0.7,
         "s2n_limit": 3.,
         "max_time_before_first_arrival": 5.,
+        "tshift_reference": 2.,
+        "min_surface_wave_velocity": 1.1,
+        "check_global_data_quality": True,
         "c_0": 0.7,
-        "c_1": 2.0, 
-        "c_3a": 3.0,
+        "c_1": 2.5, 
+        "c_3a": 4.0,
         "c_3b": 2.0,
         "c_4a": 2.5,
         "c_4b": 12.0
     },
-    # North Island, 6-30s
+    # North Island study area, 6-30s bandpass
+    # !!! NOT YET TESTED, SIMPLY SCALED FROM 'nznorth_10-30s'
     "nznorth_6-30s": {
         "stalta_waterlevel": 0.08,
-        "tshift_acceptance_level": 8.0,  # based on sign-flip
+        "tshift_acceptance_level": 6.0,  
         "dlna_acceptance_level": 1.5,
-        "cc_acceptance_level": 0.6,
+        "cc_acceptance_level": 0.75,
         "s2n_limit": 3.,
-        "max_time_before_first_arrival": 0.,  # minimum starting before P-wave
-        "c_0": 0.7,
-        "c_1": 2.5,  # min_win_len = c_1 * min_period
-        "c_3a": 3.0,
+        "max_time_before_first_arrival": 5., 
+        "tshift_reference": 2.,
+        "min_surface_wave_velocity": 1.1,
+        "check_global_data_quality": True,
+        "c_0": 0.85,
+        "c_1": 3.0, 
+        "c_3a": 4.0,
         "c_3b": 2.0,
         "c_4a": 2.5,
         "c_4b": 12.0
     },
-    # North Island, 2-30s
-    "nznorth_2-30s": {
-        "stalta_waterlevel": 0.1,
-        "tshift_acceptance_level": 8.0,  # based on sign-flip
-        "dlna_acceptance_level": 2.,
-        "cc_acceptance_level": 0.7,
-        "s2n_limit": 3.,
+    # North Island study area, 3-30s bandpass
+    # !!! NOT YET TESTED, LOOSELY BASED ON 'socal_3-30s'
+    "nznorth_3-30s": {
+        "stalta_waterlevel": 0.07,
+        "tshift_acceptance_level": 3.0, 
+        "dlna_acceptance_level": 1.,
+        "cc_acceptance_level": 0.85,
+        "s2n_limit": 4.,
         "max_time_before_first_arrival": 5.,
-        "min_surface_wave_velocity": 1.4,  # Default is 3.0
-        "check_global_data_quality": True,  # Default is False
-        "c_0": 0.7,
-        "c_1": 5.,  # min_win_len = c_1 * min_period
-        "c_3a": 3.0,
-        "c_3b": 2.0,
-        "c_4a": 2.5,
-        "c_4b": 12.0
+        "min_surface_wave_velocity": 1.0,
+        "check_global_data_quality": True, 
+        "c_0": 1.0,
+        "c_1": 5.0, 
+        "c_3a": 4.0,
+        "c_3b": 2.5,
+        "c_4a": 2.,
+        "c_4b": 6.0
     },
     # Global scale from Maggi et al. 2009 Table 3 for 50s < T < 150s
     "global": {
