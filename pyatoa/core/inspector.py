@@ -336,8 +336,9 @@ class Inspector(InspectorPlotter):
 
     def append(self, dsfid, srcrcv=True, windows=True):
         """
-        Simple function to append information from new pyasdf.ASDFDataSet file
-        to the current set of internal statistics.
+        Simple function to parse information from a
+        pyasdf.asdf_data_setASDFDataSet file and append it to the currect
+        collection of information.
 
         :type dsfid: str
         :param dsfid: fid of the dataset
@@ -362,6 +363,56 @@ class Inspector(InspectorPlotter):
             if self.verbose:
                 print(f"error reading dataset: already open")
             return
+
+    def extend(self, windows):
+        """
+        Extend the current Inspector data frames with the windows from another
+        Inspector. This is useful for when an inversion has been run in legs, so
+        two individual inspectors constitute a single inversion.
+
+        .. note::
+            The current inspector is considered leg A, and the argument
+            'windows' is considered leg B. Leg B will have its iteration numbers
+            changed to reflect this
+
+        .. warning::
+            This will only work if all the events and stations are the same.
+            That is, only two identical inversion scenarios can be used.
+
+        :type windows: pandas.core.data_frame.DataFrame or list of DataFrames
+        :param windows: Windows from a separate inspector object that will be
+            used to extend the current Inspector. Can also be provided as a list
+            of DataFrames to extend multiple times.
+        """
+        def convert(val):
+            """Convenience function to convert between int and str repr"""
+            if isinstance(val, str):
+                return int(val[1:])
+            elif isinstance(val, int):
+                return f"i{val:0>2}"
+
+        # To allow for list arguments
+        if not isinstance(windows, list):
+            windows = [windows]
+
+        for win in windows:
+            # Ensure that inplace changes won't affect original data
+            windows_ext = win.copy()
+
+            # Determine the new B iteration values based on the
+            # final iteration of leg A
+            final_iter_a = self.iterations[-1]
+            for iter_ in windows_ext.iteration.unique():
+                shifted_iter = convert(convert(iter_) + convert(final_iter_a))
+                windows_ext.iteration.replace(iter_, shifted_iter, inplace=True)
+
+            self.windows = pd.concat([self.windows, windows_ext])
+
+        # Redo get models since iterations have changed
+        if self._models is not None:
+            self.get_models()
+
+        return self
 
     def save(self, path="./", fmt="csv", tag=None):
         """

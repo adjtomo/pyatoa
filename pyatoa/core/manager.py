@@ -268,7 +268,6 @@ class Manager:
         """
         self.__init__(ds=self.ds, event=self.event, config=self.config,
                       gatherer=self.gatherer)
-        self.check()
 
     def write(self, write_to="ds"):
         """
