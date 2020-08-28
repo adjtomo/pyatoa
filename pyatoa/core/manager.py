@@ -80,7 +80,7 @@ class Manager:
         """
         Initiate the Manager class with or without pre-defined attributes.
 
-        Note:
+        .. note::
             If `ds` is not given in data can only be gathered via the
             config.paths attribute or using the ObsPy client service.
             Data will also not be saved.
@@ -162,13 +162,13 @@ class Manager:
         self.stats = ManagerStats()
 
         # Run internal checks on data
-        self._check()
+        self.check()
 
     def __str__(self):
         """
         Print statement shows available data detailing workflow
         """
-        self._check()
+        self.check()
         return ("Manager Data\n"
                 f"    dataset   [ds]:        {self.stats.dataset_id}\n"
                 f"    quakeml   [event]:     {self.stats.event_id}\n"
@@ -205,7 +205,7 @@ class Manager:
         else:
             return None
 
-    def _check(self):
+    def check(self):
         """
         (Re)check the stats of the workflow and data within the Manager.
 
@@ -268,7 +268,7 @@ class Manager:
         """
         self.__init__(ds=self.ds, event=self.event, config=self.config,
                       gatherer=self.gatherer)
-        self._check()
+        self.check()
 
     def write(self, write_to="ds"):
         """
@@ -279,12 +279,11 @@ class Manager:
         :param write_to: choice to write data to, if "ds" writes to a
             pyasdf.asdf_data_set.ASDFDataSet
 
-        Options:
-            write_to == "ds"
-                If `gather` is skipped but data should still be saved into an
-                ASDFDataSet for data storage, this function will fill that
-                dataset in the same fashion as the Gatherer class
-            write_to == "/path/to/output"
+            * write_to == "ds":
+                If gather is skipped but data should still be saved into an
+                ASDFDataSet for data storage, this function will
+                fill that dataset in the same fashion as the Gatherer class
+            * write_to == "/path/to/output":
                 write out all the internal data of the manager to a path
         """
         if write_to == "ds":
@@ -350,7 +349,6 @@ class Manager:
             logger.info(f"loading config from dataset {path}")
             self.config = Config(ds=ds, path=path)
 
-
         assert(self.config is not None), "Config object required for load"
         assert len(code.split('.')) == 2, "'code' must be in form 'NN.SSS'"
 
@@ -368,7 +366,7 @@ class Manager:
         else:
             logger.warning(f"no data for {sta_tag} found in dataset")
 
-        self._check()
+        self.check()
         return self
 
     def flow(self, **kwargs):
@@ -399,7 +397,7 @@ class Manager:
         Gather station dataless and waveform data using the Gatherer class.
         In order collect observed waveforms, dataless, and finally synthetics.
 
-        If any part of gathering fails, raise ManagerError
+        For valid kwargs see methods in :doc:`core.gatherer`
 
         :type code: str
         :param code: Station code following SEED naming convention.
@@ -414,46 +412,45 @@ class Manager:
         :param origintime: an optional origintime if the Manager does not have
             an Event object. Will not overwrite the event origintime if an event
             attribute is present.
+        :raises ManagerError: if any part of the gathering fails.
 
-        Keyword Arguments:
-            :type try_fm: bool
-            :param try_fm: Try to retrieve and append focal mechanism
-                information to the Event object.
-            :type station_level: str
-            :param station_level: The level of the station metadata if retrieved
-                using the ObsPy Client. Defaults to 'response'
-            :type resp_dir_template: str
-            :param resp_dir_template: Directory structure template to search
-                for response files. By default follows the SEED convention,
+        Keyword Arguments
+        ::
+            bool try_fm:
+                Try to retrieve and append focal mechanism information to the
+                Event object.
+            str station_level:
+                The level of the station metadata if retrieved using the ObsPy
+                Client. Defaults to 'response'
+            str resp_dir_template:
+                Directory structure template to search for response files.
+                By default follows the SEED convention:
                 'path/to/RESPONSE/{sta}.{net}/'
-            :type resp_fid_template: str
-            :param resp_fid_template: Response file naming template to search
-                for station dataless. By default, follows the SEED convention
+            str resp_fid_template:
+                Response file naming template to search for station dataless.
+                By default, follows the SEED convention
                 'RESP.{net}.{sta}.{loc}.{cha}'
-            :type obs_dir_template: str
-            :param obs_dir_template:  directory structure to search for
-                observation data. Follows the SEED convention.
-                'path/to/obs_data/{year}/{net}/{sta}/{cha}'
-            :type obs_fid_template: str
-            :param obs_fid_template: File naming template to search for
-                observation data. Follows the SEED convention.
-                '{net}.{sta}.{loc}.{cha}*{year}.{jday:0>3}'
-            :type syn_pathname: str
-            :param syn_pathname: Config.cfgpaths key to search for synthetic
-                data. Defaults to 'synthetics', but for the may need to be set
-                to 'waveforms' in certain use-cases.
-            :type syn_unit: str
-            :param syn_unit: Optional argument to specify the letter used
-                to identify the units of the synthetic data:
-                For Specfem3D: ["d", "v", "a", "?"]
+            str obs_dir_template:
+                directory structure to search for observation data. Follows the
+                SEED convention: 'path/to/obs_data/{year}/{net}/{sta}/{cha}'
+            str obs_fid_template:
+                File naming template to search for observation data. Follows the
+                SEED convention: '{net}.{sta}.{loc}.{cha}*{year}.{jday:0>3}'
+            str syn_pathname:
+                Config.cfgpaths key to search for synthetic data. Defaults to
+                'synthetics', but for the may need to be set to 'waveforms' in
+                certain use-cases.
+            str syn_unit:
+                Optional argument to specify the letter used to identify the
+                units of the synthetic data: For Specfem3D: ["d", "v", "a", "?"]
                 'd' for displacement, 'v' for velocity,  'a' for acceleration.
                 Wildcards okay. Defaults to '?'
-            :type syn_dir_template: str
-            :param syn_dir_template: Directory structure template to search
-                for synthetic waveforms. Defaults to empty string
-            :type syn_fid_template: str
-            :param syn_fid_template: The naming template of synthetic waveforms
-                defaults to "{net}.{sta}.*{cmp}.sem{syn_unit}"
+            str syn_dir_template:
+                Directory structure template to search for synthetic waveforms.
+                Defaults to empty string
+            str syn_fid_template:
+                The naming template of synthetic waveforms defaults to:
+                "{net}.{sta}.*{cmp}.sem{syn_unit}"
         """
         try_fm = kwargs.get("try_fm", True)
 
@@ -501,7 +498,7 @@ class Manager:
             because exports to Specfem should be controlled by the Synthetic
             sampling rate, npts, etc.
         """
-        self._check()
+        self.check()
         if not self.stats.len_obs or not self.stats.len_syn:
             raise ManagerError("cannot standardize, not enough waveform data")
         elif self.stats.standardized and not force:
@@ -547,13 +544,17 @@ class Manager:
 
     def preprocess(self, which="both", overwrite=None, **kwargs):
         """
-        Preprocessing of observed and synthetic data in place.
+        Preprocess observed and synthetic waveforms in place.
+        Default preprocessing tasks: Remove response (observed), rotate, filter,
+        convolve with source time function (synthetic).
 
-        Remove response (observed), rotate, filter, convolve with source time
-        functin (synthetic).
+        .. note::
+            Default preprocessing can be overwritten using a
+            user-defined function that takes Manager and choice as inputs
+            and outputs an ObsPy Stream object.
 
-        Can be overwritten by a User defined function that takes the Manager
-        as an input variable.
+        .. note::
+            Documented kwargs only apply to default preprocessing.
 
         :type which: str
         :param which: "obs", "syn" or "both" to choose which stream to process
@@ -564,20 +565,21 @@ class Manager:
             to the standard preprocessing function will be passed as kwargs to
             the new function. This allows for customized preprocessing
 
-        default_process() Keyword Arguments:
-            :type water_level: int
-            :param water_level: water level for response removal
-            :type taper_percentage: float
-            :param taper_percentage: amount to taper ends of waveform
-            :type remove_response: bool
-            :param remove_response: remove instrument response using the
-                Manager's inventory object. Defaults to True
-            :type apply_filter: bool
-            :param apply_filter: filter the waveforms using the Config's
-                min_period and max_period parameters. Defaults to True
-            :type convolve_with_stf: bool
-            :param convolve_with_stf: Convolve synthetic data with a Gaussian
-                source time function if a half duration is provided.
+        Keyword Arguments
+        ::
+            int water_level:
+                water level for response removal
+            float taper_percentage:
+                amount to taper ends of waveform
+            bool remove_response:
+                remove instrument response using the Manager's inventory object.
+                Defaults to True
+            bool apply_filter:
+                filter the waveforms using the Config's min_period and
+                max_period parameters. Defaults to True
+            bool convolve_with_stf:
+                Convolve synthetic data with a Gaussian source time function if
+                a half duration is provided.
         """
         if not self.inv and not self.config.synthetics_only:
             raise ManagerError("cannot preprocess, no inventory")
@@ -621,10 +623,10 @@ class Manager:
         Evaluate misfit windows using Pyflex. Save windows to ASDFDataSet.
         Allows previously defined windows to be retrieved from ASDFDataSet.
 
-        Note:
-            -Windows are stored as dictionaries of pyflex.Window objects.
-            -All windows are saved into the ASDFDataSet, even if retrieved.
-            -STA/LTA information is collected and stored internally.
+        .. note::
+            * Windows are stored as dictionaries of pyflex.Window objects.
+            * All windows are saved into the ASDFDataSet, even if retrieved.
+            * STA/LTA information is collected and stored internally.
 
         :type fix_windows: bool
         :param fix_windows: do not pick new windows, but load windows from the
@@ -644,7 +646,7 @@ class Manager:
         :param save: save the gathered windows to an ASDF Dataset
         """
         # Pre-check to see if data has already been standardized
-        self._check()
+        self.check()
 
         if not self.stats.standardized and not force:
             raise ManagerError("cannot window, waveforms not standardized")
@@ -797,7 +799,7 @@ class Manager:
         Returns a dictionary of adjoint sources based on component.
         Saves resultant dictionary to a pyasdf dataset if given.
 
-        Note:
+        .. note::
             Pyadjoint returns an unscaled misfit value for an entire set of
             windows. To return a "total misfit" value as defined by 
             Tape (2010) Eq. 6, the total summed misfit will need to be scaled by 
@@ -809,7 +811,7 @@ class Manager:
         :type save: bool
         :param save: save adjoint sources to ASDFDataSet
         """
-        self._check()
+        self.check()
 
         # Check that data has been filtered and standardized
         if not self.stats.standardized and not force:
@@ -852,7 +854,7 @@ class Manager:
             self.save_adjsrcs()
 
         # Run check to get total misfit
-        self._check()
+        self.check()
         logger.info(f"total misfit {self.stats.misfit:.3f}")
 
         return self
@@ -898,11 +900,11 @@ class Manager:
 
     def _format_windows(self):
         """
-        In `pyadjoint.calculate_adjoint_source`, the window needs to be a list 
-        of lists, with each list containing the [left_window, right_window]; 
-        each window argument should be given in units of time (seconds). 
-
-        This is not in the PyAdjoint docs
+        .. note::
+            In `pyadjoint.calculate_adjoint_source`, the window needs to be a
+            list of lists, with each list containing the
+            [left_window, right_window]; each window argument should be given in
+            units of time (seconds). This is not in the PyAdjoint docs.
 
         :rtype: dict of list of lists
         :return: dictionary with key related to individual components,
@@ -935,7 +937,8 @@ class Manager:
         source receiver map which contains annotated information detailing
         src-rcv relationship like distance and BAz. Options to plot either or.
 
-        For valid key word arguments see ManagerPlotter and MapMaker
+        For valid key word arguments see :docs:`visuals.manager_plotter` and
+        :docs:`visuals.map_maker`
 
         :type show: bool
         :param show: show the plot once generated, defaults to False
@@ -945,11 +948,11 @@ class Manager:
             corners to cut the map to, otherwise a global map is provided
         :type choice: str
         :param choice: choice for what to plot:
-            'wav': plot waveform figure only
-            'map': plot a source-receiver map only
-            'both' (default): plot waveform and source-receiver map together
+            * 'wav': plot waveform figure only
+            * 'map': plot a source-receiver map only
+            * 'both' (default): plot waveform and source-receiver map together
         """
-        self._check()
+        self.check()
         # Precheck for correct data to plot
         if choice in ["wav", "both"] and not self.stats.standardized:
             raise ManagerError("cannot plot, waveforms not standardized")

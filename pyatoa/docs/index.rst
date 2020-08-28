@@ -30,9 +30,7 @@ packages.
 Source code
 ~~~~~~~~~~~
 
-| Can be found in its GitHub repository https://github.com/bch0w/pyatoa
-| The ``devel`` branch contains the latest changes and is typically
-  ahead of ``master``.
+| ``Pyatoa`` can be found on GitHub: https://github.com/bch0w/pyatoa
 
 --------------
 
@@ -47,7 +45,7 @@ Install is currently done through cloning the Github repository.
    $ cd pyatoa
    $ python setup.py install
 
-Package manager installation coming soon.
+Package manager installation coming soon!
 
 .. toctree::
    :maxdepth: 3
@@ -61,4 +59,5 @@ Package manager installation coming soon.
    inspector
    utilities
    logging
-   modules/core.manager
+   pyatoa_api
+   

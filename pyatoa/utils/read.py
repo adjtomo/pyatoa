@@ -34,7 +34,7 @@ def read_fortran_binary(path):
             return data
 
 
-def read_sem(path, origintime=None, location=''):
+def read_sem(path, origintime=None, location='', precision=4):
     """
     Specfem3D outputs seismograms to ASCII (.sem?) files
 
@@ -88,8 +88,8 @@ def read_sem(path, origintime=None, location=''):
         print("No origintime given, setting to default 1970-01-01T00:00:00")
         origintime = UTCDateTime("1970-01-01T00:00:00")
 
-    # We assume that dt is constant after 3 decimal points
-    delta = round(times[1] - times[0], 3)
+    # We assume that dt is constant after 'precision' decimal points
+    delta = round(times[1] - times[0], precision)
 
     # Honor that Specfem doesn't start exactly on 0
     origintime += times[0]

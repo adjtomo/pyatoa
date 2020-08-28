@@ -19,16 +19,15 @@ class Inspector(InspectorPlotter):
     """
     This plugin object will collect information from a Pyatoa run folder and
     allow the User to easily understand statistical information or generate
-    statistical plots to help understand a seismic inversion
+    statistical plots to help understand a seismic inversion.
 
     Inherits plotting capabilities from InspectorPlotter class to reduce clutter
     """
 
     def __init__(self, tag="default", verbose=True):
         """
-        Inspector only requires the path to the datasets, it will then read in
-        all the datasets and store the data internally. This is a long process
-        but should only need to be performed once.
+        Inspector will automatically search for relevant file names using the
+        tag attribute. If nothing is found, internal dataframes will be empty.
 
         :type tag: str
         :param tag: tag of a previously saved workflow to be used for reading
@@ -166,7 +165,7 @@ class Inspector(InspectorPlotter):
 
         :type ds: pyasdf.ASDFDataSet
         :param ds: dataset to query for distances
-        :rtype source: pandas.DataFrame
+        :rtype source: pandas.core.frame.DataFrame
         :return source: single row Dataframe containing event info from dataset
         :rtype receivers: multiindexed dataframe containing unique station info
         """
@@ -301,8 +300,8 @@ class Inspector(InspectorPlotter):
         appending them to the internal structure as necessary.
 
         :type path: str
-        :param path: path to the ASDFDataSets that were outputted
-            by Pyaflowa in the Seisflows workflow
+        :param path: path to the pyasdf.asdf_data_set.ASDFDataSets that were
+            outputted by the Seisflows workflow
         """
         dsfids = glob(os.path.join(path, "*.h5"))
         for i, dsfid in enumerate(dsfids):
@@ -355,7 +354,8 @@ class Inspector(InspectorPlotter):
         """
         Save the downloaded attributes into JSON files for easier re-loading.
 
-        fmt == 'hdf' requires 'pytables'
+        .. note::
+            fmt == 'hdf' requires 'pytables' to be installed in the environment
 
         :type tag: str
         :param tag: tag to use to save files, defaults to the class tag
@@ -506,8 +506,8 @@ class Inspector(InspectorPlotter):
                 station=None, channel=None, comp=None, keys=None, 
                 exclude=None, unique_key=None):
         """
-        Returns a new dataframe that is grouped by a given index
-        if variable is None, defaults to returning all available values
+        Returns a new dataframe that is grouped by a given index if variable is
+        None, defaults to returning all available values
 
         :type event: str
         :param event: event id e.g. '2018p130600' (optional
@@ -570,7 +570,8 @@ class Inspector(InspectorPlotter):
         Find the cumulative length of misfit windows for a given iter/step,
         or the number of misfit windows for a given iter/step.
 
-        Neat trick to select just by station:
+        .. note::
+            Neat trick to select just by station:
             insp.windows(level='station').query("station == 'BFZ'")
 
         :type level: str
@@ -597,17 +598,18 @@ class Inspector(InspectorPlotter):
         windows.sort_values(group_list, inplace=True)
 
         group = windows.groupby(group_list[:-1]).length_s
-        return pd.concat([group.apply(len).rename("n_win"), group.sum()],
+        return pd.concat([group.apply(len).rename("nwin"), group.sum()],
                          axis=1)
 
-    def misfits(self, level="step"):
+    def misfit(self, level="step"):
         """
         Sum the total misfit for a given iteration based on the individual
         misfits for each misfit window, and the number of sources used.
 
-        To get per-station misfit on a per-step basis
-            df = insp.misfits(level="station").query("station == 'TOZ'")
-            df.groupby(['iteration', 'step']).sum()
+        .. note::
+            To get per-station misfit on a per-step basis
+                df = insp.misfits(level="station").query("station == 'TOZ'")
+                df.groupby(['iteration', 'step']).sum()
 
         :type level: str
         :param level:  Default is 'step'
@@ -624,7 +626,7 @@ class Inspector(InspectorPlotter):
 
         # Count the number of windows on a per station basis
         nwin = misfits.groupby(
-                group_list[:-1]).misfit.apply(len).rename("n_win")
+                group_list[:-1]).misfit.apply(len).rename("nwin")
 
         # Misfit is unique per component, not window, drop repeat components
         misfits.drop_duplicates(subset=group_list[:-1], keep="first", 
@@ -640,14 +642,14 @@ class Inspector(InspectorPlotter):
         # misfit for a given station, divided by number of windows
         if level == "station":
             df["misfit"] = df.apply(
-                lambda row: row.unscaled_misfit / row.n_win, axis=1
+                lambda row: row.unscaled_misfit / row.nwin, axis=1
             )
         # Event misfit function defined by Tape et al. (2010) Eq. 6
         elif level in ["event", "step"]:
             # Group misfits to the event level and sum together windows, misfit
             df = df.groupby(group_list[:3]).sum() 
             df["misfit"] = df.apply(
-                lambda row: row.unscaled_misfit / (2 * row.n_win), axis=1
+                lambda row: row.unscaled_misfit / (2 * row.nwin), axis=1
             )
             if level == "step":
                 # Sum the event misfits if step-wise misfit is requested
@@ -673,7 +675,6 @@ class Inspector(InspectorPlotter):
         """
         Go through misfits and windows and remove events that fall outside
         a certain bounding box. Return sources that fall within the box.
-
         Bounds are inclusive of given values.
 
         :type lat_min: float
@@ -731,7 +732,9 @@ class Inspector(InspectorPlotter):
         Retrieve information regarding source-receiver pairs including distance,
         backazimuth and theoretical traveltimes for a 1D Earth model.
 
-        Return a DataFrame that can be used as a lookup table.
+        :rtype: pandas.core.frame.DataFrame
+        :return: separate dataframe with distance and backazimuth columns, that
+            may be used as a lookup table
         """
         if self.sources.empty or self.receivers.empty:
             return []

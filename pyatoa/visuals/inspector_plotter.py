@@ -168,7 +168,7 @@ class InspectorPlotter:
 
         f, ax = plt.subplots(figsize=(8, 8))
 
-        df = self.misfits(level="station").loc[iteration, step_count]
+        df = self.misfit(level="station").loc[iteration, step_count]
 
         # Get lat/lon information from sources and receivers
         stations = self.receivers.droplevel(0)  # remove network index
@@ -221,7 +221,7 @@ class InspectorPlotter:
         :param save: fid to save the given figure
         """
         arr = self.nwin(
-            level=choice).loc[iteration, step_count].n_win.to_numpy()
+            level=choice).loc[iteration, step_count].nwin.to_numpy()
 
         n, bins, patches = plt.hist(x=arr, color="orange", histtype="bar",
                                     edgecolor="black", linewidth=4.,
@@ -245,7 +245,7 @@ class InspectorPlotter:
                            show=True, save=False, **kwargs):
         """
         Plot a single station and all events that it has measurements for.
-        Events will be colored by choice of value: misfit or n_win (num windows)
+        Events will be colored by choice of value: misfit or nwin (num windows)
 
         :type station: str
         :param station: specific station to use for map
@@ -254,7 +254,7 @@ class InspectorPlotter:
         :type step_count: str
         :param step_count: step count e.g. 's00'
         :type choice: str
-        :param choice: choice of misfit value, either 'misfit' or 'n_win'
+        :param choice: choice of misfit value, either 'misfit' or 'nwin'
         :type show: bool
         :param show: Show the plot
         :type save: str
@@ -266,7 +266,7 @@ class InspectorPlotter:
         sta = self.receivers.droplevel(0).loc[station]
 
         # Get misfit on a per-station basis 
-        df = self.misfits(level="station").loc[
+        df = self.misfit(level="station").loc[
             iteration, step_count].swaplevel(0, 1)
         df = df.sort_values(by="station").loc[station]
 
@@ -304,7 +304,7 @@ class InspectorPlotter:
                          save=False, **kwargs):
         """
         Plot a single event and all stations with measurements. Stations are
-        colored by choice of value: misfit or n_win (number of windows)
+        colored by choice of value: misfit or nwin (number of windows)
 
         :type event: str
         :param event: specific event to use for map
@@ -313,7 +313,7 @@ class InspectorPlotter:
         :type step_count: str
         :param step_count: step count e.g. 's00'
         :type choice: str
-        :param choice: choice of misfit value, either 'misfit' or 'n_win'
+        :param choice: choice of misfit value, either 'misfit' or 'nwin'
         :type show: bool
         :param show: Show the plot
         :type save: str
@@ -328,7 +328,7 @@ class InspectorPlotter:
                           edgecolors="k", s=20, zorder=100)
 
         # Go through each of the stations corresponding to this source
-        df = self.misfits(level="station").loc[iteration, step_count, event]
+        df = self.misfit(level="station").loc[iteration, step_count, event]
         assert (choice in df.columns), f"choice must be in {df.columns}"
 
         # Get lat lon values for receivers
@@ -696,7 +696,7 @@ class InspectorPlotter:
         :param plot_windows: parameter to use for Inspector.measurements() to
             determine how to illustrate measurement number, either by
             length_s: cumulative window length in seconds
-            n_win: number of misfit windows
+            nwin: number of misfit windows
             None: will not plot window information
         :type plot_discards: bool
         :param plot_discards: plot the discarded function evaluations from the
@@ -725,11 +725,11 @@ class InspectorPlotter:
         window_color = kwargs.get("window_color", "orange")
 
         if plot_windows:
-            assert (plot_windows in ["n_win", "length_s"]), \
-                "plot_windows must be: 'n_win; or 'length_s'"
+            assert (plot_windows in ["nwin", "length_s"]), \
+                "plot_windows must be: 'nwin; or 'length_s'"
 
         # Get misfit information and window lengths together in a dataframe
-        df = self.misfits()
+        df = self.misfit()
         df = df.merge(self.nwin(), on=["iteration", "step"])
         df.drop(["n_event", "summed_misfit"], axis=1, inplace=True)
         iterations = df.index.get_level_values("iteration").unique().to_numpy()
@@ -740,8 +740,8 @@ class InspectorPlotter:
             ax = plt.gca()
 
         # Get the actual iteration numbers based on step count
-        true_iterations = self.sort_steps()
-        discard_iterations = self.sort_steps(discards=True)
+        true_iterations = self.models
+        discard_iterations = self.get_models(discards=True)
 
         ld, lines = None, []  # For legend lines
         xvalues, xlabels, misfits, windows = [], [], [], []
@@ -765,8 +765,9 @@ class InspectorPlotter:
             # Plot all discarded misfits that were evaluated during line search
             # Super hacky, needs to be reworked
             if plot_discards:
-                if f"i{x:0>2}_all" in discard_iterations.keys():
-                    for is_ in discard_iterations[f"i{x:0>2}_all"]:
+                discard_tag = f"m{x:0>2}_all"
+                if discard_tag in discard_iterations.keys():
+                    for is_ in discard_iterations[discard_tag]:
                         i_, s_ = is_.split("/")
                         misfit_ = df.loc[i_, s_].loc["misfit"]
                         if misfit_ == misfit:
@@ -800,7 +801,7 @@ class InspectorPlotter:
         if windows:
             ax2 = ax.twinx()
             ydict = {"length_s": "Cumulative Window Length [s]",
-                     "n_win": "Numer of Measurements"}
+                     "nwin": "Numer of Measurements"}
             lines += ax2.plot(xvalues, windows, 'v:', linewidth=2,
                               markersize=8, c=window_color, label=window_label,
                               zorder=5)
