@@ -115,7 +115,7 @@ pyflex_presets = {
         "s2n_limit": 3.,
         "max_time_before_first_arrival": 5.,
         "min_surface_wave_velocity": 1.2, 
-        "check_global_data_quality": True
+        "check_global_data_quality": True,
         "c_0": 0.5,
         "c_1": 1.25, 
         "c_3a": 3.0,
