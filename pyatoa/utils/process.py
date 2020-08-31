@@ -21,23 +21,24 @@ def default_process(mgmt, choice, **kwargs):
     :type choice: str
     :param choice: option to preprocess observed, synthetic or both
         available: 'obs', 'syn'
+    :rtype: obspy.core.stream.Stream
+    :return: preprocessed stream object pertaining to `choice`
 
-    Keyword Arguments:
-        :type water_level: int
-        :param water_level: water level for response removal
-        :type taper_percentage: float
-        :param taper_percentage: amount to taper ends of waveform
-        :type remove_response: bool
-        :param remove_response: remove instrument response using the Manager's
-            inventory object. Defaults to True
-        :type apply_filter: bool
-        :param apply_filter: filter the waveforms using the Config's min_period and
-            max_period parameters. Defaults to True
-        :type convolve_with_stf: bool
-        :param convolve_with_stf: Convolve synthetic data with a Gaussian
-            source time function if a half duration is provided.
-        :rtype: obspy.core.stream.Stream
-        :return: preprocessed stream object pertaining to `choice`
+    Keyword Arguments
+        ::
+        int water_level:
+            water level for response removal
+        float taper_percentage:
+            amount to taper ends of waveform
+        bool remove_response:
+            remove instrument response using the Manager's inventory object.
+            Defaults to True
+        bool apply_filter:
+            filter the waveforms using the Config's min_period and max_period
+            parameters. Defaults to True
+        bool convolve_with_stf:
+            Convolve synthetic data with a Gaussian source time function if a
+            half duration is provided.
     """
     assert choice in ["obs", "syn"], "choice must be 'obs' or 'syn"
 
