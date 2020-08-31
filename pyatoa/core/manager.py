@@ -15,7 +15,7 @@ from pyatoa.core.config import Config
 from pyatoa.core.gatherer import Gatherer, GathererNoDataException
 from pyatoa.utils.form import channel_code
 from pyatoa.utils.process import is_preprocessed
-from pyatoa.utils.asdf.load import load_windows
+from pyatoa.utils.asdf.load import load_windows, load_adjsrcs
 from pyatoa.utils.window import reject_on_global_amplitude_ratio
 from pyatoa.utils.srcrcv import gcd_and_baz
 from pyatoa.utils.asdf.add import add_misfit_windows, add_adjoint_sources
@@ -254,7 +254,7 @@ class Manager:
                 pass
 
         # Count how many misfit windows are contained in the dataset
-        if self.stats.nwin is None and self.windows is not None:
+        if self.stats.nwin == 0 and self.windows is not None:
             self.stats.nwin = sum([len(_) for _ in self.windows.values()])
 
         # Determine the unscaled misfit
@@ -312,12 +312,17 @@ class Manager:
             raise NotImplementedError
 
     def load(self, code, path=None, ds=None, synthetic_tag=None,
-             observed_tag=None, load_config=True, load_windows=False,
-             load_adjsrcs=False):
+             observed_tag=None, config=True, windows=False,
+             adjsrcs=False):
         """
         Populate the manager using a previously populated ASDFDataSet.
         Useful for re-instantiating an existing workflow that has already 
         gathered data and saved it to an ASDFDataSet.
+
+        .. warning::
+            Loading any floating point values may result in rounding errors.
+            Be careful to round off floating points to the correct place before
+            using in future work.
 
         :type code: str
         :param code: SEED conv. code, e.g. NZ.BFZ.10.HHZ
@@ -329,13 +334,17 @@ class Manager:
         :param ds: dataset can be given to load from, will not set the ds
         :type synthetic_tag: str
         :param synthetic_tag: waveform tag of the synthetic data in the dataset
-            e.g. 'synthetic_m00s00'
+            e.g. 'synthetic_m00s00'. If None given, will use `config` attribute.
         :type observed_tag: str
         :param observed_tag: waveform tag of the observed data in the dataset
-            e.g. 'observed'
-        :type load_config: bool
-        :param load_config: load config from the dataset, defaults to True but 
+            e.g. 'observed'. If None given, will use `config` attribute.
+        :type config: bool
+        :param config: load config from the dataset, defaults to True but
             can be set False if Config should be instantiated by the User
+        :type windows: bool
+        :param windows: load misfit windows from the dataset, defaults to False
+        :type adjsrcs: bool
+        :param adjsrcs: load adjoint sources from the dataset, defaults to False
         """
         # Allows a ds to be provided outside the attribute
         if self.ds and ds is None:
@@ -343,15 +352,21 @@ class Manager:
         else:
             raise TypeError("load requires a Dataset")
 
-        # If no Config object in Manager, load from dataset 
-        if load_config:
+        # If no Config object in Manager, try to load from dataset
+        if config:
             if path is None:
                 raise TypeError("load requires valid 'path' argument")
             logger.info(f"loading config from dataset {path}")
-            self.config = Config(ds=ds, path=path)
+            try:
+                self.config = Config(ds=ds, path=path)
+            except AttributeError:
+                logger.warning(f"No Config object in dataset for path {path}")
 
         assert(self.config is not None), "Config object required for load"
         assert len(code.split('.')) == 2, "'code' must be in form 'NN.SSS'"
+        if windows or adjsrcs:
+            assert(path is not None), "'path' required to load auxiliary data"
+            iter_, step = path.split("/")
 
         # Reset and populate using the dataset
         self.__init__(config=self.config, ds=ds, event=ds.events[0])
@@ -363,8 +378,10 @@ class Manager:
                                                 self.config.synthetic_tag]
             self.st_obs = ds.waveforms[sta_tag][observed_tag or
                                                 self.config.observed_tag]
-            if load_windows:
-
+            if windows:
+                self.windows = load_windows(ds, net, sta, iter_, step, False)
+            if adjsrcs:
+                self.adjsrcs = load_adjsrcs(ds, net, sta, iter_, step)
         else:
             logger.warning(f"no data for {sta_tag} found in dataset")
 
@@ -394,7 +411,7 @@ class Manager:
                     step_count=step_count, force=force, save=save)
         self.measure(force=force, save=save)
 
-    def gather(self, code=None, choice=None, origintime=None, **kwargs):
+    def gather(self, code=None, choice=None, **kwargs):
         """
         Gather station dataless and waveform data using the Gatherer class.
         In order collect observed waveforms, dataless, and finally synthetics.
@@ -410,10 +427,6 @@ class Manager:
         :type choice: list
         :param choice: allows user to gather individual bits of data, rather
             than gathering all. Allowed: 'inv', 'st_obs', 'st_syn'
-        :type origintime: obspy.UTCDateTime
-        :param origintime: an optional origintime if the Manager does not have
-            an Event object. Will not overwrite the event origintime if an event
-            attribute is present.
         :raises ManagerError: if any part of the gathering fails.
 
         Keyword Arguments

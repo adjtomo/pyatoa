@@ -298,7 +298,7 @@ class Inspector(InspectorPlotter):
 
                         # This misfit value will be the same for mult windows
                         window["misfit"].append(adjoint_sources[iter_][step][
-                            adj_tag].parameters["misfit_value"])
+                            adj_tag].parameters["misfit"])
                     except IndexError:
                         if self.verbose:
                             print(f"No matching adjoint source for {cha_id}")
