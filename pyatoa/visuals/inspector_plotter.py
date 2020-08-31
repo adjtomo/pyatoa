@@ -415,11 +415,8 @@ class InspectorPlotter:
 
         # If no arguments are given, default to first and last evaluations
         if iteration is None and iteration_comp is None:
-            models = self.models
-            iteration = models.iteration.iloc[0]
-            step_count = models.step_count.iloc[0]
-            iteration_comp = models.iteration.iloc[-1]
-            step_count_comp = models.step_count.iloc[-1]
+            iteration, step_count = self.initial_model
+            iteration_comp, step_count_comp = self.final_model
 
         # Check that the provided values are available in the Inspector
         assert iteration in self.iterations, \
@@ -709,11 +706,15 @@ class InspectorPlotter:
                       )
 
     def convergence(self, windows="length_s", trials=False, show=True,
-                    save=None, normalize=False, misfit_tolerance=1E-4,
-                    **kwargs):
+                    save=None, normalize=False, misfit_tolerance=1E-3,
+                    annotate=False, legs=None, **kwargs):
         """
         Plot the convergence rate over the course of an inversion.
         Scatter plot of total misfit against iteration number, or by step count
+
+        .. note:: 
+            Because misfits are floats, they wont be exactly equal, so we need 
+            to set some small tolerance in which they can differ
 
         :type windows: str or bool
         :param windows: parameter to use for Inspector.measurements() to
@@ -727,6 +728,11 @@ class InspectorPlotter:
             optimization algorithm as
         :type normalize: bool
         :param normalize: normalize the objective function values between [0, 1]
+        :type misfit_tolerance: float
+        :param misfit_tolerance: acceptable floating point difference between
+            adjacent misfit values to say that they are equal
+        :type annotate: bool
+        :param annotate: annotate misfit values next to markers
         :type show: bool
         :param show: show the plot after making it
         :type save: str
@@ -763,29 +769,28 @@ class InspectorPlotter:
 
         x = 0  # x is the x-position on the axis
         xvals, yvals, xlabs = [], [], []
-        xdiscards, ydiscards, ywindows = [], [], []
+        xdiscards, ydiscards, ywindows, xlegs = [], [], [], []
         for j in range(len(models)):
-            i = j - 1 and 0  # don't let 'i' go below 0
+            i = j - 1  # always need to compare to the previous misfit value
 
             # Status 0 means initial evaluation
-            if models.status[j] == 0:
+            if models.state[j] == 0:
                 xlab = f"{models.model[j]}_0"
-
+                # Ignore first function evaluation
+                if j == 0:
+                    pass
                 # If initial eval matches line search final, dont plot
-                # Because these are floats, they wont be exactly equal, so
-                # we need to set some small tolerance in which they can differ
-                if abs(models.misfit[i] - models.misfit[j]) > misfit_tolerance:
+                elif abs(models.misfit[i] - models.misfit[j]) < misfit_tolerance:
                     continue
-
                 # If they differ, plot them as different points
                 else:
                     x += 1
-            # Status 1 means final evaluation in line search, new X value
-            elif models.status[j] == 1:
+            # Status 1 means final evaluation in line search
+            elif models.state[j] == 1:
                 x += 1
                 xlab = f"{models.model[j]}_1"
-            # Status 0 means discarded trial step, plot on the same X value
-            elif models.status[j] == -1:
+            # Status -1 means discarded trial step, plot on the same X value
+            elif models.state[j] == -1:
                 xdiscards.append(x)
                 ydiscards.append(models.misfit[j])
                 continue
@@ -793,20 +798,92 @@ class InspectorPlotter:
             xvals.append(x)
             yvals.append(models.misfit[j])
             xlabs.append(xlab)
+            # Need to convert legs from Inspector.models to this format
+            if j in legs:
+                xlegs.append(x)
 
             # Get the corresponding window number based on iter/step count
-            i_ = models.iteration[j]
-            s_ = models.step_count[j]
-            ywindows.append(nwin.loc[i_].loc[s_][windows])
+            if windows:
+                i_ = models.iteration[j]
+                s_ = models.step_count[j]
+                ywindows.append(nwin.loc[i_].loc[s_][windows])
 
-        # Normalize the values to make the starting misfit 1
-        if normalize:
-            yvals = [_ / max(yvals) for _ in yvals]
+        def plot_vals(x_, y_, idx=None, c="k", label=misfit_label):
+            """
+            Re-used plotting commands plot a scatter plot with a certain
+            color and label. Normalizes y-values if necessary
 
-        # Plot the misfit values as a line
-        lines += ax.plot(xvals, yvals, "o-", linewidth=3, markersize=10,
-                         c=misfit_color, label=misfit_label, zorder=10
-                         )
+            :type x_: np.array
+            :param x_: x values to plot
+            :type y_: np.array
+            :param y_: y values to plot
+            :type idx: int
+            :param idx: index of the inversion leg for color and label, if None
+                defaults to `c` and `label` for color and label
+            :type c: str
+            :param c: color for marker and line color
+            :type label: str
+            :param label: label for legend, defaults to `misfit_label` from
+                kwargs of main function
+            """
+            # Overwrite default values 
+            if idx is not None:
+                c = f"C{idx}"
+                label = f"{misfit_label} (leg {idx})"
+
+            if normalize:
+                y_ = [_ / max(y_) for _ in y_]
+            line = ax.plot(x_, y_, "o-", linewidth=3,  markersize=10, 
+                           c=c, label=label, zorder=10)
+            if annotate:
+                for x_anno, y_anno in zip(x_, y_):
+                    plt.text(x_anno, y_anno, f"{y_anno:.3f}", zorder=11)
+
+            return line
+
+        # Three options for plotting.
+        # 1) Manually specify the locations within Inspector.models to break
+        #    points into, meaning a new "leg" of the inversion
+        # 2) If 'legs' is None, break the inversion whenever the misfit
+        #    increases at the 0th step count. This is not foolproof
+        # 3) Plot all the model values of the inversion together
+
+        if xlegs is not None:
+            i = 0  # Counter to remember where the initial model is
+            for j, leg in enumerate(xlegs):
+                lines += plot_vals(xvals[i:leg], yvals[i:leg], j + 1)
+                i = leg
+            # Plot the final leg
+            lines += plot_vals(xvals[leg:], yvals[leg:], j + 2)
+        else:
+            # Check if misfit increases by checking differences, this signifies that
+            # a new inversion 'leg' has started and new points should be normalized
+            yvals = np.array(yvals)
+            diffs = yvals[:-1] - yvals[1:]
+            check = diffs[diffs < 0].any()
+
+            # If there are any increases in misfit, need to plot each leg separately
+            if check:
+                i = 0  # A counter to remember where the initial model is
+                leg = 1  # Inversion legs start at 1
+                for j, y in enumerate(yvals):
+                    # Skip the first function evaluation
+                    if j == 0:
+                        continue
+
+                    # If the misfit is greater than the previous misfit, plot from
+                    # the counter 'i' up to (not including) the current misfit
+                    if y >= yvals[j-1]:
+                        yvals_ = yvals[i:j]
+                        xvals_ = xvals[i:j]
+                        lines += plot_vals(xvals_, yvals_, leg)
+                        i = j  # reset counter to the current misfit
+                        leg += 1  # keep track of which leg were in
+                    else:
+                        continue
+            # If there were no breaks in the misfit values, plot normally
+            else:
+                lines += plot_vals(xvals, yvals, idx=None)
 
         # Plot number of windows/ window length in a separate axis
         if windows:
