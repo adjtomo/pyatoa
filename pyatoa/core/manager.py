@@ -15,7 +15,7 @@ from pyatoa.core.config import Config
 from pyatoa.core.gatherer import Gatherer, GathererNoDataException
 from pyatoa.utils.form import channel_code
 from pyatoa.utils.process import is_preprocessed
-from pyatoa.utils.asdf.fetch import windows_from_dataset
+from pyatoa.utils.asdf.load import load_windows
 from pyatoa.utils.window import reject_on_global_amplitude_ratio
 from pyatoa.utils.srcrcv import gcd_and_baz
 from pyatoa.utils.asdf.add import add_misfit_windows, add_adjoint_sources
@@ -135,10 +135,11 @@ class Manager:
             origintime = None
 
         # Instantiate a Gatherer object and pass along info
-        self.gatherer = gatherer
-        if self.gatherer is None:
+        if gatherer is None:
             self.gatherer = Gatherer(config=self.config, ds=self.ds,
                                      origintime=origintime)
+        else:
+            self.gatherer = gatherer
 
         # Copy Streams to avoid affecting original data
         if st_obs is not None:
@@ -311,7 +312,8 @@ class Manager:
             raise NotImplementedError
 
     def load(self, code, path=None, ds=None, synthetic_tag=None,
-             observed_tag=None, load_config=True):
+             observed_tag=None, load_config=True, load_windows=False,
+             load_adjsrcs=False):
         """
         Populate the manager using a previously populated ASDFDataSet.
         Useful for re-instantiating an existing workflow that has already 
@@ -352,8 +354,7 @@ class Manager:
         assert len(code.split('.')) == 2, "'code' must be in form 'NN.SSS'"
 
         # Reset and populate using the dataset
-        self.__init__(config=self.config, ds=ds)
-        self.event = ds.events[0]
+        self.__init__(config=self.config, ds=ds, event=ds.events[0])
         net, sta = code.split('.')
         sta_tag = f"{net}.{sta}"
         if sta_tag in ds.waveforms.list():
@@ -362,6 +363,8 @@ class Manager:
                                                 self.config.synthetic_tag]
             self.st_obs = ds.waveforms[sta_tag][observed_tag or
                                                 self.config.observed_tag]
+            if load_windows:
+
         else:
             logger.warning(f"no data for {sta_tag} found in dataset")
 
@@ -709,11 +712,10 @@ class Manager:
 
         net, sta, _, _ = self.st_obs[0].get_id().split(".")
         # Function will return empty dictionary if no acceptable windows found
-        windows = windows_from_dataset(ds=self.ds, net=net, sta=sta,
-                                       iteration=iteration,
-                                       step_count=step_count,
-                                       return_previous=return_previous
-                                       )
+        windows = load_windows(ds=self.ds, net=net, sta=sta,
+                               iteration=iteration, step_count=step_count,
+                               return_previous=return_previous
+                               )
 
         # Recalculate window criteria for new values for cc, tshift, dlnA etc...
         logger.debug("recalculating window criteria")

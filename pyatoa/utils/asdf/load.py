@@ -7,8 +7,7 @@ from pyflex.window import Window
 from obspy import UTCDateTime
 
 
-def windows_from_dataset(ds, net, sta, iteration, step_count, 
-                         return_previous=False):
+def load_windows(ds, net, sta, iteration, step_count, return_previous=False):
     """
     Returns misfit windows from an ASDFDataSet for a given iteration, step,
     network and station, as well as a count of windows returned.

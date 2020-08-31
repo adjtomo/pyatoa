@@ -706,7 +706,7 @@ class InspectorPlotter:
                       )
 
     def convergence(self, windows="length_s", trials=False, show=True,
-                    save=None, normalize=False, misfit_tolerance=1E-3,
+                    save=None, normalize=False, float_tolerance=1E-3,
                     annotate=False, restarts=None, **kwargs):
         """
         Plot the convergence rate over the course of an inversion.
@@ -728,8 +728,8 @@ class InspectorPlotter:
             optimization algorithm as
         :type normalize: bool
         :param normalize: normalize the objective function values between [0, 1]
-        :type misfit_tolerance: float
-        :param misfit_tolerance: acceptable floating point difference between
+        :type float_tolerance: float
+        :param float_tolerance: acceptable floating point difference between
             adjacent misfit values to say that they are equal
         :type restarts: list of int
         :param restarts: If the inversion was restarted, e.g. for parameter
@@ -752,10 +752,11 @@ class InspectorPlotter:
         misfit_label = kwargs.get("misfit_label", "misfit")
         trial_label = kwargs.get("trial_label", "trials")
         window_label = kwargs.get("window_label", "windows")
-        misfit_color = kwargs.get("misfit_color", "k")
         trial_color = kwargs.get("trial_color", "r")
         window_color = kwargs.get("window_color", "orange")
+        legend_loc = kwargs.get("legend_loc", "best")
 
+        # Set some default parameters based on user choices
         if windows:
             assert (windows in ["nwin", "length_s"]), \
                 "plot_windows must be: 'nwin; or 'length_s'"
@@ -770,42 +771,43 @@ class InspectorPlotter:
         if ax is None:
             ax = plt.gca()
 
-        # To collect line objects for legend
-        lines = []
-
-        x = 0  # x is the x-position on the axis
-        xvals, yvals, xlabs = [], [], []
-        xdiscards, ydiscards, ywindows, xrestarts = [], [], [], []
+        # First, we will sort the model values by accepted models, initial
+        # evaluations, and discarded trials steps. Also need to check if
+        # accepted models and initial evaluations are equal to one another.
+        x = 0  # the x-position on the axis
+        lines, xvals, yvals, xlabs = [], [], [], []  # main plot
+        xdiscards, ydiscards, ywindows, xrestarts = [], [], [], []  # secondary
         for j in range(len(models)):
-            i = j - 1  # always need to compare to the previous misfit value
+            i = j - 1  # we always need to compare to the previous misfit value
 
-            # Status 0 means initial evaluation
+            # Status 0 means initial evaluation of iteration
             if models.state[j] == 0:
-                xlab = f"{models.model[j]}_0"
-                # Ignore first function evaluation
+                # Ignore very first function evaluation
                 if j == 0:
                     pass
-                # If initial eval matches line search final, dont plot
-                elif abs(models.misfit[i] - models.misfit[j]) < misfit_tolerance:
+                # If initial eval matches line search final, treat equally
+                elif abs(models.misfit[i] - models.misfit[j]) < float_tolerance:
                     continue
-                # If they differ, plot them as different points
+                # If they differ, treat them as different points
                 else:
                     x += 1
+                xlab = f"{models.model[j]}_0"
             # Status 1 means final evaluation in line search
             elif models.state[j] == 1:
                 x += 1
                 xlab = f"{models.model[j]}_1"
             # Status -1 means discarded trial step, plot on the same X value
             elif models.state[j] == -1:
-                xdiscards.append(x)
+                xdiscards.append(x + 1)  # discards are related to next model
                 ydiscards.append(models.misfit[j])
                 continue
 
             xvals.append(x)
             yvals.append(models.misfit[j])
             xlabs.append(xlab)
-            # Convert legs from Inspector.models to this list format
-            if j in restarts:
+
+            # Convert restart values from Inspector.models indices
+            if restarts and j in restarts:
                 xrestarts.append(x)
 
             # Get the corresponding window number based on iter/step count
@@ -814,10 +816,17 @@ class InspectorPlotter:
                 s_ = models.step_count[j]
                 ywindows.append(nwin.loc[i_].loc[s_][windows])
 
+                # !!! HACK REMOVE THIS
+                # try:
+                #     ywindows.append(nwin.loc[i_].loc[s_][windows])
+                # except KeyError:
+                #     ywindows.append(nwin.loc[i_].loc["s03"][windows])
+
+        # Define a re-usable plotting function that takes arguments from main fx
         def plot_vals(x_, y_, idx=None, c="k", label=misfit_label):
             """
             Re-used plotting commands plot a scatter plot with a certain
-            color and label. Normalizes y-values if necessary
+            color and label. Normalizes y-values, annotates text, if required
 
             :type x_: np.array
             :param x_: x values to plot
@@ -839,6 +848,7 @@ class InspectorPlotter:
 
             if normalize:
                 y_ = [_ / max(y_) for _ in y_]
+
             line = ax.plot(x_, y_, "o-", linewidth=3,  markersize=10, 
                            c=c, label=label, zorder=10)
             if annotate:
@@ -847,23 +857,26 @@ class InspectorPlotter:
 
             return line
 
-        # Two methods of plotting:
-        # 1) with user-defined restarts or simply
-        # 2) plot the entire convergence in one line
-        if xrestarts is not None:
-            first = 0  # Counter to remember where the starting model is for leg
+        # Primary: Two methods of plotting:
+        if xrestarts:
+            # 1) with user-defined restarts separating legs of the inversion
+            first = 0  # first iteration in the current leg
             for i, last in enumerate(xrestarts):
-                j = 1  # Leg counting should start at 1
+                j = i + 1  # Leg counting should start at 1
                 lines += plot_vals(xvals[first:last], yvals[first:last], j)
                 first = last
             # Plot the final leg
-            lines += plot_vals(xvals[first:last], yvals[first:last], j + 1)
+            lines += plot_vals(xvals[last:], yvals[last:], j + 1)
         else:
+            # 2) plot the entire convergence in one line
             lines += plot_vals(xvals, yvals, idx=None)
 
-        # Plot number of windows/ window length in a separate axis
+        # Secondary: Plot number of windows/ window length in a separate axis
         if windows:
             ax2 = ax.twinx()
+            # Set ax2 below ax1
+            ax.set_zorder(ax2.get_zorder() + 1)
+            ax.patch.set_visible(False)
             lines += ax2.plot(xvals, ywindows, "v:", linewidth=2, markersize=8,
                               c=window_color, label=window_label, zorder=5
                               )
@@ -874,7 +887,7 @@ class InspectorPlotter:
                            )
             ax2.ticklabel_format(style="sci", axis="y", scilimits=(0, 0))
 
-        # Plot the discarded trial steps as x's
+        # Secondary: Plot the discarded trial steps as x's
         if trials:
             sc = ax.scatter(xdiscards, ydiscards, c=trial_color,
                             marker="x", s=10, zorder=9, label=trial_label
@@ -893,7 +906,7 @@ class InspectorPlotter:
 
         if legend:
             labels = [line.get_label() for line in lines]
-            ax.legend(lines, labels, prop={"size": 12}, loc="upper right")
+            ax.legend(lines, labels, prop={"size": 12}, loc=legend_loc)
 
         f.tight_layout()
 

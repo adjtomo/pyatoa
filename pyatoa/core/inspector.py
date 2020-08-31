@@ -143,6 +143,28 @@ class Inspector(InspectorPlotter):
         return self._models
 
     @property
+    def initial_model(self):
+        """Return tuple of the iteration and step count corresponding M00"""
+        if self._models is None:
+            self.get_models()
+        return self._models.iteration.iloc[0], self._models.step_count.iloc[0]
+
+    @property
+    def final_model(self):
+        """Return tuple of iteration and step count for final accepted model"""
+        if self._models is None:
+            self.get_models()
+        return self.models.iteration.iloc[-1], self._models.step_count.iloc[-1]
+
+    @property
+    def good_models(self):
+        """Return models that are only status 0 or 1 (initial or success)"""
+        if self._models is None:
+            self.get_models()
+        return self.models[self.models.status.isin([0, 1])].reset_index(
+                                                                    drop=True)
+
+    @property
     def evaluations(self):
         """Returns the number of iterations, or the sum of all step counts"""
         try:
@@ -508,8 +530,8 @@ class Inspector(InspectorPlotter):
         self.sources = pd.DataFrame()
         self.receivers = pd.DataFrame()
 
-    def isolate(self, iteration=None, step_count=None,  event=None, network=None,
-                station=None, channel=None, comp=None, keys=None, 
+    def isolate(self, iteration=None, step_count=None,  event=None,
+                network=None, station=None, channel=None, comp=None, keys=None,
                 exclude=None, unique_key=None):
         """
         Returns a new dataframe that is grouped by a given index if variable is
@@ -674,6 +696,49 @@ class Inspector(InspectorPlotter):
 
         return df
 
+    def compare_misfit(self, iter_init=None, step_init=None, iter_final=None, 
+                       step_final=None):
+        """
+        Calculate the difference in misfit for each source receiver pair,
+        comparing one iteration/step count with another.
+
+        .. note::
+            Comparison is defined as DELTA = M_FINAL - M_INIT 
+            Therefore a negative misfit value corresponds to a reduction/
+            improvement in misfit from init to final. Additionally a positive 
+            nwin value corresponds to more misfit windows chosen in the final 
+            model.
+
+        :type iter_init: str
+        :param iter_init: initial iteration to use in comparison
+        :type step_init: str
+        :param step_init: initial step count to use in comparison
+        :type iter_final: str
+        :param iter_final: final iteration to use in comparison
+        :type step_final: str
+        :param step_final: final step count to use in comparison
+        :rtype: pandas.core.data_frame.DataFrame
+        :return: a sorted data frame containing the difference of misfit and
+            number of windows between final and initial
+        """
+        # Assuming if first arg isnt given, default to first/last model
+        if iter_init is None:
+            iter_init, step_init = self.initial_model
+            iter_final, step_final = self.final_model
+
+        misfit = self.misfit(level="station")
+        msft_1 = misfit.loc[iter_init].loc[step_init]
+        msft_2 = misfit.loc[iter_final].loc[step_final]
+
+        # Doesn't really make sense to compare unscaled misfit so drop column
+        msft_1.drop(["unscaled_misfit"], axis=1, inplace=True)
+        msft_2.drop(["unscaled_misfit"], axis=1, inplace=True)
+
+        # Subtract 2 from 1, drop NaN values that occur when no matching info
+        # and reverse sort so that improved misfit is shown at the top
+        return msft_2.subtract(msft_1).dropna().sort_values(by="misfit",
+                                                            ascending=True)
+
     def filter_sources(self, lat_min=None, lat_max=None, lon_min=None,
                        lon_max=None, depth_min=None, depth_max=None,
                        mag_min=None, mag_max=None, min_start=None,
@@ -741,10 +806,10 @@ class Inspector(InspectorPlotter):
         evaluation of the current iteration.
 
         .. note::
-            Status is given as:
-            0 == initial function evaluation for the model;
-            1 == final function evaluation for the model;
-            -1 == discarded trial step from line search.
+            State and status is given as:
+            0 == INITIAL function evaluation for the model;
+            1 == SUCCESS -ful function evaluation for the model;
+            -1 == DISCARD trial step from line search.
 
         :rtype: pandas.core.data_frame.DataFrame
         :return: a dataframe containing model numbers, their corresponding
@@ -753,7 +818,7 @@ class Inspector(InspectorPlotter):
         """
         misfit = self.misfit()
         models = {"model": [], "iteration": [], "step_count": [], "misfit": [],
-                  "status": []
+                  "status": [], "state": []
                   }
 
         # Model lags iteration by 1
@@ -781,7 +846,11 @@ class Inspector(InspectorPlotter):
                 models["misfit"].append(misfits_[s])
                 models["iteration"].append(iter_)
                 models["step_count"].append(step)
-                models["status"].append(status)
+                models["state"].append(status)
+                models["status"].append({0: "INITIAL", 
+                                        1: "SUCCESS", 
+                                        -1: "DISCARD"}[status]
+                                        )
 
         self._models = pd.DataFrame(models)
 

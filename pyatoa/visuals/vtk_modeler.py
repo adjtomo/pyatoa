@@ -166,10 +166,6 @@ class VTKModeler:
         """
         assert self.fid, "File ID must be specified before generating figure"
 
-        if self.fig is not None:
-            time.sleep(1)
-            mlab.close(self.fig)
-
         # Instantiate mlab
         self.fig = mlab.figure(size=self.figsize)
         self.engine = mlab.get_engine()
@@ -208,7 +204,7 @@ class VTKModeler:
 
         return cut
 
-    def depth_slice(self, depth_km="surface", save=False, show=True,
+    def depth_slice(self, depth_km="surface", save=None, show=True,
                     startup=True):
         """
         Plot a topdown view of the model, either with a surface projection
@@ -222,7 +218,7 @@ class VTKModeler:
         :type depth_km: float or None
         :param depth_km: depth to show the model at in units of km, by default
             plots a map view of the 'surface'
-        :type save: bool
+        :type save: str
         :param save: save the figure with a unique generic identifier
         :type show: bool
         :param show: show the figure after making it
@@ -289,11 +285,13 @@ class VTKModeler:
             save_tag = save.format(tag=tag)
         if show:
             mlab.show()
+        else:
+            mlab.close(self.fig)
 
         return save_tag
 
     def cross_section(self, axis, pct=0.5, show_axis=True,
-                      show=True, save=False, startup=True):
+                      show=True, save=None, startup=True):
         """
         Plot a cross-section of the model, with the Y-axis plotting depth
 
@@ -312,7 +310,7 @@ class VTKModeler:
             defaults to 50%, or the middle of the model
         :type show_axis: bool
         :param show_axis: show the axis of the plot
-        :type save: bool
+        :type save: str
         :param save: save the figure with a unique generic identifier
         :type show: bool
         :param show: show the figure after making it
@@ -399,6 +397,8 @@ class VTKModeler:
             mlab.savefig(save_tag)
         if show:
             mlab.show()
+        else:
+            mlab.close(self.fig)
 
         return save_tag
 
