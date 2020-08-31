@@ -707,7 +707,7 @@ class InspectorPlotter:
 
     def convergence(self, windows="length_s", trials=False, show=True,
                     save=None, normalize=False, misfit_tolerance=1E-3,
-                    annotate=False, legs=None, **kwargs):
+                    annotate=False, restarts=None, **kwargs):
         """
         Plot the convergence rate over the course of an inversion.
         Scatter plot of total misfit against iteration number, or by step count
@@ -731,6 +731,12 @@ class InspectorPlotter:
         :type misfit_tolerance: float
         :param misfit_tolerance: acceptable floating point difference between
             adjacent misfit values to say that they are equal
+        :type restarts: list of int
+        :param restarts: If the inversion was restarted, e.g. for parameter
+            changes, then the convergence figure should separate two line plots.
+            This list allows the User to tell the function where to separate
+            the convergence plot. The integers should correspond to indices of
+            the Inspector.models attribute.
         :type annotate: bool
         :param annotate: annotate misfit values next to markers
         :type show: bool
@@ -769,7 +775,7 @@ class InspectorPlotter:
 
         x = 0  # x is the x-position on the axis
         xvals, yvals, xlabs = [], [], []
-        xdiscards, ydiscards, ywindows, xlegs = [], [], [], []
+        xdiscards, ydiscards, ywindows, xrestarts = [], [], [], []
         for j in range(len(models)):
             i = j - 1  # always need to compare to the previous misfit value
 
@@ -798,9 +804,9 @@ class InspectorPlotter:
             xvals.append(x)
             yvals.append(models.misfit[j])
             xlabs.append(xlab)
-            # Need to convert legs from Inspector.models to this format
-            if j in legs:
-                xlegs.append(x)
+            # Convert legs from Inspector.models to this list format
+            if j in restarts:
+                xrestarts.append(x)
 
             # Get the corresponding window number based on iter/step count
             if windows:
@@ -841,49 +847,19 @@ class InspectorPlotter:
 
             return line
 
-        # Three options for plotting.
-        # 1) Manually specify the locations within Inspector.models to break
-        #    points into, meaning a new "leg" of the inversion
-        # 2) If 'legs' is None, break the inversion whenever the misfit
-        #    increases at the 0th step count. This is not foolproof
-        # 3) Plot all the model values of the inversion together
-
-        if xlegs is not None:
-            i = 0  # Counter to remember where the initial model is
-            for j, leg in enumerate(xlegs):
-                lines += plot_vals(xvals[i:leg], yvals[i:leg], j + 1)
-                i = leg
+        # Two methods of plotting:
+        # 1) with user-defined restarts or simply
+        # 2) plot the entire convergence in one line
+        if xrestarts is not None:
+            first = 0  # Counter to remember where the starting model is for leg
+            for i, last in enumerate(xrestarts):
+                j = 1  # Leg counting should start at 1
+                lines += plot_vals(xvals[first:last], yvals[first:last], j)
+                first = last
             # Plot the final leg
-            lines += plot_vals(xvals[leg:], yvals[leg:], j + 2)
+            lines += plot_vals(xvals[first:last], yvals[first:last], j + 1)
         else:
-            # Check if misfit increases by checking differences, this signifies that
-            # a new inversion 'leg' has started and new points should be normalized
-            yvals = np.array(yvals)
-            diffs = yvals[:-1] - yvals[1:]
-            check = diffs[diffs < 0].any()
-
-            # If there are any increases in misfit, need to plot each leg separately
-            if check:
-                i = 0  # A counter to remember where the initial model is
-                leg = 1  # Inversion legs start at 1
-                for j, y in enumerate(yvals):
-                    # Skip the first function evaluation
-                    if j == 0:
-                        continue
-
-                    # If the misfit is greater than the previous misfit, plot from
-                    # the counter 'i' up to (not including) the current misfit
-                    if y >= yvals[j-1]:
-                        yvals_ = yvals[i:j]
-                        xvals_ = xvals[i:j]
-                        lines += plot_vals(xvals_, yvals_, leg)
-                        i = j  # reset counter to the current misfit
-                        leg += 1  # keep track of which leg were in
-                    else:
-                        continue
-            # If there were no breaks in the misfit values, plot normally
-            else:
-                lines += plot_vals(xvals, yvals, idx=None)
+            lines += plot_vals(xvals, yvals, idx=None)
 
         # Plot number of windows/ window length in a separate axis
         if windows:
