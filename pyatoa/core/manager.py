@@ -230,10 +230,16 @@ class Manager:
         if self.st_obs is not None:
             self.stats.len_obs = len(self.st_obs)
             self.stats.obs_processed = is_preprocessed(self.st_obs)
+            if self.stats.len_obs > len(self.config.component_list):
+                logger.warning("More observed traces than listed components, "
+                               "this may need to be reviewed manually")
 
         if self.st_syn is not None:
             self.stats.len_syn = len(self.st_syn)
             self.stats.syn_processed = is_preprocessed(self.st_syn)
+            if self.stats.len_syn > len(self.config.component_list):
+                logger.warning("More synthetic traces than listed components, "
+                               "this may need to be reviewed manually")
 
         # Check standardization by comparing waveforms against the first
         if not self.stats.standardized and self.st_obs and self.st_syn:
@@ -760,6 +766,19 @@ class Manager:
         windows, but includes additional window suppression functionality.
         Includes custom Pyflex addition of outputting rejected windows, which
         will be used internally for plotting.
+
+        .. note::
+            Pyflex will throw a ValueError if the arrival of the P-wave
+            is too close to the initial portion of the waveform, considered the
+            'noise' section. This happens for short source-receiver distances
+            (< 100km).
+
+            This error becomes a PyflexError if no event/station attributes
+            are provided to the WindowSelector
+
+            We could potentially deal with this by zero-padding the
+            waveforms, and running select_windows() again, but for now we just
+            raise a ManagerError and allow processing to continue
         """
         logger.info(f"running Pyflex w/ map: {self.config.pyflex_preset}")
 
@@ -779,7 +798,13 @@ class Manager:
                                            config=self.config.pyflex_config,
                                            event=self.event,
                                            station=self.inv)
-                windows = ws.select_windows()
+                try:
+                    windows = ws.select_windows()
+                except (IndexError, pyflex.PyflexError):
+                    # see docstring note for why this error is to be addressed
+                    raise ManagerError("Cannot window, most likely because "
+                                       "the source-receiver distance is too "
+                                       "small w.r.t the minimum period")
 
             # Suppress windows that contain low-amplitude signals
             if self.config.win_amp_ratio > 0:
