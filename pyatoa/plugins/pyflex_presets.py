@@ -80,7 +80,7 @@ pyflex_presets = {
     # North Island study area, 15-30s bandpass, for long period start waveforms
     "nznorth_15-30s": {
         "stalta_waterlevel": 0.08,
-        "tshift_acceptance_level": 15.0,
+        "tshift_acceptance_level": 12.0,
         "dlna_acceptance_level": 2.5,
         "cc_acceptance_level": 0.7,
         "s2n_limit": 2.5,
