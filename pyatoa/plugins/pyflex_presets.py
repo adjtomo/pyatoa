@@ -45,19 +45,6 @@ pyflex_presets = {
         "c_4a": 3.0,
         "c_4b": 10.0
     },
-    # From the UAF group doing regional studies of Alaska
-    "alaska": {
-        "stalta_waterlevel": 0.18,
-        "tshift_acceptance_level": 4.0,
-        "dlna_acceptance_level": 1.5,
-        "cc_acceptance_level": 0.71,
-        "c_0": 0.7,
-        "c_1": 2.0,
-        "c_3a": 3.0,
-        "c_3b": 2.0,
-        "c_4a": 2.5,
-        "c_4b": 12.0
-    },
     # For use with testing the workflow using a homogeneous halfspace example
     "homogeneous_halfspace": {
         "stalta_waterlevel": 0.05, 
@@ -73,62 +60,44 @@ pyflex_presets = {
         "c_4b": 12.0
     },
     # NZNORTH: From the New Zealand group doing regional North Island studies
-    "nznorth_2-30s_loose": {
-        "stalta_waterlevel": 0.10, 
-        "tshift_acceptance_level": 8.0,
-        "dlna_acceptance_level": 3.0,
-        "cc_acceptance_level": 0.5,
-        "s2n_limit": 3.,
-        "max_time_before_first_arrival": 5.,
-        "c_0": 0.4,
-        "c_1": 2.0, 
-        "c_3a": 3.0,
-        "c_3b": 2.0,
-        "c_4a": 2.5,
-        "c_4b": 12.0
-    },
-    # For the 1D velocity model of Ristau (2008)
-    "nznorth_1D": {
-        "stalta_waterlevel": 0.07, 
-        "tshift_acceptance_level": 10.0,
+    # These are the main parameters used in Chow et al. (2020)
+    "nznorth_10-30s_chow_et_al": {
+        "stalta_waterlevel": 0.10,
+        "tshift_acceptance_level": 8.0,  # based on sign-flip
         "dlna_acceptance_level": 2.0,
         "cc_acceptance_level": 0.7,
-        "tshift_reference": 4.,
         "s2n_limit": 3.,
         "max_time_before_first_arrival": 5.,
-        "min_surface_wave_velocity": 1.7,  # Default is 3.0
+        "min_surface_wave_velocity": 1.2,  # Default is 3.0, chow et al.==1.4
         "check_global_data_quality": True,  # Default is False
         "c_0": 0.7,
-        "c_1": 2., 
+        "c_1": 2.0,
         "c_3a": 3.0,
         "c_3b": 2.0,
         "c_4a": 2.5,
         "c_4b": 12.0
     },
-    # North Island study area, 15-30s bandpass, for very long period start
-    # !!! NOT YET TESTED, SIMPLY SCALED FROM 'nznorth_10-30s'
+    # North Island study area, 15-30s bandpass, for long period start waveforms
     "nznorth_15-30s": {
-        "stalta_waterlevel": 0.2, 
-        "tshift_acceptance_level": 10.0, 
+        "stalta_waterlevel": 0.08,
+        "tshift_acceptance_level": 15.0,
         "dlna_acceptance_level": 2.5,
         "cc_acceptance_level": 0.7,
-        "s2n_limit": 3.,
-        "max_time_before_first_arrival": 5.,
+        "s2n_limit": 2.5,
+        "max_time_before_first_arrival": 10.,
         "min_surface_wave_velocity": 1.2, 
         "check_global_data_quality": True,
-        "c_0": 0.5,
-        "c_1": 1.25, 
-        "c_3a": 3.0,
+        "c_0": 0.7,
+        "c_1": 2.0,
+        "c_3a": 1.0,
         "c_3b": 2.0,
-        "c_4a": 2.5,
-        "c_4b": 12.0
+        "c_4a": 3.0,
+        "c_4b": 10.0
     },
-    # These are the parameters used in Chow et al. (2020)
-    # The 'plus' was used to differentiate from another set of incorrectly set
-    # parameters that is no longer here. These work well for the bandpass.
-    "nznorth_10-30s_plus": {
+    # North Island study area, 10-30s bandpass
+    "nznorth_10-30s": {
         "stalta_waterlevel": 0.10, 
-        "tshift_acceptance_level": 8.0,  # based on sign-flip
+        "tshift_acceptance_level": 10.0,  # based on sign-flip
         "dlna_acceptance_level": 2.0,
         "cc_acceptance_level": 0.7,
         "s2n_limit": 3.,
@@ -197,6 +166,24 @@ pyflex_presets = {
         "c_3b": 2.5,
         "c_4a": 2.,
         "c_4b": 6.0
+    },
+    # For the 1D velocity model of Ristau (2008)
+    "nznorth_1D": {
+        "stalta_waterlevel": 0.07,
+        "tshift_acceptance_level": 10.0,
+        "dlna_acceptance_level": 2.0,
+        "cc_acceptance_level": 0.7,
+        "tshift_reference": 4.,
+        "s2n_limit": 3.,
+        "max_time_before_first_arrival": 5.,
+        "min_surface_wave_velocity": 1.7,  # Default is 3.0
+        "check_global_data_quality": True,  # Default is False
+        "c_0": 0.7,
+        "c_1": 2.,
+        "c_3a": 3.0,
+        "c_3b": 2.0,
+        "c_4a": 2.5,
+        "c_4b": 12.0
     },
     # Global scale from Maggi et al. 2009 Table 3 for 50s < T < 150s
     "global": {
@@ -282,5 +269,18 @@ pyflex_presets = {
         "c_3b": 2.5,
         "c_4a": 2.,
         "c_4b": 6.0
+    },
+    # From the UAF group doing regional studies of Alaska
+    "alaska": {
+        "stalta_waterlevel": 0.18,
+        "tshift_acceptance_level": 4.0,
+        "dlna_acceptance_level": 1.5,
+        "cc_acceptance_level": 0.71,
+        "c_0": 0.7,
+        "c_1": 2.0,
+        "c_3a": 3.0,
+        "c_3b": 2.0,
+        "c_4a": 2.5,
+        "c_4b": 12.0
     },
 }
