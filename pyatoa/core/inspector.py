@@ -610,7 +610,7 @@ class Inspector(InspectorPlotter):
                     useful for identifying sta quality.
         :rtype: pandas.DataFrame
         :return: a DataFrame with indices corresponding to iter, step,
-            columns listing the number of windows (n_win) and the cumulative
+            columns listing the number of windows (nwin) and the cumulative
             length of windows in seconds (length_s)
         """
         group_list = ["iteration", "step", "length_s"]
@@ -627,7 +627,7 @@ class Inspector(InspectorPlotter):
 
         group = windows.groupby(group_list[:-1]).length_s
         return pd.concat([group.apply(len).rename("nwin"), group.sum()],
-                         axis=1)
+                         axis=1).sort_values("nwin", ascending=False)
 
     def misfit(self, level="step"):
         """
