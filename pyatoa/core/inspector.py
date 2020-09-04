@@ -89,6 +89,11 @@ class Inspector(InspectorPlotter):
                 return []
 
     @property
+    def keys(self):
+        """Shorthand to access the keys of the Windows dataframe"""
+        return self.windows.keys()
+
+    @property
     def events(self):
         """Return an array of all event ids"""
         return self._try_print("event")
@@ -531,8 +536,8 @@ class Inspector(InspectorPlotter):
         self.receivers = pd.DataFrame()
 
     def isolate(self, iteration=None, step_count=None,  event=None,
-                network=None, station=None, channel=None, comp=None, keys=None,
-                exclude=None, unique_key=None):
+                network=None, station=None, channel=None, component=None,
+                keys=None, exclude=None, unique_key=None):
         """
         Returns a new dataframe that is grouped by a given index if variable is
         None, defaults to returning all available values
@@ -549,8 +554,8 @@ class Inspector(InspectorPlotter):
         :param network: network name e.g. 'NZ' (optional)
         :type channel: str
         :param channel: channel name e.g. 'HHE' (optional)
-        :type comp: str
-        :param comp: component name e.g. 'Z' (optional)
+        :type component: str
+        :param component: component name e.g. 'Z' (optional)
         :type unique_key: str
         :param unique_key: isolates model, event and station information, 
             alongside a single info key, such as dlnA.
@@ -572,7 +577,8 @@ class Inspector(InspectorPlotter):
                     (df["station"] == (station or df["station"].to_numpy())) &
                     (df["network"] == (network or df["network"].to_numpy())) &
                     (df["channel"] == (channel or df["channel"].to_numpy())) &
-                    (df["component"] == (comp or df["component"].to_numpy())) 
+                    (df["component"] == (
+                            component or df["component"].to_numpy()))
                     ]
         if unique_key is not None:
             # return the unique key alongside identifying information

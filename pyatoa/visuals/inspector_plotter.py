@@ -6,7 +6,20 @@ This is the Inspector's Gadgte ;)
 import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
+from pyatoa import logger
+from matplotlib.patches import Rectangle
 from pyatoa.utils.calculate import normalize_a_to_b
+
+
+# A map from the Pyflex parameter names into cleaner looking label strings
+common_labels = {"cc_shift_in_seconds": "Time Shift (s)",
+                 "dlnA": "$\Delta\ln$(A)",
+                 "misfit": "Misfit",
+                 "length_s": "Window Length (s)",
+                 "max_cc_value": "Peak Cross Correlation",
+                 "relative_starttime": "Relative Start Time (s)",
+                 "relative_endtime": "Relative End Time (s)",
+                 }
 
 
 class InspectorPlotter:
@@ -15,7 +28,6 @@ class InspectorPlotter:
     Should not be called on its own, these functions will be inherited by
     the Inspector class automatically.
     """
-
     def map(self, event=None, network=None, station=None, show=True, save=False,
             **kwargs):
         """
@@ -552,14 +564,7 @@ class InspectorPlotter:
         else:
             try:
                 # For cleaner formatting of x-axis label
-                xlab_ = {"cc_shift_in_seconds": "Time Shift (s)",
-                         "dlnA": "$\Delta\ln$(A)",
-                         "misfit": "Misfit",
-                         "length_s": "Window Length (s)",
-                         "max_cc_value": "Peak Cross Correlation",
-                         "relative_starttime": "Relative Start Time (s)",
-                         "relative_endtime": "Relative End Time (s)",
-                         }[choice]
+                xlab_ = common_labels[choice]
             except KeyError:
                 xlab_ = choice
 
@@ -586,8 +591,11 @@ class InspectorPlotter:
 
         return f, ax
 
-    def plot_windows(self, iteration, step_count, event=None, network=None,
-                     station=None, component=None):
+    def plot_windows(self, iteration, step, iteration_comp=None,
+                     step_comp=None, choice="cc_shift_in_seconds",
+                     event=None, network=None, station=None, component=None,
+                     no_overlap=True, distances=False, annotate=False,
+                     bounds=False, show=True, save=False, **kwargs):
         """
         Show lengths of windows chosen based on source-receiver distance, akin
         to Tape's Thesis or to the LASIF plots. These are useful for showing
@@ -596,8 +604,14 @@ class InspectorPlotter:
 
         :type iteration: str
         :param iteration: iteration to analyze
-        :type step_count: str
-        :param step_count: step count to query, e.g. 's00'
+        :type step: str
+        :param step: step count to query, e.g. 's00'
+        :type iteration_comp: str
+        :param iteration_comp: Optional, if provided, difference the 'choice'
+            values with the chosen 'iteration/step'. Useful for easily checking
+            for improvement. Only works if the windows are the same.
+        :type step_comp: str
+        :param step_comp: associated step count for 'iteration_comp'
         :type event: str
         :param event: filter for measurements for a given event
         :type network: str
@@ -606,62 +620,205 @@ class InspectorPlotter:
         :param station: filter for measurements for a given station
         :type component: str
         :param component: choose a specific component to analyze
+        :type choice: str
+        :param choice: choice of value to define the colorscale by. These relate
+            to the keys of Inspector.windows. Default is 'cc_shift_in_seconds'
+        :type no_overlap: bool
+        :param no_overlap: If real distances are used, many src-rcv pairs are
+            at the same or very similar distances, leading to overlapping
+            rectangles. If this is set to True, to minimize overlap, the
+            function will try to shift the distance to a value that hasn't yet
+            been plotted. It will alternate larger positive and negative values
+            until something is found. Will lead to non-real distances.
+        :type distances: bool
+        :param distances: If set False, just plot one window atop the other,
+            which makes for more concise, easier to view plots, but
+            then real distance information is lost, only relative distance
+            kept.
+        :type annotate: bool
+        :param annotate: If True, will annotate event and station information
+            for each window. May get messy if `distances == True` and
+            `no_overlap == False` because you will get many overlapping
+            annotations. Works ideally if `distances == False`.
+        :type bounds: bool or list of float
+        :param bounds:
+            * (bool) False: set default bounds based on the min and max of data
+            * (bool) True: set default bounds equal, based on abs max of data
+            * (list) Manually set the bounds of the colorbar
+        :type show: bool
+        :param show: show the plot after generating
+        :type save: str
+        :param save: save the plot to the given filename
+
+        Keyword Arguments
+        ::
+            float alpha:
+                The opacity of the rectangels, defaults to 0.25
+            str cmap:
+                The colormap used to plot the values of `choice`
+            str cbar_label:
+                The label for the colorbar
+            float rectangle_height:
+                The vertical size of the rectangles, defaults to 1.
+            float anno_shift:
+                The distance in seconds to shift the plot to accomodate
+                annotations. This needs to be played as its based on the length
+                of the strings that are used in the annotations.
         """
+        alpha = kwargs.get("alpha", 0.6)
+        cmap = kwargs.get("cmap", "viridis")
+        cbar_label = kwargs.get("cbar_label", None)
+        rectangle_height = kwargs.get("rectangle_height", 1.0)
+        anno_shift = kwargs.get("anno_shift", 50)
+
         assert(iteration in self.iterations and
-               step_count in self.steps[iteration]), \
-            f"{iteration}{step_count} does not exist in Inspector"
+               step in self.steps[iteration]), \
+            f"{iteration}{step} does not exist in Inspector"
 
-        comp_dict = {"Z": "orangered",
-                     "N": "forestgreen", "R": "forestgreen",
-                     "E": "royalblue", "T": "royalblue"
-                     }
+        assert(choice in self.windows.keys()), (f"Color by choice {choice} not "
+                                                f"in list of available keys")
 
-        srcrcv = self.calculate_srcrcv()
-        windows = self.isolate(iteration=iteration, step_count=step_count,
-                               event=event, network=network, station=station
-                               )
-        # Only get information up to component, and times
-        df = windows.loc[:, ["event", "network", "station", "component",
-                             "relative_starttime", "relative_endtime"]
-                         ]
-        # Merge in information about source-receiver distances
-        df = df.merge(srcrcv.drop("backazimuth", axis=1),
+        # Filter out the specific windows that we're interested in
+        df = self.isolate(iteration=iteration, step_count=step,
+                          event=event, network=network, station=station,
+                          component=component)
+    
+        # If a comparison iteration is given, isolate the 'choice' key, and
+        # subtract it from the main dataframe. The new plotted values are diffs!
+        if iteration_comp:
+            df_comp = self.isolate(iteration=iteration_comp,
+                                   step_count=step_comp, event=event,
+                                   network=network, station=station,
+                                   component=component)
+            # This is enough unique info to identify a specific window
+            merge_keys = ["event", "network", "station", "channel",
+                          "relative_starttime", choice]
+            df_comp = df_comp.loc[:, merge_keys]
+            df_comp.rename({choice: f"{choice}_comp"}, axis=1, inplace=True)
+
+            # Crude check to see if the number of windows is comparable
+            assert(len(df) == len(df_comp)), ("Number of windows does not "
+                                              "match between {iteration}{step} "
+                                              "and {iteration_comp}{step_comp}")
+
+            df = df.merge(df_comp, on=merge_keys[:-1])
+            # Subtract the comparison iteration from the initial check
+            df[choice] = df[choice] - df[f"{choice}_comp"]
+
+        # Merge window information with source-receiver distances, not BAz
+        df = df.merge(self.srcrcv.drop("backazimuth", axis=1),
                       on=["event", "network", "station"]
                       )
-        # Optional filter to look at specific event, or station up to component
-        df = df.loc[
-            (df["event"] == (event or df["event"].to_numpy())) &
-            (df["station"] == (station or df["station"].to_numpy())) &
-            (df["network"] == (network or df["network"].to_numpy())) &
-            (df["component"] == (component or df["component"].to_numpy()))
-            ]
 
-        # Drop unnecessary information from dataframe
-        df.drop(["event", "network", "station"], axis=1, inplace=True)
+        # Drop unnecessary information except that needed to plot
+        # IMPORTANT: Sort by distance so that when the dataframe is iterated on
+        #            it starts from the smallest distance and goes up
+        df = df.loc[:, ["event", "station", "component", "relative_starttime",
+                        "relative_endtime", "distance_km", choice]
+                    ].sort_values(by="distance_km")
+        if df.empty:
+            logger.warning("Filtered dataframe is empty, no windows to plot")
+            return
+
+        # Plotting begins here
         f, ax = plt.subplots(figsize=(8, 6))
+
+        # Create a custom color scale based on the min and max values of choice
+        if cbar_label is None:
+            try:
+                # For cleaner formatting of colorbar label
+                cbar_label = common_labels[choice]
+            except KeyError:
+                cbar_label = choice
+        if iteration_comp:
+            cbar_label = f"DIFF {cbar_label}"
+
+        # Set the bounds of the colorbar
+        if isinstance(bounds, list):
+            vmin, vmax = bounds
+        else:
+            if bounds:
+                vmax = max(abs(df[choice].min()), abs(df[choice].max()))
+                vmin = -1 * vmax
+            else:
+                vmin = df[choice].min()
+                vmax = df[choice].max()
+        sm, norm, _ = colormap_colorbar(cmap, vmin=vmin, vmax=vmax,
+                                        cbar_label=cbar_label)
+
+        # Determine the global xmin and xmax which will be used more than once
+        xmin = df.relative_starttime.min()
+        if annotate:
+            # Shift to accomodate annotations
+            xmin -= anno_shift
+        xmax = df.relative_endtime.max()
+
+        dist_values, y_value = [], 0  # keep track of what y-values are used
         for window in df.to_numpy():
-            comp, start, end, dist = window
-            # short time windows show on top
-            ax.hlines(y=dist, xmin=start, xmax=end, colors=comp_dict[comp],
-                      zorder=10 + 2 * (1 / end - start), alpha=0.4
-                      )
-            ax.hlines(y=dist, xmin=0, xmax=300, colors="k", alpha=0.1,
-                      linewidth=0.1
-                      )
+            ev, sta, comp, start, end, dist, value = window
 
-        # Empty lines for legend
-        for comp in sorted(windows.component.unique()):
-            ax.hlines(y=0, xmin=0, xmax=0.1, color=comp_dict[comp], label=comp)
+            if not distances:
+                # Ignore distances and simply plot linearly
+                dist_ = y_value
+                y_value += rectangle_height
+            else:
+                # Try not to overlap windows that are very close in distance
+                dist_ = int(dist)
+                if no_overlap:
+                    if dist_ in dist_values:
+                        shift, sign = 1, -1
+                        while dist_ in dist_values:
+                            dist_ += shift
+                            # Alternate shift so that we search
+                            # 1, -1, 2, -2, 3, -3, etc...
+                            shift = sign * (abs(shift) + rectangle_height)
+                            sign *= -1
+                        dist_values.append(dist_)
+                        logger.warning(f"Shifted {ev} {sta}: {dist - dist_}km")
+                    else:
+                        dist_values.append(dist_)
 
-        plt.title(f"{len(df)} misfit windows")
+            # Plot the windows as rectangles to sort of match waveform plots
+            ax.add_patch(Rectangle(xy=(start, dist_ - rectangle_height / 2),
+                                   width=end - start, ec="k", alpha=alpha,
+                                   height=rectangle_height, 
+                                   fc=sm.cmap(norm(value)),
+                                   zorder=12)
+                         )
+            # Black background line for frame of reference / gridding
+            ax.hlines(y=dist_, xmin=xmin, xmax=xmax, colors="k",
+                      alpha=0.3, linewidth=0.3, zorder=10
+                      )
+            # Annotate event, station, component, distance and value for
+            # easier identification. Can be messy with a lot of windows
+            if annotate:
+                plt.text(xmin, dist_,
+                         f"{ev} {sta} {comp} {dist:.2f}km {value:.2f}",
+                         fontsize=4.5, zorder=11)
+
+        # Finalize the look of the plot
+        plt.title(f"Window Plot: N = {len(df)} "
+                  f"[{iteration}{step}] [{iteration_comp}{step_comp}]\n"
+                  f"Event: {event} / Station: {station} / Network: {network} / "
+                  f"Component: {component}")
         plt.xlabel("Time [s]")
-        plt.ylabel("Distance [km]")
-        plt.legend()
-        plt.xlim([min(df.relative_starttime) - 10,
-                  max(df.relative_endtime) + 10])
-        plt.ylim([min(df.distance_km) - 10, max(df.distance_km) + 10])
+        plt.xlim([xmin, xmax])
 
-        plt.show()
+        if distances:
+            plt.ylabel("Distance [km]")
+            plt.ylim([df.distance_km.min() - 10, df.distance_km.max() + 10])
+        else:
+            # Relative distances means the y-axis values are useless
+            plt.ylabel("Relative Distance")
+            plt.ylim([-rectangle_height, dist_ + rectangle_height])
+            ax.yaxis.set_ticks([])
+
+        if save:
+            plt.savefig(save)
+        if show:
+            plt.show()
+        else:
+            plt.close()
 
     def plot_window_differences(self, iteration_a, step_a, iteration_b, step_b):
         """
@@ -947,7 +1104,7 @@ def colormap_colorbar(cmap, vmin=0., vmax=1., dv=None, cbar_label=""):
     if cbar_label:
         cbar.ax.set_ylabel(cbar_label, rotation=270, labelpad=15)
 
-    return cmap, norm, cbar
+    return sm, norm, cbar
 
 
 def hover_on_plot(f, ax, obj, values, dissapear=True):
