@@ -632,8 +632,13 @@ class Inspector(InspectorPlotter):
         windows.sort_values(group_list, inplace=True)
 
         group = windows.groupby(group_list[:-1]).length_s
-        return pd.concat([group.apply(len).rename("nwin"), group.sum()],
-                         axis=1).sort_values("nwin", ascending=False)
+        df = pd.concat([group.apply(len).rename("nwin"), group.sum()],
+                        axis=1)
+        if level == "step":
+            return df
+        else:
+            # Only sort by window number if level is 'station' or 'event'
+            return df.sort_values("nwin", ascending=False)
 
     def misfit(self, level="step"):
         """

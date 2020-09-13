@@ -591,6 +591,13 @@ class InspectorPlotter:
 
         return f, ax
 
+    def plot_all_windows(self, choice):
+        """
+        Convenience function to call plot_windows() for all stations and 
+        receivers and save them into an organized directory
+        """
+
+
     def plot_windows(self, iteration, step, iteration_comp=None,
                      step_comp=None, choice="cc_shift_in_seconds",
                      event=None, network=None, station=None, component=None,
@@ -697,9 +704,10 @@ class InspectorPlotter:
             df_comp.rename({choice: f"{choice}_comp"}, axis=1, inplace=True)
 
             # Crude check to see if the number of windows is comparable
-            assert(len(df) == len(df_comp)), ("Number of windows does not "
-                                              "match between {iteration}{step} "
-                                              "and {iteration_comp}{step_comp}")
+            assert(len(df) == len(df_comp)), (f"Number of windows does not "
+                                              f"match between "
+                                              f"{iteration}{step} and "
+                                              f"{iteration_comp}{step_comp}")
 
             df = df.merge(df_comp, on=merge_keys[:-1])
             # Subtract the comparison iteration from the initial check

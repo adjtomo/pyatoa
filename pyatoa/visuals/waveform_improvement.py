@@ -50,7 +50,7 @@ class WaveformImprovement:
         """
         Figure out which step goes to which iteration to get model numbers
         """
-        models = {"m00": "i00/s00"}
+        models = {"m00": "i01/s00"}
         iterations = self.ds.auxiliary_data.MisfitWindows.list()
         for iter_ in iterations:
             steps = self.ds.auxiliary_data.MisfitWindows[iter_]
