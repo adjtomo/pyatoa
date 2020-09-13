@@ -120,11 +120,10 @@ pyflex_presets = {
         "cc_acceptance_level": 0.7,
         "s2n_limit": 3.,
         "max_time_before_first_arrival": 5.,
-        "tshift_reference": 2.,
         "min_surface_wave_velocity": 1.1,
         "check_global_data_quality": True,
         "c_0": 0.7,
-        "c_1": 2.5, 
+        "c_1": 2.0,  # min window = c1 * tmin = 16s 
         "c_3a": 4.0,
         "c_3b": 2.0,
         "c_4a": 2.5,
