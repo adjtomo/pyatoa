@@ -104,8 +104,8 @@ def colorscale(orientation, **kwargs):
             defaults to None, use the values set by the model
         :type colorbar: bool
         :param colorbar: create and show a colorbar, defaults to True
-        :type title: str
-        :param title: colorbar title, defaults to None
+        :type cbar_title: str
+        :param cbar_title: colorbar title, defaults to None
         :type num_clabels: int
         :param num_clabels: number of labels to put on the colorbar,
             defaults to Mayavi default
@@ -118,13 +118,13 @@ def colorscale(orientation, **kwargs):
     default_range = kwargs.get("default_range", False)
     min_max = kwargs.get("min_max", None)
     colorbar = kwargs.get("colorbar", True)
-    title = kwargs.get("title", None)
+    cbar_title = kwargs.get("cbar_title", None)
     num_labels = kwargs.get("num_clabels", None)
     num_colors = kwargs.get("num_colors", 20)
     round_to = kwargs.get("round_to", 0)
 
     # Set the colorscale
-    cbar = mlab.colorbar(title=title, orientation=orientation,
+    cbar = mlab.colorbar(title=cbar_title, orientation=orientation,
                          label_fmt="%-#.2f", nb_labels=num_labels)
     cbar.lut_mode = cmap
     logger.debug(f"Creating colorbar with colormap: '{cmap}'")

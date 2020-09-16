@@ -44,6 +44,9 @@ class Inspector(InspectorPlotter):
         # Placeholder attributes for getters
         self._models = None
         self._srcrcv = None
+        self._step_misfit = None
+        self._event_misfit = None
+        self._station_misfit = None
 
         # Try to load an already created Inspector
         try:
@@ -333,7 +336,7 @@ class Inspector(InspectorPlotter):
             window.update(winfo)
             self.windows = pd.concat([self.windows, pd.DataFrame(window)],
                                      ignore_index=True)
-
+    
     def discover(self, path="./"):
         """
         Allow the Inspector to scour through a path and find relevant files,
@@ -640,10 +643,12 @@ class Inspector(InspectorPlotter):
             # Only sort by window number if level is 'station' or 'event'
             return df.sort_values("nwin", ascending=False)
 
-    def misfit(self, level="step"):
+    def misfit(self, level="step", reset=False):
         """
         Sum the total misfit for a given iteration based on the individual
         misfits for each misfit window, and the number of sources used.
+        Calculated misfits are stored internally to avoid needing to recalculate
+        each time this function is called
 
         .. note::
             To get per-station misfit on a per-step basis
@@ -655,9 +660,20 @@ class Inspector(InspectorPlotter):
             'station': unscaled misfit on a per-station basis
             'step': to get total misfit for a given step count.
             'event': to get this on a per-event misfit.
+        :type reset: bool
+        :param reset: reset internally stored attribute and re-calculate misfit
         :rtype: dict
         :return: total misfit for each iteration in the class
         """
+        # We will try to access internal attributes first to save time
+        if not reset:
+            if level == "step" and self._step_misfit is not None:
+                return self._step_misfit
+            elif level == "station" and self._station_misfit is not None:
+                return self._station_misfit
+            elif level == "event" and self._event_misfit is not None:
+                return self._event_misfit
+
         # Various levels to sort the misfit by
         group_list = ["iteration", "step", "event", "station", "component", 
                       "misfit"]
@@ -704,6 +720,14 @@ class Inspector(InspectorPlotter):
         else:
             raise NotImplementedError(
                 "level must be 'station', 'event' or 'step'")
+
+        # Set internal attribute for easier access at next request
+        if level == "step":
+            self._step_misfit = df
+        elif level == "station":
+            self._station_misfit = df
+        elif level == "event":
+            self._event_misfit = df
 
         return df
 

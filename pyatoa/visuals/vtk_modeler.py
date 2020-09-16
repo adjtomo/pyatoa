@@ -184,7 +184,7 @@ class VTKModeler:
         :type ratio: float
         :param ratio: ratio of the axis bounds to slice at, from 0 to 1
         """
-        assert(slice_at or ratio)
+        assert(slice_at is not None or ratio is not None)
         cut = ScalarCutPlane()
         self.engine.add_filter(cut, self.vtkfr)
 
@@ -205,7 +205,7 @@ class VTKModeler:
         return cut
 
     def depth_slice(self, depth_km="surface", save=None, show=True,
-                    startup=True):
+                    startup=True, anno_text=None):
         """
         Plot a topdown view of the model, either with a surface projection
         (map view) or at some depth slice determined by `depth_km`
@@ -226,6 +226,9 @@ class VTKModeler:
         :param startup: run the _startup() function which closes all instances
             of mlab and creates a new mlab figure and engine. Normally the
             necessary thing to do so defaults to True
+        :type anno_text: str
+        :param anno_text: text to annotate into the corner of the figure, 
+            defaults to annotating the depth value
         """
         src_color = self.kwargs.get("src_color", "g")
         src_marker = self.kwargs.get("src_marker", "2dcircle")
@@ -276,7 +279,9 @@ class VTKModeler:
 
         # Plot extras
         colorscale(orientation="vertical", **self.kwargs)
-        annotate(s=f"{tag.replace('_', ' ')}", c="k", width=0.2)
+        if anno_text is None:
+            anno_text = tag.replace("_", " ")
+        annotate(s=anno_text, c="k", width=0.2)
 
         # Finalize
         save_tag = None
