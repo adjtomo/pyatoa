@@ -9,7 +9,7 @@
   <img src="pyatoa/docs/pyatoa_logo_w_text.png" />
 </p>
 
-**Pyatoa**\* is a waveform-based misfit quantification package, with additional tools for measurement aggregation, and visualizations of inversion results. It is meant to facilitate the assessment of seismic inversions. Under the hood, **Pyatoa** is built on a few key Python packages:
+**Pyatoa**\* is a waveform-based misfit quantification package, with additional tools for measurement aggregation, and visualizations of inversion results. It is meant to facilitate the assessment of seismic inversions. Under the hood, **Pyatoa** is built on, and provides a high-level API for, a few key Python packages:
 
 **[ObsPy:](https://github.com/obspy/obspy/wiki)** for seismic data fetching, handling, processing and organization    
 **[Pyflex:](https://krischer.github.io/pyflex/)** a Python port of Flexwin, for automatic time window selection  
