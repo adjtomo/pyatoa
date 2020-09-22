@@ -872,7 +872,8 @@ class InspectorPlotter:
 
     def convergence(self, windows="length_s", trials=False, show=True,
                     save=None, normalize=False, float_tolerance=1E-3,
-                    annotate=False, restarts=None, **kwargs):
+                    annotate=False, restarts=None, restart_annos=None, 
+                    **kwargs):
         """
         Plot the convergence rate over the course of an inversion.
         Scatter plot of total misfit against iteration number, or by step count
@@ -904,6 +905,10 @@ class InspectorPlotter:
             the Inspector.models attribute.
         :type annotate: bool
         :param annotate: annotate misfit values next to markers
+        :type restart_annos: list of str
+        :param restart_annos: if restarts is not None, allow annotating text 
+            next to each restart. Useful for annotating e.g. parameter changes
+            that accompany each restart
         :type show: bool
         :param show: show the plot after making it
         :type save: str
@@ -914,6 +919,7 @@ class InspectorPlotter:
         fontsize = kwargs.get("fontsize", 15)
         figsize = kwargs.get("figsize", (8, 6))
         legend = kwargs.get("legend", True)
+        title = kwargs.get("title", None)
         misfit_label = kwargs.get("misfit_label", "misfit")
         trial_label = kwargs.get("trial_label", "trials")
         window_label = kwargs.get("window_label", "windows")
@@ -921,10 +927,13 @@ class InspectorPlotter:
         window_color = kwargs.get("window_color", "orange")
         legend_loc = kwargs.get("legend_loc", "best")
 
-        # Set some default parameters based on user choices
+        # Set some default parameters based on user choices, check parameters
         if windows:
             assert (windows in ["nwin", "length_s"]), \
                 "plot_windows must be: 'nwin; or 'length_s'"
+        if restarts is not None and restart_annos is not None:
+            assert(len(restarts) + 1 == len(restart_annos)), \
+                    "Length of restart anno must match length of `restarts` + 1"
 
         # It may take a while to calculate models so do it once here
         models = self.models
@@ -981,12 +990,6 @@ class InspectorPlotter:
                 s_ = models.step_count[j]
                 ywindows.append(nwin.loc[i_].loc[s_][windows])
 
-                # !!! HACK REMOVE THIS
-                # try:
-                #     ywindows.append(nwin.loc[i_].loc[s_][windows])
-                # except KeyError:
-                #     ywindows.append(nwin.loc[i_].loc["s03"][windows])
-
         # Define a re-usable plotting function that takes arguments from main fx
         def plot_vals(x_, y_, idx=None, c="k", label=misfit_label):
             """
@@ -1020,6 +1023,10 @@ class InspectorPlotter:
                 for x_anno, y_anno in zip(x_, y_):
                     plt.text(x_anno, y_anno, f"{y_anno:.3f}", zorder=11)
 
+            if restart_annos:
+                plt.text(x_[0], y_[0], restart_annos[idx - 1], zorder=12,
+                         fontsize=fontsize)
+
             return line
 
         # Primary: Two methods of plotting:
@@ -1032,6 +1039,7 @@ class InspectorPlotter:
                 first = last
             # Plot the final leg
             lines += plot_vals(xvals[last:], yvals[last:], j + 1)
+            plt.text(xvals[last], yvals[last], restart_annos[j])
         else:
             # 2) plot the entire convergence in one line
             lines += plot_vals(xvals, yvals, idx=None)
@@ -1046,7 +1054,7 @@ class InspectorPlotter:
                               c=window_color, label=window_label, zorder=5
                               )
             ydict = {"length_s": "Cumulative Window Length [s]",
-                     "nwin": "Numer of Measurements"}
+                     "nwin": "Number of Measurements"}
             ax2.set_ylabel(f"{ydict[windows]} (dashed)", rotation=270,
                            labelpad=15., fontsize=fontsize
                            )
@@ -1068,6 +1076,12 @@ class InspectorPlotter:
         # Only set ticks on the x-axis
         ax.xaxis.grid(True, which="minor", linestyle=":")
         ax.xaxis.grid(True, which="major", linestyle="-")
+
+        if title is None:
+            ax.set_title(f"{self.tag.title()} Convergence\n"
+                         f"{len(self.events)} Events / "
+                         f"{len(self.stations)} Stations")
+                        
 
         if legend:
             labels = [line.get_label() for line in lines]
