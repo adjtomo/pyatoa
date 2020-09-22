@@ -913,10 +913,19 @@ class InspectorPlotter:
         :param show: show the plot after making it
         :type save: str
         :param save: file id to save the figure to
+
+        .. rubric::
+            insp.convergence(restarts=[11,27,37], normalize=True, 
+                             windows='nwin', anno_fontsize=12,
+                             restart_annos=["T=[15-30]s\n$\sigma$=20x10km", 
+                                            "T=[10-30]s\n$\sigma$=20x10km", 
+                                            "T=[10-30]s\n$\sigma$=10x7km", 
+                                            "T=[8-30]s\n$\sigma$=8.5x6km"])
         """
         f = kwargs.get("f", None)
         ax = kwargs.get("ax", None)
         fontsize = kwargs.get("fontsize", 15)
+        anno_fontsize = kwargs.get("anno_fontsize", 15)
         figsize = kwargs.get("figsize", (8, 6))
         legend = kwargs.get("legend", True)
         title = kwargs.get("title", None)
@@ -1018,14 +1027,16 @@ class InspectorPlotter:
                 y_ = [_ / max(y_) for _ in y_]
 
             line = ax.plot(x_, y_, "o-", linewidth=3,  markersize=10, 
-                           c=c, label=label, zorder=10)
+                           c=c, label=label, zorder=10, markeredgecolor="k",
+                           markeredgewidth=1.5)
             if annotate:
                 for x_anno, y_anno in zip(x_, y_):
-                    plt.text(x_anno, y_anno, f"{y_anno:.3f}", zorder=11)
+                    plt.text(x_anno, y_anno, f"{y_anno:.3f}", zorder=11,
+                             fontsize=anno_fontsize)
 
             if restart_annos:
                 plt.text(x_[0], y_[0], restart_annos[idx - 1], zorder=12,
-                         fontsize=fontsize)
+                         fontsize=anno_fontsize, verticalalignment="bottom")
 
             return line
 
@@ -1050,8 +1061,9 @@ class InspectorPlotter:
             # Set ax2 below ax1
             ax.set_zorder(ax2.get_zorder() + 1)
             ax.patch.set_visible(False)
-            lines += ax2.plot(xvals, ywindows, "v:", linewidth=2, markersize=8,
-                              c=window_color, label=window_label, zorder=5
+            lines += ax2.plot(xvals, ywindows, "d--", linewidth=2, markersize=8,
+                              c=window_color, label=window_label, zorder=5,
+                              markeredgecolor="k", markeredgewidth=2
                               )
             ydict = {"length_s": "Cumulative Window Length [s]",
                      "nwin": "Number of Measurements"}
