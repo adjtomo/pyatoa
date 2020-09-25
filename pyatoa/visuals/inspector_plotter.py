@@ -111,7 +111,7 @@ class InspectorPlotter:
 
         return f, ax
 
-    def event_depths(self, xaxis="latitude", show=True, save=None):
+    def event_depths(self, xaxis="latitude", show=True, save=None, **kwargs):
         """
         Create a scatter plot of events at depth. Compresses all events onto a
         single slice, optional choice of showing the x-axis or the y-axis
@@ -153,14 +153,17 @@ class InspectorPlotter:
         plt.grid(which="both", linestyle=":", alpha=0.5)
         hover_on_plot(f, ax, sc, names, dissapear=True)
 
+        default_axes(ax, **kwargs)
+
         if save:
             plt.savefig(save)
         if show:
             plt.show
-        else:
-            plt.close()
 
-    def raypaths(self, iteration, step_count, show=True, save=False, **kwargs):
+        return f, ax
+
+    def raypaths(self, iteration, step_count, color_by=None, show=True, 
+                 save=False, vmin=None, vmax=None, **kwargs):
         """
         Plot rays connecting sources and receivers based on the availability
         of measurements. Useful for getting an approximation of resolution.
@@ -169,22 +172,52 @@ class InspectorPlotter:
         :param iteration: iteration to retrieve data from
         :type step_count: int
         :param step_count: step count to retrieve data from
+        :type color_by: str
+        :param color_by: allow rays to be colored based on a normalized value.
+            nwin: color rays by the number of windows available for that path
+            misfit: color rays by total misfit
         :type show: bool
         :param show: show the plot
         :type save: str
         :param save: fid to save the figure
         """
+        cmap = kwargs.get("cmap", "viridis")
         ray_color = kwargs.get("ray_color", "k")
+        ray_linewidth = kwargs.get("ray_linewidth", 1)
+        ray_alpha = kwargs.get("ray_alpha", 0.1)
         station_color = kwargs.get("station_color", "c")
         event_color = kwargs.get("event_color", "orange")
+        figsize = kwargs.get("figsize", (8, 8))
+        markersize = kwargs.get("markersize", 25)
 
-        f, ax = plt.subplots(figsize=(8, 8))
+        f, ax = plt.subplots(figsize=figsize)
 
         df = self.misfit(level="station").loc[iteration, step_count]
 
         # Get lat/lon information from sources and receivers
         stations = self.receivers.droplevel(0)  # remove network index
         events = self.sources.drop(["time", "magnitude", "depth_km"], axis=1)
+
+        # Set up the normalized colorbar 
+        cbar, extend = None, None
+        if color_by is not None:
+            assert(color_by in df.keys()), f"{color_by} must be in {df.keys()}"
+            if vmin is None:
+                vmin = df[color_by].min()
+            elif vmin > df[color_by].min():
+                extend = "min"
+            if vmax is None:
+                vmax = df[color_by].max()
+            elif vmax < df[color_by].max():
+                if extend == "min":
+                    extend = "both"
+                else:
+                    extend = "max"
+
+            sm, norm, cbar = colormap_colorbar(cmap, vmin=vmin, vmax=vmax,
+                                               cbar_label=color_by.capitalize(),
+                                               extend=extend
+                                               )
 
         plotted, names = [], []
         for event, sta in df.index.to_numpy():
@@ -193,27 +226,34 @@ class InspectorPlotter:
             # Plot a marker for each event and station
             if event not in plotted:
                 plt.scatter(elon, elat, marker="o", c=event_color,
-                            edgecolors="k", s=25, zorder=100)
+                            edgecolors="k", s=markersize, zorder=100)
                 plotted.append(event)
             if sta not in plotted:
                 plt.scatter(slon, slat, marker="v", c=station_color,
-                            edgecolors="k", s=25, zorder=100)
+                            edgecolors="k", s=markersize, zorder=100)
                 plotted.append(event)
+
+            if color_by is not None:
+                ray_color = sm.cmap(norm(df.loc[event].loc[sta][color_by]))
 
             # Connect source and receiver with a line
             plt.plot([elon, slon], [elat, slat], color=ray_color, linestyle="-",
-                     alpha=0.1, zorder=50)
+                     alpha=0.1, zorder=50, linewidth=ray_linewidth)
 
         plt.xlabel("Longitude")
         plt.ylabel("Latitude")
-        plt.title(f"Raypaths ({len(events)} events, {len(stations)} stations)")
+        plt.title(f"{len(df)} raypaths")
+        # plt.title(f"{len(df)} raypaths ({len(events)} events, "
+        #           f"{len(stations)} stations)")
+
+        default_axes(ax, cbar, **kwargs)
 
         if save:
             plt.savefig(save)
         if show:
             plt.show()
-        else:
-            plt.close()
+
+        return f, ax
 
     def measurement_hist(self, iteration, step_count, choice="event", show=True,
                          save=False):
@@ -300,9 +340,11 @@ class InspectorPlotter:
         plt.ylabel("Latitude")
         plt.title(f"{station} {iteration}{step_count}; {len(df)} events")
 
-        colormap_colorbar(cmap, vmin=df[choice].to_numpy().min(),
-                          vmax=df[choice].to_numpy().max(), cbar_label=choice,
-                          )
+        _, _, cbar = colormap_colorbar(cmap, vmin=df[choice].to_numpy().min(),
+                                       vmax=df[choice].to_numpy().max(), 
+                                       cbar_label=choice)
+
+        default_axes(ax, cbar, **kwargs)
 
         if save:
             plt.savefig(save)
@@ -355,9 +397,11 @@ class InspectorPlotter:
         plt.ylabel("Latitude")
         plt.title(f"{event} {iteration}{step_count}; {len(df)} stations")
 
-        colormap_colorbar(cmap, vmin=misfit_values.min(),
-                          vmax=misfit_values.max(), cbar_label=choice,
-                          )
+        _, _, cbar = colormap_colorbar(cmap, vmin=misfit_values.min(),
+                                       vmax=misfit_values.max(), 
+                                       cbar_label=choice,)
+
+        default_axes(ax, cbar, **kwargs)
 
         if save:
             plt.savefig(save)
@@ -568,19 +612,20 @@ class InspectorPlotter:
             except KeyError:
                 xlab_ = choice
 
-        plt.xlabel(xlab_, fontsize=fontsize)
-        plt.ylabel("Count", fontsize=fontsize)
-        plt.title(title, fontsize=fontsize)
-        plt.tick_params(which='both', direction='in', top=True, right=True,
-                        labelsize=fontsize, width=2.)
+        plt.xlabel(xlab_)
+        plt.ylabel("Count")
+        plt.title(title)
         if label_range:
-            plt.xticks(np.arange(-1 * label_range, label_range + .1, step=xstep))
+            plt.xticks(np.arange(-1 * label_range, label_range + .1, 
+                                 step=xstep))
 
         if legend:
             leg = plt.legend(fontsize=fontsize / 1.25, loc=legend_loc)
             # Thin border around legend objects, unnecessarily thick bois
             for leg_ in leg.legendHandles:
                 leg_.set_linewidth(1.5)
+
+        default_axes(ax, **kwargs)
 
         plt.tight_layout()
 
@@ -590,13 +635,6 @@ class InspectorPlotter:
             plt.show()
 
         return f, ax
-
-    def plot_all_windows(self, choice):
-        """
-        Convenience function to call plot_windows() for all stations and 
-        receivers and save them into an organized directory
-        """
-
 
     def plot_windows(self, iteration, step, iteration_comp=None,
                      step_comp=None, choice="cc_shift_in_seconds",
@@ -873,7 +911,7 @@ class InspectorPlotter:
     def convergence(self, windows="length_s", trials=False, show=True,
                     save=None, normalize=False, float_tolerance=1E-3,
                     annotate=False, restarts=None, restart_annos=None, 
-                    **kwargs):
+                    xvalues="model", **kwargs):
         """
         Plot the convergence rate over the course of an inversion.
         Scatter plot of total misfit against iteration number, or by step count
@@ -909,6 +947,10 @@ class InspectorPlotter:
         :param restart_annos: if restarts is not None, allow annotating text 
             next to each restart. Useful for annotating e.g. parameter changes
             that accompany each restart
+        :type xvalues: str
+        :param xvalues: How the x-axis should be labelled, available:
+            model: plot the model number under each point
+            eval: number sequentially from 1
         :type show: bool
         :param show: show the plot after making it
         :type save: str
@@ -943,6 +985,9 @@ class InspectorPlotter:
         if restarts is not None and restart_annos is not None:
             assert(len(restarts) + 1 == len(restart_annos)), \
                     "Length of restart anno must match length of `restarts` + 1"
+
+        assert(xvalues in ["model", "eval"]), \
+                "xvalues must be 'model' or 'eval'"
 
         # It may take a while to calculate models so do it once here
         models = self.models
@@ -1080,10 +1125,17 @@ class InspectorPlotter:
             lines.append(sc)
 
         # Format the axes
-        ax.set_xlabel("Model Number", fontsize=fontsize)
+        if xvalues.lower() == "model":
+            xlabel_ = "Model Number"
+            ax.set_xticklabels(xlabs, rotation=45, ha="right")
+        elif xvalues.lower() == "eval":
+            xlabel_ = "Function Evaluation"
+            ax.set_xticklabels(np.arange(1, len(xvals) + 1, 1))
+
+        ax.set_xlabel(xlabel_, fontsize=fontsize)
         ax.xaxis.set_ticks(xvals)
-        ax.set_xticklabels(xlabs, rotation=45, ha="right")
         ax.set_ylabel("Total Normalized Misfit", fontsize=fontsize)
+        ax.tick_params(axis="both", which="major", labelsize=fontsize)
 
         # Only set ticks on the x-axis
         ax.xaxis.grid(True, which="minor", linestyle=":")
@@ -1094,7 +1146,6 @@ class InspectorPlotter:
                          f"{len(self.events)} Events / "
                          f"{len(self.stations)} Stations")
                         
-
         if legend:
             labels = [line.get_label() for line in lines]
             ax.legend(lines, labels, prop={"size": 12}, loc=legend_loc)
@@ -1109,7 +1160,51 @@ class InspectorPlotter:
         return f, ax
 
 
-def colormap_colorbar(cmap, vmin=0., vmax=1., dv=None, cbar_label=""):
+def default_axes(ax, cbar=None, **kwargs):
+    """
+    Ensure that all plots have the same default look. Should be more flexible
+    than setting rcParams or having a style sheet. Also allows the same kwargs 
+    to be thrown by all functions so that the function calls have the same 
+    format.
+
+    Keyword Arguments
+    ::
+    """
+    axis_fontsize = kwargs.get("axis_fontsize", 12)
+    tick_fontsize = kwargs.get("tick_fontsize", 8)
+    tick_linewidth = kwargs.get("tick_linewidth", 1.5)
+    tick_length = kwargs.get("tick_length", 5)
+    tick_direction = kwargs.get("tick_direction", "in")
+    label_fontsize = kwargs.get("label_fontsize", 12)
+    axis_linewidth = kwargs.get("axis_linewidth", 2.)
+    title_fontsize = kwargs.get("title_fontsize", 14)
+    cbar_tick_fontsize = kwargs.get("cbar_tick_fontsize", 10)
+    cbar_label_fontsize = kwargs.get("cbar_label_fontsize", 12)
+    cbar_outline_color = kwargs.get("cbar_outline_color", "k")
+    cbar_linewidth = kwargs.get("cbar_linewdith", 2.)
+
+    # Re-set font sizes for labels already created
+    ax.title.set_fontsize(title_fontsize)
+    ax.xaxis.label.set_fontsize(axis_fontsize)
+    ax.yaxis.label.set_fontsize(axis_fontsize)
+    ax.tick_params(axis="both", which="both", width=tick_linewidth, 
+                   direction=tick_direction, labelsize=tick_fontsize, 
+                   length=tick_length)
+
+    # Thicken up the bounding axis lines
+    for axis in ["top", "bottom", "left", "right"]:
+        ax.spines[axis].set_linewidth(axis_linewidth)
+
+    # Adjust font and bounding bar of colorbar if available
+    if cbar is not None:
+        cbar.ax.tick_params(labelsize=cbar_tick_fontsize)
+        cbar.ax.yaxis.label.set_fontsize(cbar_label_fontsize)
+        cbar.outline.set_edgecolor(cbar_outline_color)
+        cbar.outline.set_linewidth(cbar_linewidth)
+
+
+def colormap_colorbar(cmap, vmin=0., vmax=1., dv=None, cbar_label="", 
+                      extend="neither"):
     """
     Create a custom colormap and colorbar
 
@@ -1134,7 +1229,8 @@ def colormap_colorbar(cmap, vmin=0., vmax=1., dv=None, cbar_label=""):
         boundaries = np.arange(vmin, vmax, dv)
     else:
         boundaries = None
-    cbar = plt.colorbar(sm, boundaries=boundaries, shrink=0.9, pad=0.025)
+    cbar = plt.colorbar(sm, boundaries=boundaries, shrink=0.9, pad=0.025,
+                        extend=extend)
     if cbar_label:
         cbar.ax.set_ylabel(cbar_label, rotation=270, labelpad=15)
 
