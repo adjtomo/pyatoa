@@ -16,6 +16,9 @@ def merge_pdfs(fids, fid_out):
     :type fid_out: str
     :param fid_out: path and name of the resulting output .pdf file
     """
+    if not fids:
+        return
+
     from PyPDF2 import PdfFileMerger
     
     merger = PdfFileMerger()
