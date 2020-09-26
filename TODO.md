@@ -5,7 +5,8 @@
 - [X] Use Pandas in the Inspector class to do the large-scale data analysis required for all the misfit windows, etc.
 
 #### Bugs
-- [ ] Pyflex value Error is being thrown (pyflex.window_selector() line 427 np.abs(noise).max() zero size array). Very close source-receiver distances means P-wave arrival is within the first wavelength, meaning no noise amplitude calculations can take place, and windows are not picked even for good waveforms. Can this be reconciled in Pyflex, or do we need to exclude distances <100km e.g.?
+- [X] Pyflex value Error is being thrown (pyflex.window_selector() line 427 np.abs(noise).max() zero size array). Very close source-receiver distances means P-wave arrival is within the first wavelength, meaning no noise amplitude calculations can take place, and windows are not picked even for good waveforms. Can this be reconciled in Pyflex, or do we need to exclude distances <100km e.g.?
+*Pyatoa now catches these as known exceptions*
 - [ ] If Manager.gather() is called after Manager.load() the gatherer attribute has no origintime. Also the synthetic tag is incorrectly set. These need to be properly propogated in the load() command.
 - [ ] Gathered obs data can sometimes have multiple (>1) traces per component. Need to cap this to 1 per component and also let the user know that this is happening.
 - [ ] If windows are fixed, Pyflex no longer controls the maximum criteria within the windows, so e.g. time shift is allowed to exceed the maximum allowed time shift.
@@ -19,6 +20,7 @@
       *removed the step count requirement in the if statement*
       
 #### Questions
+- [ ] Should we try to find a way to NOT repeatedly save StationXML files, because as of currently, StationXML files are gathered and stored for each event. Not a heavy storage demand, but not very elegant either. This is perhaps a good thing, though, because response information may change temporally, and we currently gather StationXML information based on event origin time, which means there is a change that these files are different. Need to discuss with someone.
 - [ ] Is weighting adjoint sources by station proximity something that Pyatoa should do, how could it be implemented?
 - [X] Fixed windowing might encounter some problems because the synthetic trace is changing, so the values of max_cc_, cc_shift and dlnA are not being re-evaluated. Can this be remedied? Can we add some functionality to Pyflex to reevaluate misfit values based on waveforms?
 *Pyflex already had an option to recalculate window parameters for a given set of windows, this is now implemented in Pyatoa*
@@ -78,9 +80,9 @@
 
 
 #### ASDF
-- [ ] Save Pyflex/Pyadjoint Config parameters, not just the map name, incase map names change
-- [ ] Generate waveform plots, maps, from an ASDF dataset. As in remove the need to create a Manager just to make 
-      waveform plots, if a dataset already exists
+- [X] Save Pyflex/Pyadjoint Config parameters, not just the map name, incase map names change
+- [ ] ~~Generate waveform plots, maps, from an ASDF dataset. As in remove the need to create a Manager just to make waveform plots, if a dataset already exists~~
+*Not quite, but Manager.load() allows pretty quick access to data in an ASDFDataSet, and provides the machinery to make the plots. Only a few lines of code required*
 - [X] Processing provenance saved into auxiliary_data?  
       *Saved processing stats from obspy stream into the Config object for each model/step*
 - [X] Retain step count information for MisfitWindows and AdjointSources
