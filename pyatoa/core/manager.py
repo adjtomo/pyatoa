@@ -2,12 +2,11 @@
 """
 A class to control workflow and temporarily store and manipulate data
 """
-import warnings
-
+import os
 import obspy
 import pyflex
+import warnings
 import pyadjoint
-from os.path import basename
 from obspy.signal.filter import envelope
 
 from pyatoa import logger
@@ -215,7 +214,7 @@ class Manager:
         """
         # Give dataset filename if available
         if self.stats.dataset_id is None and self.ds is not None:
-            self.stats.dataset_id = basename(self.ds.filename)
+            self.stats.dataset_id = os.path.basename(self.ds.filename)
 
         # Determine the resource identifier for the Event object
         if self.stats.event_id is None and self.event is not None:
@@ -316,6 +315,25 @@ class Manager:
                 self.save_adjsrcs()
         else:
             raise NotImplementedError
+
+    def write_adjsrcs(self, path="./"):
+        """
+        Write internally stored adjoint source traces into SPECFEM3D defined
+        two-column ascii files. Filenames are based on what is expected by
+        Specfem, that is: 'NN.SSS.CCC.adj'
+
+        ..note::
+            This functionality is re-used enough that it warrants its own fx
+
+        :type path: str
+        :param path: path to save the
+        """
+        assert(self.adjsrcs is not None), f"No adjoint sources to write"
+        for adj in self.adjsrcs:
+            fid = f"{adj.network}.{adj.station}.{adj.component}.adj"
+            adj.write(filename=os.path.join(path, fid), format="SPECFEM",
+                      time_offset=self.stats.time_offset_sec
+                      )
 
     def load(self, code, path=None, ds=None, synthetic_tag=None,
              observed_tag=None, config=True, windows=False,
