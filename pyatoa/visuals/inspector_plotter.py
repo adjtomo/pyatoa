@@ -111,7 +111,7 @@ class InspectorPlotter:
 
         return f, ax
 
-    def event_depths(self, xaxis="latitude", show=True, save=None, **kwargs):
+    def event_depths(self, xaxis="longitude", show=True, save=None, **kwargs):
         """
         Create a scatter plot of events at depth. Compresses all events onto a
         single slice, optional choice of showing the x-axis or the y-axis
@@ -1170,7 +1170,6 @@ def default_axes(ax, cbar=None, **kwargs):
     Keyword Arguments
     ::
     """
-    axis_fontsize = kwargs.get("axis_fontsize", 12)
     tick_fontsize = kwargs.get("tick_fontsize", 8)
     tick_linewidth = kwargs.get("tick_linewidth", 1.5)
     tick_length = kwargs.get("tick_length", 5)
@@ -1185,8 +1184,8 @@ def default_axes(ax, cbar=None, **kwargs):
 
     # Re-set font sizes for labels already created
     ax.title.set_fontsize(title_fontsize)
-    ax.xaxis.label.set_fontsize(axis_fontsize)
-    ax.yaxis.label.set_fontsize(axis_fontsize)
+    ax.xaxis.label.set_fontsize(label_fontsize)
+    ax.yaxis.label.set_fontsize(label_fontsize)
     ax.tick_params(axis="both", which="both", width=tick_linewidth, 
                    direction=tick_direction, labelsize=tick_fontsize, 
                    length=tick_length)

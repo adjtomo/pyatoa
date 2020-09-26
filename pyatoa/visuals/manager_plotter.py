@@ -140,7 +140,7 @@ class ManagerPlotter:
             figsize = (1400 / dpi, 600 / dpi)
 
         # Create an overlying GridSpec that will contain both plots
-        gs = mpl.gridspec.GridSpec(1, 2, wspace=0.1, hspace=0.)
+        gs = mpl.gridspec.GridSpec(1, 2, wspace=0.25, hspace=0.)
         fig = plt.figure(figsize=figsize, dpi=dpi)
 
         # Plot the waveform on the left

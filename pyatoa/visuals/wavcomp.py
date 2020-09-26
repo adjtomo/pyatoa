@@ -233,6 +233,7 @@ def plot_from_working_dir():
     :return:
     """
     from glob import glob
+    choice = "pick"  # pick or all
 
     # Hardcoded
     min_period = 8
@@ -240,7 +241,7 @@ def plot_from_working_dir():
     m_init = None
     m_final = "i17/s01"
 
-    available = glob("*.h5")
+    available = glob("2017*.h5")
     if len(available) == 1:
         idx = 0
     else:
@@ -256,17 +257,25 @@ def plot_from_working_dir():
         print(f"{s:0>3}: {sta}")
 
     # Ask user to choose station to plot
+    if choice == "pick":
+        while True:
+            idx = input(f"Which station index or name?: ")
+            try:
+                station = stations[int(idx)]
+            except ValueError:
+                station = idx
 
-    while True:
-        idx = input(f"Which station index or name?: ")
-        try:
-            station = stations[int(idx)]
-        except ValueError:
-            station = idx
+            wc = Wavcomp(dsfid=dsfid, station=station, min_period=min_period,
+                         max_period=max_period)
+            wc.plot(m_init, m_final, show=True, save=False, fontsize=14)
 
-        wc = Wavcomp(dsfid=dsfid, station=station, min_period=min_period,
-                     max_period=max_period)
-        wc.plot(m_init, m_final, show=True, save=False)
+    elif choice == "all":
+        for station in stations:
+            wc = Wavcomp(dsfid=dsfid, station=station, min_period=min_period,
+                         max_period=max_period)
+            wc.plot(m_init, m_final, show=False, save=f"{station}.png", 
+                    fontsize=12)
+            plt.close()
 
 
 if __name__ == "__main__":
