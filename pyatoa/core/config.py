@@ -269,7 +269,7 @@ class Config:
         )
 
         # Check for unnused kwargs
-        unused_kwargs = []
+        unused_kwargs = unused_kwargs_pf + unused_kwargs_pa
         if unused_kwargs:
             raise ValueError(f"{unused_kwargs} are not keyword arguments in "
                              f"Pyatoa, Pyflex or Pyadjoint.")
@@ -451,7 +451,6 @@ class Config:
     def _read_yaml(self, filename):
         """
         Read config parameters from a yaml file, parse to attributes.
-        Any non-standard parameters will be passed through as kwargs.
 
         :type filename: str
         :param filename: filename to save yaml file
@@ -462,11 +461,7 @@ class Config:
         """
         with open(filename, "r") as f:
             attrs = yaml.load(f, Loader=yaml.Loader)
-        # Check if we're reading from a Seisflows yaml file
-        if 'PYATOA' in attrs.keys():
-            attr_list = attrs['PYATOA'].items()
-        else:
-            attr_list = attrs.items()
+        attr_list = attrs.items()
         
         kwargs = {}
         for key, item in attr_list:
@@ -480,6 +475,53 @@ class Config:
                 kwargs[key.lower()] = item
 
         return kwargs
+S
+    def read_seisflows_yaml(self, filename=None, par=None):
+        """
+        Read hardcoded config parameters from a SeisFlows yaml file. To be used
+        during a SeisFlows workflow. 
+
+        ..warning::
+            Does not assign paths, iteration, step or event id. These need to be
+            manually assigned in the workflow
+
+        :type filename: str
+        :param filename: filename to SeisFlows yaml file
+        :type par: seisflows.config.Dict
+        :param par: a seisflows Dict object
+        :rtype: dict
+        :return: key word arguments that do not belong to Pyatoa are passed back
+            as a dictionary object, these are expected to be arguments that are
+            to be used in Pyflex and Pyadjoint configs
+        """
+        assert((filename is not None) or (par is not None)), \
+                "filename or par required"
+
+        if filename is not None:
+            # Make it easier to access dict items
+            class Dar(dict):
+                """Makes it a bit cleaner to access dict items"""
+                def __getattr__(self, key):
+                    return self[key]
+
+            with open(filename, "r") as f:
+                par = Par(yaml.load(f, Loader=yaml.Loader))
+         
+        # These parameters need to be manually parsed and assigned one by one
+        self.synthetics_only = bool(par.CASE.lower() == "synthetic")
+        self.component_list = list(par.COMPONENTS)
+        self.rotate_to_rtz = par.ROTATE
+        self.min_period = par.MIN_PERIOD
+        self.max_period = par.MAX_PERIOD
+        self.filter_corners = par.CORNERS
+        self.unit_output = par.UNIT_OUTPUT
+        self.client = par.CLIENT
+        self.start_pad = par.START_PAD
+        self.end_pad = par.END_PAD
+        self.adj_src_type = par.ADJ_SRC_TYPE
+        self.pyflex_preset = par.PYFLEX_PRESET
+
+        self._check()
 
     def _read_asdf(self, ds, path):
         """
