@@ -20,6 +20,7 @@
       *removed the step count requirement in the if statement*
       
 #### Questions
+- [ ] Would multithreading calls to obspy.clients.fdsn.Client be useful? Since these calls are waiting on a webservice routine they may benefit from asynchronous thread calls, but would the speed-up be at all useful? Maybe if done en-masse for all stations and events at the same time with a single giant gather function. Perhaps a one-time gathering functionality is warranted here? Something like Gatherer.gather_all(event_list, station_list), to gather all EventXML's, all StationXML's, and all observed waveforms.
 - [ ] Should we try to find a way to NOT repeatedly save StationXML files, because as of currently, StationXML files are gathered and stored for each event. Not a heavy storage demand, but not very elegant either. This is perhaps a good thing, though, because response information may change temporally, and we currently gather StationXML information based on event origin time, which means there is a change that these files are different. Need to discuss with someone.
 - [ ] Is weighting adjoint sources by station proximity something that Pyatoa should do, how could it be implemented?
 - [X] Fixed windowing might encounter some problems because the synthetic trace is changing, so the values of max_cc_, cc_shift and dlnA are not being re-evaluated. Can this be remedied? Can we add some functionality to Pyflex to reevaluate misfit values based on waveforms?
@@ -28,6 +29,7 @@
 
 
 #### General
+- [ ] Standardize channel naming, perhaps the same as LASIF to push for consistency across tools.
 - [X] Big change: Rename 'model' to 'iteration', and start counting iterations from 1 not 0, to match Seisflows.  
       Refer to 'iterations' as 'evaluations', in reference to function evaluations.  
       Use integers to refer to iterations and step counts, only format for print statements, removes a lot of difficult   
@@ -51,11 +53,13 @@
      *config, manager, pyaflowa... todo: inspector  
 
 #### Config
+- [ ] Put location (LOC) wildcard and channel (CHA) wildcards in Config and make those accessible to the Manager when gathering data. That way these don't have to be hardcoded in the workflow scripts.
 - [ ] Include a set() function to prevent incorrect parameter sets or overwriting read-only parameters
 - [ ] ~~Include UTM projection into config and propogate into scripts~~
 - [X] Change 'model_number' to model
 
 #### Manager
+- [ ] Manager shouldn't throw general ManagerError but actual explicit exceptions related to each part of the processing scheme?
 - [ ] Calculate full waveform difference and save in ASDFDataSet, for use in variance reduction
 - [ ] Remove window_amplitude_ratio() from Manager, Pyflex already has this with 'check_global_data_quality'
 - [ ] Check if convolve_stf properly performs the time shift  
@@ -139,6 +143,6 @@
 - [ ] save focal mechanism attributes from sources (if available)
 
 #### Possible Inspector Features:
-- [ ] Merge() datasets if inversions are run in separate directories, allow one to be appended to the other with change in iteration label.
+- [X] Merge() datasets if inversions are run in separate directories, allow one to be appended to the other with change in iteration label.
 - [ ] Function to automatically create list of maximum 'key' (e.g. cc_shift_in_seconds') for a given iter/step/event/station etc.  
 
