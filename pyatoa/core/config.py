@@ -19,7 +19,7 @@ class Config:
     for information sharing between Pyatoa objects and functions.
     The Config can be read to and written from external files and ASDFDataSets.
     """
-    def __init__(self, yaml_fid=None, ds=None, path=None, iteration=None, 
+    def __init__(self, yaml_fid=None, ds=None, path=None, iteration=None,
                  step_count=None, event_id=None, min_period=10, max_period=30, 
                  filter_corners=2, client=None, rotate_to_rtz=False, 
                  unit_output="DISP", pyflex_preset="default", 
@@ -475,7 +475,7 @@ class Config:
                 kwargs[key.lower()] = item
 
         return kwargs
-S
+
     def read_seisflows_yaml(self, filename=None, par=None):
         """
         Read hardcoded config parameters from a SeisFlows yaml file. To be used
@@ -499,13 +499,13 @@ S
 
         if filename is not None:
             # Make it easier to access dict items
-            class Dar(dict):
-                """Makes it a bit cleaner to access dict items"""
+            class Dict(dict):
+                """Similar characteristic for accessing SeisFlows Dict items"""
                 def __getattr__(self, key):
                     return self[key]
 
             with open(filename, "r") as f:
-                par = Par(yaml.load(f, Loader=yaml.Loader))
+                par = Dict(yaml.load(f, Loader=yaml.Loader))
          
         # These parameters need to be manually parsed and assigned one by one
         self.synthetics_only = bool(par.CASE.lower() == "synthetic")

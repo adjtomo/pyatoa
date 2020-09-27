@@ -7,12 +7,13 @@ from pyasdf import ASDFDataSet
 from pyatoa.core.config import Config
 
 
-def test_read_config_from_yaml():
+def test_read_config_from_seisflow_yaml():
     """
     Test that reading from an external YAML file works
     """
-    cfg = Config(yaml_fid="./test_data/test_seisflows_parameters.yaml")
-    assert(cfg.client == "TEST_CLIENT")  # Check a random variable
+    cfg = Config()
+    cfg.read_seisflows_yaml("./test_data/test_seisflows_parameters.yaml")
+    assert not cfg.synthetics_only  # Check a random variable
 
 
 def test_read_write_from_asdfdataset(tmpdir):
@@ -25,6 +26,7 @@ def test_read_write_from_asdfdataset(tmpdir):
         cfg.write(write_to=ds)
         cfg_check = Config(ds=ds, path="default")
         assert(cfg.client == cfg_check.client)
+
 
 def test_incorrect_parameter_check():
     """
@@ -59,9 +61,9 @@ def test_get_path_for_aux_data():
     """
     Ensure that path naming works as advertise
     """
-    assert(Config().get_aux_path() == "default")
-    assert(Config(iteration=0).get_aux_path() == "i00")
-    assert(Config(iteration=0, step_count=1).get_aux_path() == "i00/s01")
+    assert(Config()._get_aux_path() == "default")
+    assert(Config(iteration=0)._get_aux_path() == "i00")
+    assert(Config(iteration=0, step_count=1)._get_aux_path() == "i00/s01")
  
 
 
