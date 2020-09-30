@@ -4,17 +4,15 @@ Test the functionalities of the Pyaflowa Manager class
 import pytest
 import os
 import json
-import logging
 import numpy as np
-from IPython import embed
 from pyasdf import ASDFDataSet
 from pyatoa import Config, Manager, logger
 from pyatoa.core.manager import ManagerError
-from pyatoa.core.gatherer import GathererNoDataException
 from obspy import read, read_events, read_inventory
 
 
-logger.setLevel("DEBUG")
+# Turn off the logger for tests
+logger.propogate = False
 
 
 @pytest.fixture
@@ -127,13 +125,6 @@ def test_internal_flag_checks(mgmt_pre):
     assert(mgmt_pre.stats.len_obs == mgmt_pre.stats.len_syn == 3)
     assert(mgmt_pre.stats.standardized == False)
     assert(mgmt_pre.stats.inv_name == "NZ.BFZ")
-
-def test_gather_pass_exception():
-    """
-    Gathering functionality is tested in test_gather, but test the gather() 
-    function by raising exceptions and seeing how Pyatoa passes then
-    """
-    pass
 
 
 def test_read_write_from_asdfdataset(tmpdir, mgmt_pre, config):

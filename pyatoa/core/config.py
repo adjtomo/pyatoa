@@ -495,7 +495,7 @@ class Config:
             to be used in Pyflex and Pyadjoint configs
         """
         assert((filename is not None) or (par is not None)), \
-                "filename or par required"
+            "filename or par required"
 
         if filename is not None:
             # Make it easier to access dict items

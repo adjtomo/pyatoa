@@ -167,9 +167,31 @@ class GridMaker:
         cbar = plt.colorbar()
         cbar.ax.set_ylabel(f"{variable.title()}", rotation=270, labelpad=15)
 
+        ax.set_xlim(ax.get_xlim())
+        ax.set_ylim(ax.get_ylim())
+
         plt.title(f"{variable.title()} at Z={depth_km} km")
 
         return f, ax
+
+    def cross_section(self, choice, value):
+        """
+        Plot a cross section across the XZ or YZ plane given an X or Y value
+
+        :param choice:
+        :param value:
+        :return:
+        """
+        assert(choice.lower() in ["x", "y"]), "Choice must be 'x' or 'y'"
+        values = getattr(self, "{choice}_unique")
+        assert(value in values), f"Value {value} not in {values}"
+
+        idx = np.where(values == value)[0]
+
+
+        f, ax = plt.subplots()
+        plt.contourf()
+
 
     # def volume(self, variable):
     #     """
@@ -180,6 +202,16 @@ class GridMaker:
     #     f = plt.figure()
     #     ax = plt.axes(projection="3d")
     #     ax.plot_surface(self.x, self.y, self.z, color=getattr(self, variable))
+
+
+if __name__ == "__main__":
+    gm = GridMaker()
+    gm.zero_origin = True
+    gm.read("vs_shallow_grid.xyz")
+    gm.decimate(2)
+    gm.depth_slice(gm.unique_z[1], "vs", cmap="RdYlBu", levels=21)
+    gm.coast('/Users/Chow/Documents/academic/vuw/data/carto/coastline/coast_nznorth_utm60.txt')
+    gm.show()
 
 
 

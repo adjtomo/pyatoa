@@ -12,7 +12,9 @@ def test_read_config_from_seisflow_yaml():
     Test that reading from an external YAML file works
     """
     cfg = Config()
-    cfg.read_seisflows_yaml("./test_data/test_seisflows_parameters.yaml")
+    cfg.read_seisflows_yaml(
+        filename="./test_data/test_seisflows_parameters.yaml"
+    )
     assert not cfg.synthetics_only  # Check a random variable
 
 
@@ -56,6 +58,7 @@ def test_incorrect_parameter_check():
     # unused key word arguments should result in ValueError
     with pytest.raises(ValueError):
         cfg = Config(ununused_kwarg="I dont belong :(")
+
 
 def test_get_path_for_aux_data():
     """
