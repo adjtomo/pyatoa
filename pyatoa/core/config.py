@@ -21,7 +21,7 @@ class Config:
     """
     def __init__(self, yaml_fid=None, ds=None, path=None, iteration=None,
                  step_count=None, event_id=None, min_period=10, max_period=30, 
-                 filter_corners=2, client=None, rotate_to_rtz=False, 
+                 filter_corners=2, client=None, rotate_to_rtz=False,
                  unit_output="DISP", pyflex_preset="default", 
                  component_list=None, adj_src_type="cc_traveltime_misfit", 
                  start_pad=20, end_pad=500, observed_tag="observed", 
@@ -119,7 +119,7 @@ class Config:
         
         self.save_to_ds = save_to_ds
 
-        # These are filled in with actual Config objects by _check()
+        # Empty init because these are filled by self._check()
         self.pyflex_config = None
         self.pyadjoint_config = None
 
@@ -132,15 +132,19 @@ class Config:
         else:
             self.paths = {"waveforms": [], "synthetics": [], "responses": []}
 
-        # Overwrite config parameters from .yaml if given
-        if yaml_fid:
-            kwargs = self._read_yaml(yaml_fid)
-        elif ds:
+        if ds:
+            # We do not set external configs when reading from dataset as these
+            # will have already been set previously in the dataset.
             assert(path is not None), "'path' is required to load from dataset"
             self._read_asdf(ds, path=path)
+        elif yaml_fid:
+            # Allow kwargs from both initialization, and external config
+            self._read_yaml(yaml_fid)
+        else:
+            self._set_external_configs(**kwargs)
 
         # Run internal sanity checks
-        self._check(**kwargs)
+        self._check()
 
     def __str__(self):
         """
@@ -173,6 +177,16 @@ class Config:
     def __repr__(self):
         """Simple call string representation"""
         return self.__str__()
+
+    @property
+    def pyflexcfg(self):
+        """simple dictionary print of pyflex config object"""
+        return vars(self.pyflex_config)
+
+    @property
+    def pyadjointcfg(self):
+        """simple dictionary print of pyflex config object"""
+        return vars(self.pyadjoint_config)
 
     @property
     def iter_tag(self):
@@ -208,11 +222,17 @@ class Config:
         """property to quickly get a bog-standard aux path e.g. i00/s00"""
         return self._get_aux_path()
 
-    def _check(self, **kwargs):
+    def _check(self):
         """
         A series of sanity checks to make sure that the configuration parameters
         are set properly to avoid any problems throughout the workflow.
         """
+        if self.iteration is not None:
+            assert(self.iteration >= 1), "Iterations must start at 1"
+
+        if self.step_count is not None:
+            assert(self.step_count >= 0), "Step count must start from 0"
+
         # Check period range is acceptable
         assert(self.min_period < self.max_period), \
             "min_period must be less than max_period"
@@ -257,6 +277,12 @@ class Config:
         # Make sure adjoint source type is formatted properly
         self.adj_src_type = format_adj_src_type(self.adj_src_type)
 
+    def _set_external_configs(self, **kwargs):
+        """
+        Set the pyflex and pyadjoint Config parameters using kwargs provided
+        to the init function. This function is separate because it only needs to
+        be run in certain cases.
+        """
         # Set Pyflex confict through wrapper function
         self.pyflex_config, unused_kwargs_pf = set_pyflex_config(
             choice=self.pyflex_preset, min_period=self.min_period,
@@ -268,11 +294,11 @@ class Config:
             min_period=self.min_period, max_period=self.max_period, **kwargs
         )
 
-        # Check for unnused kwargs
-        unused_kwargs = unused_kwargs_pf + unused_kwargs_pa
+        # See if both Pyflex and Pyadjoint threw the same unacceptable kwarg out
+        unused_kwargs = set(unused_kwargs_pf) & set(unused_kwargs_pa)
         if unused_kwargs:
-            raise ValueError(f"{unused_kwargs} are not keyword arguments in "
-                             f"Pyatoa, Pyflex or Pyadjoint.")
+            raise ValueError(f"{list(unused_kwargs)} are not keyword arguments "
+                             f"in Pyatoa, Pyflex or Pyadjoint.")
 
     def _get_aux_path(self, default="default", separator="/"):
         """
@@ -458,12 +484,13 @@ class Config:
         :return: key word arguments that do not belong to Pyatoa are passed back
             as a dictionary object, these are expected to be arguments that are
             to be used in Pyflex and Pyadjoint configs
+        :raises ValueError: if unrecognized kwargs are found in the yaml file
         """
         with open(filename, "r") as f:
             attrs = yaml.load(f, Loader=yaml.Loader)
         attr_list = attrs.items()
         
-        kwargs = {}
+        unused_kwargs = {}
         for key, item in attr_list:
             if hasattr(self, key.lower()):
                 # Special case: ensure paths don't overwrite, but append
@@ -472,18 +499,20 @@ class Config:
                         item[cfgkey] += cfgitem
                 setattr(self, key.lower(), item)
             else:
-                kwargs[key.lower()] = item
+                unused_kwargs[key.lower()] = item
 
-        return kwargs
+        if unused_kwargs:
+            raise ValueError(f"{list(unused_kwargs)} are not recognized "
+                             "keyword arguments ")
 
     def read_seisflows_yaml(self, filename=None, par=None):
         """
-        Read hardcoded config parameters from a SeisFlows yaml file. To be used
-        during a SeisFlows workflow. 
+        A mapping of intenral config parameters to a SeisFlows yaml file.
+        To be used during a SeisFlows workflow.
 
         ..warning::
             Does not assign paths, iteration, step or event id. These need to be
-            manually assigned in the workflow
+            manually assigned during the workflow by SeisFlows.
 
         :type filename: str
         :param filename: filename to SeisFlows yaml file
@@ -546,7 +575,8 @@ class Config:
             cfgin = ds.auxiliary_data.Configs[path].parameters
 
         # Parameters from flattened dictionaries will need special treatment
-        paths, pyflex_config, pyadjoint_config = {}, {}, {}
+        paths = {"waveforms": [], "synthetics": [], "responses": []}
+        pyflex_config, pyadjoint_config = {}, {}
 
         for key, item in cfgin.items():
             # Convert the item into expected native Python objects
@@ -561,7 +591,7 @@ class Config:
             # Put the item in the correct dictionary
             if "paths" in key:
                 # e.g. paths_waveforms -> waveforms
-                paths[key.split('_')[1]] = item
+                paths[key.split('_')[1]].append(item)
             elif "pyflex_config" in key:
                 pyflex_config["_".join(key.split('_')[2:])] = item
             elif "pyadjoint_config" in key:
