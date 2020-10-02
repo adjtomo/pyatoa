@@ -316,24 +316,53 @@ class Manager:
         else:
             raise NotImplementedError
 
-    def write_adjsrcs(self, path="./"):
+    def write_adjsrcs(self, path="./", write_blanks=True):
         """
         Write internally stored adjoint source traces into SPECFEM3D defined
         two-column ascii files. Filenames are based on what is expected by
         Specfem, that is: 'NN.SSS.CCC.adj'
 
         ..note::
-            This functionality is re-used enough that it warrants its own fx
+            By default writes adjoint sources for ALL components if one
+            component has an adjoint source. If an adjoint sourced doesn't exist
+            for a given component, it will be written with zeros. This is to
+            satisfy SPECFEM3D requirements.
 
         :type path: str
         :param path: path to save the
+        :type write_blanks: bool
+        :param write_blanks: write zeroed out adjoint sources for components
+            with no adjoint sources to meet the requirements of SPECFEM3D.
+            defaults to True
         """
+        from copy import deepcopy
+
         assert(self.adjsrcs is not None), f"No adjoint sources to write"
-        for adj in self.adjsrcs:
+
+        for adj in self.adjsrcs.values():
             fid = f"{adj.network}.{adj.station}.{adj.component}.adj"
             adj.write(filename=os.path.join(path, fid), format="SPECFEM",
                       time_offset=self.stats.time_offset_sec
                       )
+        if write_blanks:
+            # To see if any blank adjoint sources required, check the difference
+            # between internal component list and components with adjsrcs
+            # Assumed here that everything is in upper case
+            blank_comps = list(
+                set(self.config.component_list).difference(
+                    set(self.adjsrcs.keys()))
+            )
+            if blank_comps:
+                # Deep copy so that zeroing data doesn't affect original data
+                blank_adj = deepcopy(adj)
+                blank_adj.adjoint_source *= 0
+                for comp in blank_comps:
+                    new_adj_comp = f"{adj.component[:-1]}{comp}"
+                    fid = f"{adj.network}.{adj.station}.{new_adj_comp}.adj"
+                    blank_adj.write(filename=os.path.join(path, fid),
+                                    format="SPECFEM",
+                                    time_offset=self.stats.time_offset_sec
+                                    )
 
     def load(self, code, path=None, ds=None, synthetic_tag=None,
              observed_tag=None, config=True, windows=False,
