@@ -74,6 +74,7 @@ def window():
     return json.load(open(
         "./test_data/test_window_NZ_BFZ_N_0_2018p130600.json"))["windows"][0]
 
+
 @pytest.fixture
 def adjoint_source():
     """
@@ -83,6 +84,7 @@ def adjoint_source():
     return np.loadtxt(
         "./test_data/test_adjoint_source_NZ_BFZ_N_2018p130600.adj", unpack=True
         )
+
 
 @pytest.fixture
 def mgmt_pre(config, event, st_obs, st_syn, inv):
@@ -123,7 +125,7 @@ def test_internal_flag_checks(mgmt_pre):
     # embed(colors="neutral")
     assert(mgmt_pre.stats.event_id == "smi:nz.org.geonet/2018p130600")
     assert(mgmt_pre.stats.len_obs == mgmt_pre.stats.len_syn == 3)
-    assert(mgmt_pre.stats.standardized == False)
+    assert(mgmt_pre.stats.standardized is False)
     assert(mgmt_pre.stats.inv_name == "NZ.BFZ")
 
 
@@ -183,14 +185,15 @@ def test_standardize_raises_manager_error(mgmt_pre):
     with pytest.raises(ManagerError):
         mgmt_pre.standardize()
 
+
 def test_preprocess_dont_rotate(mgmt_pre):
     """
     Standard preprocessing, dont rotate components, just filter, check if 
     filtering worked
     """
     mgmt_pre.standardize().preprocess()
-    assert(mgmt_pre.stats.obs_filtered)
-    assert(mgmt_pre.stats.syn_filtered)
+    assert mgmt_pre.stats.obs_filtered
+    assert mgmt_pre.stats.syn_filtered
 
 
 def test_preprocess_rotate_to_rtz(mgmt_pre):
@@ -271,6 +274,7 @@ def test_window(mgmt_pre, window):
     assert(win_check.cc_shift == window["cc_shift_in_samples"])
     assert(win_check.dlnA == window["dlnA"])
 
+
 def test_save_windows_and_use_fixed_windows_from_dataset(tmpdir, mgmt_post):
     """
     Test fixed windowing by adding a set of windows to a temp dataset and then
@@ -294,8 +298,9 @@ def test_save_windows_and_use_fixed_windows_from_dataset(tmpdir, mgmt_post):
         for comp in mgmt_post.windows:
             for w, window in enumerate(mgmt_post.windows[comp]):
                 for attr in ["left", "right", "cc_shift"]:
-                    assert(getattr(window, attr) == 
-                                getattr(saved_windows[comp][w], attr))
+                    assert(getattr(window, attr) ==
+                           getattr(saved_windows[comp][w], attr))
+
 
 def test_save_adjsrcs(tmpdir, mgmt_post, adjoint_source):
     """
