@@ -20,12 +20,12 @@ class Config:
     The Config can be read to and written from external files and ASDFDataSets.
     """
     def __init__(self, yaml_fid=None, ds=None, path=None, iteration=None,
-                 step_count=None, event_id=None, min_period=10, max_period=30, 
+                 step_count=None, event_id=None, min_period=10, max_period=30,
                  filter_corners=2, client=None, rotate_to_rtz=False,
-                 unit_output="DISP", pyflex_preset="default", 
-                 component_list=None, adj_src_type="cc_traveltime_misfit", 
-                 start_pad=20, end_pad=500, observed_tag="observed", 
-                 synthetic_tag=None, synthetics_only=False, win_amp_ratio=0., 
+                 unit_output="DISP", pyflex_preset="default",
+                 component_list=None, adj_src_type="cc_traveltime_misfit",
+                 start_pad=20, end_pad=500, observed_tag="observed",
+                 synthetic_tag=None, synthetics_only=False, win_amp_ratio=0.,
                  paths=None, save_to_ds=True, **kwargs):
         """
         Initiate the Config object. Kwargs are passed to Pyflex and Pyadjoint
@@ -35,7 +35,7 @@ class Config:
         :type yaml_fid: str
         :param yaml_fid: id for .yaml file if config is to be loaded externally
         :type iteration: int
-        :param iteration: if running an inversion, the current iteration. Used 
+        :param iteration: if running an inversion, the current iteration. Used
             for internal path naming, as well as interaction with Seisflows via
             Pyaflowa.
         :type step_count: int
@@ -104,8 +104,8 @@ class Config:
         self.rotate_to_rtz = rotate_to_rtz
         self.unit_output = unit_output.upper()
         self.observed_tag = observed_tag
-        
-        # Allow manual override of synthetic tag, but keep internal and rely 
+
+        # Allow manual override of synthetic tag, but keep internal and rely
         # on calling property for actual value
         self._synthetic_tag = synthetic_tag
 
@@ -116,7 +116,7 @@ class Config:
         self.start_pad = int(start_pad)
         self.end_pad = int(end_pad)
         self.component_list = component_list
-        
+
         self.save_to_ds = save_to_ds
 
         # Empty init because these are filled by self._check()
@@ -179,12 +179,12 @@ class Config:
         return self.__str__()
 
     @property
-    def pyflexcfg(self):
+    def pfcfg(self):
         """simple dictionary print of pyflex config object"""
         return vars(self.pyflex_config)
 
     @property
-    def pyadjointcfg(self):
+    def pacfg(self):
         """simple dictionary print of pyflex config object"""
         return vars(self.pyadjoint_config)
 
@@ -302,7 +302,7 @@ class Config:
 
     def _get_aux_path(self, default="default", separator="/"):
         """
-        Pre-formatted path to be used for tagging and identification in 
+        Pre-formatted path to be used for tagging and identification in
         ASDF dataset auxiliary data. Internal function to be called by property
         aux_path.
 
@@ -310,7 +310,7 @@ class Config:
         :param default: if no iteration or step information is given, path will
             default to this string. By default it is 'default'.
         :type separator: str
-        :param separator: if an iteration and step_count are available, 
+        :param separator: if an iteration and step_count are available,
             separator will be placed between. Defaults to '/', use '' for no
             separator.
         """
@@ -423,12 +423,12 @@ class Config:
 
         # Deep copy to ensure that we aren't editing the Config parameters
         attrs = vars(deepcopy(self))
-        
+
         add_attrs = {}
         del_attrs = []
         for key, item in attrs.items():
             if item is None:
-                # HDF doesn't support NoneType so convert to string        
+                # HDF doesn't support NoneType so convert to string
                 attrs[key] = "None"
             elif isinstance(item, (dict, PyflexConfig, PyadjointConfig)):
                 # Flatten dictionaries, add prefix, delete original
@@ -489,7 +489,7 @@ class Config:
         with open(filename, "r") as f:
             attrs = yaml.load(f, Loader=yaml.Loader)
         attr_list = attrs.items()
-        
+
         unused_kwargs = {}
         for key, item in attr_list:
             if hasattr(self, key.lower()):
@@ -535,7 +535,7 @@ class Config:
 
             with open(filename, "r") as f:
                 par = Dict(yaml.load(f, Loader=yaml.Loader))
-         
+
         # These parameters need to be manually parsed and assigned one by one
         self.synthetics_only = bool(par.CASE.lower() == "synthetic")
         self.component_list = list(par.COMPONENTS)
@@ -581,7 +581,7 @@ class Config:
         for key, item in cfgin.items():
             # Convert the item into expected native Python objects
             if isinstance(item, str):
-                item = None if item == "None" else item
+                item = None if (item == "None" or item == "") else item
             else:
                 try:
                     item = item.item()
@@ -593,6 +593,7 @@ class Config:
                 # e.g. paths_waveforms -> waveforms
                 paths[key.split('_')[1]].append(item)
             elif "pyflex_config" in key:
+                # Ensure that empties are set to NoneType
                 pyflex_config["_".join(key.split('_')[2:])] = item
             elif "pyadjoint_config" in key:
                 # e.g. pyadjoint_config_dlna_sigma_min -> dlna_sigma_min
