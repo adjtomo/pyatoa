@@ -161,6 +161,56 @@ class ExternalGetter:
         except FDSNException:
             return None
 
+    def _obs_get_multithread(self, code, **kwargs):
+        """
+        A small function to gather StationXMLs and observed waveforms together.
+        Used for multithreading where IO queries are sped up.
+
+        :type code: str
+        :param code: Station code following SEED naming convention.
+            This must be in the form NN.SSSS.LL.CCC (N=network, S=station,
+            L=location, C=channel). Allows for wildcard naming. By default
+            the pyatoa workflow wants three orthogonal components in the N/E/Z
+            coordinate system. Example station code: NZ.OPRZ.10.HH?
+        :rtype status: int
+        :return status: a simple status check that lets the user know how many
+            items were collected.
+        """
+        level = kwargs.get("station_level", "response")
+
+        status = 0
+        net, sta, loc, cha = code.split('.')
+        try:
+            inv = self.Client.get_stations(
+                network=net, station=sta, location=loc, channel=cha,
+                starttime=self.origintime - self.config.start_pad,
+                endtime=self.origintime + self.config.end_pad, level=level
+            )
+
+            self.ds.add_stationxml(inv)
+            status += 1
+        except FDSNException:
+            pass
+
+        try:
+            st = self.Client.get_waveforms(
+                network=net, station=sta, location=loc, channel=cha,
+                starttime=self.origintime - (self.config.start_pad + 10),
+                endtime=self.origintime + (self.config.end_pad + 10),
+                attach_response=True
+            )
+            # Sometimes FDSN queries return improperly cut start and end times,
+            # so we retrieve +/-10 seconds and then cut down
+            st.trim(starttime=self.origintime - self.config.start_pad,
+                    endtime=self.origintime + self.config.end_pad)
+
+            self.ds.add_waveforms(waveform=st, tag=self.config.observed_tag)
+            status += len(st)
+        except FDSNException:
+            pass
+
+        return status
+
 
 class InternalFetcher:
     """
@@ -724,6 +774,46 @@ class Gatherer(InternalFetcher, ExternalGetter):
         self._save_waveforms_to_dataset(st_syn, self.config.synthetic_tag)
 
         return st_syn
+
+    def gather_obs_threaded(self, codes, max_workers=None):
+        """
+        A multithreaded function that fetches all observed data (waveforms and
+        StationXMLs) for a given event and store it to an ASDFDataSet.
+        Multithreading is used to provide significant speed up for these request
+        based tasks.
+
+        :type codes: list of str
+        :param codes: A list of station codes where station codes must be in the
+            form NN.SSSS.LL.CCC (N=network, S=station, L=location, C=channel)
+        :type max_workers: int
+        :param max_workers: number of concurrent threads to use, passed to the
+            ThreadPoolExecutor. If left as None, conurrent futures will
+            automatically choose the system's number of cores.
+        """
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+
+        logger.info("mass gathering observation data")
+
+        assert(self.ds is not None), \
+            "Mass gathering requires a dataset `ds` for data storage"
+        assert(self.Client is not None), \
+            "Mass gathering requires a Client for data queries"
+        assert(self.origintime is not None), \
+            "Mass gathering requires an origintime for data queries"
+
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = {executor.submit(self._obs_get_multithread, code):
+                           code for code in codes
+                       }
+            for future in as_completed(futures):
+                code = futures[future]
+                try:
+                    status = future.result()
+                except Exception as e:
+                    print(f"{code} exception: {e}")
+                else:
+                    print(f"{code} status: {status}")
+
 
     def _save_waveforms_to_dataset(self, st, tag):
         """

@@ -108,27 +108,6 @@ def mgmt_post(mgmt_pre):
     return mgmt_pre
 
 
-def test_property_st_shows_correct_number_streams(st_obs, st_syn):
-    """
-    Ensure that the stream property correctly evaluates the internal streams
-    """
-    mgmt = Manager(st_obs=st_obs)
-    assert(len(mgmt.st) == 3)
-    mgmt.st_syn = st_syn
-    assert(len(mgmt.st) == 6)
-
-
-def test_internal_flag_checks(mgmt_pre):
-    """
-    Ensure assertions in Manager _check catch incorrectly specified parameters
-    """
-    # embed(colors="neutral")
-    assert(mgmt_pre.stats.event_id == "smi:nz.org.geonet/2018p130600")
-    assert(mgmt_pre.stats.len_obs == mgmt_pre.stats.len_syn == 3)
-    assert(mgmt_pre.stats.standardized is False)
-    assert(mgmt_pre.stats.inv_name == "NZ.BFZ")
-
-
 def test_read_write_from_asdfdataset(tmpdir, mgmt_pre, config):
     """
     Write a Manager into an ASDFDataSet and then read it back
@@ -141,7 +120,7 @@ def test_read_write_from_asdfdataset(tmpdir, mgmt_pre, config):
         mgmt_loaded = Manager(ds=ds, config=config)
         mgmt_loaded.load("NZ.BFZ")
 
-        # Manager has no equivalent represenation so just check some ids
+        # Manager has no equivalence represenation so just check some ids
         assert(mgmt_pre.stats.event_id == mgmt_loaded.stats.event_id)
         assert(mgmt_pre.stats.len_obs == mgmt_loaded.stats.len_obs)
         assert(mgmt_pre.stats.len_syn == mgmt_loaded.stats.len_syn)
@@ -150,7 +129,8 @@ def test_read_write_from_asdfdataset(tmpdir, mgmt_pre, config):
 
 def test_standardize_to_synthetics(mgmt_pre):
     """
-    Ensure that standardizing streams provides the correct functionality.
+    Ensure that standardizing streams performs three main tasks, trimming
+    origin times, matching sampling rates, and matching number of points.
     """
     # Values to check standardization against
     syn_starttime = mgmt_pre.st_syn[0].stats.starttime
@@ -165,10 +145,10 @@ def test_standardize_to_synthetics(mgmt_pre):
             assert(tr.stats.npts == syn_npts)
 
     mgmt_pre.standardize()
-    # Ensure stat is set correctly
-    assert(mgmt_pre.stats.standardized == True)
 
     # Ensure that these values now match the observed values
+    assert(mgmt_pre.stats.standardized == True)
+
     for tr in mgmt_pre.st_obs:
         assert(tr.stats.starttime == syn_starttime)
         assert(tr.stats.sampling_rate == syn_samp_rate)
@@ -177,9 +157,9 @@ def test_standardize_to_synthetics(mgmt_pre):
 
 def test_standardize_raises_manager_error(mgmt_pre):
     """
-    Manager will raise manager error if no traces present
+    Asser that Manager will raise an error if user tries to standardize with
+    no traces present
     """
-    # Make sure Manager won't standardize if waveforms don't match
     mgmt_pre.st_syn = None
     mgmt_pre.stats.len_syn = 0
     with pytest.raises(ManagerError):
