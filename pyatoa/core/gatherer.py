@@ -186,7 +186,6 @@ class ExternalGetter:
                 starttime=self.origintime - self.config.start_pad,
                 endtime=self.origintime + self.config.end_pad, level=level
             )
-
             self.ds.add_stationxml(inv)
             status += 1
         except FDSNException:
@@ -202,8 +201,8 @@ class ExternalGetter:
             # Sometimes FDSN queries return improperly cut start and end times,
             # so we retrieve +/-10 seconds and then cut down
             st.trim(starttime=self.origintime - self.config.start_pad,
-                    endtime=self.origintime + self.config.end_pad)
-
+                    endtime=self.origintime + self.config.end_pad
+                    )
             self.ds.add_waveforms(waveform=st, tag=self.config.observed_tag)
             status += len(st)
         except FDSNException:

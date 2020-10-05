@@ -136,7 +136,8 @@ def write_adj_src_to_ascii(ds, iteration, step_count=None, pathout=None,
     the adjoint sources into ascii files with proper formatting, for input
     into PyASDF.
 
-    Note: Specfem dictates that if a station is given as an adjoint source,
+    ..note::
+        Specfem dictates that if a station is given as an adjoint source,
         all components must be present, even if some components don't have
         any misfit windows. This function writes blank adjoint sources
         (an array of 0's) to satisfy this requirement.

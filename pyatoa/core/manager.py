@@ -181,8 +181,8 @@ class Manager:
                 f"    standardized:          {self.stats.standardized}\n"
                 f"    obs_processed:         {self.stats.obs_processed}\n"
                 f"    syn_processed:         {self.stats.syn_processed}\n"
-                f"    nwin (windows):        {self.stats.nwin}\n"
-                f"    misfit (adjsrcs):      {self.stats.misfit:.2E}\n"
+                f"    nwin   [windows]:      {self.stats.nwin}\n"
+                f"    misfit [adjsrcs]:      {self.stats.misfit:.2E}\n"
                 )
 
     def __repr__(self):
@@ -545,7 +545,7 @@ class Manager:
         except GathererNoDataException as e:
             # Catch the Gatherer exception and redirect as ManagerError 
             # so that it can be caught by flow()
-            raise ManagerError("data gatherer could not find some data") from e
+            raise ManagerError("Data Gatherer could not find some data") from e
         except Exception as e:
             # Gathering should be robust, but if something slips through, dont
             # let it kill a workflow, display and raise ManagerError
@@ -860,7 +860,9 @@ class Manager:
                                             data=obs.data, windows=windows,
                                             ratio=self.config.win_amp_ratio
                                             )
+            # ==================================================================
             # NOTE: Additional windowing criteria may be added here if necessary
+            # ==================================================================
             if windows:
                 window_dict[comp] = windows
             if ws.rejects:
