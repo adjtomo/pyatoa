@@ -1,0 +1,22 @@
+package:
+  name: pyatoa
+  version: 0.1
+
+source:
+  git_rev:
+  git_url: https://github.com/bch0w/pyatoa.git
+
+requirements:
+  build:
+    - python
+    - setuptools
+
+  run:
+    - python
+
+test:
+  imports:
+    - pyatoa
+
+about:
+  home: https://pyatoa.readthedocs.io/en/latest/
