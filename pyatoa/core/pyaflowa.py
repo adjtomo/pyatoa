@@ -211,7 +211,7 @@ class Pyaflowa:
 
         return self.finalize(io)
 
-    def multi_process(self, max_workers=None, **kwargs):
+    def multi_process(self, source_names=None, max_workers=None, **kwargs):
         """
         Use concurrent futures to run the process() function in parallel.
         This is a multiprocessing function, meaning multiple instances of Python
@@ -225,24 +225,28 @@ class Pyaflowa:
         :param max_workers: maximum number of parallel processes to use. If
             None, automatically determined by system number of processors.
         """
-        source_paths = glob(os.path.join(self.par.PATHS["SOLVER"], "*"))
-
-        # Do not consider symlinks such as 'mainsolver'
-        source_paths = [_ for _ in source_paths if not os.path.islink(_)]
+        if source_names is None:
+            source_paths = glob(os.path.join(self.par.PATHS["SOLVER"], "*"))
+            # Do not consider symlinks such as 'mainsolver'
+            source_paths = [_ for _ in source_paths if not os.path.islink(_)]
+            source_names = [os.path.basename(_) for _ in source_paths]
 
         misfits = {}
         with ProcessPoolExecutor(max_workers=max_workers) as executor:
-            for source_path, misfit in zip(
-                    source_paths, executor.map(self.process_single_event,
-                                               source_paths, **kwargs)):
-                misfits[os.path.basename(source_path)] = misfit
+            for source_name, misfit in zip(
+                    source_names, executor.map(self.process, source_names, 
+                                               **kwargs)):
+                misfits[os.path.basename(source_name)] = misfit
 
         return misfits
 
     def quantify(self, mgmt, code, io, **kwargs):
         """
         Process a single seismic station for a given event. Return processed
-        manager and status describing outcome of processing.
+        manager and status describing outcome of processing. Multiple error 
+        catching chunks to ensure that a failed processing for a single station
+        won't kill the entire job.
+
         Kwargs passed to pyatoa.core.manager.Manager.flow()
 
         ..note::
