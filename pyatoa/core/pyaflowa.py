@@ -21,7 +21,7 @@ class IO(dict):
         io = IO(cwd=cwd, logger=logger_, inv=inv, misfit=0, nwin=0, stations=0,
                 processed=0, exceptions=0, plot_fids=[])
     """
-    def __init__(self, cwd, logger, inv, misfit=0, nwin=0, stations=0,
+    def __init__(self, cwd, logger, config, misfit=0, nwin=0, stations=0,
                  processed=0, exceptions=0, plot_fids=None):
         """
         Hard set required parameters here, that way the user knows what is
@@ -34,10 +34,9 @@ class IO(dict):
         :type logger: logging.Logger
         :param logger: An individual event-specific log handler so that log
             statements can be made in parallel if required
-        :type inv: obspy.core.catalog.Catalog
-        :param inv: The event specific Catalog object which needs to contain
-            network and station information, used for looping through stations
-            during the process() function
+        :type cfg: pyatoa.core.config.Config
+        :param cfg: The event specific Config object that will be used to
+            control the processing during each pyaflowa workflow.
         :type misfit: int
         :param misfit: output storage to keep track of the total misfit accrued
             for all the stations processed for a given event
@@ -61,7 +60,7 @@ class IO(dict):
         """
         self.cwd = cwd
         self.logger = logger
-        self.inv = inv
+        self.config = config
         self.misfit = misfit
         self.nwin = nwin
         self.stations = stations
@@ -81,14 +80,23 @@ class Pyaflowa:
     A processing class for integration of the Pyatoa workflow into
     a SeisFlows Inversion workflow. Allows for multiprocessing of events.
     """
-    def __init__(self, data, figures, par, loglevel="DEBUG"):
+    def __init__(self, paths, par, loglevel="DEBUG"):
         """
         Initialize the flow by establishing the directory structures present
         in the SeisFlows workflow
+        
+        :type paths: seisflows.config.Dict
+        :param paths: PREPROCESS module specific tasks that should be defined
+            by the SeisFlows preprocess class. Three required keys, data,
+            figures, and logs
+        :type par: seisflows.config.Dict
+        :parma par: Parameter list tracked internally by SeisFlows
         """
         # Information that needs to be passed in from SeisFlows.preprocess
-        self.data = data
-        self.figures = figures
+        for required in ["data", "figures", "logs"]:
+            assert required in paths, f"Paths missing required key '{required}'"
+
+        self.paths = paths
         self.par = par
 
         self.plot = True
@@ -98,7 +106,7 @@ class Pyaflowa:
         self.config = pyatoa.Config()
         self.config.read_seisflows_yaml(par=par)
 
-    def setup(self, cwd):
+    def setup(self, source_name):
         """
         Perform a basic setup by creating Config, logger and setting up an
         output dictionary to be carried around through the processing procedure.
@@ -114,23 +122,39 @@ class Pyaflowa:
         :return: dictionary like object that contains all the necessary
             information to perform processing for a single event
         """
-        # Get the event id from the current working directory
-        event_id = os.path.basename(cwd)
+        # Hardcode directory structure based on SeisFlows structure
+        cwd = os.path.join(self.par.PATHS["SOLVER"], source_name) 
 
         # Copy in the Config to avoid overwriting the template internal attr.
         config = deepcopy(self.config)
-        config.event_id = event_id
 
-        # Create the individualized logger
-        logger_ = self._create_(fid=f"{config.event_id}.log")
+        # Set event-specific information so Pyatoa knows where to look for data
+        config.event_id = source_name
+        config.paths = {
+            "responses": [os.path.join(self.par.PATHS["DATA"], "seed")],
+            "waveforms": [os.path.join(self.par.PATHS["DATA"], "mseeds"),
+                          os.path.join(cwd, "traces", "obs")],
+            "synthetics": [os.path.join(cwd, "traces", "syn")],
+            }
+        
+        # Only query FDSN at the very first function evaluation, assuming no new
+        # data will pop up during the inversion
+        if config.iteration == 1 and config.step_count == 0:
+            config.client = self.par.CLIENT 
+        else:
+            config.client = None
 
-        # Reading in stations here allows for event-dependent station lists
-        inv = pyatoa.read_station(os.path.join(cwd, "DATA", "STATIONS"))
+        # Create the event-specific logger, make sure we're logging to the 
+        # correct location
+        log_fid = f"{config.iter_tag}{config.step_tag}_{config.event_id}.log"
+        logger_ = self._create_event_log_handler(
+                                    fid=os.path.join(self.paths.logs, log_fid)
+                                    )
 
         # Dict-like object used to keep track of information for a single event
         # processing run, simplifies information passing between functions.
-        io = IO(cwd=cwd, logger=logger_, inv=inv, misfit=0, nwin=0, stations=0,
-                processed=0, exceptions=0, plot_fids=[])
+        io = IO(cwd=cwd, logger=logger_, config=config, misfit=0, nwin=0, 
+                stations=0, processed=0, exceptions=0, plot_fids=[])
 
         return io
 
@@ -156,7 +180,7 @@ class Pyaflowa:
         else:
             return None
 
-    def process(self, cwd, **kwargs):
+    def process(self, source_name, **kwargs):
         """
         A template processing function to create/open an ASDFDataSet, process
         all stations related to the event, and write the associated adjoint
@@ -166,26 +190,28 @@ class Pyaflowa:
         :return: the total scaled misfit collected during the processing chain
         """
         # Create the event specific configurations and output containers
-        io = self.setup(cwd)
+        io = self.setup(source_name)
 
         # Open the dataset as a context manager and process all events serially
-        with ASDFDataSet(os.path.join(self.data,
-                                      f"{io.config.event_id}")) as ds:
+        with ASDFDataSet(os.path.join(self.paths.data,
+                                      f"{io.config.event_id}.h5")) as ds:
             # Cleaning dataset ensures no previous/failed data is used this go
             clean_dataset(ds, iteration=io.config.iteration,
                           step_count=io.config.step_count
                           )
             io.config.write(write_to=ds)
 
+            # Reading in stations here allows for event-dependent station lists
+            inv = pyatoa.read_stations(os.path.join(io.cwd, "DATA", "STATIONS"))
             mgmt = pyatoa.Manager(ds=ds, config=io.config)
-            for net in io.inv:
+            for net in inv:
                 for sta in net:
                     code = f"{net.code}.{sta.code}"
                     mgmt_out, io = self.quantify(mgmt, code, io, **kwargs)
 
         return self.finalize(io)
 
-    def multi_process(self, solver_dir, max_workers=None, **kwargs):
+    def multi_process(self, max_workers=None, **kwargs):
         """
         Use concurrent futures to run the process() function in parallel.
         This is a multiprocessing function, meaning multiple instances of Python
@@ -199,7 +225,7 @@ class Pyaflowa:
         :param max_workers: maximum number of parallel processes to use. If
             None, automatically determined by system number of processors.
         """
-        source_paths = glob(os.path.join(solver_dir, "*"))
+        source_paths = glob(os.path.join(self.par.PATHS["SOLVER"], "*"))
 
         # Do not consider symlinks such as 'mainsolver'
         source_paths = [_ for _ in source_paths if not os.path.islink(_)]
@@ -245,11 +271,11 @@ class Pyaflowa:
             mgmt.gather(code=f"{code}.*.HH?")
         except pyatoa.ManagerError as e:
             io.logger.warning(e)
-            return None, None, 0
+            return None, io
 
         # Data processing chunk; if fail, continue to plotting
         try:
-            mgmt.flow(fix_windows=self._check_fixed_windows(), **kwargs)
+            mgmt.flow(fix_windows=self._check_fix_window_criteria(), **kwargs)
             status = 1
         except pyatoa.ManagerError as e:
             io.logger.warning(e)
@@ -267,7 +293,7 @@ class Pyaflowa:
             plot_fid = "_".join([mgmt.config.iter_tag, mgmt.config.step_tag,
                                  code.replace(".", "_") + ".pdf"]
                                 )
-            save = os.path.join(self.figures, mgmt.config.event_id,
+            save = os.path.join(self.paths.figures, mgmt.config.event_id,
                                 plot_fid)
             mgmt.plot(corners=self.corners, show=False, save=save)
         else:
@@ -301,7 +327,7 @@ class Pyaflowa:
         """
         return 0.5 * raw_misfit / nwin
 
-    def _check_fixed_windows_criteria(self):
+    def _check_fix_window_criteria(self):
         """
         Determine how to address fixed time windows based on the user parameter
         as well as the current iteration and step count in relation to the
@@ -395,7 +421,7 @@ class Pyaflowa:
         """
         if fids:
             # Merge all output pdfs into a single pdf, delete originals
-            save = os.path.join(self.figures, output_fid)
+            save = os.path.join(self.paths.figures, output_fid)
             pyatoa.utils.images.merge_pdfs(fids=sorted(fids), fid_out=save)
             for fid in fids:
                 os.remove(fid)
@@ -424,16 +450,17 @@ class Pyaflowa:
         :rtype: logging.Logger
         :return: an individualized logging handler
         """
-        for log in ["pyatoa", "pyflex", "pyadjoint"]:
+        # Propogate logging to individual log files, always overwrite
+        handler = logging.FileHandler(fid, mode="w")
+        # Maintain the same look as the standard console log messages
+        logfmt = "[%(asctime)s] - %(name)s - %(levelname)s: %(message)s"
+        formatter = logging.Formatter(logfmt, datefmt="%Y-%m-%d %H:%M:%S")
+        handler.setFormatter(formatter)
+
+        for log in ["pyflex", "pyadjoint", "pyatoa"]:
             # Set the overall log level
             logger = logging.getLogger(log)
             logger.setLevel(self.loglevel)
-            # Propogate logging to individual log files
-            handler = logging.FileHandler(fid)
-            # Maintain the same look as the standard console log messages
-            logfmt = "[%(asctime)s] - %(name)s - %(levelname)s: %(message)s"
-            formatter = logging.Formatter(logfmt, datefmt="%Y-%m-%d %H:%M:%S")
-            handler.setFormatter(formatter)
             logger.addHandler(handler)
 
         return logger
