@@ -187,9 +187,17 @@ class Pyaflowa:
 
     def multi_process(self, solver_dir, max_workers=None, **kwargs):
         """
-        Use multiprocessing to run event processing functionality in parallel.
-        Max workers is intentionally left blank so that it can be automatically
-        determined by the number of processors.
+        Use concurrent futures to run the process() function in parallel.
+        This is a multiprocessing function, meaning multiple instances of Python
+        will be instantiated in parallel.
+
+        :type solver_dir: str
+        :param solver_dir: the SeisFlows scratch directory containing all
+            currently running SPECFEM instances. Usually points to
+            seisflows_working_dir/scratch/solver/
+        :type max_workers: int
+        :param max_workers: maximum number of parallel processes to use. If
+            None, automatically determined by system number of processors.
         """
         source_paths = glob(os.path.join(solver_dir, "*"))
 
@@ -200,7 +208,7 @@ class Pyaflowa:
         with ProcessPoolExecutor(max_workers=max_workers) as executor:
             for source_path, misfit in zip(
                     source_paths, executor.map(self.process_single_event,
-                                               source_paths)):
+                                               source_paths, **kwargs)):
                 misfits[os.path.basename(source_path)] = misfit
 
         return misfits
