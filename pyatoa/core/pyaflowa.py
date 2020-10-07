@@ -73,7 +73,7 @@ class IO(dict):
 
     def __getattr__(self, key):
         return self[key]
-
+    
 
 class Pyaflowa:
     """
@@ -171,7 +171,7 @@ class Pyaflowa:
             output_fid="_".join([io.config.iter_tag, io.config.step_tag,
                                  io.config.event_id + ".pdf"])
         )
-        self._write_stations_adjoint_to_disk(io.cwd)
+        self._write_specfem_stations_adjoint_to_disk(io.cwd)
         self._output_final_log_summary(io)
 
         if io.misfit:
@@ -380,7 +380,7 @@ class Pyaflowa:
         return fix_windows
 
     @staticmethod
-    def _write_stations_adjoint_to_disk(cwd):
+    def _write_specfem_stations_adjoint_to_disk(cwd):
         """
         Create the STATIONS_ADJOINT file required by SPECFEM to run an adjoint
         simulation. Should be run after all processing has occurred. Does this

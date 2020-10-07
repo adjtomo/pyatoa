@@ -78,10 +78,18 @@ def format_event_name(ds_or_event):
             return rid.split("/")[-1]
         # IRIS Client: smi:service.iris.edu/fdsnws/event/1/query?eventid=5197722
         elif "IRIS" in rid_up:
-            return rid.split("=")[-1]
+            return rid.split("eventid=")[-1]
         # SPUD, GCMT: smi:local/ndk/C202005010101A/event
         elif "NDK" in rid_up:
             return rid.split("/")[-2]
+        # USGS Client: quakeml:earthquake.usgs.gov/fdsnws/event/1/...
+        #                          ...query?eventid=ak0198gdhuwa&format=quakeml
+        elif "USGS" in rid_up:
+            rid_ = rid.split("eventid=")[-1]
+            return rid_.split("&")[0]
+        # USGS ANSS ComCat: quakeml:us.anss.org/event/20005ysu
+        elif "ANSS" in rid_up:
+            return rid.split("event/")[-1]
         else:
             raise NotImplementedError(f"Unknown resource id format {rid}, "
                                       "Please raise a GitHub issue and the"

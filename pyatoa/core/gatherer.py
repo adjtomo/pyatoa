@@ -857,7 +857,7 @@ def get_gcmt_moment_tensor(origintime, magnitude, time_wiggle_sec=120,
     from obspy import UTCDateTime, read_events
 
     if not isinstance(origintime, UTCDateTime):
-        datetime = UTCDateTime(origintime)
+        origintime = UTCDateTime(origintime)
 
     # Determine filename using datetime properties
     month = origintime.strftime('%b').lower()  # e.g. 'jul'
@@ -889,10 +889,10 @@ def get_gcmt_moment_tensor(origintime, magnitude, time_wiggle_sec=120,
     # Filtering may remove all events from catalog, return multiple events, or
     # may return the event of choice
     if not len(cat_filt):
-        logger.info(f"no GCMT event found for {datetime} and M{magnitude}")
+        logger.info(f"no GCMT event found for {origintime} and M{magnitude}")
         raise FileNotFoundError("No events found")
     elif len(cat_filt) > 1:
-        logger.info(f"multiple events found for {datetime} and M{magnitude}")
+        logger.info(f"multiple events found for {origintime} and M{magnitude}")
         print(f"{len(cat_filt)} events found, choosing first")
         return cat_filt[0]
     else:

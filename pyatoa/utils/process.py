@@ -160,9 +160,10 @@ def filters(st, min_period=None, max_period=None, min_freq=None, max_freq=None,
 
 def taper_time_offset(st, taper_percentage=0.05, time_offset_sec=0):
     """
-    Taper the ends of the waveform. If a time offset is given, e.g. 20s before
-    the event origin time (T_0), taper all the way up from T=0 to T=T_0, to
-    ensure that there are no unncessary signals prior to the event origin.
+    Taper the leading edge of the waveform. If a time offset is given,
+    e.g. 20s before the event origin time (T_0), taper all the way up from
+    T=0 to T=T_0, to ensure that there are no impulse-like signals prior to the
+    event origin.
 
     :type st: obspy.core.stream.Stream
     :param st: Stream object to be tapered
@@ -254,11 +255,10 @@ def trim_streams(st_a, st_b, precision=1E-3, force=None):
 
     # Force the trim to the start and end times of one of the streams
     if force:
-        force = force.lower()
-        if force == "a":
+        if force.lower() == "a":
             start_set = st_a[0].stats.starttime
             end_set = st_a[0].stats.endtime
-        elif force == "b":
+        elif force.lower() == "b":
             start_set = st_b[0].stats.starttime
             end_set = st_b[0].stats.endtime
     # Get starttime and endtime base on min values
