@@ -323,10 +323,15 @@ class InternalFetcher:
                                    "RESP.{net}.{sta}.{loc}.{cha}")
 
         inv = None
-        paths_to_responses = self.config.paths["responses"]
-
         net, sta, loc, cha = code.split('.')
-        for path_ in paths_to_responses:
+
+        # Ensure that the paths are a list so that iterating doesnt accidentally
+        # try to iterate through a string.
+        paths = self.config.paths["responses"]
+        if not isinstance(paths, list):
+            paths = [paths]
+
+        for path_ in paths:
             if not os.path.exists(path_):
                 continue
             # Attempting to instantiate an empty Inventory requires some 
@@ -385,15 +390,20 @@ class InternalFetcher:
         if self.origintime is None:
             raise AttributeError("'origintime' must be specified")
 
-        paths_to_obs = self.config.paths["waveforms"]
-
         net, sta, loc, cha = code.split('.')
         # If waveforms contain midnight, multiple files need to be read
         jdays = overlapping_days(origin_time=self.origintime,
                                  start_pad=self.config.start_pad,
                                  end_pad=self.config.end_pad
                                  )
-        for path_ in paths_to_obs:
+
+        # Ensure that the paths are a list so that iterating doesnt accidentally
+        # try to iterate through a string.
+        paths = self.config.paths["waveforms"]
+        if not isinstance(paths, list):
+            paths = [paths]
+
+        for path_ in paths:
             if not os.path.exists(path_):
                 continue
             full_path = os.path.join(path_, dir_structure, file_template)
@@ -468,8 +478,13 @@ class InternalFetcher:
         # Generate information necessary to search for data
         net, sta, loc, cha = code.split('.')
 
-        # Check through paths given in Config
-        for path_ in self.config.paths[pathname]:
+        # Ensure that the paths are a list so that iterating doesnt accidentally
+        # try to iterate through a string.
+        paths = self.config.paths[pathname]
+        if not isinstance(paths, list):
+            paths = [paths]
+
+        for path_ in paths:
             if not os.path.exists(path_):
                 continue
 
