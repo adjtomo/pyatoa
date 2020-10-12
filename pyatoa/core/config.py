@@ -19,14 +19,15 @@ class Config:
     for information sharing between Pyatoa objects and functions.
     The Config can be read to and written from external files and ASDFDataSets.
     """
-    def __init__(self, yaml_fid=None, ds=None, path=None, iteration=None,
-                 step_count=None, event_id=None, min_period=10, max_period=30,
-                 filter_corners=2, client=None, rotate_to_rtz=False,
-                 unit_output="DISP", pyflex_preset="default",
-                 component_list=None, adj_src_type="cc_traveltime_misfit",
-                 start_pad=20, end_pad=500, observed_tag="observed",
-                 synthetic_tag=None, synthetics_only=False, win_amp_ratio=0.,
-                 paths=None, save_to_ds=True, **kwargs):
+    def __init__(self, yaml_fid=None, seisflows_yaml=None, seisflows_par=None,
+                 ds=None, path=None, iteration=None, step_count=None,
+                 event_id=None, min_period=10, max_period=30, filter_corners=2,
+                 client=None, rotate_to_rtz=False, unit_output="DISP",
+                 pyflex_preset="default", component_list=None,
+                 adj_src_type="cc_traveltime_misfit", start_pad=20, end_pad=500,
+                 observed_tag="observed", synthetic_tag=None,
+                 synthetics_only=False, win_amp_ratio=0., paths=None,
+                 save_to_ds=True, **kwargs):
         """
         Initiate the Config object. Kwargs are passed to Pyflex and Pyadjoint
         Fonfig objects so that they can be set by the User through this Config
@@ -34,6 +35,9 @@ class Config:
 
         :type yaml_fid: str
         :param yaml_fid: id for .yaml file if config is to be loaded externally
+        :type seisflows_yaml: str
+        :param seisflows_yaml: id for the seisflows parameters.yaml file that
+            needs a special read function. Used in conjunction with SeisFlows.
         :type iteration: int
         :param iteration: if running an inversion, the current iteration. Used
             for internal path naming, as well as interaction with Seisflows via
@@ -140,6 +144,9 @@ class Config:
         elif yaml_fid:
             # Allow kwargs from both initialization, and external config
             self._read_yaml(yaml_fid)
+        elif seisflows_yaml or seisflows_par:
+            self._read_seisflows_yaml(filename=seisflows_yaml,
+                                      par=seisflows_par)
         else:
             self._set_external_configs(**kwargs)
 
@@ -388,7 +395,15 @@ class Config:
         fmt = self._check_io_format(read_from, fmt)
 
         if fmt.lower() == "yaml":
-            self._read_yaml(read_from)
+            try:
+                self._read_yaml(read_from)
+            except ValueError:
+                try:
+                    # We use init here to reset any parameters that were set by
+                    # the read_yaml function
+                    self.__init__(seisflows_yaml=read_from)
+                except Exception as e:
+                    print(f"Unknown yaml format for file {read_from}, {e}")
         elif fmt.lower() == "asdf":
             assert(path is not None), "path must be defined"
             self._read_asdf(read_from, path=path)
@@ -503,9 +518,11 @@ class Config:
 
         if unused_kwargs:
             raise ValueError(f"{list(unused_kwargs)} are not recognized "
-                             "keyword arguments ")
+                             "keyword arguments for a Config yaml file. Maybe "
+                             "you meant to use the parameter 'seisflows_yaml'"
+                             )
 
-    def read_seisflows_yaml(self, filename=None, par=None):
+    def _read_seisflows_yaml(self, filename=None, par=None):
         """
         A mapping of intenral config parameters to a SeisFlows yaml file.
         To be used during a SeisFlows workflow.
