@@ -465,7 +465,7 @@ class InternalFetcher:
                 The naming template of synthetic waveforms defaults to
                 "{net}.{sta}.*{cmp}.sem{syn_unit}"
         """
-        pathname = kwargs.get("syn_pathname", "synthetics")
+        syn_cfgpath = kwargs.get("syn_cfgpath", "synthetics")
         syn_unit = kwargs.get("syn_unit", "?")
         syn_dir_template = kwargs.get("syn_dir_template", "")
         syn_fid_template = kwargs.get("syn_fid_template",
@@ -480,7 +480,7 @@ class InternalFetcher:
 
         # Ensure that the paths are a list so that iterating doesnt accidentally
         # try to iterate through a string.
-        paths = self.config.paths[pathname]
+        paths = self.config.paths[syn_cfgpath]
         if not isinstance(paths, list):
             paths = [paths]
 
@@ -533,7 +533,8 @@ class InternalFetcher:
                 pass
         logger.debug("searching local filesystem")
         if self.config.synthetics_only:
-            return self.fetch_syn_by_dir(code, pathname="waveforms", **kwargs)
+            return self.fetch_syn_by_dir(code, syn_cfgpath="waveforms",
+                                         **kwargs)
         else:
             return self.fetch_obs_by_dir(code, **kwargs)
 
@@ -620,7 +621,7 @@ class Gatherer(InternalFetcher, ExternalGetter):
         Gather an ObsPy Event object by searching disk then querying webservices
 
         .. note::
-            Event inof need only be retrieved once per Pyatoa workflow.
+            Event info need only be retrieved once per Pyatoa workflow.
 
         :type try_fm: bool
         :param try_fm: try to find correspondig focal mechanism.
@@ -680,7 +681,7 @@ class Gatherer(InternalFetcher, ExternalGetter):
             if hasattr(event, 'focal_mechanisms') and \
                     event.focal_mechanisms and not overwrite:
                 return event
-            if self.config.client.upper() == "GEONET":
+            if self.config.client and self.config.client.upper() == "GEONET":
                 # Query GeoNet moment tensor catalog if using GeoNet catalog
                 from pyatoa.plugins.new_zealand.gather import \
                                                     geonet_focal_mechanism

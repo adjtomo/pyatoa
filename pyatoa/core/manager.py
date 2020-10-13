@@ -504,10 +504,10 @@ class Manager:
             str obs_fid_template:
                 File naming template to search for observation data. Follows the
                 SEED convention: '{net}.{sta}.{loc}.{cha}*{year}.{jday:0>3}'
-            str syn_pathname:
+            str syn_cfgpath:
                 Config.cfgpaths key to search for synthetic data. Defaults to
                 'synthetics', but for the may need to be set to 'waveforms' in
-                certain use-cases.
+                certain use-cases, e.g. synthetics-synthetic inversions.
             str syn_unit:
                 Optional argument to specify the letter used to identify the
                 units of the synthetic data: For Specfem3D: ["d", "v", "a", "?"]
