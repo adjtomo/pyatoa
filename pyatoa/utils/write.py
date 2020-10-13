@@ -8,6 +8,43 @@ from pyatoa.utils.form import (format_event_name, format_iter, format_step,
                                channel_code)
 
 
+def write_specfem_stations_file_from_inv(inv, fid="./STATIONS",
+                                         elevation=False, burial=0.):
+    """
+    Write a SPECFEM3D STATIONS file given an ObsPy inventory object
+
+    ..note::
+        If topography is implemented in your mesh, elevation values should be
+        set to 0 which means 'surface' in SPECFEM.
+
+    ..note::
+        burial information is not contained in the ObsPy inventory so it is
+        always set to a constant value, which can be given as input. default 0
+
+    :type inv: obspy.core.inventory.Inventory
+    :param inv: Inventory object with station locations to write
+    :type fid: str
+    :param fid: path and file id to save the STATIONS file to.
+    :type elevation: bool
+    :param elevation: if True, sets the actual elevation value from the
+        inventory. if False, sets elevation to 0.
+    :type burial: float
+    :param burial: the constant value to set burial values to. defaults to 0.
+    """
+    with open(fid, "w") as f:
+        for net in inv:
+            for sta in net:
+                lat = sta.latitude
+                lon = sta.longitude
+                if elevation:
+                    elv = sta.elevation
+                else:
+                    elv = 0.
+
+                f.write(f"{sta.code:>6}{net.code:>6}{lat:12.4f}{lon:12.4f}"
+                        f"{elv:7.1f}{burial:7.1f}\n")
+
+
 def write_stream_sem(st, unit, path="./", time_offset=0):
     """
     Write an ObsPy Stream in the two-column ASCII format that Specfem uses
