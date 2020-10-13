@@ -653,54 +653,10 @@ class Gatherer(InternalFetcher, ExternalGetter):
             self.origintime = event.preferred_origin().time
             # Append extra information and save event before returning
             if try_fm:
-                event = self.append_focal_mechanism(event)
+                event = append_focal_mechanism(event)
             if self.ds and self.config.save_to_ds:
                 self.ds.add_quakeml(event)
                 logger.debug(f"event QuakeML added to ASDFDataSet")
-        return event
-
-    def append_focal_mechanism(self, event, overwrite=False):
-        """
-        Attempt to find focal mechanism information with a given Event object.
-
-        .. note::
-            FDSN fetched events are devoid of a few bits of information that are
-            useful for our applications, e.g. moment tensor, focal mechanisms.
-            This function will perform the conversions and append the necessary
-            information to the event located in the dataset.
-
-        :type event: obspy.core.event.Event
-        :param event: Event object to append a focal mechanism to.
-        :type overwrite: bool
-        :param overwrite: If the event already has a focal mechanism, this will
-            overwrite that focal mechanism
-        :raises TypeError: if event is not provided as an obspy.core.event.Event
-        """
-        if isinstance(event, Event):
-            # If the event already has a focal mechanism attribute, don't gather
-            if hasattr(event, 'focal_mechanisms') and \
-                    event.focal_mechanisms and not overwrite:
-                return event
-            if self.config.client and self.config.client.upper() == "GEONET":
-                # Query GeoNet moment tensor catalog if using GeoNet catalog
-                from pyatoa.plugins.new_zealand.gather import \
-                                                    geonet_focal_mechanism
-                event, _ = geonet_focal_mechanism(event_id=self.config.event_id,
-                                                  event=event, units="nm"
-                                                  )
-                logger.info("GeoNet moment tensor appended to Event")
-            else:
-                try:
-                    # Try to query GCMT web-based catalog for matching event
-                    event = get_gcmt_moment_tensor(
-                        origintime=event.preferred_origin().time,
-                        magnitude=event.preferred_magnitude().mag
-                    )
-                except FileNotFoundError:
-                    logger.info("no GCMT moment tensor for event found")
-        else:
-            raise TypeError("'event' must be an ObsPy Event object")
-
         return event
 
     def gather_station(self, code, **kwargs):
@@ -850,6 +806,52 @@ class Gatherer(InternalFetcher, ExternalGetter):
                     logger.info(f"saved to ASDFDataSet with tag '{tag}'")
                 except ASDFWarning:
                     pass
+
+
+def append_focal_mechanism(event, client=None, overwrite=False):
+    """
+    Attempt to find focal mechanism information with a given Event object.
+
+    .. note::
+        FDSN fetched events are devoid of a few bits of information that are
+        useful for our applications, e.g. moment tensor, focal mechanisms.
+        This function will perform the conversions and append the necessary
+        information to the event located in the dataset.
+
+    :type event: obspy.core.event.Event
+    :param event: Event object to append a focal mechanism to.
+    :type overwrite: bool
+    :param overwrite: If the event already has a focal mechanism, this will
+        overwrite that focal mechanism
+    :raises TypeError: if event is not provided as an obspy.core.event.Event
+    """
+    if isinstance(event, Event):
+        event_id = format_event_name(event)
+
+        # If the event already has a focal mechanism attribute, don't gather
+        if hasattr(event, 'focal_mechanisms') and \
+                event.focal_mechanisms and not overwrite:
+            return event
+        if client and client.upper() == "GEONET":
+            # Query GeoNet moment tensor catalog if using GeoNet catalog
+            from pyatoa.plugins.new_zealand.gather import \
+                                                geonet_focal_mechanism
+            event, _ = geonet_focal_mechanism(event_id=event_id, event=event,
+                                              units="nm")
+            logger.info("GeoNet moment tensor appended to Event")
+        else:
+            try:
+                # Try to query GCMT web-based catalog for matching event
+                event = get_gcmt_moment_tensor(
+                    origintime=event.preferred_origin().time,
+                    magnitude=event.preferred_magnitude().mag
+                )
+            except FileNotFoundError:
+                logger.info("no GCMT moment tensor for event found")
+    else:
+        raise TypeError("'event' must be an ObsPy Event object")
+
+    return event
 
 
 def get_gcmt_moment_tensor(origintime, magnitude, time_wiggle_sec=120,
