@@ -217,7 +217,8 @@ class MapMaker:
         self.m.scatter(self.ev_x, self.ev_y, marker=marker,
                        color=color, edgecolor="k", linewidth=lw)
 
-        if hasattr(self.event, "focal_mechanisms"):
+        if hasattr(self.event, "focal_mechanisms") and \
+                self.event.focal_mechanisms:
             if fm_type == "focal_mechanism":
                 fm = self.event.focal_mechanisms[0].moment_tensor.tensor or \
                      self.event.preferred_focal_mechanism().moment_tensor.tensor
