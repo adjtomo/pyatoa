@@ -13,9 +13,9 @@ from numpy import array
 from mayavi import mlab
 from mayavi.modules.surface import Surface
 from mayavi.modules.scalar_cut_plane import ScalarCutPlane
-from pyatoa.visuals.model_tools import (logger, get_coordinates, set_axes,
-                                        annotate, coastline, colorscale,
-                                        srcrcv, colors, get_ranges)
+from pyatoa.visuals.vtk_tools import (logger, get_coordinates, set_axes,
+                                      annotate, coastline, colorscale,
+                                      srcrcv, colors, get_ranges)
 
 
 class VTKModeler:

@@ -5,7 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-class GridMaker:
+class XYZViewer:
     """
     A class to read, manipulate and plot structured grid files (xyz) that are
     in the format of the Specfem external tomography file.
@@ -205,13 +205,13 @@ class GridMaker:
 
 
 if __name__ == "__main__":
-    gm = GridMaker()
-    gm.zero_origin = True
-    gm.read("vs_shallow_grid.xyz")
-    gm.decimate(2)
-    gm.depth_slice(gm.unique_z[1], "vs", cmap="RdYlBu", levels=21)
-    gm.coast('/Users/Chow/Documents/academic/vuw/data/carto/coastline/coast_nznorth_utm60.txt')
-    gm.show()
+    xyz = XYZViewer()
+    xyz.zero_origin = True
+    xyz.read("tomography_model_crust.xyz")
+    xyz.decimate(2)
+    xyz.depth_slice(xyz.unique_z[1], "vs", cmap="RdYlBu", levels=21)
+    xyz.coast('/Users/Chow/Documents/academic/vuw/data/carto/coastline/coast_nznorth_utm60.txt')
+    xyz.show()
 
 
 
