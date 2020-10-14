@@ -50,7 +50,7 @@ Package manager installation coming soon!
 .. toctree::
    :maxdepth: 3
    :hidden:
-    
+   
    quickstart
    config
    manager

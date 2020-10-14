@@ -653,7 +653,7 @@ class Gatherer(InternalFetcher, ExternalGetter):
             self.origintime = event.preferred_origin().time
             # Append extra information and save event before returning
             if try_fm:
-                event = append_focal_mechanism(event)
+                event = append_focal_mechanism(event, client=self.config.client)
             if self.ds and self.config.save_to_ds:
                 self.ds.add_quakeml(event)
                 logger.debug(f"event QuakeML added to ASDFDataSet")
@@ -898,7 +898,7 @@ def get_gcmt_moment_tensor(origintime, magnitude, time_wiggle_sec=120,
     # GCMT catalogs contain all events for a span of time
     # filter catalogs using ObsPy to find events with our specifications.
     # Magnitudes and origintimes are not always in agreement between agencies
-    # So allow fro some wiggle room
+    # So allow for some wiggle room
     cat_filt = cat.filter(f"time > {str(origintime - time_wiggle_sec)}",
                           f"time < {str(origintime + time_wiggle_sec)}",
                           f"magnitude >= {magnitude - magnitude_wiggle}",
