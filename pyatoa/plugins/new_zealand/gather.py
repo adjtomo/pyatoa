@@ -158,7 +158,10 @@ def geonet_focal_mechanism(event_id, units, event=None, csv_fid=None):
     moment_tensor = source.MomentTensor(
         force_resource_id=True, tensor=tensor,
         source_time_function=source_time_function,
-        derived_origin_id=id_template.format('origin#ristau'),
+        # !!!
+        # This doesn't play nice with obspy.Catalog.write(format='CMTSOLUTION')
+        # so ignore the origin id
+        # derived_origin_id=id_template.format('origin#ristau'),
         scalar_moment=seismic_moment_in_nm, double_couple=mtlist['DC']/100,
         variance_reduction=mtlist['VR'], comment=comment
         )

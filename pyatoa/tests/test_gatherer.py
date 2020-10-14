@@ -7,7 +7,8 @@ from obspy.clients.fdsn import Client
 from pyasdf import ASDFDataSet
 from pyatoa import Config
 from pyatoa.core.gatherer import (ExternalGetter, InternalFetcher, Gatherer,
-                                  get_gcmt_moment_tensor)
+                                  get_gcmt_moment_tensor, append_focal_mechanism
+                                  )
 
 
 @pytest.fixture
@@ -294,7 +295,7 @@ def test_append_focal_mechanism(gatherer, event):
     assert(len(event.focal_mechanisms) == 0)
 
     # Gather using the GeoNet client
-    gatherer.append_focal_mechanism(event, overwrite=True)
+    event = append_focal_mechanism(event, overwrite=True)
     assert(len(event.focal_mechanisms) != 0)
 
 

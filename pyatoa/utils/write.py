@@ -8,8 +8,7 @@ from pyatoa.utils.form import (format_event_name, format_iter, format_step,
                                channel_code)
 
 
-def write_specfem_stations_file_from_inv(inv, fid="./STATIONS",
-                                         elevation=False, burial=0.):
+def write_stations(inv, fid="./STATIONS", elevation=False, burial=0.):
     """
     Write a SPECFEM3D STATIONS file given an ObsPy inventory object
 
@@ -45,7 +44,7 @@ def write_specfem_stations_file_from_inv(inv, fid="./STATIONS",
                         f"{elv:7.1f}{burial:7.1f}\n")
 
 
-def write_stream_sem(st, unit, path="./", time_offset=0):
+def write_sem(st, unit, path="./", time_offset=0):
     """
     Write an ObsPy Stream in the two-column ASCII format that Specfem uses
 
