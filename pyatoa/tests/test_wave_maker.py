@@ -7,12 +7,11 @@ import json
 import logging
 import numpy as np
 import matplotlib.pyplot as plt
-from IPython import embed
 from pyasdf import ASDFDataSet
 from obspy import read, read_events, read_inventory
 
 from pyatoa import Config, Manager, logger
-from pyatoa.visuals.manager_plotter import ManagerPlotter
+from pyatoa.visuals.wave_maker import WaveMaker
 
 
 logger.setLevel("DEBUG")
@@ -87,8 +86,8 @@ def test_setup_plot(mgmt):
     """
     Make sure the correct number of axes are established
     """
-    mp = ManagerPlotter(mgmt=mgmt)
-    f, axes, twaxes = mp.setup_plot()
+    wm = WaveMaker(mgmt=mgmt)
+    f, axes, twaxes = wm.setup_plot()
     assert(len(axes) == len(twaxes) == 3)
 
 
@@ -96,13 +95,13 @@ def test_plot_waveforms(mgmt):
     """
     Plot waveforms by themselves
     """
-    mp = ManagerPlotter(mgmt=mgmt)
-    _, axes, _ = mp.setup_plot()
-    for i, obs in enumerate(mp.st_obs):
+    wm = WaveMaker(mgmt=mgmt)
+    _, axes, _ = wm.setup_plot()
+    for i, obs in enumerate(wm.st_obs):
         comp = obs.stats.channel[-1]
-        syn = mp.st_syn.select(component=comp)[0]
-        mp.plot_waveforms(ax=axes[i], obs=obs, syn=syn)
-        mp.plot_amplitude_threshold(ax=axes[i], obs=obs)
+        syn = wm.st_syn.select(component=comp)[0]
+        wm.plot_waveforms(ax=axes[i], obs=obs, syn=syn)
+        wm.plot_amplitude_threshold(ax=axes[i], obs=obs)
     plt.show()
     plt.close()
 
@@ -111,10 +110,10 @@ def test_plot_stalta(mgmt):
     """
     Plot STALTA waveforms by themselves
     """
-    mp = ManagerPlotter(mgmt=mgmt)
-    _, axes, _ = mp.setup_plot()
-    for i, stalta in enumerate(mp.staltas.values()):
-        mp.plot_stalta(ax=axes[i], stalta=stalta)
+    wm = WaveMaker(mgmt=mgmt)
+    _, axes, _ = wm.setup_plot()
+    for i, stalta in enumerate(wm.staltas.values()):
+        wm.plot_stalta(ax=axes[i], stalta=stalta)
     plt.show()
     plt.close()
 
@@ -123,10 +122,10 @@ def test_plot_windows(mgmt):
     """
     Plot STALTA waveforms by themselves
     """
-    mp = ManagerPlotter(mgmt=mgmt)
-    _, axes, _ = mp.setup_plot()
-    for i, windows in enumerate(mp.windows.values()):
-        mp.plot_windows(ax=axes[i], windows=windows)
+    wm = WaveMaker(mgmt=mgmt)
+    _, axes, _ = wm.setup_plot()
+    for i, windows in enumerate(wm.windows.values()):
+        wm.plot_windows(ax=axes[i], windows=windows)
     plt.show()
     plt.close() 
 
@@ -135,10 +134,10 @@ def test_plot_adjsrcs(mgmt):
     """
     Plot STALTA waveforms by themselves
     """
-    mp = ManagerPlotter(mgmt=mgmt)
-    _, _, twaxes = mp.setup_plot()
-    for i, adjsrc in enumerate(mp.adjsrcs.values()):
-        mp.plot_adjsrcs(ax=twaxes[i], adjsrc=adjsrc)
+    wm = WaveMaker(mgmt=mgmt)
+    _, _, twaxes = wm.setup_plot()
+    for i, adjsrc in enumerate(wm.adjsrcs.values()):
+        wm.plot_adjsrcs(ax=twaxes[i], adjsrc=adjsrc)
     plt.show()
     plt.close()
 
@@ -147,10 +146,10 @@ def test_plot_rejected_windows(mgmt):
     """
     Plot STALTA waveforms by themselves
     """
-    mp = ManagerPlotter(mgmt=mgmt)
-    _, axes, _ = mp.setup_plot()
-    for i, rejwins in enumerate(mp.rejected_windows.values()):
-        mp.plot_rejected_windows(ax=axes[i], windows=rejwins)
+    wm = WaveMaker(mgmt=mgmt)
+    _, axes, _ = wm.setup_plot()
+    for i, rejwins in enumerate(wm.rejected_windows.values()):
+        wm.plot_rejected_windows(ax=axes[i], windows=rejwins)
     plt.show()
     plt.close()
 
@@ -159,7 +158,7 @@ def test_plot(mgmt):
     """
     Plot STALTA waveforms by themselves
     """
-    mp = ManagerPlotter(mgmt=mgmt, show=True, save=None)
-    mp.plot()
+    wm = WaveMaker(mgmt=mgmt, show=True, save=None)
+    wm.plot()
 
 

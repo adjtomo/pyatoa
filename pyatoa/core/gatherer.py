@@ -867,10 +867,8 @@ def append_focal_mechanism(event, client=None, overwrite=False):
             return event
         if client and client.upper() == "GEONET":
             # Query GeoNet moment tensor catalog if using GeoNet catalog
-            from pyatoa.plugins.new_zealand.gather import \
-                                                geonet_focal_mechanism
-            event, _ = geonet_focal_mechanism(event_id=event_id, event=event,
-                                              units="nm")
+            from pyatoa.plugins.new_zealand.gather import  geonet_mt
+            event, _ = geonet_mt(event_id=event_id, event=event, units="nm")
             logger.info("GeoNet moment tensor appended to Event")
         else:
             try:

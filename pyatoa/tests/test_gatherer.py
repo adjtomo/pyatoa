@@ -295,7 +295,7 @@ def test_append_focal_mechanism(gatherer, event):
     assert(len(event.focal_mechanisms) == 0)
 
     # Gather using the GeoNet client
-    event = append_focal_mechanism(event, overwrite=True)
+    event = append_focal_mechanism(event, client="GEONET", overwrite=True)
     assert(len(event.focal_mechanisms) != 0)
 
 

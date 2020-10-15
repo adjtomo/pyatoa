@@ -12,10 +12,7 @@ def test_read_config_from_seisflow_yaml():
     """
     Test that reading from an external Seisflows YAML file works
     """
-    cfg = Config()
-    cfg.read_seisflows_yaml(
-        filename="./test_data/test_seisflows_parameters.yaml"
-    )
+    cfg = Config(seisflows_yaml="./test_data/test_seisflows_parameters.yaml")
     assert not cfg.synthetics_only  # Check a random variable
 
 

@@ -94,6 +94,7 @@ def test_trim_streams(st_obs, st_syn):
     :param st_obs:
     :return:
     """
+    pass
     st_a = st_obs.copy()
     st_b = st_syn.copy()
 
@@ -115,7 +116,6 @@ def test_trim_streams(st_obs, st_syn):
 
     # This doesn't work because the starttimes differ by milliseconds?
     st_a, st_b = process.trim_streams(st_obs, st_syn, force="b")
-    import ipdb;ipdb.set_trace()
     assert (st_a[0].stats.starttime == starttime_b)
     assert (st_a[0].stats.endtime == endtime_b)
     assert (st_b[0].stats.starttime != starttime_a)
@@ -129,3 +129,4 @@ def test_match_npts(st_obs, st_syn):
     :param st_syn:
     :return:
     """
+    pass
