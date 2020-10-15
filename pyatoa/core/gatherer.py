@@ -14,6 +14,7 @@ by the User unless for bespoke data gathering functionality.
 import os
 import glob
 import warnings
+import traceback
 
 from pyasdf import ASDFWarning
 from obspy.core.event import Event
@@ -172,22 +173,28 @@ class ExternalGetter:
             L=location, C=channel). Allows for wildcard naming. By default
             the pyatoa workflow wants three orthogonal components in the N/E/Z
             coordinate system. Example station code: NZ.OPRZ.10.HH?
+        :type return_count: int
+        :param return_count: if not None, determines how many data items must be
+            collected for the station to be saved into the ASDFDataSet. e.g.
+            StationXML and 3 component waveforms would equal 4 pieces of data,
+            so a return_count == 4 means stations that do not return all
+            components and metadata will not be saved to the dataset.
         :rtype status: int
         :return status: a simple status check that lets the user know how many
             items were collected.
         """
         level = kwargs.get("station_level", "response")
+        return_count = kwargs.get("return_count", None)
 
-        status = 0
-        net, sta, loc, cha = code.split('.')
+        data_count, inv, st = 0, None, None
+        net, sta, loc, cha = code.split(".")
         try:
             inv = self.Client.get_stations(
                 network=net, station=sta, location=loc, channel=cha,
                 starttime=self.origintime - self.config.start_pad,
                 endtime=self.origintime + self.config.end_pad, level=level
             )
-            self.ds.add_stationxml(inv)
-            status += 1
+            data_count += 1
         except FDSNException:
             pass
 
@@ -203,12 +210,23 @@ class ExternalGetter:
             st.trim(starttime=self.origintime - self.config.start_pad,
                     endtime=self.origintime + self.config.end_pad
                     )
-            self.ds.add_waveforms(waveform=st, tag=self.config.observed_tag)
-            status += len(st)
+            data_count += len(st)
         except FDSNException:
             pass
 
-        return status
+        # Additional check for saving data if not all requested data found
+        if (return_count is not None) and (data_count < return_count):
+            _save = False
+        else:
+            _save = True
+
+        # Save data to ASDFDataSet if save criteria are met and dats available
+        if _save and inv is not None:
+            self.ds.add_stationxml(inv)
+        if _save and st is not None:
+            self.ds.add_waveforms(waveform=st, tag=self.config.observed_tag)
+
+        return data_count
 
 
 class InternalFetcher:
@@ -746,7 +764,8 @@ class Gatherer(InternalFetcher, ExternalGetter):
 
         return st_syn
 
-    def gather_obs_threaded(self, codes, max_workers=None):
+    def gather_obs_multithread(self, codes, max_workers=None,
+                               print_exception=False, **kwargs):
         """
         A multithreaded function that fetches all observed data (waveforms and
         StationXMLs) for a given event and store it to an ASDFDataSet.
@@ -760,6 +779,16 @@ class Gatherer(InternalFetcher, ExternalGetter):
         :param max_workers: number of concurrent threads to use, passed to the
             ThreadPoolExecutor. If left as None, conurrent futures will
             automatically choose the system's number of cores.
+
+        Keyword Arguments
+        ::
+            int return_count:
+                if not None, determines how many data items must be collected
+                for the station to be saved into the ASDFDataSet.
+                e.g. StationXML and 3 component waveforms would equal 4 pieces
+                of data, so a return_count == 4 means stations that do not
+                return all components and metadata will not be saved to the
+                dataset.
         """
         from concurrent.futures import ThreadPoolExecutor, as_completed
 
@@ -773,7 +802,8 @@ class Gatherer(InternalFetcher, ExternalGetter):
             "Mass gathering requires an origintime for data queries"
 
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
-            futures = {executor.submit(self._obs_get_multithread, code):
+            futures = {executor.submit(self._obs_get_multithread, code,
+                                       **kwargs):
                            code for code in codes
                        }
             for future in as_completed(futures):
@@ -781,9 +811,11 @@ class Gatherer(InternalFetcher, ExternalGetter):
                 try:
                     status = future.result()
                 except Exception as e:
-                    print(f"{code} exception: {e}")
+                    print(f"{code} exception: {e}\n")
+                    if print_exception:
+                        traceback.print_exc()
                 else:
-                    print(f"{code} status: {status}")
+                    print(f"{code} data count: {status}")
 
 
     def _save_waveforms_to_dataset(self, st, tag):

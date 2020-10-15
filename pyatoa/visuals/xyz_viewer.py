@@ -10,23 +10,51 @@ class XYZViewer:
     A class to read, manipulate and plot structured grid files (xyz) that are
     in the format of the Specfem external tomography file.
     """
-    def __init__(self):
+    def __init__(self, variables=None):
         """
         Initiate the class with some empty variables
         """
-        self.variables = ["x", "y", "z", "vp", "vs", "rho", "qp", "qs"]
+        self.variables = variables or ["x", "y", "z", "vp", "vs", 
+                                       "rho", "qp", "qs"]
         self.zero_origin = False
         self.xgrid = None
         self.ygrid = None
         self._coast = None
 
-    def read(self, fid):
+    def read(self, fid, fmt="specfem"):
         """
         A wrapper for np.loadtxt to read in xyz files.
 
         ..note::
             For now this function assumes that it is reading an external
             tomography file that is formatted how SPECFEM expects it.
+
+        :type fid: str
+        :param fid: file id to read from
+        """
+        if fmt == "specfem":
+            values = np.loadtxt(fid, dtype=float, skiprows=4).T
+        elif fmt == "semslicer":
+            values = np.loadtxt(fid, dtype=float, delimiter=",").T
+        else:
+            raise ValueError("fmt must be 'specfem' or 'semslicer'")
+
+        # It is possible that attenuation is not included, if so change the
+        # default variables
+        assert(len(values) == len(self.variables)), \
+                (f"Number of columns {len(values)} does not match number of "
+                 f"excepted variables {len(self.variables)}")
+
+        # Set each of the columns as an internal variable
+        for i, variable in enumerate(self.variables):
+            setattr(self, variable, values[i])
+
+        self.check()
+
+    def read_semslicer(self, fid):
+        """
+        A wrapper for np.loadtxt to read in xyz files that are outputted by the
+        semslicer fortran script
 
         :type fid: str
         :param fid: file id to read from
@@ -159,6 +187,7 @@ class XYZViewer:
 
         idx = np.where(self.z == depth_km)[0]
         value = getattr(self, variable)[idx]
+
         value = value.reshape(np.shape(self.xgrid))
         assert(idx.any()), "No values found for Z={depth_km}km"
 
@@ -192,26 +221,34 @@ class XYZViewer:
         f, ax = plt.subplots()
         plt.contourf()
 
+    def volume(self, variable):
+        """
+        Plot the 3D volume
+        :return:
+        """
+        pass
 
-    # def volume(self, variable):
-    #     """
-    #     Plot the 3D volume
-    #     :return:
-    #     """
-    #     assert(variable in self.variables), f"{variable} not found"
-    #     f = plt.figure()
-    #     ax = plt.axes(projection="3d")
-    #     ax.plot_surface(self.x, self.y, self.z, color=getattr(self, variable))
+        assert(variable in self.variables), f"{variable} not found"
+        f = plt.figure()
+        ax = plt.axes(projection="3d")
+        ax.plot_surface(self.x, self.y, self.z, color=getattr(self, variable))
 
 
 if __name__ == "__main__":
+    from glob import glob
+
     xyz = XYZViewer()
     xyz.zero_origin = True
-    xyz.read("tomography_model_crust.xyz")
-    xyz.decimate(2)
-    xyz.depth_slice(xyz.unique_z[1], "vs", cmap="RdYlBu", levels=21)
-    xyz.coast('/Users/Chow/Documents/academic/vuw/data/carto/coastline/coast_nznorth_utm60.txt')
-    xyz.show()
+    coast = ("/Users/Chow/Documents/academic/vuw/data/carto/coastline/"
+             "coast_nznorth_utm60.txt")
 
+    for fid in sorted(glob("tomography_model_shallow.xyz")):
+        xyz.read(fid, fmt="specfem")
+        # xyz.decimate(2)
+        for depth in xyz.unique_z:
+            xyz.depth_slice(depth, "vs", cmap="RdYlBu", levels=21)
+            xyz.coast(coast)
+            xyz.savefig(f"./figures/{fid}_{abs(int(depth))}km.png")
+            xyz.close()
 
 

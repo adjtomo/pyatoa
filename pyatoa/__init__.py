@@ -23,6 +23,7 @@ from pyatoa.core.gatherer import (Gatherer, append_focal_mechanism,
                                   get_gcmt_moment_tensor)  # NOQA
 from pyatoa.core.inspector import Inspector  # NOQA
 from pyatoa.core.pyaflowa import Pyaflowa  # NOQA
+from pyatoa.visuals.vtk_modeler import VTKModeler  # NOQA
 from pyatoa.utils.read import read_sem, read_stations # NOQA
 from pyatoa.utils.write import write_sem, write_stations # NOQA
 
