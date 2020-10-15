@@ -612,10 +612,10 @@ class Inspector(InspectorPlotter):
             insp.windows(level='station').query("station == 'BFZ'")
 
         :type level: str
-        :param level: Default is 'step'
-            'step': to get the total window length and number of windows for the
+        :param level: Level to get number of windows by. Default is 'step'
+            * step: to get the total window length and number of windows for the
                     given step count.
-            'station': to get this on a per-station basis,
+            * station: to get this on a per-station basis,
                     useful for identifying sta quality.
         :rtype: pandas.DataFrame
         :return: a DataFrame with indices corresponding to iter, step,

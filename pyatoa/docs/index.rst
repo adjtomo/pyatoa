@@ -50,14 +50,10 @@ Package manager installation coming soon!
 .. toctree::
    :maxdepth: 3
    :hidden:
-   
-   quickstart
-   config
-   manager
-   gathering
-   storage
-   inspector
-   utilities
+  
+   intro
+   tutorials
+   standards
    logging
    pyatoa_api
    

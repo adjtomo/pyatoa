@@ -19,8 +19,7 @@ Inspector
     .. automethod:: reset
     .. automethod:: isolate
     .. automethod:: nwin
-    .. automethod:: misfits
+    .. automethod:: misfit
     .. automethod:: filter_sources
-    .. automethod:: calculate_srcrcv
 
 
