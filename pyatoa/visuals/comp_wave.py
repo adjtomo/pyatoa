@@ -11,7 +11,7 @@ from pyasdf import ASDFDataSet
 from pyatoa.visuals.wave_maker import format_axis
 
 
-class Wavcomp:
+class CompWav:
     """
     A class to plot waveform improvement between two models for a given dataset
     """
@@ -265,15 +265,15 @@ def plot_from_working_dir():
             except ValueError:
                 station = idx
 
-            wc = Wavcomp(dsfid=dsfid, station=station, min_period=min_period,
+            cw = CompWav(dsfid=dsfid, station=station, min_period=min_period,
                          max_period=max_period)
-            wc.plot(m_init, m_final, show=True, save=False, fontsize=14)
+            cw.plot(m_init, m_final, show=True, save=False, fontsize=14)
 
     elif choice == "all":
         for station in stations:
-            wc = Wavcomp(dsfid=dsfid, station=station, min_period=min_period,
+            cw = CompWav(dsfid=dsfid, station=station, min_period=min_period,
                          max_period=max_period)
-            wc.plot(m_init, m_final, show=False, save=f"{station}.png", 
+            cw.plot(m_init, m_final, show=False, save=f"{station}.png", 
                     fontsize=12)
             plt.close()
 
