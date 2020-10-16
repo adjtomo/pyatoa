@@ -1025,8 +1025,8 @@ class Manager:
         source receiver map which contains annotated information detailing
         src-rcv relationship like distance and BAz. Options to plot either or.
 
-        For valid key word arguments see :docs:`visuals.manager_plotter` and
-        :docs:`visuals.map_maker`
+        For valid key word arguments see `visuals.manager_plotter` and
+        `visuals.map_maker`
 
         :type show: bool
         :param show: show the plot once generated, defaults to False
