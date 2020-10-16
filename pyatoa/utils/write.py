@@ -12,11 +12,11 @@ def write_stations(inv, fid="./STATIONS", elevation=False, burial=0.):
     """
     Write a SPECFEM3D STATIONS file given an ObsPy inventory object
 
-    ..note::
+    .. note::
         If topography is implemented in your mesh, elevation values should be
         set to 0 which means 'surface' in SPECFEM.
 
-    ..note::
+    .. note::
         burial information is not contained in the ObsPy inventory so it is
         always set to a constant value, which can be given as input. default 0
 

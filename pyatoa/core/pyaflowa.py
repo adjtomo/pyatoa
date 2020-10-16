@@ -303,9 +303,10 @@ class Pyaflowa:
 
         :type source_names: str or list
         :param source_names: the event ids to process. 
-            * str: a single, serial process will occur
-            * list: a parallel implementation of the serial process will occur,
-                    where all events will be processed simultaneously
+        * str: a single, serial process will occur
+        * list: a parallel implementation of the serial process will occur,
+            where all events will be processed simultaneously  
+
         """
         if isinstance(source_names, list) and len(source_names) > 1:
             self.multi_process(source_names, **kwargs)
