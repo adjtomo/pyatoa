@@ -21,7 +21,7 @@ from pyatoa.utils.asdf.add import add_misfit_windows, add_adjoint_sources
 from pyatoa.utils.process import (default_process, trim_streams, zero_pad,
                                   match_npts)
 
-from pyatoa.visuals.manager_plotter import ManagerPlotter
+from pyatoa.visuals.mgmt_plot import ManagerPlotter
 
 
 class ManagerError(Exception):

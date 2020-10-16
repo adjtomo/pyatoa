@@ -12,7 +12,7 @@ from glob import glob
 from fnmatch import filter as fnf
 from obspy.geodetics import gps2dist_azimuth
 from pyatoa.utils.form import format_event_name
-from pyatoa.visuals.inspector_plotter import InspectorPlotter
+from pyatoa.visuals.insp_plot import InspectorPlotter
 
 
 class Inspector(InspectorPlotter):

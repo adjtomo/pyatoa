@@ -21,7 +21,7 @@ pflogger.setLevel("DEBUG")
 logger.setLevel("INFO")
 
 
-class WaveformImprovement:
+class ImproveWave:
     """
     A class to plot waveform improvement for a given ASDFDataSet
 
