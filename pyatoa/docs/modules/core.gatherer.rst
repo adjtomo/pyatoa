@@ -5,10 +5,10 @@ Gatherer
 
 .. automodule:: pyatoa.core.gatherer
 
-    .. rubric :: Methods
+    .. rubric :: Functions
 
-    .. automethod:: append_focal_mechanism
-    .. automethod:: get_gcmt_moment_tensor
+    .. autofunction:: append_focal_mechanism
+    .. autofunction:: get_gcmt_moment_tensor
 
 --------------
 
