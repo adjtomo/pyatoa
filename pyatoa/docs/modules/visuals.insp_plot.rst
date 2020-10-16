@@ -1,9 +1,9 @@
 Inspector Plotter
 ===========================
 
-.. currentmodule:: pyatoa.visuals.inspector_plotter
+.. currentmodule:: pyatoa.visuals.insp_plot
 
-.. automodule:: pyatoa.visuals.inspector_plotter
+.. automodule:: pyatoa.visuals.insp_plot
 
 --------------
 
