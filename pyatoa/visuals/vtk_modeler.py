@@ -491,24 +491,24 @@ def colorscale(orientation, **kwargs):
     :type orientation: str
     :param orientation: 'vertical' or 'horizontal'
 
-    Keyword arguments:
-        :type cmap: str
-        :param cmap: colorscale to use, matches names from Matplotlib
+    Keyword arguments
+    ::
+        str cmap: 
+            colorscale to use, matches names from Matplotlib
             defaults to 'RdYlBu' for Red-Yellow-Blue
-        :type reverse: bool
-        :param reverse: reverse the colorscale, defaults to True
-        :type min_max: list
-        :param min_max: min and max values for color scale as [min, max],
+        bool reverse: 
+            reverse the colorscale, defaults to True
+        list min_max: 
+            min and max values for color scale as [min, max],
             defaults to None, use the values set by the model
-        :type colorbar: bool
-        :param colorbar: create and show a colorbar, defaults to True
-        :type cbar_title: str
-        :param cbar_title: colorbar title, defaults to None
-        :type num_clabels: int
-        :param num_clabels: number of labels to put on the colorbar,
-            defaults to Mayavi default
-        :type round_to: int
-        :param round_to: Round the range values of the colorbar to a given
+        bool colorbar: 
+            create and show a colorbar, defaults to True
+        str cbar_title: 
+            colorbar title, defaults to None
+        int num_clabels: 
+            number of labels to put on the colorbar, defaults to Mayavi default
+        int round_to: 
+            Round the range values of the colorbar to a given
             base value `round_to` to get rid of decimals or weird values.
     """
     cmap = kwargs.get("cmap", "RdYlBu")

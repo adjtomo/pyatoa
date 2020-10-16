@@ -25,7 +25,7 @@ def default_process(mgmt, choice, **kwargs):
     :return: preprocessed stream object pertaining to `choice`
 
     Keyword Arguments
-        ::
+    ::
         int water_level:
             water level for response removal
         float taper_percentage:

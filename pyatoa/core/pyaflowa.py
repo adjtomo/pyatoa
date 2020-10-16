@@ -114,12 +114,12 @@ class PathStructure:
 
         :type structure: str
         :param structure: the choice of PathStructure
-            * 'standalone': The default path structure that is primarily used
-                            for running Pyaflowa standalone, without other workflow
-                            tools.
-            * 'seisflows': The path structure required when Pyaflowa is called
-                           by SeisFlows. Paths are hardcoded here based on the
-                           SeisFlows directory structure.
+        * 'standalone': The default path structure that is primarily used
+                        for running Pyaflowa standalone, without other workflow
+                        tools.
+        * 'seisflows': The path structure required when Pyaflowa is called
+                       by SeisFlows. Paths are hardcoded here based on the
+                       SeisFlows directory structure.
         """
         # This 'constants' list mandates that the following paths exist.
         # The Pyaflowa workflow assumes that it can read/write from all of the

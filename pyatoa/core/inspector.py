@@ -613,10 +613,10 @@ class Inspector(InspectorPlotter):
 
         :type level: str
         :param level: Level to get number of windows by. Default is 'step'
-            * step: to get the total window length and number of windows for the
-                    given step count.
-            * station: to get this on a per-station basis,
-                    useful for identifying sta quality.
+        * step: to get the total window length and number of windows for the
+                given step count.
+        * station: to get this on a per-station basis,
+                useful for identifying sta quality.
         :rtype: pandas.DataFrame
         :return: a DataFrame with indices corresponding to iter, step,
             columns listing the number of windows (nwin) and the cumulative
