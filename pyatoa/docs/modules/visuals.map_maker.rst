@@ -1,4 +1,4 @@
-Map Maker
+map_maker
 ===========================
 
 .. currentmodule:: pyatoa.visuals.map_maker

@@ -1,4 +1,4 @@
-Window
+window
 ===========================
 
 .. currentmodule:: pyatoa.utils.window

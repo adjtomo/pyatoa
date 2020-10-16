@@ -1,4 +1,4 @@
-Source Receiver
+srcrcv
 ===========================
 
 .. currentmodule:: pyatoa.utils.srcrcv

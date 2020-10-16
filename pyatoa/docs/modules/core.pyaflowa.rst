@@ -1,10 +1,11 @@
-Pyaflowa
+pyaflowa
 ===========================
 
 .. currentmodule:: pyatoa.core.pyaflowa
 
 .. automodule:: pyatoa.core.pyaflowa
 
+Pyaflowa
 --------------
 
 .. autoclass:: Pyaflowa
@@ -19,7 +20,8 @@ Pyaflowa
     .. automethod:: finalize
     .. automethod:: quantify_misfit
 
---------------
+PathStructure
+---------------
 
 .. autoclass:: PathStructure
 
@@ -30,6 +32,8 @@ Pyaflowa
     .. automethod:: seisflows
     .. automethod:: format
 
+
+IO
 --------------
 
 .. autoclass:: IO

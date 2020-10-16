@@ -1,4 +1,4 @@
-Add
+add
 ===========================
 
 .. currentmodule:: pyatoa.utils.asdf.add

@@ -1,4 +1,4 @@
-Waveform Improvement
+improve_wave
 ===========================
 
 .. currentmodule:: pyatoa.visuals.improve_Wave

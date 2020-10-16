@@ -1,4 +1,4 @@
-Read
+read
 ===========================
 
 .. currentmodule:: pyatoa.utils.read

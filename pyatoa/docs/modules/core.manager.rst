@@ -1,4 +1,4 @@
-Manager
+manager
 ===========================
 
 .. currentmodule:: pyatoa.core.manager

@@ -1,4 +1,4 @@
-XYZ Viewer
+xyz_viewer
 ===========================
 
 .. currentmodule:: pyatoa.visuals.xyz_viewer

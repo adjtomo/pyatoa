@@ -1,4 +1,4 @@
-Inspector
+inspector
 ===========================
 
 .. currentmodule:: pyatoa.core.inspector

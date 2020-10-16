@@ -1,4 +1,4 @@
-Load
+load
 ===========================
 
 .. currentmodule:: pyatoa.utils.asdf.load

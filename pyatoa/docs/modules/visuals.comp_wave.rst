@@ -1,4 +1,4 @@
-Comp Wave
+comp_wave
 ===========================
 
 .. currentmodule:: pyatoa.visuals.comp_wave

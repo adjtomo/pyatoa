@@ -1,4 +1,4 @@
-VTK Modeler
+vtk_modeler
 ===========================
 
 .. currentmodule:: pyatoa.visuals.vtk_modeler
@@ -16,7 +16,8 @@ VTK Modeler
     .. automethod:: depth_slice
     .. automethod:: cross_section
 
-    .. rubric:: Functions
+Functions
+----------
 
     .. autofunction:: get_coordinates
     .. autofunction:: get_ranges

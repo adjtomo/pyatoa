@@ -1,11 +1,12 @@
-Config
-===========================
+config
+======
 
 .. currentmodule:: pyatoa.core.config
 
 .. automodule:: pyatoa.core.config
 
---------------
+.. comment to end block
+
 
 .. autoclass:: Config
 

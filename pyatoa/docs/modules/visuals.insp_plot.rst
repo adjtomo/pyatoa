@@ -1,4 +1,4 @@
-Inspector Plotter
+insp_plot
 ===========================
 
 .. currentmodule:: pyatoa.visuals.insp_plot
@@ -21,7 +21,8 @@ Inspector Plotter
     .. automethod:: plot_windows
     .. automethod:: convergence
 
-    .. rubric:: Functions
+Functions
+----------
 
     .. autofunction:: default_axes
     .. autofunction:: colormap_colorbar

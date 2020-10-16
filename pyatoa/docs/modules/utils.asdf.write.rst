@@ -1,4 +1,4 @@
-Write
+write
 ===========================
 
 .. currentmodule:: pyatoa.utils.asdf.write

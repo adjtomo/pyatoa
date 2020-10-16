@@ -1,4 +1,4 @@
-Wave Maker
+wave_maker
 ===========================
 
 .. currentmodule:: pyatoa.visuals.wave_maker
@@ -22,8 +22,11 @@ Wave Maker
     .. automethod:: create_title
     .. automethod:: plot
 
-    .. rubric:: Functions
+    
+Functions
+------------
 
     .. autofunction:: align_yaxes
     .. autofunction:: pretty_grids
     .. autofunction:: format_axis
+

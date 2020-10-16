@@ -1,4 +1,4 @@
-Calculate
+calculate
 ===========================
 
 .. currentmodule:: pyatoa.utils.calculate

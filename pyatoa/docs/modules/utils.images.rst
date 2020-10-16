@@ -1,4 +1,4 @@
-Images
+images
 ===========================
 
 .. currentmodule:: pyatoa.utils.images

@@ -1,4 +1,4 @@
-Clean
+clean
 ===========================
 
 .. currentmodule:: pyatoa.utils.asdf.clean

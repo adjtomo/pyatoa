@@ -1,4 +1,4 @@
-Format
+format
 ===========================
 
 .. currentmodule:: pyatoa.utils.form

@@ -1,4 +1,4 @@
-Process
+process
 ===========================
 
 .. currentmodule:: pyatoa.utils.process
