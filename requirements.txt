@@ -3,7 +3,7 @@ matplotlib==3.1.1
 pyasdf==0.7.2
 pandas==1.1.0
 pyyaml==5.3.1
+pyproj==1.9.6
 http://github.com/matplotlib/basemap/tarball/master#egg=package-1.2.2
-proj4==5.2.0
 http://github.com/bch0w/pyflex/tarball/return_reject_windows
 http://github.com/krischer/pyadjoint/tarball/master

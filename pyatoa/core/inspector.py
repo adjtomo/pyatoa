@@ -12,7 +12,7 @@ from glob import glob
 from fnmatch import filter as fnf
 from obspy.geodetics import gps2dist_azimuth
 from pyatoa.utils.form import format_event_name
-from pyatoa.visuals.inspector_plotter import InspectorPlotter
+from pyatoa.visuals.insp_plot import InspectorPlotter
 
 
 class Inspector(InspectorPlotter):
@@ -40,6 +40,13 @@ class Inspector(InspectorPlotter):
         self.receivers = pd.DataFrame()
         self.tag = tag
         self.verbose = verbose
+
+        # Placeholder attributes for getters
+        self._models = None
+        self._srcrcv = None
+        self._step_misfit = None
+        self._event_misfit = None
+        self._station_misfit = None
 
         # Try to load an already created Inspector
         try:
@@ -85,6 +92,11 @@ class Inspector(InspectorPlotter):
                 return []
 
     @property
+    def keys(self):
+        """Shorthand to access the keys of the Windows dataframe"""
+        return self.windows.keys()
+
+    @property
     def events(self):
         """Return an array of all event ids"""
         return self._try_print("event")
@@ -110,6 +122,13 @@ class Inspector(InspectorPlotter):
             return []
 
     @property
+    def srcrcv(self):
+        """Return a dataframe with source-receiver information, dists and baz"""
+        if self._srcrcv is None:
+            self.get_srcrcv()
+        return self._srcrcv
+
+    @property
     def iterations(self):
         """Return an array of all iteration"""
         return self._try_print("iteration")
@@ -127,7 +146,31 @@ class Inspector(InspectorPlotter):
     @property
     def models(self):
         """Return a dict of model numbers related to a unique iteration/step"""
-        return self.get_models(discards=False)
+        if self._models is None:
+            self.get_models()
+        return self._models
+
+    @property
+    def initial_model(self):
+        """Return tuple of the iteration and step count corresponding M00"""
+        if self._models is None:
+            self.get_models()
+        return self._models.iteration.iloc[0], self._models.step_count.iloc[0]
+
+    @property
+    def final_model(self):
+        """Return tuple of iteration and step count for final accepted model"""
+        if self._models is None:
+            self.get_models()
+        return self.models.iteration.iloc[-1], self._models.step_count.iloc[-1]
+
+    @property
+    def good_models(self):
+        """Return models that are only status 0 or 1 (initial or success)"""
+        if self._models is None:
+            self.get_models()
+        return self.models[self.models.status.isin([0, 1])].reset_index(
+                                                                    drop=True)
 
     @property
     def evaluations(self):
@@ -254,6 +297,7 @@ class Inspector(InspectorPlotter):
                     component = cha[-1]
 
                     try:
+
                         # Workaround for potential mismatch between channel
                         # names of windows and adjsrcs, search for w/ wildcard
                         adj_tag = fnf(adjoint_sources[iter_][step].list(),
@@ -261,12 +305,12 @@ class Inspector(InspectorPlotter):
                                       )[0]
 
                         # This misfit value will be the same for mult windows
-                        window["misfit"] = adjoint_sources[iter_][step][
-                            adj_tag].parameters["misfit_value"]
+                        window["misfit"].append(adjoint_sources[iter_][step][
+                            adj_tag].parameters["misfit"])
                     except IndexError:
                         if self.verbose:
                             print(f"No matching adjoint source for {cha_id}")
-                        window["misfit"] = np.nan
+                        window["misfit"].append(np.nan)
 
                     # winfo keys match the keys of the Pyflex Window objects
                     for par in winfo:
@@ -292,7 +336,7 @@ class Inspector(InspectorPlotter):
             window.update(winfo)
             self.windows = pd.concat([self.windows, pd.DataFrame(window)],
                                      ignore_index=True)
-
+    
     def discover(self, path="./"):
         """
         Allow the Inspector to scour through a path and find relevant files,
@@ -318,10 +362,13 @@ class Inspector(InspectorPlotter):
                     traceback.print_exc()
                 continue
 
+        return self
+
     def append(self, dsfid, srcrcv=True, windows=True):
         """
-        Simple function to append information from new pyasdf.ASDFDataSet file
-        to the current set of internal statistics.
+        Simple function to parse information from a
+        pyasdf.asdf_data_setASDFDataSet file and append it to the currect
+        collection of information.
 
         :type dsfid: str
         :param dsfid: fid of the dataset
@@ -346,6 +393,56 @@ class Inspector(InspectorPlotter):
             if self.verbose:
                 print(f"error reading dataset: already open")
             return
+
+    def extend(self, windows):
+        """
+        Extend the current Inspector data frames with the windows from another
+        Inspector. This is useful for when an inversion has been run in legs, so
+        two individual inspectors constitute a single inversion.
+
+        .. note::
+            The current inspector is considered leg A, and the argument
+            'windows' is considered leg B. Leg B will have its iteration numbers
+            changed to reflect this
+
+        .. warning::
+            This will only work if all the events and stations are the same.
+            That is, only two identical inversion scenarios can be used.
+
+        :type windows: pandas.core.data_frame.DataFrame or list of DataFrames
+        :param windows: Windows from a separate inspector object that will be
+            used to extend the current Inspector. Can also be provided as a list
+            of DataFrames to extend multiple times.
+        """
+        def convert(val):
+            """Convenience function to convert between int and str repr"""
+            if isinstance(val, str):
+                return int(val[1:])
+            elif isinstance(val, int):
+                return f"i{val:0>2}"
+
+        # To allow for list arguments
+        if not isinstance(windows, list):
+            windows = [windows]
+
+        for win in windows:
+            # Ensure that inplace changes won't affect original data
+            windows_ext = win.copy()
+
+            # Determine the new B iteration values based on the
+            # final iteration of leg A
+            final_iter_a = self.iterations[-1]
+            for iter_ in windows_ext.iteration.unique():
+                shifted_iter = convert(convert(iter_) + convert(final_iter_a))
+                windows_ext.iteration.replace(iter_, shifted_iter, inplace=True)
+
+            self.windows = pd.concat([self.windows, windows_ext])
+
+        # Redo get models since iterations have changed
+        if self._models is not None:
+            self.get_models()
+
+        return self
 
     def save(self, path="./", fmt="csv", tag=None):
         """
@@ -441,67 +538,9 @@ class Inspector(InspectorPlotter):
         self.sources = pd.DataFrame()
         self.receivers = pd.DataFrame()
 
-    def get_models(self, discards=False):
-        """
-        In a Seisflows Thrifty Inversion, once the L-BFGS optimization is well 
-        scaled, the function evaluation in the line search of the previous model 
-        'm-1' is used as the function evaluation of the current iteration 'i',
-        meaning the forward simulation 's00' of iteration 'i' is skipped. 
-
-        This can lead to some confusing naming schema. So this function creates 
-        a mapping of step count to model number to help make sense of this.
-
-        Example: Given three iterations with the following line searches
-            i00: [s00, s01, s02]
-            i01: [s00, s01]
-            i02: [s01]
-
-            At i02, the gradient is well scaled and s00 is skipped,
-            We therefore have three viable models:
-            {m00: i00s00, m01: i01s00, m02: i01s01, m03: i02s01}
-
-        :type discards: bool
-        :param discards: returns additional entries in the dict, labelled e.g.
-            'm01_all', which gives all additional trial steps in the line 
-            search. This is useful for plotting.
-        :rtype: dict
-        :return: a dictionary of model numbers corresponding to a unique 
-            iteration and step count combination
-        """
-        dict_out = {}
-        i = 0
-        prev_iter = None
-        # Hacky way to get an additional model to the end of the model list
-        final_iter = f"i{int(self.iterations[-1][1:])+1:0>2}"
-
-        for iter_ in np.append(self.iterations, final_iter):
-            if iter_ in self.steps and "s00" in self.steps[iter_]:
-                selected_iteration = f"{iter_}/s00"
-            else:
-                last_iter_last_step = self.steps[prev_iter][-1]
-                selected_iteration = f"{prev_iter}/{last_iter_last_step}"
-
-            dict_out[f"m{i:0>2}"] = selected_iteration
-
-            # Set the new model count
-            i += 1
-            prev_iter = iter_
-
-            if i > len(self.iterations):
-                break
-
-            # Get the discarded steps by searching the previous model
-            if discards:
-                if iter_ in self.steps:
-                    all_steps = [f"{iter_}/{step}" for step in self.steps[iter_]
-                                 if "s00" not in step]
-                dict_out[f"m{i:0>2}_all"] = all_steps
-
-        return dict_out
-
-    def isolate(self, iteration=None, step_count=None,  event=None, network=None,
-                station=None, channel=None, comp=None, keys=None, 
-                exclude=None, unique_key=None):
+    def isolate(self, iteration=None, step_count=None,  event=None,
+                network=None, station=None, channel=None, component=None,
+                keys=None, exclude=None, unique_key=None):
         """
         Returns a new dataframe that is grouped by a given index if variable is
         None, defaults to returning all available values
@@ -518,8 +557,8 @@ class Inspector(InspectorPlotter):
         :param network: network name e.g. 'NZ' (optional)
         :type channel: str
         :param channel: channel name e.g. 'HHE' (optional)
-        :type comp: str
-        :param comp: component name e.g. 'Z' (optional)
+        :type component: str
+        :param component: component name e.g. 'Z' (optional)
         :type unique_key: str
         :param unique_key: isolates model, event and station information, 
             alongside a single info key, such as dlnA.
@@ -541,7 +580,8 @@ class Inspector(InspectorPlotter):
                     (df["station"] == (station or df["station"].to_numpy())) &
                     (df["network"] == (network or df["network"].to_numpy())) &
                     (df["channel"] == (channel or df["channel"].to_numpy())) &
-                    (df["component"] == (comp or df["component"].to_numpy())) 
+                    (df["component"] == (
+                            component or df["component"].to_numpy()))
                     ]
         if unique_key is not None:
             # return the unique key alongside identifying information
@@ -572,14 +612,14 @@ class Inspector(InspectorPlotter):
             insp.windows(level='station').query("station == 'BFZ'")
 
         :type level: str
-        :param level: Default is 'step'
-            'step': to get the total window length and number of windows for the
+        :param level: Level to get number of windows by. Default is 'step'
+            * step: to get the total window length and number of windows for the
                     given step count.
-            'station': to get this on a per-station basis,
+            * station: to get this on a per-station basis,
                     useful for identifying sta quality.
         :rtype: pandas.DataFrame
         :return: a DataFrame with indices corresponding to iter, step,
-            columns listing the number of windows (n_win) and the cumulative
+            columns listing the number of windows (nwin) and the cumulative
             length of windows in seconds (length_s)
         """
         group_list = ["iteration", "step", "length_s"]
@@ -595,13 +635,20 @@ class Inspector(InspectorPlotter):
         windows.sort_values(group_list, inplace=True)
 
         group = windows.groupby(group_list[:-1]).length_s
-        return pd.concat([group.apply(len).rename("n_win"), group.sum()],
-                         axis=1)
+        df = pd.concat([group.apply(len).rename("nwin"), group.sum()],
+                        axis=1)
+        if level == "step":
+            return df
+        else:
+            # Only sort by window number if level is 'station' or 'event'
+            return df.sort_values("nwin", ascending=False)
 
-    def misfits(self, level="step"):
+    def misfit(self, level="step", reset=False):
         """
         Sum the total misfit for a given iteration based on the individual
         misfits for each misfit window, and the number of sources used.
+        Calculated misfits are stored internally to avoid needing to recalculate
+        each time this function is called
 
         .. note::
             To get per-station misfit on a per-step basis
@@ -613,9 +660,20 @@ class Inspector(InspectorPlotter):
             'station': unscaled misfit on a per-station basis
             'step': to get total misfit for a given step count.
             'event': to get this on a per-event misfit.
+        :type reset: bool
+        :param reset: reset internally stored attribute and re-calculate misfit
         :rtype: dict
         :return: total misfit for each iteration in the class
         """
+        # We will try to access internal attributes first to save time
+        if not reset:
+            if level == "step" and self._step_misfit is not None:
+                return self._step_misfit
+            elif level == "station" and self._station_misfit is not None:
+                return self._station_misfit
+            elif level == "event" and self._event_misfit is not None:
+                return self._event_misfit
+
         # Various levels to sort the misfit by
         group_list = ["iteration", "step", "event", "station", "component", 
                       "misfit"]
@@ -623,7 +681,7 @@ class Inspector(InspectorPlotter):
 
         # Count the number of windows on a per station basis
         nwin = misfits.groupby(
-                group_list[:-1]).misfit.apply(len).rename("n_win")
+                group_list[:-1]).misfit.apply(len).rename("nwin")
 
         # Misfit is unique per component, not window, drop repeat components
         misfits.drop_duplicates(subset=group_list[:-1], keep="first", 
@@ -639,14 +697,14 @@ class Inspector(InspectorPlotter):
         # misfit for a given station, divided by number of windows
         if level == "station":
             df["misfit"] = df.apply(
-                lambda row: row.unscaled_misfit / row.n_win, axis=1
+                lambda row: row.unscaled_misfit / row.nwin, axis=1
             )
         # Event misfit function defined by Tape et al. (2010) Eq. 6
         elif level in ["event", "step"]:
             # Group misfits to the event level and sum together windows, misfit
             df = df.groupby(group_list[:3]).sum() 
             df["misfit"] = df.apply(
-                lambda row: row.unscaled_misfit / (2 * row.n_win), axis=1
+                lambda row: row.unscaled_misfit / (2 * row.nwin), axis=1
             )
             if level == "step":
                 # Sum the event misfits if step-wise misfit is requested
@@ -663,7 +721,58 @@ class Inspector(InspectorPlotter):
             raise NotImplementedError(
                 "level must be 'station', 'event' or 'step'")
 
+        # Set internal attribute for easier access at next request
+        if level == "step":
+            self._step_misfit = df
+        elif level == "station":
+            self._station_misfit = df
+        elif level == "event":
+            self._event_misfit = df
+
         return df
+
+    def compare_misfit(self, iter_init=None, step_init=None, iter_final=None, 
+                       step_final=None):
+        """
+        Calculate the difference in misfit for each source receiver pair,
+        comparing one iteration/step count with another.
+
+        .. note::
+            Comparison is defined as DELTA = M_FINAL - M_INIT 
+            Therefore a negative misfit value corresponds to a reduction/
+            improvement in misfit from init to final. Additionally a positive 
+            nwin value corresponds to more misfit windows chosen in the final 
+            model.
+
+        :type iter_init: str
+        :param iter_init: initial iteration to use in comparison
+        :type step_init: str
+        :param step_init: initial step count to use in comparison
+        :type iter_final: str
+        :param iter_final: final iteration to use in comparison
+        :type step_final: str
+        :param step_final: final step count to use in comparison
+        :rtype: pandas.core.data_frame.DataFrame
+        :return: a sorted data frame containing the difference of misfit and
+            number of windows between final and initial
+        """
+        # Assuming if first arg isnt given, default to first/last model
+        if iter_init is None:
+            iter_init, step_init = self.initial_model
+            iter_final, step_final = self.final_model
+
+        misfit = self.misfit(level="station")
+        msft_1 = misfit.loc[iter_init].loc[step_init]
+        msft_2 = misfit.loc[iter_final].loc[step_final]
+
+        # Doesn't really make sense to compare unscaled misfit so drop column
+        msft_1.drop(["unscaled_misfit"], axis=1, inplace=True)
+        msft_2.drop(["unscaled_misfit"], axis=1, inplace=True)
+
+        # Subtract 2 from 1, drop NaN values that occur when no matching info
+        # and reverse sort so that improved misfit is shown at the top
+        return msft_2.subtract(msft_1).dropna().sort_values(by="misfit",
+                                                            ascending=True)
 
     def filter_sources(self, lat_min=None, lat_max=None, lon_min=None,
                        lon_max=None, depth_min=None, depth_max=None,
@@ -724,7 +833,63 @@ class Inspector(InspectorPlotter):
 
         return sources
 
-    def calculate_srcrcv(self):
+    def get_models(self):
+        """
+        Return a sorted list of misfits which correspond to accepted models,
+        label discards of the line search, and differentiate the final accepted
+        line search evaluation from the previous iteration and the initial
+        evaluation of the current iteration.
+
+        .. note::
+            State and status is given as:
+            0 == INITIAL function evaluation for the model;
+            1 == SUCCESS -ful function evaluation for the model;
+            -1 == DISCARD trial step from line search.
+
+        :rtype: pandas.core.data_frame.DataFrame
+        :return: a dataframe containing model numbers, their corresponding
+            iteration, step count and misfit value, and the status of the
+            function evaluation.
+        """
+        misfit = self.misfit()
+        models = {"model": [], "iteration": [], "step_count": [], "misfit": [],
+                  "status": [], "state": []
+                  }
+
+        # Model lags iteration by 1
+        for m, iter_ in enumerate(self.iterations):
+            # First we collect misfit values for each step for reference
+            misfits_ = [float(misfit.loc[iter_].loc[_].misfit) for _ in
+                        self.steps[iter_]
+                        ]
+
+            # Then we loop through the steps and pick out the smallest misfit
+            for s, step in enumerate(self.steps[iter_]):
+                # Initial evaluation, accepted misfits
+                if step == "s00":
+                    model = m
+                    status = 0
+                # Line search, mix of discards and final misfit
+                else:
+                    model = m + 1
+                    if misfits_[s] == min(misfits_):
+                        status = 1
+                    else:
+                        status = -1
+
+                models["model"].append(f"m{model:0>2}")
+                models["misfit"].append(misfits_[s])
+                models["iteration"].append(iter_)
+                models["step_count"].append(step)
+                models["state"].append(status)
+                models["status"].append({0: "INITIAL", 
+                                        1: "SUCCESS", 
+                                        -1: "DISCARD"}[status]
+                                        )
+
+        self._models = pd.DataFrame(models)
+
+    def get_srcrcv(self):
         """
         Retrieve information regarding source-receiver pairs including distance,
         backazimuth and theoretical traveltimes for a 1D Earth model.
@@ -759,7 +924,7 @@ class Inspector(InspectorPlotter):
                 srcrcv_dict["distance_km"].append(gcd * 1E-3)
                 srcrcv_dict["backazimuth"].append(baz)
 
-        return pd.DataFrame(srcrcv_dict)
+        self._srcrcv = pd.DataFrame(srcrcv_dict)
 
 
 

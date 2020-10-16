@@ -10,7 +10,7 @@ from pyatoa import logger
 from pyatoa.utils.srcrcv import mt_transform, half_duration_from_m0
 
 
-def get_geonet_moment_tensor(event_id, csv_fid=None):
+def get_geonet_mt(event_id, csv_fid=None):
     """
     Get moment tensor information from a internal csv file,
     or from an external github repository query.
@@ -70,7 +70,7 @@ def get_geonet_moment_tensor(event_id, csv_fid=None):
         raise AttributeError(f"no geonet moment tensor found for: {event_id}")
 
 
-def geonet_focal_mechanism(event_id, units, event=None, csv_fid=None):
+def geonet_mt(event_id, units, event=None, csv_fid=None):
     """
     Focal mechanisms created by John Ristau are written to a .csv file
     located on Github. This function will append information from the .csv file
@@ -90,7 +90,7 @@ def geonet_focal_mechanism(event_id, units, event=None, csv_fid=None):
     """
     assert(units in ["dynecm", "nm"]), "units must be 'dynecm' or 'nm'"
 
-    mtlist = get_geonet_moment_tensor(event_id, csv_fid=csv_fid)
+    mtlist = get_geonet_mt(event_id, csv_fid=csv_fid)
 
     # Match the identifier with Goenet
     id_template = f"smi:local/geonetcsv/{mtlist['PublicID']}/{{}}"
@@ -158,7 +158,10 @@ def geonet_focal_mechanism(event_id, units, event=None, csv_fid=None):
     moment_tensor = source.MomentTensor(
         force_resource_id=True, tensor=tensor,
         source_time_function=source_time_function,
-        derived_origin_id=id_template.format('origin#ristau'),
+        # !!!
+        # This doesn't play nice with obspy.Catalog.write(format='CMTSOLUTION')
+        # so ignore the origin id
+        # derived_origin_id=id_template.format('origin#ristau'),
         scalar_moment=seismic_moment_in_nm, double_couple=mtlist['DC']/100,
         variance_reduction=mtlist['VR'], comment=comment
         )

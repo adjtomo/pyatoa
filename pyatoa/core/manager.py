@@ -2,26 +2,26 @@
 """
 A class to control workflow and temporarily store and manipulate data
 """
-import warnings
-
+import os
 import obspy
 import pyflex
+import warnings
 import pyadjoint
-from os.path import basename
 from obspy.signal.filter import envelope
 
 from pyatoa import logger
 from pyatoa.core.config import Config
 from pyatoa.core.gatherer import Gatherer, GathererNoDataException
+from pyatoa.utils.form import channel_code
 from pyatoa.utils.process import is_preprocessed
-from pyatoa.utils.asdf.fetch import windows_from_dataset
+from pyatoa.utils.asdf.load import load_windows, load_adjsrcs
 from pyatoa.utils.window import reject_on_global_amplitude_ratio
 from pyatoa.utils.srcrcv import gcd_and_baz
 from pyatoa.utils.asdf.add import add_misfit_windows, add_adjoint_sources
 from pyatoa.utils.process import (default_process, trim_streams, zero_pad,
                                   match_npts)
 
-from pyatoa.visuals.manager_plotter import ManagerPlotter
+from pyatoa.visuals.mgmt_plot import ManagerPlotter
 
 
 class ManagerError(Exception):
@@ -134,10 +134,11 @@ class Manager:
             origintime = None
 
         # Instantiate a Gatherer object and pass along info
-        self.gatherer = gatherer
-        if self.gatherer is None:
+        if gatherer is None:
             self.gatherer = Gatherer(config=self.config, ds=self.ds,
                                      origintime=origintime)
+        else:
+            self.gatherer = gatherer
 
         # Copy Streams to avoid affecting original data
         if st_obs is not None:
@@ -180,8 +181,8 @@ class Manager:
                 f"    standardized:          {self.stats.standardized}\n"
                 f"    obs_processed:         {self.stats.obs_processed}\n"
                 f"    syn_processed:         {self.stats.syn_processed}\n"
-                f"    nwin (windows):        {self.stats.nwin}\n"
-                f"    misfit (adjsrcs):      {self.stats.misfit:.2E}\n"
+                f"    nwin   [windows]:      {self.stats.nwin}\n"
+                f"    misfit [adjsrcs]:      {self.stats.misfit:.2E}\n"
                 )
 
     def __repr__(self):
@@ -213,7 +214,7 @@ class Manager:
         """
         # Give dataset filename if available
         if self.stats.dataset_id is None and self.ds is not None:
-            self.stats.dataset_id = basename(self.ds.filename)
+            self.stats.dataset_id = os.path.basename(self.ds.filename)
 
         # Determine the resource identifier for the Event object
         if self.stats.event_id is None and self.event is not None:
@@ -228,10 +229,16 @@ class Manager:
         if self.st_obs is not None:
             self.stats.len_obs = len(self.st_obs)
             self.stats.obs_processed = is_preprocessed(self.st_obs)
+            if self.stats.len_obs > len(self.config.component_list):
+                logger.warning("More observed traces than listed components, "
+                               "this may need to be reviewed manually")
 
         if self.st_syn is not None:
             self.stats.len_syn = len(self.st_syn)
             self.stats.syn_processed = is_preprocessed(self.st_syn)
+            if self.stats.len_syn > len(self.config.component_list):
+                logger.warning("More synthetic traces than listed components, "
+                               "this may need to be reviewed manually")
 
         # Check standardization by comparing waveforms against the first
         if not self.stats.standardized and self.st_obs and self.st_syn:
@@ -252,7 +259,7 @@ class Manager:
                 pass
 
         # Count how many misfit windows are contained in the dataset
-        if self.stats.nwin is None and self.windows is not None:
+        if self.stats.nwin == 0 and self.windows is not None:
             self.stats.nwin = sum([len(_) for _ in self.windows.values()])
 
         # Determine the unscaled misfit
@@ -267,7 +274,6 @@ class Manager:
         """
         self.__init__(ds=self.ds, event=self.event, config=self.config,
                       gatherer=self.gatherer)
-        self.check()
 
     def write(self, write_to="ds"):
         """
@@ -310,12 +316,66 @@ class Manager:
         else:
             raise NotImplementedError
 
+    def write_adjsrcs(self, path="./", write_blanks=True):
+        """
+        Write internally stored adjoint source traces into SPECFEM3D defined
+        two-column ascii files. Filenames are based on what is expected by
+        Specfem, that is: 'NN.SSS.CCC.adj'
+
+        ..note::
+            By default writes adjoint sources for ALL components if one
+            component has an adjoint source. If an adjoint sourced doesn't exist
+            for a given component, it will be written with zeros. This is to
+            satisfy SPECFEM3D requirements.
+
+        :type path: str
+        :param path: path to save the
+        :type write_blanks: bool
+        :param write_blanks: write zeroed out adjoint sources for components
+            with no adjoint sources to meet the requirements of SPECFEM3D.
+            defaults to True
+        """
+        from copy import deepcopy
+
+        assert(self.adjsrcs is not None), f"No adjoint sources to write"
+
+        for adj in self.adjsrcs.values():
+            fid = f"{adj.network}.{adj.station}.{adj.component}.adj"
+            adj.write(filename=os.path.join(path, fid), format="SPECFEM",
+                      time_offset=self.stats.time_offset_sec
+                      )
+        if write_blanks:
+            # To see if any blank adjoint sources required, check the difference
+            # between internal component list and components with adjsrcs
+            # Assumed here that everything is in upper case
+            blank_comps = list(
+                set(self.config.component_list).difference(
+                    set(self.adjsrcs.keys()))
+            )
+            if blank_comps:
+                # Deep copy so that zeroing data doesn't affect original data
+                blank_adj = deepcopy(adj)
+                blank_adj.adjoint_source *= 0
+                for comp in blank_comps:
+                    new_adj_comp = f"{adj.component[:-1]}{comp}"
+                    fid = f"{adj.network}.{adj.station}.{new_adj_comp}.adj"
+                    blank_adj.write(filename=os.path.join(path, fid),
+                                    format="SPECFEM",
+                                    time_offset=self.stats.time_offset_sec
+                                    )
+
     def load(self, code, path=None, ds=None, synthetic_tag=None,
-             observed_tag=None, load_config=True):
+             observed_tag=None, config=True, windows=False,
+             adjsrcs=False):
         """
         Populate the manager using a previously populated ASDFDataSet.
         Useful for re-instantiating an existing workflow that has already 
         gathered data and saved it to an ASDFDataSet.
+
+        .. warning::
+            Loading any floating point values may result in rounding errors.
+            Be careful to round off floating points to the correct place before
+            using in future work.
 
         :type code: str
         :param code: SEED conv. code, e.g. NZ.BFZ.10.HHZ
@@ -327,13 +387,17 @@ class Manager:
         :param ds: dataset can be given to load from, will not set the ds
         :type synthetic_tag: str
         :param synthetic_tag: waveform tag of the synthetic data in the dataset
-            e.g. 'synthetic_m00s00'
+            e.g. 'synthetic_m00s00'. If None given, will use `config` attribute.
         :type observed_tag: str
         :param observed_tag: waveform tag of the observed data in the dataset
-            e.g. 'observed'
-        :type load_config: bool
-        :param load_config: load config from the dataset, defaults to True but 
+            e.g. 'observed'. If None given, will use `config` attribute.
+        :type config: bool
+        :param config: load config from the dataset, defaults to True but
             can be set False if Config should be instantiated by the User
+        :type windows: bool
+        :param windows: load misfit windows from the dataset, defaults to False
+        :type adjsrcs: bool
+        :param adjsrcs: load adjoint sources from the dataset, defaults to False
         """
         # Allows a ds to be provided outside the attribute
         if self.ds and ds is None:
@@ -341,19 +405,24 @@ class Manager:
         else:
             raise TypeError("load requires a Dataset")
 
-        # If no Config object in Manager, load from dataset 
-        if load_config:
+        # If no Config object in Manager, try to load from dataset
+        if config:
             if path is None:
                 raise TypeError("load requires valid 'path' argument")
             logger.info(f"loading config from dataset {path}")
-            self.config = Config(ds=ds, path=path)
+            try:
+                self.config = Config(ds=ds, path=path)
+            except AttributeError:
+                logger.warning(f"No Config object in dataset for path {path}")
 
         assert(self.config is not None), "Config object required for load"
         assert len(code.split('.')) == 2, "'code' must be in form 'NN.SSS'"
+        if windows or adjsrcs:
+            assert(path is not None), "'path' required to load auxiliary data"
+            iter_, step = path.split("/")
 
         # Reset and populate using the dataset
-        self.__init__(config=self.config, ds=ds)
-        self.event = ds.events[0]
+        self.__init__(config=self.config, ds=ds, event=ds.events[0])
         net, sta = code.split('.')
         sta_tag = f"{net}.{sta}"
         if sta_tag in ds.waveforms.list():
@@ -362,6 +431,10 @@ class Manager:
                                                 self.config.synthetic_tag]
             self.st_obs = ds.waveforms[sta_tag][observed_tag or
                                                 self.config.observed_tag]
+            if windows:
+                self.windows = load_windows(ds, net, sta, iter_, step, False)
+            if adjsrcs:
+                self.adjsrcs = load_adjsrcs(ds, net, sta, iter_, step)
         else:
             logger.warning(f"no data for {sta_tag} found in dataset")
 
@@ -391,7 +464,7 @@ class Manager:
                     step_count=step_count, force=force, save=save)
         self.measure(force=force, save=save)
 
-    def gather(self, code=None, choice=None, origintime=None, **kwargs):
+    def gather(self, code=None, choice=None, **kwargs):
         """
         Gather station dataless and waveform data using the Gatherer class.
         In order collect observed waveforms, dataless, and finally synthetics.
@@ -407,10 +480,6 @@ class Manager:
         :type choice: list
         :param choice: allows user to gather individual bits of data, rather
             than gathering all. Allowed: 'inv', 'st_obs', 'st_syn'
-        :type origintime: obspy.UTCDateTime
-        :param origintime: an optional origintime if the Manager does not have
-            an Event object. Will not overwrite the event origintime if an event
-            attribute is present.
         :raises ManagerError: if any part of the gathering fails.
 
         Keyword Arguments
@@ -435,10 +504,10 @@ class Manager:
             str obs_fid_template:
                 File naming template to search for observation data. Follows the
                 SEED convention: '{net}.{sta}.{loc}.{cha}*{year}.{jday:0>3}'
-            str syn_pathname:
+            str syn_cfgpath:
                 Config.cfgpaths key to search for synthetic data. Defaults to
                 'synthetics', but for the may need to be set to 'waveforms' in
-                certain use-cases.
+                certain use-cases, e.g. synthetics-synthetic inversions.
             str syn_unit:
                 Optional argument to specify the letter used to identify the
                 units of the synthetic data: For Specfem3D: ["d", "v", "a", "?"]
@@ -476,7 +545,7 @@ class Manager:
         except GathererNoDataException as e:
             # Catch the Gatherer exception and redirect as ManagerError 
             # so that it can be caught by flow()
-            raise ManagerError("data gatherer could not find some data") from e
+            raise ManagerError("Data Gatherer could not find some data") from e
         except Exception as e:
             # Gathering should be robust, but if something slips through, dont
             # let it kill a workflow, display and raise ManagerError
@@ -709,11 +778,10 @@ class Manager:
 
         net, sta, _, _ = self.st_obs[0].get_id().split(".")
         # Function will return empty dictionary if no acceptable windows found
-        windows = windows_from_dataset(ds=self.ds, net=net, sta=sta,
-                                       iteration=iteration,
-                                       step_count=step_count,
-                                       return_previous=return_previous
-                                       )
+        windows = load_windows(ds=self.ds, net=net, sta=sta,
+                               iteration=iteration, step_count=step_count,
+                               return_previous=return_previous
+                               )
 
         # Recalculate window criteria for new values for cc, tshift, dlnA etc...
         logger.debug("recalculating window criteria")
@@ -745,6 +813,19 @@ class Manager:
         windows, but includes additional window suppression functionality.
         Includes custom Pyflex addition of outputting rejected windows, which
         will be used internally for plotting.
+
+        .. note::
+            Pyflex will throw a ValueError if the arrival of the P-wave
+            is too close to the initial portion of the waveform, considered the
+            'noise' section. This happens for short source-receiver distances
+            (< 100km).
+
+            This error becomes a PyflexError if no event/station attributes
+            are provided to the WindowSelector
+
+            We could potentially deal with this by zero-padding the
+            waveforms, and running select_windows() again, but for now we just
+            raise a ManagerError and allow processing to continue
         """
         logger.info(f"running Pyflex w/ map: {self.config.pyflex_preset}")
 
@@ -764,7 +845,13 @@ class Manager:
                                            config=self.config.pyflex_config,
                                            event=self.event,
                                            station=self.inv)
-                windows = ws.select_windows()
+                try:
+                    windows = ws.select_windows()
+                except (IndexError, pyflex.PyflexError):
+                    # see docstring note for why this error is to be addressed
+                    raise ManagerError("Cannot window, most likely because "
+                                       "the source-receiver distance is too "
+                                       "small w.r.t the minimum period")
 
             # Suppress windows that contain low-amplitude signals
             if self.config.win_amp_ratio > 0:
@@ -773,7 +860,9 @@ class Manager:
                                             data=obs.data, windows=windows,
                                             ratio=self.config.win_amp_ratio
                                             )
+            # ==================================================================
             # NOTE: Additional windowing criteria may be added here if necessary
+            # ==================================================================
             if windows:
                 window_dict[comp] = windows
             if ws.rejects:
@@ -836,6 +925,10 @@ class Manager:
                     synthetic=self.st_syn.select(component=comp)[0],
                     window=adj_win, plot=False
                     )
+
+                # Re-format component name to reflect SPECFEM convention
+                adj_src.component = f"{channel_code(adj_src.dt)}X{comp}"
+
                 # Save adjoint sources in dictionary object. Sum total misfit
                 adjoint_sources[comp] = adj_src
                 logger.info(f"{adj_src.misfit:.3f} misfit for comp {comp}")

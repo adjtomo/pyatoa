@@ -21,23 +21,24 @@ def default_process(mgmt, choice, **kwargs):
     :type choice: str
     :param choice: option to preprocess observed, synthetic or both
         available: 'obs', 'syn'
+    :rtype: obspy.core.stream.Stream
+    :return: preprocessed stream object pertaining to `choice`
 
-    Keyword Arguments:
-        :type water_level: int
-        :param water_level: water level for response removal
-        :type taper_percentage: float
-        :param taper_percentage: amount to taper ends of waveform
-        :type remove_response: bool
-        :param remove_response: remove instrument response using the Manager's
-            inventory object. Defaults to True
-        :type apply_filter: bool
-        :param apply_filter: filter the waveforms using the Config's min_period and
-            max_period parameters. Defaults to True
-        :type convolve_with_stf: bool
-        :param convolve_with_stf: Convolve synthetic data with a Gaussian
-            source time function if a half duration is provided.
-        :rtype: obspy.core.stream.Stream
-        :return: preprocessed stream object pertaining to `choice`
+    Keyword Arguments
+        ::
+        int water_level:
+            water level for response removal
+        float taper_percentage:
+            amount to taper ends of waveform
+        bool remove_response:
+            remove instrument response using the Manager's inventory object.
+            Defaults to True
+        bool apply_filter:
+            filter the waveforms using the Config's min_period and max_period
+            parameters. Defaults to True
+        bool convolve_with_stf:
+            Convolve synthetic data with a Gaussian source time function if a
+            half duration is provided.
     """
     assert choice in ["obs", "syn"], "choice must be 'obs' or 'syn"
 
@@ -159,9 +160,10 @@ def filters(st, min_period=None, max_period=None, min_freq=None, max_freq=None,
 
 def taper_time_offset(st, taper_percentage=0.05, time_offset_sec=0):
     """
-    Taper the ends of the waveform. If a time offset is given, e.g. 20s before
-    the event origin time (T_0), taper all the way up from T=0 to T=T_0, to
-    ensure that there are no unncessary signals prior to the event origin.
+    Taper the leading edge of the waveform. If a time offset is given,
+    e.g. 20s before the event origin time (T_0), taper all the way up from
+    T=0 to T=T_0, to ensure that there are no impulse-like signals prior to the
+    event origin.
 
     :type st: obspy.core.stream.Stream
     :param st: Stream object to be tapered
@@ -253,11 +255,10 @@ def trim_streams(st_a, st_b, precision=1E-3, force=None):
 
     # Force the trim to the start and end times of one of the streams
     if force:
-        force = force.lower()
-        if force == "a":
+        if force.lower() == "a":
             start_set = st_a[0].stats.starttime
             end_set = st_a[0].stats.endtime
-        elif force == "b":
+        elif force.lower() == "b":
             start_set = st_b[0].stats.starttime
             end_set = st_b[0].stats.endtime
     # Get starttime and endtime base on min values

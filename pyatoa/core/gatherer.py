@@ -8,12 +8,14 @@ or to query data from FDSN webservices via ObsPy.
     * Get: used to denote querying FDSN webservices via ObsPy (external), naming
     convention from the obspy.fdsn.client.Client function names
 
+
 Gatherer directly called by the Manager class and shouldn't need to be called
 by the User unless for bespoke data gathering functionality.
 """
 import os
 import glob
 import warnings
+import traceback
 
 from pyasdf import ASDFWarning
 from obspy.core.event import Event
@@ -161,6 +163,72 @@ class ExternalGetter:
         except FDSNException:
             return None
 
+    def _obs_get_multithread(self, code, **kwargs):
+        """
+        A small function to gather StationXMLs and observed waveforms together.
+        Used for multithreading where IO queries are sped up.
+
+        :type code: str
+        :param code: Station code following SEED naming convention.
+            This must be in the form NN.SSSS.LL.CCC (N=network, S=station,
+            L=location, C=channel). Allows for wildcard naming. By default
+            the pyatoa workflow wants three orthogonal components in the N/E/Z
+            coordinate system. Example station code: NZ.OPRZ.10.HH?
+        :type return_count: int
+        :param return_count: if not None, determines how many data items must be
+            collected for the station to be saved into the ASDFDataSet. e.g.
+            StationXML and 3 component waveforms would equal 4 pieces of data,
+            so a return_count == 4 means stations that do not return all
+            components and metadata will not be saved to the dataset.
+        :rtype status: int
+        :return status: a simple status check that lets the user know how many
+            items were collected.
+        """
+        level = kwargs.get("station_level", "response")
+        return_count = kwargs.get("return_count", None)
+
+        data_count, inv, st = 0, None, None
+        net, sta, loc, cha = code.split(".")
+        try:
+            inv = self.Client.get_stations(
+                network=net, station=sta, location=loc, channel=cha,
+                starttime=self.origintime - self.config.start_pad,
+                endtime=self.origintime + self.config.end_pad, level=level
+            )
+            data_count += 1
+        except FDSNException:
+            pass
+
+        try:
+            st = self.Client.get_waveforms(
+                network=net, station=sta, location=loc, channel=cha,
+                starttime=self.origintime - (self.config.start_pad + 10),
+                endtime=self.origintime + (self.config.end_pad + 10),
+                attach_response=True
+            )
+            # Sometimes FDSN queries return improperly cut start and end times,
+            # so we retrieve +/-10 seconds and then cut down
+            st.trim(starttime=self.origintime - self.config.start_pad,
+                    endtime=self.origintime + self.config.end_pad
+                    )
+            data_count += len(st)
+        except FDSNException:
+            pass
+
+        # Additional check for saving data if not all requested data found
+        if (return_count is not None) and (data_count < return_count):
+            _save = False
+        else:
+            _save = True
+
+        # Save data to ASDFDataSet if save criteria are met and dats available
+        if _save and inv is not None:
+            self.ds.add_stationxml(inv)
+        if _save and st is not None:
+            self.ds.add_waveforms(waveform=st, tag=self.config.observed_tag)
+
+        return data_count
+
 
 class InternalFetcher:
     """
@@ -274,10 +342,15 @@ class InternalFetcher:
                                    "RESP.{net}.{sta}.{loc}.{cha}")
 
         inv = None
-        paths_to_responses = self.config.paths["responses"]
-
         net, sta, loc, cha = code.split('.')
-        for path_ in paths_to_responses:
+
+        # Ensure that the paths are a list so that iterating doesnt accidentally
+        # try to iterate through a string.
+        paths = self.config.paths["responses"]
+        if not isinstance(paths, list):
+            paths = [paths]
+
+        for path_ in paths:
             if not os.path.exists(path_):
                 continue
             # Attempting to instantiate an empty Inventory requires some 
@@ -336,15 +409,20 @@ class InternalFetcher:
         if self.origintime is None:
             raise AttributeError("'origintime' must be specified")
 
-        paths_to_obs = self.config.paths["waveforms"]
-
         net, sta, loc, cha = code.split('.')
         # If waveforms contain midnight, multiple files need to be read
         jdays = overlapping_days(origin_time=self.origintime,
                                  start_pad=self.config.start_pad,
                                  end_pad=self.config.end_pad
                                  )
-        for path_ in paths_to_obs:
+
+        # Ensure that the paths are a list so that iterating doesnt accidentally
+        # try to iterate through a string.
+        paths = self.config.paths["waveforms"]
+        if not isinstance(paths, list):
+            paths = [paths]
+
+        for path_ in paths:
             if not os.path.exists(path_):
                 continue
             full_path = os.path.join(path_, dir_structure, file_template)
@@ -365,7 +443,12 @@ class InternalFetcher:
                 st.trim(starttime=self.origintime-self.config.start_pad,
                         endtime=self.origintime+self.config.end_pad
                         )
-                return st
+                # Check if trimming retains data
+                if len(st) > 0:
+                    return st   
+                else:
+                    logger.warning("data does not fit origin time +/- pad time")
+                    return None
         else:
             return None
 
@@ -401,7 +484,7 @@ class InternalFetcher:
                 The naming template of synthetic waveforms defaults to
                 "{net}.{sta}.*{cmp}.sem{syn_unit}"
         """
-        pathname = kwargs.get("syn_pathname", "synthetics")
+        syn_cfgpath = kwargs.get("syn_cfgpath", "synthetics")
         syn_unit = kwargs.get("syn_unit", "?")
         syn_dir_template = kwargs.get("syn_dir_template", "")
         syn_fid_template = kwargs.get("syn_fid_template",
@@ -414,8 +497,13 @@ class InternalFetcher:
         # Generate information necessary to search for data
         net, sta, loc, cha = code.split('.')
 
-        # Check through paths given in Config
-        for path_ in self.config.paths[pathname]:
+        # Ensure that the paths are a list so that iterating doesnt accidentally
+        # try to iterate through a string.
+        paths = self.config.paths[syn_cfgpath]
+        if not isinstance(paths, list):
+            paths = [paths]
+
+        for path_ in paths:
             if not os.path.exists(path_):
                 continue
 
@@ -464,7 +552,8 @@ class InternalFetcher:
                 pass
         logger.debug("searching local filesystem")
         if self.config.synthetics_only:
-            return self.fetch_syn_by_dir(code, pathname="waveforms", **kwargs)
+            return self.fetch_syn_by_dir(code, syn_cfgpath="waveforms",
+                                         **kwargs)
         else:
             return self.fetch_obs_by_dir(code, **kwargs)
 
@@ -551,7 +640,7 @@ class Gatherer(InternalFetcher, ExternalGetter):
         Gather an ObsPy Event object by searching disk then querying webservices
 
         .. note::
-            Event inof need only be retrieved once per Pyatoa workflow.
+            Event info need only be retrieved once per Pyatoa workflow.
 
         :type try_fm: bool
         :param try_fm: try to find correspondig focal mechanism.
@@ -583,54 +672,10 @@ class Gatherer(InternalFetcher, ExternalGetter):
             self.origintime = event.preferred_origin().time
             # Append extra information and save event before returning
             if try_fm:
-                event = self.append_focal_mechanism(event)
+                event = append_focal_mechanism(event, client=self.config.client)
             if self.ds and self.config.save_to_ds:
                 self.ds.add_quakeml(event)
                 logger.debug(f"event QuakeML added to ASDFDataSet")
-        return event
-
-    def append_focal_mechanism(self, event, overwrite=False):
-        """
-        Attempt to find focal mechanism information with a given Event object.
-
-        .. note::
-            FDSN fetched events are devoid of a few bits of information that are
-            useful for our applications, e.g. moment tensor, focal mechanisms.
-            This function will perform the conversions and append the necessary
-            information to the event located in the dataset.
-
-        :type event: obspy.core.event.Event
-        :param event: Event object to append a focal mechanism to.
-        :type overwrite: bool
-        :param overwrite: If the event already has a focal mechanism, this will
-            overwrite that focal mechanism
-        :raises TypeError: if event is not provided as an obspy.core.event.Event
-        """
-        if isinstance(event, Event):
-            # If the event already has a focal mechanism attribute, don't gather
-            if hasattr(event, 'focal_mechanisms') and \
-                    event.focal_mechanisms and not overwrite:
-                return event
-            if self.config.client.upper() == "GEONET":
-                # Query GeoNet moment tensor catalog if using GeoNet catalog
-                from pyatoa.plugins.new_zealand.gather import \
-                                                    geonet_focal_mechanism
-                event, _ = geonet_focal_mechanism(event_id=self.config.event_id,
-                                                  event=event, units="nm"
-                                                  )
-                logger.info("GeoNet moment tensor appended to Event")
-            else:
-                try:
-                    # Try to query GCMT web-based catalog for matching event
-                    event = get_gcmt_moment_tensor(
-                        origintime=event.preferred_origin().time,
-                        magnitude=event.preferred_magnitude().mag
-                    )
-                except FileNotFoundError:
-                    logger.info("no GCMT moment tensor for event found")
-        else:
-            raise TypeError("'event' must be an ObsPy Event object")
-
         return event
 
     def gather_station(self, code, **kwargs):
@@ -720,6 +765,60 @@ class Gatherer(InternalFetcher, ExternalGetter):
 
         return st_syn
 
+    def gather_obs_multithread(self, codes, max_workers=None,
+                               print_exception=False, **kwargs):
+        """
+        A multithreaded function that fetches all observed data (waveforms and
+        StationXMLs) for a given event and store it to an ASDFDataSet.
+        Multithreading is used to provide significant speed up for these request
+        based tasks.
+
+        :type codes: list of str
+        :param codes: A list of station codes where station codes must be in the
+            form NN.SSSS.LL.CCC (N=network, S=station, L=location, C=channel)
+        :type max_workers: int
+        :param max_workers: number of concurrent threads to use, passed to the
+            ThreadPoolExecutor. If left as None, conurrent futures will
+            automatically choose the system's number of cores.
+
+        Keyword Arguments
+        ::
+            int return_count:
+                if not None, determines how many data items must be collected
+                for the station to be saved into the ASDFDataSet.
+                e.g. StationXML and 3 component waveforms would equal 4 pieces
+                of data, so a return_count == 4 means stations that do not
+                return all components and metadata will not be saved to the
+                dataset.
+        """
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+
+        logger.info("mass gathering observation data")
+
+        assert(self.ds is not None), \
+            "Mass gathering requires a dataset `ds` for data storage"
+        assert(self.Client is not None), \
+            "Mass gathering requires a Client for data queries"
+        assert(self.origintime is not None), \
+            "Mass gathering requires an origintime for data queries"
+
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = {executor.submit(self._obs_get_multithread, code,
+                                       **kwargs):
+                           code for code in codes
+                       }
+            for future in as_completed(futures):
+                code = futures[future]
+                try:
+                    status = future.result()
+                except Exception as e:
+                    print(f"{code} exception: {e}\n")
+                    if print_exception:
+                        traceback.print_exc()
+                else:
+                    print(f"{code} data count: {status}")
+
+
     def _save_waveforms_to_dataset(self, st, tag):
         """
         Save waveformsm to the ASDFDataSet with a simple check for existence
@@ -740,6 +839,50 @@ class Gatherer(InternalFetcher, ExternalGetter):
                     logger.info(f"saved to ASDFDataSet with tag '{tag}'")
                 except ASDFWarning:
                     pass
+
+
+def append_focal_mechanism(event, client=None, overwrite=False):
+    """
+    Attempt to find focal mechanism information with a given Event object.
+
+    .. note::
+        FDSN fetched events are devoid of a few bits of information that are
+        useful for our applications, e.g. moment tensor, focal mechanisms.
+        This function will perform the conversions and append the necessary
+        information to the event located in the dataset.
+
+    :type event: obspy.core.event.Event
+    :param event: Event object to append a focal mechanism to.
+    :type overwrite: bool
+    :param overwrite: If the event already has a focal mechanism, this will
+        overwrite that focal mechanism
+    :raises TypeError: if event is not provided as an obspy.core.event.Event
+    """
+    if isinstance(event, Event):
+        event_id = format_event_name(event)
+
+        # If the event already has a focal mechanism attribute, don't gather
+        if hasattr(event, 'focal_mechanisms') and \
+                event.focal_mechanisms and not overwrite:
+            return event
+        if client and client.upper() == "GEONET":
+            # Query GeoNet moment tensor catalog if using GeoNet catalog
+            from pyatoa.plugins.new_zealand.gather import  geonet_mt
+            event, _ = geonet_mt(event_id=event_id, event=event, units="nm")
+            logger.info("GeoNet moment tensor appended to Event")
+        else:
+            try:
+                # Try to query GCMT web-based catalog for matching event
+                event = get_gcmt_moment_tensor(
+                    origintime=event.preferred_origin().time,
+                    magnitude=event.preferred_magnitude().mag
+                )
+            except FileNotFoundError:
+                logger.info("no GCMT moment tensor for event found")
+    else:
+        raise TypeError("'event' must be an ObsPy Event object")
+
+    return event
 
 
 def get_gcmt_moment_tensor(origintime, magnitude, time_wiggle_sec=120,
@@ -763,7 +906,7 @@ def get_gcmt_moment_tensor(origintime, magnitude, time_wiggle_sec=120,
     from obspy import UTCDateTime, read_events
 
     if not isinstance(origintime, UTCDateTime):
-        datetime = UTCDateTime(origintime)
+        origintime = UTCDateTime(origintime)
 
     # Determine filename using datetime properties
     month = origintime.strftime('%b').lower()  # e.g. 'jul'
@@ -786,7 +929,7 @@ def get_gcmt_moment_tensor(origintime, magnitude, time_wiggle_sec=120,
     # GCMT catalogs contain all events for a span of time
     # filter catalogs using ObsPy to find events with our specifications.
     # Magnitudes and origintimes are not always in agreement between agencies
-    # So allow fro some wiggle room
+    # So allow for some wiggle room
     cat_filt = cat.filter(f"time > {str(origintime - time_wiggle_sec)}",
                           f"time < {str(origintime + time_wiggle_sec)}",
                           f"magnitude >= {magnitude - magnitude_wiggle}",
@@ -795,10 +938,10 @@ def get_gcmt_moment_tensor(origintime, magnitude, time_wiggle_sec=120,
     # Filtering may remove all events from catalog, return multiple events, or
     # may return the event of choice
     if not len(cat_filt):
-        logger.info(f"no GCMT event found for {datetime} and M{magnitude}")
+        logger.info(f"no GCMT event found for {origintime} and M{magnitude}")
         raise FileNotFoundError("No events found")
     elif len(cat_filt) > 1:
-        logger.info(f"multiple events found for {datetime} and M{magnitude}")
+        logger.info(f"multiple events found for {origintime} and M{magnitude}")
         print(f"{len(cat_filt)} events found, choosing first")
         return cat_filt[0]
     else:

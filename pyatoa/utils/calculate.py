@@ -109,3 +109,21 @@ def amplitude_anomaly(a, b, dt):
     return 0.5 * np.log(integral_a / integral_b)
 
 
+def vrl(d, s1, s2):
+    """
+    Logarithmic variance reduction. Approximately Gaussian distributed
+    reduction in variance based on full waveform difference. Based on
+    Equation 8 in Tape et al. 2010.
+
+    :type d: np.array
+    :param d: data array to compare against synthetic arrays
+    :type s1: np.array
+    :param s1: synthetic array for model 1
+    :type s2: np.array
+    :param s2: synthetic array for model 2
+    :rtype: float
+    :return: logarithmic variance reduction
+    """
+    return np.log(np.trapz((d - s1) ** 2) / (np.trapz(d - s2) ** 2))
+
+

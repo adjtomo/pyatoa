@@ -1,4 +1,15 @@
+import os
 from setuptools import setup
+
+
+# Get the list of required dependencies from requirements.txt
+path_pyatoa = os.path.dirname(os.path.realpath(__file__))
+req_file = os.path.join(path_pyatoa, "requirements.txt")
+if os.path.exists(req_file):
+    with open(req_file, "r") as f:
+        install_requires = list(f.read().splitlines())
+else:
+    install_requires = []
 
 setup(name='pyatoa',
       version='0.0.1',
@@ -8,17 +19,7 @@ setup(name='pyatoa',
       author_email='bryant.chow@vuw.ac.nz',
       license='GPL',
       packages=['pyatoa', 'pyatoa.core', 'pyatoa.utils', 'pyatoa.visuals',
-                'pyatoa.plugins', 'pyatoa.utils.asdf'],
-      # install_requires=[
-      #     # 'obspy==1.2.2',
-      #     # 'pyasdf==0.7.2',
-      #     # 'pandas==1.1.0',
-      #     # 'pyyaml==5.3.1',
-      #     'repo @ http://github.com/bch0w/pyflex/tarball/return_reject_windows',
-      #     'repo @ http://github.com/krischer/pyadjoint/tarball/master'
-      #     ],
-      # dependency_link = [
-      #     'http://github.com/bch0w/pyflex/tarball/return_reject_windows',
-      #     'http://github.com/krischer/pyadjoint/tarball/master'
-      #     ],
+                'pyatoa.plugins', 'pyatoa.plugins.new_zealand',
+                'pyatoa.utils.asdf'],
+      install_requires=[],
       zip_safe=False)

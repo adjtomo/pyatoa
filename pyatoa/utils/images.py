@@ -1,19 +1,45 @@
 """
-Utility functions for manipulating image files such as .png and .pdfs, using the
-Python Pillow package
+Utility functions for manipulating image files such as .png and .pdfs.
+Makes use use of the Python Pillow package if working with .png files, and 
+the PyPDF2 package if manipulating pdf files. Internal imports for all functions
+to remove Pyatoa-wide dependencies on these packages for short functions.
 """
-from PIL import Image
+
+
+def merge_pdfs(fids, fid_out):
+    """
+    Merge a list of pdfs into a single output pdf using the PyPDF2 package.
+    Any desired order to the pdfs should be set in the list of input fids.
+
+    :type fids: list
+    :param fids: list of paths to .pdf files
+    :type fid_out: str
+    :param fid_out: path and name of the resulting output .pdf file
+    """
+    if not fids:
+        return
+
+    from PyPDF2 import PdfFileMerger
+    
+    merger = PdfFileMerger()
+    for fid in fids:
+        merger.append(fid)
+
+    merger.write(fid_out)
+    merger.close()
 
 
 def imgs_to_pdf(fids, fid_out):
     """
-    Combine a list of image files into a single PDF document
+    Combine a list of .png files into a single PDF document
 
     :type fids: list
     :param fids: list of file ids with full pathnames to be combined
     :type fid_out: str
     :param fid_out: the name of the file to be saved with full pathname
     """
+    from PIL import Image
+
     images = []
     for fid in fids:
         # PNGs need to be converted to RGB to get alpha to play nice
@@ -35,6 +61,8 @@ def tile_imgs(fids, fid_out):
     :type fid_out: str
     :param fid_out: the name of the file to be saved with full pathname
     """
+    from PIL import Image
+
     # .png files require conversion to properly get the alpha layer
     images = []
     for fid in fids:

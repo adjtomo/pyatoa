@@ -19,14 +19,15 @@ class Config:
     for information sharing between Pyatoa objects and functions.
     The Config can be read to and written from external files and ASDFDataSets.
     """
-    def __init__(self, yaml_fid=None, ds=None, path=None, iteration=None, 
-                 step_count=None, event_id=None, min_period=10, max_period=30, 
-                 filter_corners=2, client=None, rotate_to_rtz=False, 
-                 unit_output="DISP", pyflex_preset="default", 
-                 component_list=None, adj_src_type="cc_traveltime_misfit", 
-                 start_pad=20, end_pad=500, observed_tag="observed", 
-                 synthetic_tag=None, synthetics_only=False, win_amp_ratio=0., 
-                 paths=None, save_to_ds=True, **kwargs):
+    def __init__(self, yaml_fid=None, seisflows_yaml=None, seisflows_par=None,
+                 ds=None, path=None, iteration=None, step_count=None,
+                 event_id=None, min_period=10, max_period=30, filter_corners=2,
+                 client=None, rotate_to_rtz=False, unit_output="DISP",
+                 pyflex_preset="default", component_list=None,
+                 adj_src_type="cc_traveltime_misfit", start_pad=20, end_pad=500,
+                 observed_tag="observed", synthetic_tag=None,
+                 synthetics_only=False, win_amp_ratio=0., paths=None,
+                 save_to_ds=True, **kwargs):
         """
         Initiate the Config object. Kwargs are passed to Pyflex and Pyadjoint
         Fonfig objects so that they can be set by the User through this Config
@@ -34,8 +35,11 @@ class Config:
 
         :type yaml_fid: str
         :param yaml_fid: id for .yaml file if config is to be loaded externally
+        :type seisflows_yaml: str
+        :param seisflows_yaml: id for the seisflows parameters.yaml file that
+            needs a special read function. Used in conjunction with SeisFlows.
         :type iteration: int
-        :param iteration: if running an inversion, the current iteration. Used 
+        :param iteration: if running an inversion, the current iteration. Used
             for internal path naming, as well as interaction with Seisflows via
             Pyaflowa.
         :type step_count: int
@@ -104,8 +108,8 @@ class Config:
         self.rotate_to_rtz = rotate_to_rtz
         self.unit_output = unit_output.upper()
         self.observed_tag = observed_tag
-        
-        # Allow manual override of synthetic tag, but keep internal and rely 
+
+        # Allow manual override of synthetic tag, but keep internal and rely
         # on calling property for actual value
         self._synthetic_tag = synthetic_tag
 
@@ -116,10 +120,10 @@ class Config:
         self.start_pad = int(start_pad)
         self.end_pad = int(end_pad)
         self.component_list = component_list
-        
+
         self.save_to_ds = save_to_ds
 
-        # These are filled in with actual Config objects by _check()
+        # Empty init because these are filled by self._check()
         self.pyflex_config = None
         self.pyadjoint_config = None
 
@@ -132,15 +136,22 @@ class Config:
         else:
             self.paths = {"waveforms": [], "synthetics": [], "responses": []}
 
-        # Overwrite config parameters from .yaml if given
-        if yaml_fid:
-            kwargs = self._read_yaml(yaml_fid)
-        elif ds:
+        if ds:
+            # We do not set external configs when reading from dataset as these
+            # will have already been set previously in the dataset.
             assert(path is not None), "'path' is required to load from dataset"
             self._read_asdf(ds, path=path)
+        elif yaml_fid:
+            # Allow kwargs from both initialization, and external config
+            self._read_yaml(yaml_fid)
+        elif seisflows_yaml or seisflows_par:
+            self._read_seisflows_yaml(filename=seisflows_yaml,
+                                      par=seisflows_par)
+        else:
+            self._set_external_configs(**kwargs)
 
         # Run internal sanity checks
-        self._check(**kwargs)
+        self._check()
 
     def __str__(self):
         """
@@ -173,6 +184,16 @@ class Config:
     def __repr__(self):
         """Simple call string representation"""
         return self.__str__()
+
+    @property
+    def pfcfg(self):
+        """simple dictionary print of pyflex config object"""
+        return vars(self.pyflex_config)
+
+    @property
+    def pacfg(self):
+        """simple dictionary print of pyflex config object"""
+        return vars(self.pyadjoint_config)
 
     @property
     def iter_tag(self):
@@ -208,11 +229,17 @@ class Config:
         """property to quickly get a bog-standard aux path e.g. i00/s00"""
         return self._get_aux_path()
 
-    def _check(self, **kwargs):
+    def _check(self):
         """
         A series of sanity checks to make sure that the configuration parameters
         are set properly to avoid any problems throughout the workflow.
         """
+        if self.iteration is not None:
+            assert(self.iteration >= 1), "Iterations must start at 1"
+
+        if self.step_count is not None:
+            assert(self.step_count >= 0), "Step count must start from 0"
+
         # Check period range is acceptable
         assert(self.min_period < self.max_period), \
             "min_period must be less than max_period"
@@ -257,6 +284,12 @@ class Config:
         # Make sure adjoint source type is formatted properly
         self.adj_src_type = format_adj_src_type(self.adj_src_type)
 
+    def _set_external_configs(self, **kwargs):
+        """
+        Set the pyflex and pyadjoint Config parameters using kwargs provided
+        to the init function. This function is separate because it only needs to
+        be run in certain cases.
+        """
         # Set Pyflex confict through wrapper function
         self.pyflex_config, unused_kwargs_pf = set_pyflex_config(
             choice=self.pyflex_preset, min_period=self.min_period,
@@ -268,15 +301,15 @@ class Config:
             min_period=self.min_period, max_period=self.max_period, **kwargs
         )
 
-        # Check for unnused kwargs
-        unused_kwargs = []
+        # See if both Pyflex and Pyadjoint threw the same unacceptable kwarg out
+        unused_kwargs = set(unused_kwargs_pf) & set(unused_kwargs_pa)
         if unused_kwargs:
-            raise ValueError(f"{unused_kwargs} are not keyword arguments in "
-                             f"Pyatoa, Pyflex or Pyadjoint.")
+            raise ValueError(f"{list(unused_kwargs)} are not keyword arguments "
+                             f"in Pyatoa, Pyflex or Pyadjoint.")
 
     def _get_aux_path(self, default="default", separator="/"):
         """
-        Pre-formatted path to be used for tagging and identification in 
+        Pre-formatted path to be used for tagging and identification in
         ASDF dataset auxiliary data. Internal function to be called by property
         aux_path.
 
@@ -284,7 +317,7 @@ class Config:
         :param default: if no iteration or step information is given, path will
             default to this string. By default it is 'default'.
         :type separator: str
-        :param separator: if an iteration and step_count are available, 
+        :param separator: if an iteration and step_count are available,
             separator will be placed between. Defaults to '/', use '' for no
             separator.
         """
@@ -362,7 +395,15 @@ class Config:
         fmt = self._check_io_format(read_from, fmt)
 
         if fmt.lower() == "yaml":
-            self._read_yaml(read_from)
+            try:
+                self._read_yaml(read_from)
+            except ValueError:
+                try:
+                    # We use init here to reset any parameters that were set by
+                    # the read_yaml function
+                    self.__init__(seisflows_yaml=read_from)
+                except Exception as e:
+                    print(f"Unknown yaml format for file {read_from}, {e}")
         elif fmt.lower() == "asdf":
             assert(path is not None), "path must be defined"
             self._read_asdf(read_from, path=path)
@@ -397,12 +438,12 @@ class Config:
 
         # Deep copy to ensure that we aren't editing the Config parameters
         attrs = vars(deepcopy(self))
-        
+
         add_attrs = {}
         del_attrs = []
         for key, item in attrs.items():
             if item is None:
-                # HDF doesn't support NoneType so convert to string        
+                # HDF doesn't support NoneType so convert to string
                 attrs[key] = "None"
             elif isinstance(item, (dict, PyflexConfig, PyadjointConfig)):
                 # Flatten dictionaries, add prefix, delete original
@@ -451,7 +492,6 @@ class Config:
     def _read_yaml(self, filename):
         """
         Read config parameters from a yaml file, parse to attributes.
-        Any non-standard parameters will be passed through as kwargs.
 
         :type filename: str
         :param filename: filename to save yaml file
@@ -459,16 +499,13 @@ class Config:
         :return: key word arguments that do not belong to Pyatoa are passed back
             as a dictionary object, these are expected to be arguments that are
             to be used in Pyflex and Pyadjoint configs
+        :raises ValueError: if unrecognized kwargs are found in the yaml file
         """
         with open(filename, "r") as f:
             attrs = yaml.load(f, Loader=yaml.Loader)
-        # Check if we're reading from a Seisflows yaml file
-        if 'PYATOA' in attrs.keys():
-            attr_list = attrs['PYATOA'].items()
-        else:
-            attr_list = attrs.items()
-        
-        kwargs = {}
+        attr_list = attrs.items()
+
+        unused_kwargs = {}
         for key, item in attr_list:
             if hasattr(self, key.lower()):
                 # Special case: ensure paths don't overwrite, but append
@@ -477,9 +514,60 @@ class Config:
                         item[cfgkey] += cfgitem
                 setattr(self, key.lower(), item)
             else:
-                kwargs[key.lower()] = item
+                unused_kwargs[key.lower()] = item
 
-        return kwargs
+        if unused_kwargs:
+            raise ValueError(f"{list(unused_kwargs)} are not recognized "
+                             "keyword arguments for a Config yaml file. Maybe "
+                             "you meant to use the parameter 'seisflows_yaml'"
+                             )
+
+    def _read_seisflows_yaml(self, filename=None, par=None):
+        """
+        A mapping of intenral config parameters to a SeisFlows yaml file.
+        To be used during a SeisFlows workflow.
+
+        ..warning::
+            Does not assign paths, iteration, step or event id. These need to be
+            manually assigned during the workflow by SeisFlows.
+
+        :type filename: str
+        :param filename: filename to SeisFlows yaml file
+        :type par: seisflows.config.Dict
+        :param par: a seisflows Dict object
+        :rtype: dict
+        :return: key word arguments that do not belong to Pyatoa are passed back
+            as a dictionary object, these are expected to be arguments that are
+            to be used in Pyflex and Pyadjoint configs
+        """
+        assert((filename is not None) or (par is not None)), \
+            "filename or par required"
+
+        if filename is not None:
+            # Make it easier to access dict items
+            class Dict(dict):
+                """Similar characteristic for accessing SeisFlows Dict items"""
+                def __getattr__(self, key):
+                    return self[key]
+
+            with open(filename, "r") as f:
+                par = Dict(yaml.load(f, Loader=yaml.Loader))
+
+        # These parameters need to be manually parsed and assigned one by one
+        self.synthetics_only = bool(par.CASE.lower() == "synthetic")
+        self.component_list = list(par.COMPONENTS)
+        self.rotate_to_rtz = par.ROTATE
+        self.min_period = par.MIN_PERIOD
+        self.max_period = par.MAX_PERIOD
+        self.filter_corners = par.CORNERS
+        self.unit_output = par.UNIT_OUTPUT
+        self.client = par.CLIENT
+        self.start_pad = par.START_PAD
+        self.end_pad = par.END_PAD
+        self.adj_src_type = par.ADJ_SRC_TYPE
+        self.pyflex_preset = par.PYFLEX_PRESET
+
+        self._check()
 
     def _read_asdf(self, ds, path):
         """
@@ -504,12 +592,13 @@ class Config:
             cfgin = ds.auxiliary_data.Configs[path].parameters
 
         # Parameters from flattened dictionaries will need special treatment
-        paths, pyflex_config, pyadjoint_config = {}, {}, {}
+        paths = {"waveforms": [], "synthetics": [], "responses": []}
+        pyflex_config, pyadjoint_config = {}, {}
 
         for key, item in cfgin.items():
             # Convert the item into expected native Python objects
             if isinstance(item, str):
-                item = None if item == "None" else item
+                item = None if (item == "None" or item == "") else item
             else:
                 try:
                     item = item.item()
@@ -519,8 +608,9 @@ class Config:
             # Put the item in the correct dictionary
             if "paths" in key:
                 # e.g. paths_waveforms -> waveforms
-                paths[key.split('_')[1]] = item
+                paths[key.split('_')[1]].append(item)
             elif "pyflex_config" in key:
+                # Ensure that empties are set to NoneType
                 pyflex_config["_".join(key.split('_')[2:])] = item
             elif "pyadjoint_config" in key:
                 # e.g. pyadjoint_config_dlna_sigma_min -> dlna_sigma_min

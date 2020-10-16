@@ -6,7 +6,20 @@ This is the Inspector's Gadgte ;)
 import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
+from pyatoa import logger
+from matplotlib.patches import Rectangle
 from pyatoa.utils.calculate import normalize_a_to_b
+
+
+# A map from the Pyflex parameter names into cleaner looking label strings
+common_labels = {"cc_shift_in_seconds": "Time Shift (s)",
+                 "dlnA": "$\Delta\ln$(A)",
+                 "misfit": "Misfit",
+                 "length_s": "Window Length (s)",
+                 "max_cc_value": "Peak Cross Correlation",
+                 "relative_starttime": "Relative Start Time (s)",
+                 "relative_endtime": "Relative End Time (s)",
+                 }
 
 
 class InspectorPlotter:
@@ -15,7 +28,6 @@ class InspectorPlotter:
     Should not be called on its own, these functions will be inherited by
     the Inspector class automatically.
     """
-
     def map(self, event=None, network=None, station=None, show=True, save=False,
             **kwargs):
         """
@@ -99,7 +111,7 @@ class InspectorPlotter:
 
         return f, ax
 
-    def event_depths(self, xaxis="latitude", show=True, save=None):
+    def event_depths(self, xaxis="longitude", show=True, save=None, **kwargs):
         """
         Create a scatter plot of events at depth. Compresses all events onto a
         single slice, optional choice of showing the x-axis or the y-axis
@@ -141,14 +153,17 @@ class InspectorPlotter:
         plt.grid(which="both", linestyle=":", alpha=0.5)
         hover_on_plot(f, ax, sc, names, dissapear=True)
 
+        default_axes(ax, **kwargs)
+
         if save:
             plt.savefig(save)
         if show:
             plt.show
-        else:
-            plt.close()
 
-    def raypaths(self, iteration, step_count, show=True, save=False, **kwargs):
+        return f, ax
+
+    def raypaths(self, iteration, step_count, color_by=None, show=True, 
+                 save=False, vmin=None, vmax=None, **kwargs):
         """
         Plot rays connecting sources and receivers based on the availability
         of measurements. Useful for getting an approximation of resolution.
@@ -157,22 +172,52 @@ class InspectorPlotter:
         :param iteration: iteration to retrieve data from
         :type step_count: int
         :param step_count: step count to retrieve data from
+        :type color_by: str
+        :param color_by: allow rays to be colored based on a normalized value.
+            nwin: color rays by the number of windows available for that path
+            misfit: color rays by total misfit
         :type show: bool
         :param show: show the plot
         :type save: str
         :param save: fid to save the figure
         """
+        cmap = kwargs.get("cmap", "viridis")
         ray_color = kwargs.get("ray_color", "k")
+        ray_linewidth = kwargs.get("ray_linewidth", 1)
+        ray_alpha = kwargs.get("ray_alpha", 0.1)
         station_color = kwargs.get("station_color", "c")
         event_color = kwargs.get("event_color", "orange")
+        figsize = kwargs.get("figsize", (8, 8))
+        markersize = kwargs.get("markersize", 25)
 
-        f, ax = plt.subplots(figsize=(8, 8))
+        f, ax = plt.subplots(figsize=figsize)
 
-        df = self.misfits(level="station").loc[iteration, step_count]
+        df = self.misfit(level="station").loc[iteration, step_count]
 
         # Get lat/lon information from sources and receivers
         stations = self.receivers.droplevel(0)  # remove network index
         events = self.sources.drop(["time", "magnitude", "depth_km"], axis=1)
+
+        # Set up the normalized colorbar 
+        cbar, extend = None, None
+        if color_by is not None:
+            assert(color_by in df.keys()), f"{color_by} must be in {df.keys()}"
+            if vmin is None:
+                vmin = df[color_by].min()
+            elif vmin > df[color_by].min():
+                extend = "min"
+            if vmax is None:
+                vmax = df[color_by].max()
+            elif vmax < df[color_by].max():
+                if extend == "min":
+                    extend = "both"
+                else:
+                    extend = "max"
+
+            sm, norm, cbar = colormap_colorbar(cmap, vmin=vmin, vmax=vmax,
+                                               cbar_label=color_by.capitalize(),
+                                               extend=extend
+                                               )
 
         plotted, names = [], []
         for event, sta in df.index.to_numpy():
@@ -181,27 +226,34 @@ class InspectorPlotter:
             # Plot a marker for each event and station
             if event not in plotted:
                 plt.scatter(elon, elat, marker="o", c=event_color,
-                            edgecolors="k", s=25, zorder=100)
+                            edgecolors="k", s=markersize, zorder=100)
                 plotted.append(event)
             if sta not in plotted:
                 plt.scatter(slon, slat, marker="v", c=station_color,
-                            edgecolors="k", s=25, zorder=100)
+                            edgecolors="k", s=markersize, zorder=100)
                 plotted.append(event)
+
+            if color_by is not None:
+                ray_color = sm.cmap(norm(df.loc[event].loc[sta][color_by]))
 
             # Connect source and receiver with a line
             plt.plot([elon, slon], [elat, slat], color=ray_color, linestyle="-",
-                     alpha=0.1, zorder=50)
+                     alpha=0.1, zorder=50, linewidth=ray_linewidth)
 
         plt.xlabel("Longitude")
         plt.ylabel("Latitude")
-        plt.title(f"Raypaths ({len(events)} events, {len(stations)} stations)")
+        plt.title(f"{len(df)} raypaths")
+        # plt.title(f"{len(df)} raypaths ({len(events)} events, "
+        #           f"{len(stations)} stations)")
+
+        default_axes(ax, cbar, **kwargs)
 
         if save:
             plt.savefig(save)
         if show:
             plt.show()
-        else:
-            plt.close()
+
+        return f, ax
 
     def measurement_hist(self, iteration, step_count, choice="event", show=True,
                          save=False):
@@ -221,7 +273,7 @@ class InspectorPlotter:
         :param save: fid to save the given figure
         """
         arr = self.nwin(
-            level=choice).loc[iteration, step_count].n_win.to_numpy()
+            level=choice).loc[iteration, step_count].nwin.to_numpy()
 
         n, bins, patches = plt.hist(x=arr, color="orange", histtype="bar",
                                     edgecolor="black", linewidth=4.,
@@ -245,7 +297,7 @@ class InspectorPlotter:
                            show=True, save=False, **kwargs):
         """
         Plot a single station and all events that it has measurements for.
-        Events will be colored by choice of value: misfit or n_win (num windows)
+        Events will be colored by choice of value: misfit or nwin (num windows)
 
         :type station: str
         :param station: specific station to use for map
@@ -254,7 +306,7 @@ class InspectorPlotter:
         :type step_count: str
         :param step_count: step count e.g. 's00'
         :type choice: str
-        :param choice: choice of misfit value, either 'misfit' or 'n_win'
+        :param choice: choice of misfit value, either 'misfit' or 'nwin'
         :type show: bool
         :param show: Show the plot
         :type save: str
@@ -266,7 +318,7 @@ class InspectorPlotter:
         sta = self.receivers.droplevel(0).loc[station]
 
         # Get misfit on a per-station basis 
-        df = self.misfits(level="station").loc[
+        df = self.misfit(level="station").loc[
             iteration, step_count].swaplevel(0, 1)
         df = df.sort_values(by="station").loc[station]
 
@@ -288,9 +340,11 @@ class InspectorPlotter:
         plt.ylabel("Latitude")
         plt.title(f"{station} {iteration}{step_count}; {len(df)} events")
 
-        colormap_colorbar(cmap, vmin=df[choice].to_numpy().min(),
-                          vmax=df[choice].to_numpy().max(), cbar_label=choice,
-                          )
+        _, _, cbar = colormap_colorbar(cmap, vmin=df[choice].to_numpy().min(),
+                                       vmax=df[choice].to_numpy().max(), 
+                                       cbar_label=choice)
+
+        default_axes(ax, cbar, **kwargs)
 
         if save:
             plt.savefig(save)
@@ -304,7 +358,7 @@ class InspectorPlotter:
                          save=False, **kwargs):
         """
         Plot a single event and all stations with measurements. Stations are
-        colored by choice of value: misfit or n_win (number of windows)
+        colored by choice of value: misfit or nwin (number of windows)
 
         :type event: str
         :param event: specific event to use for map
@@ -313,7 +367,7 @@ class InspectorPlotter:
         :type step_count: str
         :param step_count: step count e.g. 's00'
         :type choice: str
-        :param choice: choice of misfit value, either 'misfit' or 'n_win'
+        :param choice: choice of misfit value, either 'misfit' or 'nwin'
         :type show: bool
         :param show: Show the plot
         :type save: str
@@ -328,7 +382,7 @@ class InspectorPlotter:
                           edgecolors="k", s=20, zorder=100)
 
         # Go through each of the stations corresponding to this source
-        df = self.misfits(level="station").loc[iteration, step_count, event]
+        df = self.misfit(level="station").loc[iteration, step_count, event]
         assert (choice in df.columns), f"choice must be in {df.columns}"
 
         # Get lat lon values for receivers
@@ -343,9 +397,11 @@ class InspectorPlotter:
         plt.ylabel("Latitude")
         plt.title(f"{event} {iteration}{step_count}; {len(df)} stations")
 
-        colormap_colorbar(cmap, vmin=misfit_values.min(),
-                          vmax=misfit_values.max(), cbar_label=choice,
-                          )
+        _, _, cbar = colormap_colorbar(cmap, vmin=misfit_values.min(),
+                                       vmax=misfit_values.max(), 
+                                       cbar_label=choice,)
+
+        default_axes(ax, cbar, **kwargs)
 
         if save:
             plt.savefig(save)
@@ -355,9 +411,9 @@ class InspectorPlotter:
 
         return f, ax
 
-    def hist(self, iteration, step_count, iteration_comp=None,
+    def hist(self, iteration=None, step_count=None, iteration_comp=None,
              step_count_comp=None, f=None, ax=None, event=None, station=None,
-             choice="cc_shift_in_seconds", binsize=1., show=True, save=None,
+             choice="cc_shift_in_seconds", binsize=None, show=True, save=None,
              **kwargs):
         """
         Create a histogram of misfit information for either time shift or
@@ -393,16 +449,6 @@ class InspectorPlotter:
         :type save: str
         :param save: fid to save the figure
         """
-        assert iteration in self.iterations, \
-            f"iteration must be in {self.iterations}"
-        assert step_count in self.steps.loc[iteration], \
-            f"step must be in {self.steps.loc[iteration]}"
-        if iteration_comp is not None:
-            assert iteration_comp in self.iterations, \
-                f"iteration_comp must be in {self.iterations}"
-            assert step_count_comp in self.steps.loc[iteration_comp], \
-                f"step_comp must be in {self.steps.loc[iteration_comp]}"
-
         # Optional kwargs for fine tuning figure parameters
         title = kwargs.get("title", "")
         xlim = kwargs.get("xlim", None)
@@ -423,6 +469,35 @@ class InspectorPlotter:
         label = kwargs.get("label", None)
         label_comp = kwargs.get("label_comp", None)
 
+        # If no arguments are given, default to first and last evaluations
+        if iteration is None and iteration_comp is None:
+            iteration, step_count = self.initial_model
+            iteration_comp, step_count_comp = self.final_model
+
+        # Check that the provided values are available in the Inspector
+        assert iteration in self.iterations, \
+            f"iteration must be in {self.iterations}"
+        if step_count is None:
+            assert step_count in self.steps.loc[iteration], \
+                f"step must be in {self.steps.loc[iteration]}"
+        if iteration_comp is not None:
+            assert iteration_comp in self.iterations, \
+                f"iteration_comp must be in {self.iterations}"
+            assert step_count_comp in self.steps.loc[iteration_comp], \
+                f"step_comp must be in {self.steps.loc[iteration_comp]}"
+
+        # Try to set a default binsize that may or may not work 
+        if binsize is None:
+            try:
+                binsize = {"cc_shift_in_seconds": 1,
+                           "dlnA": 0.25,
+                           "max_cc_value": 0.05,
+                           "misfit": 10,
+                           "relative_starttime": 15,
+                           "relative_endtime": 15}[choice]
+            except KeyError:
+                binsize = 1
+
         def get_values(m, s, e, sta):
             """short hand to get the data, and the maximum value in DataFrame"""
             df_a = self.isolate(iteration=m, step_count=s, event=e, station=sta)
@@ -433,15 +508,7 @@ class InspectorPlotter:
             lim_ = max(abs(np.floor(min(val_))), abs(np.ceil(max(val_))))
             return val_, lim_
 
-        # For cleaner formatting of axis labels
-        label_dict = {"cc_shift_in_seconds": "Time Shift (s)",
-                      "dlnA": "$\Delta\ln$(A)",
-                      "misfit": "Misfit",
-                      "length_s": "Window Length (s)",
-                      "max_cc_value": "Peak Cross Correlation",
-                      "relative_starttime": "Relative Start Time (s)",
-                      "relative_endtime": "Relative End Time (s)",
-                      }
+        # Instantiate the plot objects and 'goforyourlifemate'
         if f is None:
             f, ax = plt.subplots(figsize=figsize)
         if ax is None:
@@ -540,22 +607,25 @@ class InspectorPlotter:
             xlab_ = xlabel
         else:
             try:
-                xlab_ = label_dict[choice]
+                # For cleaner formatting of x-axis label
+                xlab_ = common_labels[choice]
             except KeyError:
                 xlab_ = choice
-        plt.xlabel(xlab_, fontsize=fontsize)
-        plt.ylabel("Count", fontsize=fontsize)
-        plt.title(title, fontsize=fontsize)
-        plt.tick_params(which='both', direction='in', top=True, right=True,
-                        labelsize=fontsize, width=2.)
+
+        plt.xlabel(xlab_)
+        plt.ylabel("Count")
+        plt.title(title)
         if label_range:
-            plt.xticks(np.arange(-1 * label_range, label_range + .1, step=xstep))
+            plt.xticks(np.arange(-1 * label_range, label_range + .1, 
+                                 step=xstep))
 
         if legend:
             leg = plt.legend(fontsize=fontsize / 1.25, loc=legend_loc)
             # Thin border around legend objects, unnecessarily thick bois
             for leg_ in leg.legendHandles:
                 leg_.set_linewidth(1.5)
+
+        default_axes(ax, **kwargs)
 
         plt.tight_layout()
 
@@ -566,8 +636,11 @@ class InspectorPlotter:
 
         return f, ax
 
-    def plot_windows(self, iteration, step_count, event=None, network=None,
-                     station=None, component=None):
+    def plot_windows(self, iteration, step, iteration_comp=None,
+                     step_comp=None, choice="cc_shift_in_seconds",
+                     event=None, network=None, station=None, component=None,
+                     no_overlap=True, distances=False, annotate=False,
+                     bounds=False, show=True, save=False, **kwargs):
         """
         Show lengths of windows chosen based on source-receiver distance, akin
         to Tape's Thesis or to the LASIF plots. These are useful for showing
@@ -576,8 +649,14 @@ class InspectorPlotter:
 
         :type iteration: str
         :param iteration: iteration to analyze
-        :type step_count: str
-        :param step_count: step count to query, e.g. 's00'
+        :type step: str
+        :param step: step count to query, e.g. 's00'
+        :type iteration_comp: str
+        :param iteration_comp: Optional, if provided, difference the 'choice'
+            values with the chosen 'iteration/step'. Useful for easily checking
+            for improvement. Only works if the windows are the same.
+        :type step_comp: str
+        :param step_comp: associated step count for 'iteration_comp'
         :type event: str
         :param event: filter for measurements for a given event
         :type network: str
@@ -586,62 +665,206 @@ class InspectorPlotter:
         :param station: filter for measurements for a given station
         :type component: str
         :param component: choose a specific component to analyze
+        :type choice: str
+        :param choice: choice of value to define the colorscale by. These relate
+            to the keys of Inspector.windows. Default is 'cc_shift_in_seconds'
+        :type no_overlap: bool
+        :param no_overlap: If real distances are used, many src-rcv pairs are
+            at the same or very similar distances, leading to overlapping
+            rectangles. If this is set to True, to minimize overlap, the
+            function will try to shift the distance to a value that hasn't yet
+            been plotted. It will alternate larger positive and negative values
+            until something is found. Will lead to non-real distances.
+        :type distances: bool
+        :param distances: If set False, just plot one window atop the other,
+            which makes for more concise, easier to view plots, but
+            then real distance information is lost, only relative distance
+            kept.
+        :type annotate: bool
+        :param annotate: If True, will annotate event and station information
+            for each window. May get messy if `distances == True` and
+            `no_overlap == False` because you will get many overlapping
+            annotations. Works ideally if `distances == False`.
+        :type bounds: bool or list of float
+        :param bounds:
+            * (bool) False: set default bounds based on the min and max of data
+            * (bool) True: set default bounds equal, based on abs max of data
+            * (list) Manually set the bounds of the colorbar
+        :type show: bool
+        :param show: show the plot after generating
+        :type save: str
+        :param save: save the plot to the given filename
+
+        Keyword Arguments
+        ::
+            float alpha:
+                The opacity of the rectangels, defaults to 0.25
+            str cmap:
+                The colormap used to plot the values of `choice`
+            str cbar_label:
+                The label for the colorbar
+            float rectangle_height:
+                The vertical size of the rectangles, defaults to 1.
+            float anno_shift:
+                The distance in seconds to shift the plot to accomodate
+                annotations. This needs to be played as its based on the length
+                of the strings that are used in the annotations.
         """
+        alpha = kwargs.get("alpha", 0.6)
+        cmap = kwargs.get("cmap", "viridis")
+        cbar_label = kwargs.get("cbar_label", None)
+        rectangle_height = kwargs.get("rectangle_height", 1.0)
+        anno_shift = kwargs.get("anno_shift", 50)
+
         assert(iteration in self.iterations and
-               step_count in self.steps[iteration]), \
-            f"{iteration}{step_count} does not exist in Inspector"
+               step in self.steps[iteration]), \
+            f"{iteration}{step} does not exist in Inspector"
 
-        comp_dict = {"Z": "orangered",
-                     "N": "forestgreen", "R": "forestgreen",
-                     "E": "royalblue", "T": "royalblue"
-                     }
+        assert(choice in self.windows.keys()), (f"Color by choice {choice} not "
+                                                f"in list of available keys")
 
-        srcrcv = self.calculate_srcrcv()
-        windows = self.isolate(iteration=iteration, step_count=step_count,
-                               event=event, network=network, station=station
-                               )
-        # Only get information up to component, and times
-        df = windows.loc[:, ["event", "network", "station", "component",
-                             "relative_starttime", "relative_endtime"]
-                         ]
-        # Merge in information about source-receiver distances
-        df = df.merge(srcrcv.drop("backazimuth", axis=1),
+        # Filter out the specific windows that we're interested in
+        df = self.isolate(iteration=iteration, step_count=step,
+                          event=event, network=network, station=station,
+                          component=component)
+    
+        # If a comparison iteration is given, isolate the 'choice' key, and
+        # subtract it from the main dataframe. The new plotted values are diffs!
+        if iteration_comp:
+            df_comp = self.isolate(iteration=iteration_comp,
+                                   step_count=step_comp, event=event,
+                                   network=network, station=station,
+                                   component=component)
+            # This is enough unique info to identify a specific window
+            merge_keys = ["event", "network", "station", "channel",
+                          "relative_starttime", choice]
+            df_comp = df_comp.loc[:, merge_keys]
+            df_comp.rename({choice: f"{choice}_comp"}, axis=1, inplace=True)
+
+            # Crude check to see if the number of windows is comparable
+            assert(len(df) == len(df_comp)), (f"Number of windows does not "
+                                              f"match between "
+                                              f"{iteration}{step} and "
+                                              f"{iteration_comp}{step_comp}")
+
+            df = df.merge(df_comp, on=merge_keys[:-1])
+            # Subtract the comparison iteration from the initial check
+            df[choice] = df[choice] - df[f"{choice}_comp"]
+
+        # Merge window information with source-receiver distances, not BAz
+        df = df.merge(self.srcrcv.drop("backazimuth", axis=1),
                       on=["event", "network", "station"]
                       )
-        # Optional filter to look at specific event, or station up to component
-        df = df.loc[
-            (df["event"] == (event or df["event"].to_numpy())) &
-            (df["station"] == (station or df["station"].to_numpy())) &
-            (df["network"] == (network or df["network"].to_numpy())) &
-            (df["component"] == (component or df["component"].to_numpy()))
-            ]
 
-        # Drop unnecessary information from dataframe
-        df.drop(["event", "network", "station"], axis=1, inplace=True)
+        # Drop unnecessary information except that needed to plot
+        # IMPORTANT: Sort by distance so that when the dataframe is iterated on
+        #            it starts from the smallest distance and goes up
+        df = df.loc[:, ["event", "station", "component", "relative_starttime",
+                        "relative_endtime", "distance_km", choice]
+                    ].sort_values(by="distance_km")
+        if df.empty:
+            logger.warning("Filtered dataframe is empty, no windows to plot")
+            return
+
+        # Plotting begins here
         f, ax = plt.subplots(figsize=(8, 6))
+
+        # Create a custom color scale based on the min and max values of choice
+        if cbar_label is None:
+            try:
+                # For cleaner formatting of colorbar label
+                cbar_label = common_labels[choice]
+            except KeyError:
+                cbar_label = choice
+        if iteration_comp:
+            cbar_label = f"DIFF {cbar_label}"
+
+        # Set the bounds of the colorbar
+        if isinstance(bounds, list):
+            vmin, vmax = bounds
+        else:
+            if bounds:
+                vmax = max(abs(df[choice].min()), abs(df[choice].max()))
+                vmin = -1 * vmax
+            else:
+                vmin = df[choice].min()
+                vmax = df[choice].max()
+        sm, norm, _ = colormap_colorbar(cmap, vmin=vmin, vmax=vmax,
+                                        cbar_label=cbar_label)
+
+        # Determine the global xmin and xmax which will be used more than once
+        xmin = df.relative_starttime.min()
+        if annotate:
+            # Shift to accomodate annotations
+            xmin -= anno_shift
+        xmax = df.relative_endtime.max()
+
+        dist_values, y_value = [], 0  # keep track of what y-values are used
         for window in df.to_numpy():
-            comp, start, end, dist = window
-            # short time windows show on top
-            ax.hlines(y=dist, xmin=start, xmax=end, colors=comp_dict[comp],
-                      zorder=10 + 2 * (1 / end - start), alpha=0.4
-                      )
-            ax.hlines(y=dist, xmin=0, xmax=300, colors="k", alpha=0.1,
-                      linewidth=0.1
-                      )
+            ev, sta, comp, start, end, dist, value = window
 
-        # Empty lines for legend
-        for comp in sorted(windows.component.unique()):
-            ax.hlines(y=0, xmin=0, xmax=0.1, color=comp_dict[comp], label=comp)
+            if not distances:
+                # Ignore distances and simply plot linearly
+                dist_ = y_value
+                y_value += rectangle_height
+            else:
+                # Try not to overlap windows that are very close in distance
+                dist_ = int(dist)
+                if no_overlap:
+                    if dist_ in dist_values:
+                        shift, sign = 1, -1
+                        while dist_ in dist_values:
+                            dist_ += shift
+                            # Alternate shift so that we search
+                            # 1, -1, 2, -2, 3, -3, etc...
+                            shift = sign * (abs(shift) + rectangle_height)
+                            sign *= -1
+                        dist_values.append(dist_)
+                        logger.warning(f"Shifted {ev} {sta}: {dist - dist_}km")
+                    else:
+                        dist_values.append(dist_)
 
-        plt.title(f"{len(df)} misfit windows")
+            # Plot the windows as rectangles to sort of match waveform plots
+            ax.add_patch(Rectangle(xy=(start, dist_ - rectangle_height / 2),
+                                   width=end - start, ec="k", alpha=alpha,
+                                   height=rectangle_height, 
+                                   fc=sm.cmap(norm(value)),
+                                   zorder=12)
+                         )
+            # Black background line for frame of reference / gridding
+            ax.hlines(y=dist_, xmin=xmin, xmax=xmax, colors="k",
+                      alpha=0.3, linewidth=0.3, zorder=10
+                      )
+            # Annotate event, station, component, distance and value for
+            # easier identification. Can be messy with a lot of windows
+            if annotate:
+                plt.text(xmin, dist_,
+                         f"{ev} {sta} {comp} {dist:.2f}km {value:.2f}",
+                         fontsize=4.5, zorder=11)
+
+        # Finalize the look of the plot
+        plt.title(f"Window Plot: N = {len(df)} "
+                  f"[{iteration}{step}] [{iteration_comp}{step_comp}]\n"
+                  f"Event: {event} / Station: {station} / Network: {network} / "
+                  f"Component: {component}")
         plt.xlabel("Time [s]")
-        plt.ylabel("Distance [km]")
-        plt.legend()
-        plt.xlim([min(df.relative_starttime) - 10,
-                  max(df.relative_endtime) + 10])
-        plt.ylim([min(df.distance_km) - 10, max(df.distance_km) + 10])
+        plt.xlim([xmin, xmax])
 
-        plt.show()
+        if distances:
+            plt.ylabel("Distance [km]")
+            plt.ylim([df.distance_km.min() - 10, df.distance_km.max() + 10])
+        else:
+            # Relative distances means the y-axis values are useless
+            plt.ylabel("Relative Distance")
+            plt.ylim([-rectangle_height, dist_ + rectangle_height])
+            ax.yaxis.set_ticks([])
+
+        if save:
+            plt.savefig(save)
+        if show:
+            plt.show()
+        else:
+            plt.close()
 
     def plot_window_differences(self, iteration_a, step_a, iteration_b, step_b):
         """
@@ -685,132 +908,247 @@ class InspectorPlotter:
                       linewidth=0.1
                       )
 
-    def convergence(self, plot_windows="length_s", plot_discards=True,
-                    ignore_iterations=False, show=True, save=None,
-                    normalize=False, **kwargs):
+    def convergence(self, windows="length_s", trials=False, show=True,
+                    save=None, normalize=False, float_tolerance=1E-3,
+                    annotate=False, restarts=None, restart_annos=None, 
+                    xvalues="model", **kwargs):
         """
         Plot the convergence rate over the course of an inversion.
         Scatter plot of total misfit against iteration number, or by step count
 
-        :type plot_windows: str or bool
-        :param plot_windows: parameter to use for Inspector.measurements() to
+        .. note:: 
+            Because misfits are floats, they wont be exactly equal, so we need 
+            to set some small tolerance in which they can differ
+
+        :type windows: str or bool
+        :param windows: parameter to use for Inspector.measurements() to
             determine how to illustrate measurement number, either by
             length_s: cumulative window length in seconds
-            n_win: number of misfit windows
+            nwin: number of misfit windows
             None: will not plot window information
-        :type plot_discards: bool
-        :param plot_discards: plot the discarded function evaluations from the
-            line searches. Useful for understanding how efficient the 
+        :type trials: bool
+        :param trials: plot the discarded trial step function evaluations from
+            the line searches. Useful for understanding how efficient the
             optimization algorithm as
-        :type ignore_iterations: list
-        :param ignore_iterations: a list of iterations to be ignored in the
-            plotting
+        :type normalize: bool
+        :param normalize: normalize the objective function values between [0, 1]
+        :type float_tolerance: float
+        :param float_tolerance: acceptable floating point difference between
+            adjacent misfit values to say that they are equal
+        :type restarts: list of int
+        :param restarts: If the inversion was restarted, e.g. for parameter
+            changes, then the convergence figure should separate two line plots.
+            This list allows the User to tell the function where to separate
+            the convergence plot. The integers should correspond to indices of
+            the Inspector.models attribute.
+        :type annotate: bool
+        :param annotate: annotate misfit values next to markers
+        :type restart_annos: list of str
+        :param restart_annos: if restarts is not None, allow annotating text 
+            next to each restart. Useful for annotating e.g. parameter changes
+            that accompany each restart
+        :type xvalues: str
+        :param xvalues: How the x-axis should be labelled, available:
+            model: plot the model number under each point
+            eval: number sequentially from 1
         :type show: bool
         :param show: show the plot after making it
         :type save: str
         :param save: file id to save the figure to
-        :type normalize: bool
-        :param normalize: normalize the objective function values between [0, 1]
+
+        .. rubric::
+            insp.convergence(restarts=[11,27,37], normalize=True, 
+                             windows='nwin', anno_fontsize=12,
+                             restart_annos=["T=[15-30]s\n$\sigma$=20x10km", 
+                                            "T=[10-30]s\n$\sigma$=20x10km", 
+                                            "T=[10-30]s\n$\sigma$=10x7km", 
+                                            "T=[8-30]s\n$\sigma$=8.5x6km"])
         """
         f = kwargs.get("f", None)
         ax = kwargs.get("ax", None)
         fontsize = kwargs.get("fontsize", 15)
+        anno_fontsize = kwargs.get("anno_fontsize", 15)
         figsize = kwargs.get("figsize", (8, 6))
         legend = kwargs.get("legend", True)
+        title = kwargs.get("title", None)
         misfit_label = kwargs.get("misfit_label", "misfit")
-        discard_label = kwargs.get("discard_label", "discards")
+        trial_label = kwargs.get("trial_label", "trials")
         window_label = kwargs.get("window_label", "windows")
-        misfit_color = kwargs.get("misfit_color", "k")
-        discard_color = kwargs.get("discard_color", "r")
+        trial_color = kwargs.get("trial_color", "r")
         window_color = kwargs.get("window_color", "orange")
+        legend_loc = kwargs.get("legend_loc", "best")
 
-        if plot_windows:
-            assert (plot_windows in ["n_win", "length_s"]), \
-                "plot_windows must be: 'n_win; or 'length_s'"
+        # Set some default parameters based on user choices, check parameters
+        if windows:
+            assert (windows in ["nwin", "length_s"]), \
+                "plot_windows must be: 'nwin; or 'length_s'"
+        if restarts is not None and restart_annos is not None:
+            assert(len(restarts) + 1 == len(restart_annos)), \
+                    "Length of restart anno must match length of `restarts` + 1"
 
-        # Get misfit information and window lengths together in a dataframe
-        df = self.misfits()
-        df = df.merge(self.nwin(), on=["iteration", "step"])
-        df.drop(["n_event", "summed_misfit"], axis=1, inplace=True)
-        iterations = df.index.get_level_values("iteration").unique().to_numpy()
+        assert(xvalues in ["model", "eval"]), \
+                "xvalues must be 'model' or 'eval'"
 
+        # It may take a while to calculate models so do it once here
+        models = self.models
+        nwin = self.nwin()
+
+        # Set up the figure
         if f is None:
             f, ax = plt.subplots(figsize=figsize)
         if ax is None:
             ax = plt.gca()
 
-        # Get the actual iteration numbers based on step count
-        true_iterations = self.sort_steps()
-        discard_iterations = self.sort_steps(discards=True)
+        # First, we will sort the model values by accepted models, initial
+        # evaluations, and discarded trials steps. Also need to check if
+        # accepted models and initial evaluations are equal to one another.
+        x = 0  # the x-position on the axis
+        lines, xvals, yvals, xlabs = [], [], [], []  # main plot
+        xdiscards, ydiscards, ywindows, xrestarts = [], [], [], []  # secondary
+        for j in range(len(models)):
+            i = j - 1  # we always need to compare to the previous misfit value
 
-        ld, lines = None, []  # For legend lines
-        xvalues, xlabels, misfits, windows = [], [], [], []
-        for x, (iteration, iterstep) in enumerate(true_iterations.items()):
-            if ignore_iterations and iteration in ignore_iterations:
+            # Status 0 means initial evaluation of iteration
+            if models.state[j] == 0:
+                # Ignore very first function evaluation
+                if j == 0:
+                    pass
+                # If initial eval matches line search final, treat equally
+                elif abs(models.misfit[i] - models.misfit[j]) < float_tolerance:
+                    continue
+                # If they differ, treat them as different points
+                else:
+                    x += 1
+                xlab = f"{models.model[j]}_0"
+            # Status 1 means final evaluation in line search
+            elif models.state[j] == 1:
+                x += 1
+                xlab = f"{models.model[j]}_1"
+            # Status -1 means discarded trial step, plot on the same X value
+            elif models.state[j] == -1:
+                xdiscards.append(x + 1)  # discards are related to next model
+                ydiscards.append(models.misfit[j])
                 continue
-            i, s = iterstep.split("/")
-            df_temp = df.loc[i, s]
 
-            if plot_windows:
-                misfit, window = df_temp.loc[["misfit",
-                                              plot_windows]].to_numpy()
-                windows.append(window)
-            else:
-                misfit = df_temp.loc["misfit"]
+            xvals.append(x)
+            yvals.append(models.misfit[j])
+            xlabs.append(xlab)
 
-            xvalues.append(x)
-            xlabels.append(iteration)
-            misfits.append(misfit)
+            # Convert restart values from Inspector.models indices
+            if restarts and j in restarts:
+                xrestarts.append(x)
 
-            # Plot all discarded misfits that were evaluated during line search
-            # Super hacky, needs to be reworked
-            if plot_discards:
-                if f"i{x:0>2}_all" in discard_iterations.keys():
-                    for is_ in discard_iterations[f"i{x:0>2}_all"]:
-                        i_, s_ = is_.split("/")
-                        misfit_ = df.loc[i_, s_].loc["misfit"]
-                        if misfit_ == misfit:
-                            continue
-                        ld = ax.plot(x, misfit_, 'X', markersize=10,
-                                     c=discard_color, label=discard_label,
-                                     zorder=6)
+            # Get the corresponding window number based on iter/step count
+            if windows:
+                i_ = models.iteration[j]
+                s_ = models.step_count[j]
+                ywindows.append(nwin.loc[i_].loc[s_][windows])
 
-        # Add single marker to legend
-        if ld:
-            lines += ld
+        # Define a re-usable plotting function that takes arguments from main fx
+        def plot_vals(x_, y_, idx=None, c="k", label=misfit_label):
+            """
+            Re-used plotting commands plot a scatter plot with a certain
+            color and label. Normalizes y-values, annotates text, if required
 
-        # Normalize the values to make the starting misfit 1
-        if normalize:
-            misfits = [_ / max(misfits) for _ in misfits]
+            :type x_: np.array
+            :param x_: x values to plot
+            :type y_: np.array
+            :param y_: y values to plot
+            :type idx: int
+            :param idx: index of the inversion leg for color and label, if None
+                defaults to `c` and `label` for color and label
+            :type c: str
+            :param c: color for marker and line color
+            :type label: str
+            :param label: label for legend, defaults to `misfit_label` from
+                kwargs of main function
+            """
+            # Overwrite default values 
+            if idx is not None:
+                c = f"C{idx}"
+                label = f"{misfit_label} (leg {idx})"
 
-        lines += ax.plot(xvalues, misfits, 'o-', linewidth=3, markersize=10,
-                         c=misfit_color, label=misfit_label, zorder=10)
+            if normalize:
+                y_ = [_ / max(y_) for _ in y_]
 
-        ax.set_xlabel("Model Number", fontsize=fontsize)
-        ax.xaxis.set_ticks(xvalues)
-        ax.set_xticklabels(xlabels, rotation=45, ha="right")
+            line = ax.plot(x_, y_, "o-", linewidth=3,  markersize=10, 
+                           c=c, label=label, zorder=10, markeredgecolor="k",
+                           markeredgewidth=1.5)
+            if annotate:
+                for x_anno, y_anno in zip(x_, y_):
+                    plt.text(x_anno, y_anno, f"{y_anno:.3f}", zorder=11,
+                             fontsize=anno_fontsize)
+
+            if restart_annos:
+                plt.text(x_[0], y_[0], restart_annos[idx - 1], zorder=12,
+                         fontsize=anno_fontsize, verticalalignment="bottom")
+
+            return line
+
+        # Primary: Two methods of plotting:
+        if xrestarts:
+            # 1) with user-defined restarts separating legs of the inversion
+            first = 0  # first iteration in the current leg
+            for i, last in enumerate(xrestarts):
+                j = i + 1  # Leg counting should start at 1
+                lines += plot_vals(xvals[first:last], yvals[first:last], j)
+                first = last
+            # Plot the final leg
+            lines += plot_vals(xvals[last:], yvals[last:], j + 1)
+            plt.text(xvals[last], yvals[last], restart_annos[j])
+        else:
+            # 2) plot the entire convergence in one line
+            lines += plot_vals(xvals, yvals, idx=None)
+
+        # Secondary: Plot number of windows/ window length in a separate axis
+        if windows:
+            ax2 = ax.twinx()
+            # Set ax2 below ax1
+            ax.set_zorder(ax2.get_zorder() + 1)
+            ax.patch.set_visible(False)
+            lines += ax2.plot(xvals, ywindows, "d--", linewidth=2, markersize=8,
+                              c=window_color, label=window_label, zorder=5,
+                              markeredgecolor="k", markeredgewidth=2
+                              )
+            ydict = {"length_s": "Cumulative Window Length [s]",
+                     "nwin": "Number of Measurements"}
+            ax2.set_ylabel(f"{ydict[windows]} (dashed)", rotation=270,
+                           labelpad=15., fontsize=fontsize
+                           )
+            ax2.ticklabel_format(style="sci", axis="y", scilimits=(0, 0))
+
+        # Secondary: Plot the discarded trial steps as x's
+        if trials:
+            sc = ax.scatter(xdiscards, ydiscards, c=trial_color,
+                            marker="x", s=10, zorder=9, label=trial_label
+                            )
+            lines.append(sc)
+
+        # Format the axes
+        if xvalues.lower() == "model":
+            xlabel_ = "Model Number"
+            ax.set_xticklabels(xlabs, rotation=45, ha="right")
+        elif xvalues.lower() == "eval":
+            xlabel_ = "Function Evaluation"
+            ax.set_xticklabels(np.arange(1, len(xvals) + 1, 1))
+
+        ax.set_xlabel(xlabel_, fontsize=fontsize)
+        ax.xaxis.set_ticks(xvals)
         ax.set_ylabel("Total Normalized Misfit", fontsize=fontsize)
+        ax.tick_params(axis="both", which="major", labelsize=fontsize)
 
         # Only set ticks on the x-axis
         ax.xaxis.grid(True, which="minor", linestyle=":")
         ax.xaxis.grid(True, which="major", linestyle="-")
 
-        # Plot measurement number/ window length, useful if it was allowed
-        # to vary freely during the inversion, or changes at restarts
-        if windows:
-            ax2 = ax.twinx()
-            ydict = {"length_s": "Cumulative Window Length [s]",
-                     "n_win": "Numer of Measurements"}
-            lines += ax2.plot(xvalues, windows, 'v:', linewidth=2,
-                              markersize=8, c=window_color, label=window_label,
-                              zorder=5)
-            ax2.set_ylabel(f"{ydict[plot_windows]} (dashed)", rotation=270,
-                           labelpad=15., fontsize=fontsize)
-            ax2.ticklabel_format(style="sci", axis="y", scilimits=(0, 0))
-
+        if title is None:
+            ax.set_title(f"{self.tag.title()} Convergence\n"
+                         f"{len(self.events)} Events / "
+                         f"{len(self.stations)} Stations")
+                        
         if legend:
-            labels = [l.get_label() for l in lines]
-            ax.legend(lines, labels, prop={"size": 12}, loc="upper right")
+            labels = [line.get_label() for line in lines]
+            ax.legend(lines, labels, prop={"size": 12}, loc=legend_loc)
 
         f.tight_layout()
 
@@ -822,7 +1160,50 @@ class InspectorPlotter:
         return f, ax
 
 
-def colormap_colorbar(cmap, vmin=0., vmax=1., dv=None, cbar_label=""):
+def default_axes(ax, cbar=None, **kwargs):
+    """
+    Ensure that all plots have the same default look. Should be more flexible
+    than setting rcParams or having a style sheet. Also allows the same kwargs 
+    to be thrown by all functions so that the function calls have the same 
+    format.
+
+    Keyword Arguments
+    ::
+    """
+    tick_fontsize = kwargs.get("tick_fontsize", 8)
+    tick_linewidth = kwargs.get("tick_linewidth", 1.5)
+    tick_length = kwargs.get("tick_length", 5)
+    tick_direction = kwargs.get("tick_direction", "in")
+    label_fontsize = kwargs.get("label_fontsize", 12)
+    axis_linewidth = kwargs.get("axis_linewidth", 2.)
+    title_fontsize = kwargs.get("title_fontsize", 14)
+    cbar_tick_fontsize = kwargs.get("cbar_tick_fontsize", 10)
+    cbar_label_fontsize = kwargs.get("cbar_label_fontsize", 12)
+    cbar_outline_color = kwargs.get("cbar_outline_color", "k")
+    cbar_linewidth = kwargs.get("cbar_linewdith", 2.)
+
+    # Re-set font sizes for labels already created
+    ax.title.set_fontsize(title_fontsize)
+    ax.xaxis.label.set_fontsize(label_fontsize)
+    ax.yaxis.label.set_fontsize(label_fontsize)
+    ax.tick_params(axis="both", which="both", width=tick_linewidth, 
+                   direction=tick_direction, labelsize=tick_fontsize, 
+                   length=tick_length)
+
+    # Thicken up the bounding axis lines
+    for axis in ["top", "bottom", "left", "right"]:
+        ax.spines[axis].set_linewidth(axis_linewidth)
+
+    # Adjust font and bounding bar of colorbar if available
+    if cbar is not None:
+        cbar.ax.tick_params(labelsize=cbar_tick_fontsize)
+        cbar.ax.yaxis.label.set_fontsize(cbar_label_fontsize)
+        cbar.outline.set_edgecolor(cbar_outline_color)
+        cbar.outline.set_linewidth(cbar_linewidth)
+
+
+def colormap_colorbar(cmap, vmin=0., vmax=1., dv=None, cbar_label="", 
+                      extend="neither"):
     """
     Create a custom colormap and colorbar
 
@@ -847,11 +1228,12 @@ def colormap_colorbar(cmap, vmin=0., vmax=1., dv=None, cbar_label=""):
         boundaries = np.arange(vmin, vmax, dv)
     else:
         boundaries = None
-    cbar = plt.colorbar(sm, boundaries=boundaries, shrink=0.9, pad=0.025)
+    cbar = plt.colorbar(sm, boundaries=boundaries, shrink=0.9, pad=0.025,
+                        extend=extend)
     if cbar_label:
         cbar.ax.set_ylabel(cbar_label, rotation=270, labelpad=15)
 
-    return cmap, norm, cbar
+    return sm, norm, cbar
 
 
 def hover_on_plot(f, ax, obj, values, dissapear=True):

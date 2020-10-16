@@ -1,0 +1,40 @@
+package:
+  name: pyatoa
+  version: 0.1
+
+source:
+  git_rev:
+  git_url: https://github.com/bch0w/pyatoa.git
+
+# build:
+#   script: python -m setup.py install
+
+requirements:
+  build:
+    - python
+    - setuptools
+    - pip
+    - obspy 1.2.2
+    - matplotlib 3.1.1
+    - pyasdf 0.7.2
+    - pandas 1.1.0
+    - pyyaml 5.3.1
+    - proj4 5.2.0
+    - http://github.com/matplotlib/basemap/tarball/master#egg=package-1.2.2
+    - http://github.com/bch0w/pyflex/tarball/return_reject_windows
+    - http://github.com/krischer/pyadjoint/tarball/master
+
+  run:
+    - python
+    - obspy 1.2.2
+    - matplotlib 3.1.1
+    - pyasdf 0.7.2
+    - pandas 1.1.0
+    - pyyaml 5.3.1
+    - proj4 5.2.0
+    - http://github.com/matplotlib/basemap/tarball/master#egg=package-1.2.2
+    - http://github.com/bch0w/pyflex/tarball/return_reject_windows
+    - http://github.com/krischer/pyadjoint/tarball/master
+
+about:
+  home: https://pyatoa.readthedocs.io/en/latest/
