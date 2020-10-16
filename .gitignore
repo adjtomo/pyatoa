@@ -3,7 +3,6 @@
 
 # Pyatoa files
 pyatoa/tests/test_data/scratch
-pyatoa/tests/work_in_progress
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
