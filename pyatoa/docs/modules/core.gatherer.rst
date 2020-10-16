@@ -1,22 +1,31 @@
-Gatherer
+gatherer
 ===========================
 
 .. currentmodule:: pyatoa.core.gatherer
 
 .. automodule:: pyatoa.core.gatherer
 
---------------
+
+Functions
+----------
+
+    .. autofunction:: append_focal_mechanism
+    .. autofunction:: get_gcmt_moment_tensor
+
+Gatherer
+---------
 
 .. autoclass:: Gatherer
 
     .. rubric:: Methods
     
     .. automethod:: gather_event
-    .. automethod:: append_focal_mechanism
     .. automethod:: gather_station
     .. automethod:: gather_observed
     .. automethod:: gather_synthetic
 
+ExternalGetter
+----------------
 
 .. rubric:: External Data Gathering 
 .. autoclass:: ExternalGetter
@@ -26,6 +35,9 @@ Gatherer
     .. automethod:: event_get
     .. automethod:: station_get
     .. automethod:: obs_waveform_get
+
+InternalFetcher
+------------------
 
 .. rubric:: Internal Data Gathering
 .. autoclass:: InternalFetcher
