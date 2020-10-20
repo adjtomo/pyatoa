@@ -73,8 +73,11 @@ def default_process(mgmt, choice, **kwargs):
                            water_level=water_level, plot=False)
 
         # Rotate streams if not in ZNE, e.g. Z12. Only necessary for observed
+        logger.debug("rotating from generic coordinate system to ZNE")
         st.rotate(method="->ZNE", inventory=mgmt.inv)
         st.detrend("simple").detrend("demean").taper(taper_percentage)
+    else:
+        logger.debug("no response removal, synthetic data or requested not to")
 
     # Rotate the given stream from standard NEZ to RTZ if BAz given
     if mgmt.baz:

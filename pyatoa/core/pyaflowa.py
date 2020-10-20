@@ -351,7 +351,7 @@ class Pyaflowa:
        
         # Allow user to provide a list of codes, else read from station file 
         if codes is None:
-            codes = read_station_codes(io.paths.station_file, 
+            codes = read_station_codes(io.paths.stations_file, 
                                        loc="??", cha="HH?")
 
         # Open the dataset as a context manager and process all events in serial
@@ -432,7 +432,7 @@ class Pyaflowa:
         # Event-specific log files to track processing workflow
         log_fid = f"{config.iter_tag}{config.step_tag}_{config.event_id}.log"
         log_fid = os.path.join(paths.logs, log_fid)
-        event_logger = self._create_event_log_handler(fid=fid)
+        event_logger = self._create_event_log_handler(fid=log_fid)
 
         # Dict-like object used to keep track of information for a single event
         # processing run, simplifies information passing between functions.

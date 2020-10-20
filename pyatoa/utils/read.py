@@ -184,7 +184,7 @@ def read_station_codes(path_to_stations, loc="??", cha="HH?"):
     for station in stations:
         sta = station[0]
         net = station[1] 
-        codes.append(SEED_TEMPLATE.format(net=net, sta=sta, loc=loc, cha=cha)
+        codes.append(SEED_TEMPLATE.format(net=net, sta=sta, loc=loc, cha=cha))
 
     return codes
 
