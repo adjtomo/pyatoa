@@ -13,12 +13,11 @@ Pyaflowa
     .. rubric:: Methods
     
     .. automethod:: __init__
-    .. automethod:: run
-    .. automethod:: serial_process
-    .. automethod:: multi_process
+    .. automethod:: process_event
+    .. automethod:: multi_event_process
     .. automethod:: setup
     .. automethod:: finalize
-    .. automethod:: quantify_misfit
+    .. automethod:: process_station
 
 PathStructure
 ---------------
