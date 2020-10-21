@@ -8,6 +8,7 @@ import pyatoa
 import logging
 import warnings
 from glob import glob
+from time import sleep
 from copy import deepcopy
 from pyasdf import ASDFDataSet
 from pyatoa.utils.images import merge_pdfs
@@ -261,7 +262,13 @@ class PathStructure:
                 for path_ in fmt_paths:
                     if not os.path.exists(path_):
                         if mkdirs:
-                            os.makedirs(path_)
+                            try:
+                                os.makedirs(path_)  
+                            except FileExistsError:
+                                # Parallel processes trying to make the same dir
+                                # will throw this error. Just let it pass as we
+                                # only need to make them once.
+                                continue
                         else:
                             raise IOError(f"{path_} is required but does not "
                                           f"exist and cannot be made")
@@ -661,8 +668,8 @@ class Pyaflowa:
         """
         if io.plot_fids:
             # e.g. i01s00_2018p130600.pdf
-            output_fid = "_".join([io.config.iter_tag, io.config.step_tag,
-                                   io.config.event_id + ".pdf"])
+            iterstep = f"{io.config.iter_tag}{io.config.step_tag}"
+            output_fid = f"{iterstep}_{io.config.event_id}.pdf"
 
             # Merge all output pdfs into a single pdf, delete originals
             save = os.path.join(io.paths.figures, output_fid)
