@@ -133,7 +133,6 @@ class PathStructure:
         # which sets the internal path structure.
         try:
             getattr(self, structure)(**kwargs)
-            print(f"Initiating Pyaflowa with structure: '{structure}'")
         except AttributeError as e:
             raise AttributeError(
                 "{structure} is not a valid path structure") from e
