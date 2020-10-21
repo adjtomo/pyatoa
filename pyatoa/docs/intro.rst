@@ -19,7 +19,7 @@ time windowing, misfit quantification, and adjoint source creation.
 To ensure an inversion stays on the rails, Pyatoa includes a custom data
 structure for data access and storage, as well as internal fault 
 tolerance and sanity checks throughout. Detailed logging is meant to ensure that
-Pyatoa is not a black-box.
+Pyatoa is not a black box.
 
 Outside the standard routines, Pyatoa also includes a measurement aggregation 
 tool to simplify bulk measurement assessement, while a series of plotting 
@@ -33,7 +33,7 @@ What isn't Pyatoa?
 
 Pyatoa is not a standalone adjoint tomography tool, it does not have the 
 capability to generate sythetic waveforms, submit jobs on HPC systems,  
-interface with numerical models, etc.. Instead it is meant to augment the 
+interface with numerical models, etc. Rather, it is meant to augment the 
 capabilities of external numerical solvers (e.g. SPECFEM3D) and workflow tools
 (e.g. SeisFlows).
 
@@ -51,10 +51,11 @@ on under the hood.
 How do I use Pyatoa?
 ~~~~~~~~~~~~~~~~~~~~
 
-Pyatoa follows the design philosophy of ObsPy, that means it's meant to be used
-as a Python tool, NOT as a standalone command-line tool, or GUI based program.
+Pyatoa was written following the design philosophy of ObsPy, that means it's 
+meant to be used as a Python tool, NOT as a standalone command-line tool, or 
+GUI based program.
 Pyatoa can be invoked through scripting, or in interactive Python
-environments such as the Python interpretor, IPython, Jupyter Notebooks etc.
+environments such as the Python interpretor, IPython, Jupyter Notebooks, etc.
 
 
 The following introductory notebooks should provide a quick overview of how 

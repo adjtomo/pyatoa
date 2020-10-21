@@ -4,15 +4,12 @@ Pyatoa
 **[ Python’s Adjoint Tomography Operations Assistant ]**
 
 
-``Pyatoa`` is a Python-based toolbox for misfit assessment in adjoint
-tomography. It began as a loose collection of scripts, and has grown into a 
-cohesive set of tools for: 
-seismic data gathering, waveform processing, time-windowing, misfit measurement, 
-measurement aggregation, and visualization.
+``Pyatoa`` is a Python-based toolbox meant to facilitate waveform comparisons in 
+adjoint tomography. With humble origins as a disjointed collection of scripts, 
+it has grown into a cohesive set of tools for misfit quantification. 
 
-This docs page provides an overview of intended use through 
-quickstart introductions, in-depth tutorials, and API for each of Pyatoa's core 
-classes and supporting utilities.
+This docs page provides an overview of Pyatoa through introductory material, 
+in-depth tutorials, and API for core classes and supporting utilities.
 
 Source code can be found on Github: https://github.com/bch0w/pyatoa
 
