@@ -296,26 +296,8 @@ class Pyaflowa:
         self.plot = plot
         self.map_corners = map_corners
         self.log_level = log_level
-
-    def run(self, source_names, **kwargs):
-        """
-        Wrapper for the serial and multiprocessed process functions
-
-        :type source_names: str or list
-        :param source_names: the event ids to process. 
-        * str: a single, serial process will occur
-        * list: a parallel implementation of the serial process will occur,
-            where all events will be processed simultaneously  
-
-        """
-        if isinstance(source_names, list) and len(source_names) > 1:
-            self.multi_process(source_names, **kwargs)
-        elif isinstance(source_names, str):
-            self.serial_process(source_names, **kwargs)
-        else:
-            raise TypeError("'source_names' must be a list or str")
             
-    def serial_process(self, source_name, **kwargs):
+    def process(self, source_name, **kwargs):
         """
         The main processing function for Pyaflowa misfit quantification.
 
@@ -336,6 +318,7 @@ class Pyaflowa:
         # Open the dataset as a context manager and process all events in serial
         with ASDFDataSet(os.path.join(io.paths.datasets,
                                       f"{io.config.event_id}.h5")) as ds:
+
             # Cleaning dataset ensures no previous/failed data is used this go
             clean_dataset(ds, iteration=io.config.iteration,
                           step_count=io.config.step_count
@@ -370,7 +353,7 @@ class Pyaflowa:
         misfits = {}
         with ProcessPoolExecutor(max_workers=max_workers) as executor:
             for source_name, misfit in zip(
-                    source_names, executor.map(self.serial_process, 
+                    source_names, executor.map(self.process,
                                                source_names, kwargs)):
                 misfits[os.path.basename(source_name)] = misfit
 
