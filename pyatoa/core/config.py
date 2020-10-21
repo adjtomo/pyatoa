@@ -138,16 +138,19 @@ class Config:
 
         if ds:
             # We do not set external configs when reading from dataset as these
-            # will have already been set previously in the dataset.
+            # will have already been set previously by Pyatoa
             assert(path is not None), "'path' is required to load from dataset"
             self._read_asdf(ds, path=path)
-        elif yaml_fid:
-            # Allow kwargs from both initialization, and external config
-            self._read_yaml(yaml_fid)
-        elif seisflows_yaml or seisflows_par:
-            self._read_seisflows_yaml(filename=seisflows_yaml,
-                                      par=seisflows_par)
         else:
+            # Config can also read in parameters straight from yaml file or
+            # via the SeisFlows parameters.yaml or PAR attribute
+            if yaml_fid:
+                self._read_yaml(yaml_fid)
+            elif seisflows_yaml or seisflows_par:
+                self._read_seisflows_yaml(filename=seisflows_yaml,
+                                          par=seisflows_par)
+
+            # Set the Pyflex and Pyadjoint Config objects as attributes
             self._set_external_configs(**kwargs)
 
         # Run internal sanity checks
@@ -284,11 +287,18 @@ class Config:
         # Make sure adjoint source type is formatted properly
         self.adj_src_type = format_adj_src_type(self.adj_src_type)
 
-    def _set_external_configs(self, **kwargs):
+    def _set_external_configs(self, check_unused=False, **kwargs):
         """
         Set the pyflex and pyadjoint Config parameters using kwargs provided
         to the init function. This function is separate because it only needs to
         be run in certain cases.
+
+        :type check_unnused: bool
+        :param check_unnused: check if kwargs passed to Pyadjoint and Pyflex 
+            do not match config parameters for either, which may mean 
+            misspelled parameter names, or just kwargs that were not meant for
+            either
+        :raises ValueError: if check_unnused is True and unnused kwargs found
         """
         # Set Pyflex confict through wrapper function
         self.pyflex_config, unused_kwargs_pf = set_pyflex_config(
@@ -301,11 +311,12 @@ class Config:
             min_period=self.min_period, max_period=self.max_period, **kwargs
         )
 
-        # See if both Pyflex and Pyadjoint threw the same unacceptable kwarg out
-        unused_kwargs = set(unused_kwargs_pf) & set(unused_kwargs_pa)
-        if unused_kwargs:
-            raise ValueError(f"{list(unused_kwargs)} are not keyword arguments "
-                             f"in Pyatoa, Pyflex or Pyadjoint.")
+        if check_unused:
+            # See if both Pyflex and Pyadjoint threw the same unacceptable kwarg
+            unused_kwargs = set(unused_kwargs_pf) & set(unused_kwargs_pa)
+            if unused_kwargs:
+                raise ValueError(f"{list(unused_kwargs)} are not keyword "
+                                 f"arguments in Pyatoa, Pyflex or Pyadjoint.")
 
     def _get_aux_path(self, default="default", separator="/"):
         """
