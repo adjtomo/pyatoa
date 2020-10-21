@@ -361,7 +361,20 @@ class Pyaflowa:
                                        loc="??", cha="HH?")
 
         # Open the dataset as a context manager and process all events in serial
+<<<<<<< HEAD
+        with ASDFDataSet(os.path.join(io.paths.datasets,
+                                      f"{io.config.event_id}.h5")) as ds:
+
+            # Cleaning dataset ensures no previous/failed data is used this go
+            clean_dataset(ds, iteration=io.config.iteration,
+                          step_count=io.config.step_count
+                          )
+            io.config.write(write_to=ds)
+
+            # Reading in stations here allows for event-dependent station lists
+=======
         with ASDFDataSet(io.paths.dsfid) as ds:
+>>>>>>> db846cbc2237cda042764b2c5f6dea4e3f8e053c
             mgmt = pyatoa.Manager(ds=ds, config=io.config)
             for code in codes:
                 mgmt_out, io = self.process_station(mgmt=mgmt, code=code,
@@ -387,7 +400,11 @@ class Pyaflowa:
         misfits = {}
         with ProcessPoolExecutor(max_workers=max_workers) as executor:
             for source_name, misfit in zip(
+<<<<<<< HEAD
+                    source_names, executor.map(self.process,
+=======
                     source_names, executor.map(self.process_event,
+>>>>>>> db846cbc2237cda042764b2c5f6dea4e3f8e053c
                                                source_names, kwargs)):
                 misfits[os.path.basename(source_name)] = misfit
 
