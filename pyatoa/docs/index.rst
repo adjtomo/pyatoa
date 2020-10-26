@@ -1,12 +1,12 @@
 Pyatoa
 ------
 
-**[ Python’s Adjoint Tomography Operations Assistant ]**
+**Python’s Adjoint Tomography Operations Assistant**
 
 
 ``Pyatoa`` is a Python-based toolbox meant to facilitate waveform comparisons in 
 adjoint tomography. With humble origins as a disjointed collection of scripts, 
-it has grown into a cohesive set of tools for misfit quantification. 
+it has grown into a cohesive library for misfit quantification.
 
 This docs page provides an overview of Pyatoa through introductory material, 
 in-depth tutorials, and API for core classes and supporting utilities.
@@ -81,12 +81,32 @@ Geophysical Journal International, 223(3), 1461-1480.
 
 
 .. toctree::
-   :maxdepth: 3
+   :maxdepth: 1
    :hidden:
-  
-   intro
-   tutorials
+   :caption: Introduction to Pyatoa
+
+   overview
+   quickstart
+   prepwork
    standards
    logging
+
+.. toctree::
+   :maxdepth: 3
+   :hidden:
+   :caption: Tutorials
+
+   config
+   manager
+   gathering
+   pyaflowa
+   storage
+   inspector
+   utilities
+
+.. toctree::
+   :maxdepth: 1
+   :hidden:
+   :caption: API
+
    pyatoa_api
-   
