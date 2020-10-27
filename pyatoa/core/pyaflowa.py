@@ -84,9 +84,8 @@ class PathStructure:
         """
         Define the necessary path structure for Pyaflowa
 
-        ..note::
-            REQUIRED PATHS:
-            Pyaflowa mandates a required directory structure, explained here
+        .. note::
+            Pyaflowa mandates the following required directory structure:
 
             * cwd: The individual event working directory. This is modelled
               after a SPECFEM working directory, and for SeisFlows points
@@ -115,6 +114,7 @@ class PathStructure:
 
         :type structure: str
         :param structure: the choice of PathStructure
+
             * 'standalone': The default path structure that is primarily used
               for running Pyaflowa standalone, without other workflow tools.
             * 'seisflows': The path structure required when Pyaflowa is called
@@ -231,7 +231,7 @@ class PathStructure:
             True otherwise Pyaflowa won't work as intended if directories are
             missing, but oh well it's here.
         :rtype: pyatoa.core.pyaflowa.PathStructure
-        :return: a formated PathStructure object
+        :return: a formatted PathStructure object
         """
         # Ensure we are not overwriting the template path structure
         path_structure_copy = deepcopy(self)
@@ -291,7 +291,7 @@ class Pyaflowa:
             by the SeisFlows preprocess class. Three required keys, data,
             figures, and logs
         :type par: seisflows.config.Dict
-        :parma par: Parameter list tracked internally by SeisFlows
+        :param par: Parameter list tracked internally by SeisFlows
         """
         # Establish the internal workflow directories based on chosen structure
         self.structure = structure.lower()
@@ -472,7 +472,7 @@ class Pyaflowa:
 
         Kwargs passed to pyatoa.core.manager.Manager.flow()
 
-        ..note::
+        .. note::
             Status used internally to track the processing success/failure rate
             * status == 0: Failed processing
             * status == 1: Successfully processed

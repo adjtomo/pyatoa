@@ -59,14 +59,15 @@ def half_duration_from_m0(moment):
 def mt_transform(mt, method):
     """
     Transform moment tensor between XYZ and RTP coordinates
+    Based on Equation from 'Aki and Richards: Quantitative Seismology' book
 
-    Acceptable formats for the parameter mt:
-        1) [m11,m22,m33,m12,m13,m23]
-        2) [mxx,myy,mzz,mxy,mxz,myz]
-        3) [mrr,mtt,mpp,mrt,mrp,mtp]
+    .. note::
+        Acceptable formats for the parameter `mt`:
 
-    Based on Equation ?? from Aki and Richards: Quantitative Seismology
-    TO DO: find the correct equation number
+        1) [m11, m22, m33, m12, m13, m23]
+        2) [mxx, myy, mzz, mxy, mxz, myz]
+        3) [mrr, mtt, mpp, mrt, mrp, mtp]
+
 
     :type mt: dict
     :param mt: moment tensor in format above
@@ -114,10 +115,8 @@ def lonlat_utm(lon_or_x, lat_or_y, utm_zone=None, inverse=False):
     :param utm_zone: UTM zone for conversion from WGS84
     :type inverse: bool
     :param inverse: if inverse == False, latlon => UTM, vice versa.
-    :rtype x_or_lon: float
-    :return x_or_lon: x coordinate in UTM or longitude in WGS84
-    :rtype y_or_lat: float
-    :return y_or_lat: y coordinate in UTM or latitude in WGS84
+    :rtype: tuple (float, float)
+    :return: (x in UTM or longitude in WGS84, y in UTM or latitude in WGS84)
     """
     from pyproj import Proj
 
@@ -174,10 +173,8 @@ def gcd_and_baz(event, sta):
     :param event: event object
     :type sta: obspy.core.inventory.station.Station
     :param sta: station object
-    :rtype gcdist: float
-    :return gcdist: great circle distance in km
-    :rtype baz: float
-    :return baz: backazimuth in degrees
+    :rtype: tuple (float, float)
+    :return: (great circle distance in km, backazimuth in degrees)
     """
     gcdist, _, baz = gps2dist_azimuth(lat1=event.preferred_origin().latitude,
                                       lon1=event.preferred_origin().longitude,
@@ -276,7 +273,7 @@ def sort_by_backazimuth(ds, clockwise=True):
     :param ds: dataset containing event and station information
     :type clockwise: bool
     :param clockwise: False = counter clockwise
-    :rytpe: list
+    :rtype: list
     :return: list of stations in order from 0deg to 360deg in direction
     """
     station_names, list_of_baz = [], []
@@ -311,11 +308,6 @@ def event_by_distance(cat, filter_type=False, filter_bounds=None, random=False):
 
     Catalog filter parameters can be found here:
     https://docs.obspy.org/packages/autogen/obspy.core.event.Catalog.filter.html
-
-    .. rubric::
-        >> index_list, event_list = event_by_distance(cat, 
-                                                      filter_type="magnitude",
-                                                      filter_bounds=[5.0,6.0])
 
     :type cat: obspy.event.Catalog
     :param cat: catalog to sort through

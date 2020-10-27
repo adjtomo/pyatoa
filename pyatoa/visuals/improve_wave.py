@@ -25,7 +25,8 @@ class ImproveWave:
     """
     A class to plot waveform improvement for a given ASDFDataSet
 
-    Use case:
+    .. code:: python
+
         ds = pyasdf.ASDFDataSet("dataset.h5")
         wi = WaveformImprovement(ds)
         wi.gather("NZ.BFZ", 10, 30)

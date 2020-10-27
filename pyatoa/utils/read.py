@@ -42,11 +42,13 @@ def read_sem(path, origintime=None, location='', precision=4):
     This convenience function converts the .sem? files into Stream objects
     with the correct header information.
 
-    Works with Specfem3D git version 6895e2f7
+    .. note::
+        if origintime is None, the default start time is 1970-01-01T00:00:00,
+        this is fine for quick-looking the data but it is recommended that an
+        actual starttime is given.
 
-    Note: if origintime is None, the default start time is 1970-01-01T00:00:00,
-          this is fine for quick-looking the data but it is recommended that an
-          actual starttime is given.
+    .. note :: 
+        Tested up to Specfem3D Cartesian git version 6895e2f7
 
     :type path: str
     :param path: path of the given ascii file
@@ -197,11 +199,10 @@ def read_specfem_vtk(path_to_vtk):
 
     :type path_to_vtk: str
     :param path_to_vtk: full path to the .vtk file to read
-    :rtype lines: list
-    :return lines: data line by line from readlines()
-    :rtype header_dict: dic
-    :return header_dict: dictionary with all relevant header information
-        from an unstructured_grid vtk file
+    :rtype: tuple (list, dict)
+    :return: first index of tuple is a list read line by line from readlines(),
+        second index of tuple is a dictionary with all relevant header 
+        information from an unstructured_grid vtk file
     """
     with open(path_to_vtk, "r") as f:
         lines = f.readlines()

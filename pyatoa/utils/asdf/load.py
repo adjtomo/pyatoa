@@ -25,12 +25,6 @@ def load_windows(ds, net, sta, iteration, step_count, return_previous=False):
         Expects that windows are saved into the dataset at each iteration and 
         step such that there is a coherent structure within the dataset
 
-    To do:
-        If windows are calculated for a given iteration/step but e.g. something 
-        fails and I change parameters and retry, those windows will still be 
-        there, and will be re-retrieved, which is not ideal. Might have to 
-        clean dataset before rerunning? or add some choice variable.
-
     :type ds: pyasdf.ASDFDataSet
     :param ds: ASDF dataset containing MisfitWindows subgroup
     :type net: str
@@ -136,11 +130,9 @@ def dataset_windows_to_pyflex_windows(windows, network, station):
     :param network: network of the station related to the windows
     :type station: str
     :param station: station related to the windows
-    :rtype window_dict: dict
-    :return window_dict: dictionary of window attributes in the same format
-        that Pyflex outputs
-    :rtype num_windows: int
-    :return num_windows: number of windows for a given iter, step, net, sta
+    :rtype: dict
+    :return: dictionary of window attributes in the same format that Pyflex 
+        outputs
     """
     window_dict, _num_windows = {}, 0
     for window_name in windows.list():
@@ -184,8 +176,8 @@ def previous_windows(windows, iteration, step_count):
     count. If none are found for the given iteration, return the most recently
     available windows.
 
-    Note: Assumes that windows are saved at each iteration! Even if fixed
-        windows are used.
+    .. note:: 
+        Assumes that windows are saved at each iteration.
 
     :type windows: pyasdf.utils.AuxiliaryDataAccessor
     :param windows: ds.auxiliary_data.MisfitWindows[iter][step]

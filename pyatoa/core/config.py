@@ -48,7 +48,7 @@ class Config:
             with Seisflows via Pyaflowa.
         :type event_id: str
         :param event_id: unique event identifier for data gathering, annotations
-        :type: min_period: float
+        :type min_period: float
         :param min_period: minimum bandpass filter period
         :type max_period: float
         :param max_period: maximum bandpass filter period

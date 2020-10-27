@@ -86,12 +86,13 @@ def normalize_a_to_b(array, a=0, b=1):
 def amplitude_anomaly(a, b, dt):
     """
     Calculate the amplitude differences between two waveforms, a la.
-    Equation A2 from Tape et al. 2010, which states that
+    Equation A2 from Tape et al. 2010, which states that:
 
     DlnA = ln(a/b) = 0.5 * ln[integral(a(t)**2 dt)/integral(b(t)**2 dt)]
-        where a and b represent data and synthetics, respectively
+    where a and b represent data and synthetics, respectively
 
-    Note: it is expected that a and b have the same value of dt, if they do not,
+    .. note:: 
+        It is expected that a and b have the same value of dt, if they do not,
         they should be resampled before being passed to this function.
 
     :type a: np.array

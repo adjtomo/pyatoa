@@ -899,8 +899,8 @@ def get_gcmt_moment_tensor(origintime, magnitude, time_wiggle_sec=120,
         event origin time
     :type magnitude_wiggle: float
     :param magnitude_wiggle: padding on catalog filter for magnitude
-    :rtype event: obspy.core.event.Event
-    :return event: event object for given earthquake
+    :rtype: obspy.core.event.Event
+    :return: event object for given earthquake
     """
     from urllib.error import HTTPError
     from obspy import UTCDateTime, read_events

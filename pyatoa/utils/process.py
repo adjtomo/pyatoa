@@ -103,13 +103,13 @@ def default_process(mgmt, choice, **kwargs):
 
 
 def filters(st, min_period=None, max_period=None, min_freq=None, max_freq=None,
-            corners=2, zerophase=True):
+            corners=2, zerophase=True, **kwargs):
     """
     Choose the appropriate filter depending on the ranges given.
     Either periods or frequencies can be given. Periods will be prioritized.
     Uses Butterworth filters by default.
 
-    Filters the stream in place.
+    Filters the stream in place. Kwargs passed to filter functions.
 
     :type st: obspy.core.stream.Stream
     :param st: stream object to be filtered
@@ -127,8 +127,10 @@ def filters(st, min_period=None, max_period=None, min_freq=None, max_freq=None,
     :param corners: number of filter corners to be passed to ObsPy
         filter functions
     :type zerophase: bool
-    :param zerophase: 
-    :return:
+    :param zerophase: if True, run filter backwards and forwards to avoid
+        any phase shifting
+    :rtype: obspy.core.stream.Stream
+    :return: Filtered stream object
     """
     # Ensure that the frequency and period bounds are the same
     if not min_period and max_freq:
@@ -143,19 +145,20 @@ def filters(st, min_period=None, max_period=None, min_freq=None, max_freq=None,
     # Bandpass if both bounds given
     if min_period and max_period:
         st.filter("bandpass", corners=corners, zerophase=zerophase,
-                  freqmin=min_freq, freqmax=max_freq)
+                  freqmin=min_freq, freqmax=max_freq, **kwargs)
         logger.debug(f"bandpass filter: {min_period} - {max_period}s w/ "
                      f"{corners} corners")
 
     # Highpass if only minimum period given
     elif min_period:
         st.filter("highpass", freq=max_freq, corners=corners,
-                  zerophase=zerophase)
+                  zerophase=zerophase, **kwargs)
         logger.debug(f"highpass filter: {min_period}s w/ {corners} corners")
 
     # Lowpass if only minimum period given
     elif max_period:
-        st.filter("lowpass", freq=min_freq, corners=corners, zerophase=True)
+        st.filter("lowpass", freq=min_freq, corners=corners, zerophase=True,
+                  **kwargs)
         logger.debug(f"lowpass filter: {max_period}s w/ {corners} corners")
 
     return st

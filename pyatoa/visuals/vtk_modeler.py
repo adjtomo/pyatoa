@@ -56,7 +56,7 @@ class VTKModeler:
         :param logging: turn on logging to see what VTKModeler is doing under
             the hood
 
-        Keyword arguments (colorscale)
+        Keyword arguments
         ::
             str cmap:
                 colorscale to use, matches names from Matplotlib defaults
@@ -78,9 +78,6 @@ class VTKModeler:
             int round_to:
                 Round the range values of the colorbar to a given base value
                 `round_to` to get rid of decimals or weird values.
-
-        Keyword arguments (axis)
-        ::
             str xlabel:
                 label for the X-axis, default "E"
             str ylabel:
@@ -93,9 +90,6 @@ class VTKModeler:
             float font_factor:
                 multiply font size by this value for larger or smaller axis
                 font sie. Default 1.
-
-        Keyword arguments (plot)
-        ::
             str src_marker:
                 marker to be used to show sources. defaults to '2dcircle' for
                 depth slice and 'sphere' for cross-section
@@ -686,11 +680,10 @@ def srcrcv(coords, x_value=None, y_value=None, z_value=None, color="w",
     the current projection. Allows for condensing all stations into a single
     plane for e.g. depth slice plots
 
-    Available markers:
-     ‘2darrow’ or ‘2dcircle’ or ‘2dcross’ or ‘2ddash’ or ‘2ddiamond’ or
-     ‘2dhooked_arrow’ or ‘2dsquare’ or ‘2dthick_arrow’ or ‘2dthick_cross’ or
-     ‘2dtriangle’ or ‘2dvertex’ or ‘arrow’ or ‘axes’ or ‘cone’ or ‘cube’ or
-     ‘cylinder’ or ‘point’ or ‘sphere’.
+    .. note::
+        Available markers: 2darrow, 2dcircle, 2dcross, 2ddash, 2ddiamond,
+        2dhooked_arrow, 2dsquarem, 2dthick_arrow, 2dthick_cross, 2dtriangle,
+        2dvertex, arrow, axes, cone, cube, cylinder, point, sphere
 
     :type coords: np.array
     :param coords: Nx3 array with columns relating to x, y z

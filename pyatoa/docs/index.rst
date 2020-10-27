@@ -1,9 +1,6 @@
-Pyatoa
-------
-
-**Python’s Adjoint Tomography Operations Assistant**
-
-
+===================================================
+Python’s Adjoint Tomography Operations Assistant
+===================================================
 ``Pyatoa`` is a Python-based toolbox meant to facilitate waveform comparisons in 
 adjoint tomography. With humble origins as a disjointed collection of scripts, 
 it has grown into a cohesive library for misfit quantification.
