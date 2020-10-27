@@ -21,5 +21,5 @@
 
 The design philosophy of **Pyatoa** is easy-to-use custom-built objects that make tomography research flexible, rapid, and repeatable.
 
-<sub> \**pronounced Pie-uh-toe-uh (ˈpaɪəˈtoʊə), inspired by the famed volcano Krakatoa* </sub>
+<sub> \**pronounced Py-uh-toe-uh (ˈpaɪəˈtoʊə), inspired by the famed volcano Krakatoa* </sub>
 
