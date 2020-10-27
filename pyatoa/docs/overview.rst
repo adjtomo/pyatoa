@@ -57,16 +57,10 @@ GUI based program.
 Pyatoa can be invoked through scripting, or in interactive Python
 environments such as the Python interpretor, IPython, Jupyter Notebooks, etc.
 
-
-The following introductory notebooks should provide a quick overview of how 
-Pyatoa and its underlying functionalities should be used. They are meant 
+The notebooks found in the introduction section should provide a quick overview
+of how Pyatoa and its underlying functionalities should be used. They are meant
 to provide a jumping off point to communicate how one might leverage Pyatoa 
 during a tomographic inversion, however they are by no means all encompassing.
 The later tutorials and API pages provide more detailed views of the package.
 
-.. toctree::
-   :maxdepth: 3
-   
-   quickstart
-   prepwork
     

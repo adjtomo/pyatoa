@@ -88,8 +88,6 @@ Geophysical Journal International, 223(3), 1461-1480.
    overview
    quickstart
    prepwork
-   standards
-   logging
 
 .. toctree::
    :maxdepth: 3
@@ -107,6 +105,8 @@ Geophysical Journal International, 223(3), 1461-1480.
 .. toctree::
    :maxdepth: 1
    :hidden:
-   :caption: API
+   :caption: Interface
 
+   standards
+   logging
    pyatoa_api
