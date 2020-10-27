@@ -72,7 +72,8 @@ def add_adjoint_sources(adjsrcs, ds, path, time_offset):
     :param time_offset: The temporal offset of the first sample in seconds.
         This is required if using the adjoint source as input to SPECFEM.
 
-    .. rubric:: SPECFEM
+    .. rubric:: Time Offset
+
     SPECFEM requires one additional parameter: the temporal offset of the
     first sample in seconds. The following example sets the time of the
     first sample in the adjoint source to ``-10``.

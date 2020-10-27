@@ -956,13 +956,15 @@ class InspectorPlotter:
         :type save: str
         :param save: file id to save the figure to
 
-        .. rubric::
-            insp.convergence(restarts=[11,27,37], normalize=True, 
-                             windows='nwin', anno_fontsize=12,
-                             restart_annos=["T=[15-30]s\n$\sigma$=20x10km", 
-                                            "T=[10-30]s\n$\sigma$=20x10km", 
-                                            "T=[10-30]s\n$\sigma$=10x7km", 
-                                            "T=[8-30]s\n$\sigma$=8.5x6km"])
+
+        .. rubric:: Basic Usage
+
+        insp.convergence(restarts=[11,27,37], normalize=True, 
+                         windows='nwin', anno_fontsize=12,
+                         restart_annos=["T=[15-30]s\n$\sigma$=20x10km", 
+                                        "T=[10-30]s\n$\sigma$=20x10km", 
+                                        "T=[10-30]s\n$\sigma$=10x7km", 
+                                        "T=[8-30]s\n$\sigma$=8.5x6km"])
         """
         f = kwargs.get("f", None)
         ax = kwargs.get("ax", None)

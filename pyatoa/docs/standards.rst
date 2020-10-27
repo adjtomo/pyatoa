@@ -206,9 +206,10 @@ Where:
 
 Unit code **U** is dictated by the chosen output units in the SPECFEM3D
 Par_file, where: 
-- **d** = displacement 
-- **v** = velocity 
-- **a** = acceleration
+
+-  **d** = displacement 
+-  **v** = velocity 
+-  **a** = acceleration
 
 Example for displacement synthetic waveforms for the vertical component
 of New Zealand station BFZ: **NZ.BFZ.BXZ**

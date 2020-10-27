@@ -312,9 +312,10 @@ def event_by_distance(cat, filter_type=False, filter_bounds=None, random=False):
     Catalog filter parameters can be found here:
     https://docs.obspy.org/packages/autogen/obspy.core.event.Catalog.filter.html
 
-    example call:
-    >> index_list, event_list = event_by_distance(cat, filter_type="magnitude",
-                                                  filter_bounds=[5.0,6.0])
+    .. rubric::
+        >> index_list, event_list = event_by_distance(cat, 
+                                                      filter_type="magnitude",
+                                                      filter_bounds=[5.0,6.0])
 
     :type cat: obspy.event.Catalog
     :param cat: catalog to sort through
