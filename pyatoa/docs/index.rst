@@ -83,7 +83,7 @@ Geophysical Journal International, 223(3), 1461-1480.
 .. toctree::
    :maxdepth: 1
    :hidden:
-   :caption: Introduction to Pyatoa
+   :caption: Introduction
 
    overview
    quickstart

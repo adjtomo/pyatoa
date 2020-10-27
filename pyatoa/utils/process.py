@@ -247,8 +247,8 @@ def trim_streams(st_a, st_b, precision=1E-3, force=None):
     :type force: str
     :param force: "a" or "b"; force trim to the length of "st_a" or to "st_b",
         if not given, trims to the common time
-    :rtype st_?: obspy.stream.Stream
-    :return st_?: trimmed stream
+    :rtype: tuple of obspy.stream.Stream
+    :return: trimmed stream objects in the same order as input
     """
     # Check if the times are already the same
     if st_a[0].stats.starttime - st_b[0].stats.starttime < precision and \
