@@ -149,9 +149,9 @@ pyflex_presets = {
     # !!! NOT YET TESTED, LOOSELY BASED ON 'nznorth_6-30s'
     "nznorth_4-30s": {
         "stalta_waterlevel": 0.08,
-        "tshift_acceptance_level": 5.,  
+        "tshift_acceptance_level": 8.,  
         "dlna_acceptance_level": 1.5,
-        "cc_acceptance_level": 0.65,
+        "cc_acceptance_level": 0.6,
         "s2n_limit": 3.,
         "max_time_before_first_arrival": 5., 
         "min_surface_wave_velocity": 1.05,
