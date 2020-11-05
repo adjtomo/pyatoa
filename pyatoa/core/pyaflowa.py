@@ -8,6 +8,7 @@ import pyatoa
 import logging
 import warnings
 from glob import glob
+from time import sleep
 from copy import deepcopy
 from pyasdf import ASDFDataSet
 from pyatoa.utils.images import merge_pdfs
@@ -126,7 +127,7 @@ class PathStructure:
         # paths associated with these keys
         self._REQUIRED_PATHS = ["cwd", "datasets", "figures", "logs", "dsfid",
                                 "stations_file", "responses", "waveforms",
-                                "synthetics", "adjsrcs"]
+                                "synthetics", "adjsrcs", "event_figures"]
 
         # Call the available function using its string representation,
         # which sets the internal path structure.
@@ -149,8 +150,8 @@ class PathStructure:
         """Simple call string representation"""
         return self.__str__()
 
-    def standalone(self, workdir=None, cwd=None, datasets=None, figures=None,
-                   dsfid=None, logs=None, responses=None, waveforms=None, 
+    def standalone(self, workdir=None, datasets=None, figures=None,
+                   logs=None, responses=None, waveforms=None, 
                    synthetics=None, adjsrcs=None, stations_file=None, **kwargs):
         """
         If Pyaflowa should be used in a standalone manner without external
@@ -161,13 +162,13 @@ class PathStructure:
         # General directories that all processes will write to
         self.workdir = workdir or os.getcwd()
         self.datasets = datasets or os.path.join(self.workdir, "datasets")
+        self.figures = figures or os.path.join(self.workdir, "figures")
         self.logs = logs or os.path.join(self.workdir, "logs")
 
         # Event-specific directories that only certain processes will write to
-        self.cwd = cwd or os.path.join(self.workdir, "{source_name}")
-        self.dsfid = dsfid or os.path.join(self.datasets, "{source_name}.h5")
-        self.figures = figures or os.path.join(self.workdir, "{source_name}",
-                                               "figures")
+        self.cwd = os.path.join(self.workdir, "{source_name}")
+        self.dsfid = os.path.join(self.datasets, "{source_name}.h5")
+        self.event_figures = os.path.join(self.figures, "{source_name}")
         self.synthetics = synthetics or os.path.join(self.workdir, "input",
                                                      "synthetics",
                                                      "{source_name}"
@@ -205,10 +206,11 @@ class PathStructure:
         self.cwd = os.path.join(PATH.SOLVER, "{source_name}")
 
         self.datasets = os.path.join(PATH.PREPROCESS, "datasets")
-        self.figures = os.path.join(PATH.PREPROCESS, "figures",
-                                    "{source_name}")
-        self.dsfid = os.path.join(self.datasets, "{source_name}.h5")
+        self.figures = os.path.join(PATH.PREPROCESS, "figures")
         self.logs = os.path.join(PATH.PREPROCESS, "logs")
+        
+        self.dsfid = os.path.join(self.datasets, "{source_name}.h5")
+        self.event_figures = os.path.join(self.figures, "{source_name}")
 
         self.responses = [os.path.join(PATH.DATA, "seed")]
         self.waveforms = [os.path.join(PATH.DATA, "mseed"),
@@ -260,7 +262,13 @@ class PathStructure:
                 for path_ in fmt_paths:
                     if not os.path.exists(path_):
                         if mkdirs:
-                            os.makedirs(path_)
+                            try:
+                                os.makedirs(path_)  
+                            except FileExistsError:
+                                # Parallel processes trying to make the same dir
+                                # will throw this error. Just let it pass as we
+                                # only need to make them once.
+                                continue
                         else:
                             raise IOError(f"{path_} is required but does not "
                                           f"exist and cannot be made")
@@ -528,7 +536,7 @@ class Pyaflowa:
             plot_fid = "_".join([mgmt.config.iter_tag, mgmt.config.step_tag,
                                  net, sta + ".pdf"]
                                 )
-            save = os.path.join(io.paths.figures, plot_fid)
+            save = os.path.join(io.paths.event_figures, plot_fid)
             mgmt.plot(corners=self.map_corners, show=False, save=save)
 
             # If a plot is made, keep track so it can be merged later on
@@ -660,11 +668,11 @@ class Pyaflowa:
         """
         if io.plot_fids:
             # e.g. i01s00_2018p130600.pdf
-            output_fid = "_".join([io.config.iter_tag, io.config.step_tag,
-                                   io.config.event_id + ".pdf"])
+            iterstep = f"{io.config.iter_tag}{io.config.step_tag}"
+            output_fid = f"{iterstep}_{io.config.event_id}.pdf"
 
             # Merge all output pdfs into a single pdf, delete originals
-            save = os.path.join(io.paths.figures, output_fid)
+            save = os.path.join(io.paths.event_figures, output_fid)
             merge_pdfs(fids=sorted(io.plot_fids), fid_out=save)
 
             for fid in io.plot_fids:

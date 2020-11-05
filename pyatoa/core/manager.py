@@ -191,16 +191,13 @@ class Manager:
     @property
     def st(self):
         """
-        Return all streams available in Class
+        Simplified call to return all streams available, observed and synthetic
         """
-        if isinstance(self.st_syn, obspy.Stream) and \
-                isinstance(self.st_obs, obspy.Stream):
+        if self.st_syn and self.st_obs:
             return self.st_syn + self.st_obs
-        elif isinstance(self.st_syn, obspy.Stream) and \
-                not isinstance(self.st_obs, obspy.Stream):
+        elif self.st_syn:
             return self.st_syn
-        elif isinstance(self.st_obs, obspy.Stream) and \
-                not isinstance(self.st_syn, obspy.Stream):
+        elif self.st_obs:
             return self.st_obs
         else:
             return None
