@@ -169,7 +169,7 @@ class Inspector(InspectorPlotter):
         """Return models that are only status 0 or 1 (initial or success)"""
         if self._models is None:
             self.get_models()
-        return self.models[self.models.status.isin([0, 1])].reset_index(
+        return self.models[self.models.state.isin([0, 1])].reset_index(
                                                                     drop=True)
 
     @property
@@ -729,6 +729,35 @@ class Inspector(InspectorPlotter):
             self._station_misfit = df
         elif level == "event":
             self._event_misfit = df
+
+        return df
+
+    def stats(self, level="event", choice="mean", key=None, iteration=None,
+              step_count=None):
+        """
+        Calculate statistical values for DataFrame
+
+        :type level: str
+        :param level: get statistical values per 'event' or 'station'
+        :type choice: str
+        :param choice: Pandas function, 'mean', 'std', 'var', etc.
+        :type key: windows column header, e.g. 'cc_shift_in_seconds'
+        :type iteration: str
+        :param iteration: filter for a given iteration
+        :type step_count: str
+        :param step_count: filter for a given step count
+        :rtype: pandas.DataFrame
+        :return: DataFrame containing the `choice` of stats for given options
+        """
+        group_list = ["iteration", "step", level]
+
+        df = getattr(self.windows.groupby(group_list), choice)()
+        if iteration is not None:
+            df = df.loc[iteration]
+            if step_count is not None:
+                df = df.loc[step_count]
+        if key is not None:
+            df = df[key]
 
         return df
 

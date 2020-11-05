@@ -15,9 +15,10 @@ from pyadjoint import Config as PyadjointConfig
 class Config:
     """
     The Config class is the main interaction object between the User and
-    workflow. It is used by the Manager class for workflow management, and also
-    for information sharing between Pyatoa objects and functions.
-    The Config can be read to and written from external files and ASDFDataSets.
+    workflow. It is used by the :doc:`Manager class <core.manager>` for workflow
+    management, and also for information sharing between Pyatoa objects and
+    functions. The Config can be read to and written from external files and
+    ASDFDataSets.
     """
     def __init__(self, yaml_fid=None, seisflows_yaml=None, seisflows_par=None,
                  ds=None, path=None, iteration=None, step_count=None,
@@ -29,9 +30,11 @@ class Config:
                  synthetics_only=False, win_amp_ratio=0., paths=None,
                  save_to_ds=True, **kwargs):
         """
-        Initiate the Config object. Kwargs are passed to Pyflex and Pyadjoint
-        Fonfig objects so that they can be set by the User through this Config
-        object.
+        Initiate the Config object either from scratch, or read from external.
+
+        .. note::
+            keyword arguments are passed to Pyflex and Pyadjoint config objects
+            so that there is only one entry point to all config objects.
 
         :type yaml_fid: str
         :param yaml_fid: id for .yaml file if config is to be loaded externally
@@ -160,8 +163,8 @@ class Config:
 
     def __str__(self):
         """
-        String representation of class Config for print statements.
-        Separate into similar labels for easier reading.
+        String representation of the class for print statements.
+        It separates information into similar bins for readability.
         """
         # Model and step need to be formatted before printing
         str_out = ("CONFIG\n"
@@ -237,7 +240,9 @@ class Config:
     def _check(self):
         """
         A series of sanity checks to make sure that the configuration parameters
-        are set properly to avoid any problems throughout the workflow.
+        are set properly to avoid any problems throughout the workflow. Should
+        normally be run after any parameters are changed to make sure that they
+        are acceptable.
         """
         if self.iteration is not None:
             assert(self.iteration >= 1), "Iterations must start at 1"
@@ -291,9 +296,9 @@ class Config:
 
     def _set_external_configs(self, check_unused=False, **kwargs):
         """
-        Set the pyflex and pyadjoint Config parameters using kwargs provided
-        to the init function. This function is separate because it only needs to
-        be run in certain cases.
+        Set the Pyflex and Pyadjoint Config parameters using kwargs provided
+        to the init function. Allows the user to request unused kwargs be
+        returned with an Error statement.
 
         :type check_unnused: bool
         :param check_unnused: check if kwargs passed to Pyadjoint and Pyflex 
@@ -348,7 +353,8 @@ class Config:
     def _check_io_format(fid, fmt=None):
         """
         A simple check before reading or writing the config to determine what
-        file format to use.
+        file format to use. Currently accepted file formats are yaml, asdf and
+        ascii.
 
         :type fmt: str
         :param fmt: format specified by the User
@@ -376,11 +382,16 @@ class Config:
 
     def write(self, write_to, fmt=None):
         """
-        Wrapper for write functions
+        Wrapper for underlying low-level write functions
 
         :type fmt: str
-        :param fmt: format to save parameters to,
-            (available: 'yaml', 'ascii', 'asdf')
+        :param fmt: format to save parameters to. Available:
+
+            * yaml: Write all parameters to a .yaml file which can be read later
+            * ascii: Write parameters to a simple ascii file, not very smart and
+              yaml is prefereable in most cases
+            * asdf: Save the Config into an ASDFDataSet under the auxiliary
+              data attribute
         :type write_to: str or pyasdf.ASDFDataSet
         :param write_to: filename to save config to, or dataset to save to
         """
@@ -395,7 +406,7 @@ class Config:
 
     def read(self, read_from, path=None, fmt=None):
         """
-        Wrapper for read functions
+        Wrapper for underlying low-level read functions
 
         :type read_from: str or pyasdf.asdf_data_set.ASDFDataSet
         :param read_from: filename to read config from, or ds to read from
@@ -539,7 +550,7 @@ class Config:
         A mapping of intenral config parameters to a SeisFlows yaml file.
         To be used during a SeisFlows workflow.
 
-        ..warning::
+        .. warning::
             Does not assign paths, iteration, step or event id. These need to be
             manually assigned during the workflow by SeisFlows.
 

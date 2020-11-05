@@ -698,7 +698,7 @@ class InspectorPlotter:
         Keyword Arguments
         ::
             float alpha:
-                The opacity of the rectangels, defaults to 0.25
+                The opacity of the rectangles, defaults to 0.25
             str cmap:
                 The colormap used to plot the values of `choice`
             str cbar_label:
@@ -865,48 +865,6 @@ class InspectorPlotter:
             plt.show()
         else:
             plt.close()
-
-    def plot_window_differences(self, iteration_a, step_a, iteration_b, step_b):
-        """
-        """
-        srcrcv = self.calculate_srcrcv()
-        windows_a = self.isolate(iteration=iteration_a, step_count=step_a)
-        windows_b = self.isolate(iteration=iteration_b, step_count=step_b)
-        df_a = windows_a.loc[:, ["event", "network", "station", "component",
-                                 "relative_starttime", "relative_endtime"]]
-        df_a.rename(columns={"relative_starttime": "start_a",
-                             "relative_endtime": "end_a"}, inplace=True)
-        df_b = windows_b.loc[:, ["event", "network", "station", "component",
-                                 "relative_starttime", "relative_endtime"]]
-        df_b.rename(columns={"relative_starttime": "start_b",
-                             "relative_endtime": "end_b"}, inplace=True)
-
-        # Comparison dataframe
-        df_c = df_a.merge(df_b)
-        df_c = df_c.merge(srcrcv.drop("backazimuth", axis=1),
-                          on=["event", "network", "station"])
-        df_c.drop(["event", "network", "station"], axis=1, inplace=True)
-
-        f, ax = plt.subplots(figsize=(8, 6))
-        for window in df_c.to_numpy()[:100]:
-            comp, start_a, end_a, start_b, end_b, dist = window
-            # short time windows show on top
-            if start_a - start_b:
-                if start_a < start_b:
-                    c = "orangered"
-                else:
-                    c = "forestgreen"
-                ax.hlines(y=dist, xmin=start_a, xmax=start_b, colors=c,
-                          alpha=0.4)
-            if end_a - end_b:
-                if end_a < end_b:
-                    c = "orangered"
-                else:
-                    c = "forestgreen"
-                ax.hlines(y=dist, xmin=end_a, xmax=end_b, colors=c, alpha=0.4)
-            ax.hlines(y=dist, xmin=0, xmax=300, colors="k", alpha=0.1,
-                      linewidth=0.1
-                      )
 
     def convergence(self, windows="length_s", trials=False, show=True,
                     save=None, normalize=False, float_tolerance=1E-3,

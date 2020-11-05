@@ -170,11 +170,13 @@ class CompWave:
         fontsize = kwargs.get("fontsize", 8)
         xlim = kwargs.get("xlim", None)
         percent_over = kwargs.get("percent_over", 0.125)
+        color_init = kwargs.get("color_init", "red")
+        color_final = kwargs.get("color_final", "blue")
 
         self.gather(m_init, m_final)
 
         # One row per component, one column for init and final each
-        f, axes = self.setup_plot(nrows=3, ncols=2, **kwargs)
+        f, axes = self.setup_plot(nrows=3, ncols=3, **kwargs)
 
         # Plot each component in a different column
         component_list = [_.stats.channel[-1] for _ in self._st_obs]
@@ -184,17 +186,27 @@ class CompWave:
             syn_final = self._st_final.select(component=comp)[0]
 
             # Plot init synthetics to the left, final synthetics to the right
-            axes[row][0].plot(syn_init.times(), syn_init.data, "r", zorder=10,
-                              label="INIT", linewidth=linewidth
+            axes[row][0].plot(syn_init.times(), syn_init.data, color_init,
+                              zorder=10, label="INIT", linewidth=linewidth
                               )
-            axes[row][1].plot(syn_final.times(), syn_final.data, "orangered",
+            axes[row][1].plot(syn_final.times(), syn_final.data, color_final,
                               zorder=10, label="FINAL", linewidth=linewidth
                               )
             # Plot obs in both columns
             for col in [0, 1]:
                 axes[row][col].plot(obs.times(), obs.data, "k", zorder=9,
                                     label="OBS", linewidth=linewidth)
-                # Format the axes for a standardized look
+
+            # Plot both syns together in last column
+            axes[row][2].plot(syn_init.times(), syn_init.data, color_init, 
+                              zorder=10, label="INIT", linewidth=linewidth
+                              )
+            axes[row][2].plot(syn_final.times(), syn_final.data, color_final,
+                              zorder=10, label="FINAL", linewidth=linewidth
+                              )
+
+            # Format the axes for a standardized look
+            for col in range(len(axes[row])):
                 format_axis(axes[row][col], percent_over=percent_over)
 
             # Component in the y-label
@@ -217,6 +229,7 @@ class CompWave:
         # Title each of the models
         axes[0][0].set_title(f"INITIAL: {self._m_init}", fontsize=fontsize)
         axes[0][1].set_title(f"FINAL: {self._m_final}", fontsize=fontsize)
+        axes[0][2].set_title(f"INITIAL / FINAL", fontsize=fontsize)
 
         # Save the generated figure
         if save:
@@ -233,15 +246,15 @@ def plot_from_working_dir():
     :return:
     """
     from glob import glob
-    choice = "pick"  # pick or all
+    choice = "all"  # pick or all
 
     # Hardcoded
-    min_period = 8
+    min_period = 6
     max_period = 30
     m_init = None
-    m_final = "i17/s01"
+    m_final = None
 
-    available = glob("2017*.h5")
+    available = glob("*.h5")
     if len(available) == 1:
         idx = 0
     else:
@@ -271,11 +284,16 @@ def plot_from_working_dir():
 
     elif choice == "all":
         for station in stations:
-            cw = CompWave(dsfid=dsfid, station=station, min_period=min_period,
-                         max_period=max_period)
-            cw.plot(m_init, m_final, show=False, save=f"{station}.png", 
-                    fontsize=12)
-            plt.close()
+            print(station)
+            try:
+                cw = CompWave(dsfid=dsfid, station=station, 
+                              min_period=min_period, max_period=max_period)
+                cw.plot(m_init, m_final, show=True, save=f"{station}.png", 
+                        fontsize=12)
+                plt.close()
+            except Exception as e:
+                print(e)
+                pass
 
 
 if __name__ == "__main__":
