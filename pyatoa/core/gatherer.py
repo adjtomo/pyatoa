@@ -6,7 +6,7 @@ or to query data from FDSN webservices via ObsPy.
 .. note::
     * Fetch: used to denote searching local filesystems for data (internal)
     * Get: used to denote querying FDSN webservices via ObsPy (external), naming
-    convention from the obspy.fdsn.client.Client function names
+      convention from the obspy.fdsn.client.Client function names
 
 
 Gatherer directly called by the Manager class and shouldn't need to be called
@@ -235,9 +235,9 @@ class InternalFetcher:
     Low-level data gatherer to search for data on disk.
     
     * Initially looks through User provided ASDFDataSets, if not available or no
-    data locatable, search through the local directories.
+      data locatable, search through the local directories.
     * Defaults directory structure follows SEED convention but can be
-    overwritten.
+      overwritten.
 
     .. warning::
         Not to be used standalone, class attributes are inherted by the
@@ -899,8 +899,8 @@ def get_gcmt_moment_tensor(origintime, magnitude, time_wiggle_sec=120,
         event origin time
     :type magnitude_wiggle: float
     :param magnitude_wiggle: padding on catalog filter for magnitude
-    :rtype event: obspy.core.event.Event
-    :return event: event object for given earthquake
+    :rtype: obspy.core.event.Event
+    :return: event object for given earthquake
     """
     from urllib.error import HTTPError
     from obspy import UTCDateTime, read_events

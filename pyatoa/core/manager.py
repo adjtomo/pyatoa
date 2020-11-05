@@ -444,6 +444,11 @@ class Manager:
         Does not include gathering. Takes kwargs related to all underlying
         functions.
 
+        .. code:: python
+
+            mgmt = Manager()
+            mgmt.flow() == mgmt.standardize().preprocess().window().measure()
+
         :raises ManagerError: for any controlled exceptions
         """
         force = kwargs.get("force", False)
@@ -1033,9 +1038,10 @@ class Manager:
             corners to cut the map to, otherwise a global map is provided
         :type choice: str
         :param choice: choice for what to plot:
-        * 'wav': plot waveform figure only
-        * 'map': plot a source-receiver map only
-        * 'both' (default): plot waveform and source-receiver map together
+
+            * 'wav': plot waveform figure only
+            * 'map': plot a source-receiver map only
+            * 'both' (default): plot waveform and source-receiver map together
         """
         self.check()
         # Precheck for correct data to plot

@@ -56,54 +56,49 @@ class VTKModeler:
         :param logging: turn on logging to see what VTKModeler is doing under
             the hood
 
-        COLORSCALE keyword arguments:
-            :type cmap: str
-            :param cmap: colorscale to use, matches names from Matplotlib
-                defaults to 'RdYlBu' for Red-Yellow-Blue
-            :type reverse: bool
-            :param reverse: reverse the colorscale, defaults to True
-            :type min_max: list
-            :param min_max: min and max values for color scale as [min, max],
-                defaults to None, use the values set by the model
-            :type colorbar: bool
-            :param colorbar: create and show a colorbar, defaults to True
-            :type title: str
-            :param title: colorbar title, defaults to None
-            :type num_clabels: int
-            :param num_clabels: number of labels to put on the colorbar,
-                defaults to Mayavi default
-            :type num_colors: int
-            :param num_colors: number of colors to use for the colorbar,
-                defaults to 20
-            :type round_to: int
-            :param round_to: Round the range values of the colorbar to a given
-                base value `round_to` to get rid of decimals or weird values.
-
-        AXIS keyword arguments:
-            :type xlabel: str
-            :param xlabel: label for the X-axis, default "E"
-            :type ylabel: str
-            :param ylabel: label for the Y-axis, default "N"
-            :type zlabel: str
-            :param zlabel: label for the Z-axis, default "Z"
-            :type xyz: list of bool
-            :param xyz: visibility for the x, y, and z axes in a list [x, y, z]
+        Keyword arguments
+        ::
+            str cmap:
+                colorscale to use, matches names from Matplotlib defaults
+                to 'RdYlBu' for Red-Yellow-Blue
+            bool reverse:
+                reverse the colorscale, defaults to True
+            list min_max:
+                min and max values for color scale as [min, max], defaults to
+                None, use the values set by the model
+            bool colorbar:
+                create and show a colorbar, defaults to True
+            str title:
+                colorbar title, defaults to None
+            int num_clabels:
+                number of labels to put on the colorbar, defaults to Mayavi
+                default value
+            int num_colors:
+                number of colors to use for the colorbar, defaults to 20
+            int round_to:
+                Round the range values of the colorbar to a given base value
+                `round_to` to get rid of decimals or weird values.
+            str xlabel:
+                label for the X-axis, default "E"
+            str ylabel:
+                label for the Y-axis, default "N"
+            str zlabel:
+                label for the Z-axis, default "Z"
+            list of bool xyz:
+                visibility for the x, y, and z axes in a list [x, y, z]
                 e.g. [True, True, False] turns off Z axis.
-            :type font_factor: float
-            :param font_factor: multiply font size by this value for larger or
-                smaller axis font sie. Default 1.
-
-        PLOTTING keyword arguments:
-            :type src_marker: str
-            :param src_marker: marker to be used to show sources. defaults to
-                '2dcircle' for depth slice and 'sphere' for cross-section
-            :type rcv_marker: str
-            :param rcv_marker: marker to be used to show receivers.
-                defaults to '2ddiamond'
-            :type rcv_color: str
-            :param rcv_color: color to plot receiver markers, defaults 'w'
-            :type src_color: str
-            :param src_color: color to plot source markers, defaults 'g'
+            float font_factor:
+                multiply font size by this value for larger or smaller axis
+                font sie. Default 1.
+            str src_marker:
+                marker to be used to show sources. defaults to '2dcircle' for
+                depth slice and 'sphere' for cross-section
+            str rcv_marker:
+                marker to be used to show receivers. defaults to '2ddiamond'
+            str rcv_color:
+                color to plot receiver markers, defaults 'w'
+            str src_color:
+                color to plot source markers, defaults 'g'
         """
         # Figure setup
         self.figsize = figsize
@@ -228,11 +223,6 @@ class VTKModeler:
         Plot a topdown view of the model, either with a surface projection
         (map view) or at some depth slice determined by `depth_km`
 
-        Y|
-         |
-         |_______
-                X
-
         :type depth_km: float or None
         :param depth_km: depth to show the model at in units of km, by default
             plots a map view of the 'surface'
@@ -317,11 +307,6 @@ class VTKModeler:
                       show=True, save=None, startup=True):
         """
         Plot a cross-section of the model, with the Y-axis plotting depth
-
-        Z|
-         |
-         |________
-                 X or Y
 
         If axis == X, the slice is normal to the Y-axis
         if axis == Y, the slice is normal to the X-axis
@@ -695,11 +680,10 @@ def srcrcv(coords, x_value=None, y_value=None, z_value=None, color="w",
     the current projection. Allows for condensing all stations into a single
     plane for e.g. depth slice plots
 
-    Available markers:
-     ‘2darrow’ or ‘2dcircle’ or ‘2dcross’ or ‘2ddash’ or ‘2ddiamond’ or
-     ‘2dhooked_arrow’ or ‘2dsquare’ or ‘2dthick_arrow’ or ‘2dthick_cross’ or
-     ‘2dtriangle’ or ‘2dvertex’ or ‘arrow’ or ‘axes’ or ‘cone’ or ‘cube’ or
-     ‘cylinder’ or ‘point’ or ‘sphere’.
+    .. note::
+        Available markers: 2darrow, 2dcircle, 2dcross, 2ddash, 2ddiamond,
+        2dhooked_arrow, 2dsquarem, 2dthick_arrow, 2dthick_cross, 2dtriangle,
+        2dvertex, arrow, axes, cone, cube, cylinder, point, sphere
 
     :type coords: np.array
     :param coords: Nx3 array with columns relating to x, y z

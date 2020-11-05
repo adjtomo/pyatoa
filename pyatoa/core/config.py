@@ -48,7 +48,7 @@ class Config:
             with Seisflows via Pyaflowa.
         :type event_id: str
         :param event_id: unique event identifier for data gathering, annotations
-        :type: min_period: float
+        :type min_period: float
         :param min_period: minimum bandpass filter period
         :type max_period: float
         :param max_period: maximum bandpass filter period
@@ -136,21 +136,23 @@ class Config:
         else:
             self.paths = {"waveforms": [], "synthetics": [], "responses": []}
 
-        if ds:
-            # We do not set external configs when reading from dataset as these
-            # will have already been set previously by Pyatoa
-            assert(path is not None), "'path' is required to load from dataset"
-            self._read_asdf(ds, path=path)
-        else:
-            # Config can also read in parameters straight from yaml file or
-            # via the SeisFlows parameters.yaml or PAR attribute
-            if yaml_fid:
+        # If reading from a YAML file or from a dataset, do not set the external
+        # Configs (pyflex and pyadjoint) because these will be read in verbatim
+        if ds or yaml_fid:
+            if ds:
+                assert(path is not None), "'path' required to load from dataset"
+                self._read_asdf(ds, path=path)
+            elif yaml_fid:
                 self._read_yaml(yaml_fid)
-            elif seisflows_yaml or seisflows_par:
+
+        # If reading from SeisFlows or initiating normally, need to set external
+        # Configs based on map names and keyword arguments
+        else:
+            if seisflows_yaml or seisflows_par:
                 self._read_seisflows_yaml(filename=seisflows_yaml,
                                           par=seisflows_par)
 
-            # Set the Pyflex and Pyadjoint Config objects as attributes
+            # Set Pyflex and Pyadjoint Config objects as attributes 
             self._set_external_configs(**kwargs)
 
         # Run internal sanity checks
@@ -514,10 +516,9 @@ class Config:
         """
         with open(filename, "r") as f:
             attrs = yaml.load(f, Loader=yaml.Loader)
-        attr_list = attrs.items()
 
         unused_kwargs = {}
-        for key, item in attr_list:
+        for key, item in attrs.items():
             if hasattr(self, key.lower()):
                 # Special case: ensure paths don't overwrite, but append
                 if key == "paths":

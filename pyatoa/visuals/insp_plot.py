@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Functions used to create standard statistical plots for the Inspector class
-This is the Inspector's Gadgte ;)
+The plotting functionality of the Inspector class. Used to generate statistics
+and basemap like plots from the Inspector DataFrame objects.
 """
 import numpy as np
 import matplotlib as mpl
@@ -922,10 +922,11 @@ class InspectorPlotter:
 
         :type windows: str or bool
         :param windows: parameter to use for Inspector.measurements() to
-            determine how to illustrate measurement number, either by
-            length_s: cumulative window length in seconds
-            nwin: number of misfit windows
-            None: will not plot window information
+            determine how to illustrate measurement number, either by:
+
+            * length_s: cumulative window length in seconds
+            * nwin: number of misfit windows
+            * None: will not plot window information
         :type trials: bool
         :param trials: plot the discarded trial step function evaluations from
             the line searches. Useful for understanding how efficient the
@@ -949,20 +950,13 @@ class InspectorPlotter:
             that accompany each restart
         :type xvalues: str
         :param xvalues: How the x-axis should be labelled, available:
-            model: plot the model number under each point
-            eval: number sequentially from 1
+
+            * model: plot the model number under each point
+            * eval: number sequentially from 1
         :type show: bool
         :param show: show the plot after making it
         :type save: str
         :param save: file id to save the figure to
-
-        .. rubric::
-            insp.convergence(restarts=[11,27,37], normalize=True, 
-                             windows='nwin', anno_fontsize=12,
-                             restart_annos=["T=[15-30]s\n$\sigma$=20x10km", 
-                                            "T=[10-30]s\n$\sigma$=20x10km", 
-                                            "T=[10-30]s\n$\sigma$=10x7km", 
-                                            "T=[8-30]s\n$\sigma$=8.5x6km"])
         """
         f = kwargs.get("f", None)
         ax = kwargs.get("ax", None)
@@ -1240,9 +1234,10 @@ def hover_on_plot(f, ax, obj, values, dissapear=True):
     """
     Allow for hover on a plot for custom annotated information
 
-    From Stackoverflow:
-        https://stackoverflow.com/questions/7908636/possible-to-make-labels-
-        appear-when-hovering-over-a-point-in-matplotlib
+    .. note::
+        This functionality is copied from StackOverflow:
+        https://stackoverflow.com/questions/7908636/possible-to-make-labels-\
+appear-when-hovering-over-a-point-in-matplotlib
 
     :type f: matplotlib.figure.Figure
     :param f: figure object for hover
@@ -1333,7 +1328,6 @@ def annotate_txt(ax, txt, anno_location="lower-right", **kwargs):
     :type anno_location: str
     :param anno_location: location on the figure to annotate
         available: bottom-right
-    :return:
     """
     acceptable_locations = ["lower-right", "upper-right",
                             "lower-left", "upper-left"]

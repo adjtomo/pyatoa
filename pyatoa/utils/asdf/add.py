@@ -61,6 +61,11 @@ def add_adjoint_sources(adjsrcs, ds, path, time_offset):
         Modified from Pyadjoint source code:
         pyadjoint.adjoint_source.write_to_asdf()
 
+    .. note::
+        SPECFEM requires one additional parameter: the temporal offset of the
+        first sample in seconds. This will have been set by the parameter
+        USER_T0 in the constants.h.in file of SPECFEM's setup directory
+
     :type adjsrcs: list of pyadjoint.asdf_data_set.ASDFDataSet
     :param adjsrcs: adjoint source to save
     :type ds: pyasdf.asdf_data_set.ASDFDataSet
@@ -71,15 +76,6 @@ def add_adjoint_sources(adjsrcs, ds, path, time_offset):
     :type time_offset: float
     :param time_offset: The temporal offset of the first sample in seconds.
         This is required if using the adjoint source as input to SPECFEM.
-
-    .. rubric:: SPECFEM
-    SPECFEM requires one additional parameter: the temporal offset of the
-    first sample in seconds. The following example sets the time of the
-    first sample in the adjoint source to ``-10``.
-    >>> adj_src.write_to_asdf(ds, time_offset=-10,
-    ...               coordinates={'latitude':19.2,
-    ...                            'longitude':13.4,
-    ...                            'elevation_in_m':2.0})
     """
     # Save adjoint sources per component
     for key, adj_src in adjsrcs.items():

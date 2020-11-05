@@ -1,12 +1,9 @@
-Pyatoa
-------
-
-**[ Python’s Adjoint Tomography Operations Assistant ]**
-
-
+===================================================
+Python’s Adjoint Tomography Operations Assistant
+===================================================
 ``Pyatoa`` is a Python-based toolbox meant to facilitate waveform comparisons in 
 adjoint tomography. With humble origins as a disjointed collection of scripts, 
-it has grown into a cohesive set of tools for misfit quantification. 
+it has grown into a cohesive library for misfit quantification.
 
 This docs page provides an overview of Pyatoa through introductory material, 
 in-depth tutorials, and API for core classes and supporting utilities.
@@ -19,7 +16,9 @@ Installation
 ~~~~~~~~~~~~
 
 ``Pyatoa`` is in ongoing development so package manager installation is not 
-currently available. Install should be accomplished using pip.  
+currently available. Install should be accomplished using pip, however Basemap
+will need to be installed via Conda so that the correct dependencies are
+installed.
 
 It is recomended that Pyatoa be installed inside a Conda environment to
 preserve your root environment. The 'devel' branch provides the latest codebase.
@@ -32,6 +31,7 @@ preserve your root environment. The 'devel' branch provides the latest codebase.
    $ git clone https://github.com/bch0w/pyatoa.git
    $ cd pyatoa
    $ git checkout devel
+   $ conda install -c conda-forge basemap
    $ pip install -r requirements.txt .
 
 
@@ -78,12 +78,32 @@ Geophysical Journal International, 223(3), 1461-1480.
 
 
 .. toctree::
+   :maxdepth: 1
+   :hidden:
+   :caption: Introduction
+
+   overview
+   quickstart
+   prepwork
+
+.. toctree::
    :maxdepth: 3
    :hidden:
-  
-   intro
-   tutorials
+   :caption: Tutorials
+
+   config
+   manager
+   gathering
+   pyaflowa
+   storage
+   inspector
+   utilities
+
+.. toctree::
+   :maxdepth: 1
+   :hidden:
+   :caption: Interface
+
    standards
    logging
    pyatoa_api
-   

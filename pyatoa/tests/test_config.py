@@ -108,6 +108,6 @@ def test_incorrect_parameter_check():
 
     # unused key word arguments should result in ValueError
     with pytest.raises(ValueError):
-        Config(ununused_kwarg="I dont belong :(")
+        Config(ununused_kwarg="I dont belong :(", check_unused=True)
 
 

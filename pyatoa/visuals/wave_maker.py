@@ -218,9 +218,9 @@ class WaveMaker:
         Plot misfit windows, add annotations to each window related to 
         information contained in the Window object.
 
-        Note:
-         -kwarg 'window_anno_height' should be given as a percentage of 
-          visible y-axis
+        .. note::
+            The keyword argument 'window_anno_height' should be given as a 
+            percentage of visible y-axis, e.g. 0.25 means 25% of the y-axis
 
         :type ax: matplotlib.axes.Axes
         :param ax: axis object on which to plot

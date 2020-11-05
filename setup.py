@@ -1,5 +1,5 @@
 import os
-from setuptools import setup
+from setuptools import setup, find_packages
 
 
 # Get the list of required dependencies from requirements.txt
@@ -13,13 +13,11 @@ else:
 
 setup(name='pyatoa',
       version='0.0.1',
-      description="Python's Adjoint Tomography Operational Assitance",
+      description="Python's Adjoint Tomography Operations Assitance",
       url='http://github.com/bch0w/pyatoa',
       author='Bryant Chow',
       author_email='bryant.chow@vuw.ac.nz',
       license='GPL',
-      packages=['pyatoa', 'pyatoa.core', 'pyatoa.utils', 'pyatoa.visuals',
-                'pyatoa.plugins', 'pyatoa.plugins.new_zealand',
-                'pyatoa.utils.asdf'],
+      packages=find_packages(),
       install_requires=[],
       zip_safe=False)
