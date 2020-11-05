@@ -94,7 +94,7 @@ pyflex_presets = {
         "c_4a": 3.0,
         "c_4b": 10.0
     },
-    # North Island study area, 10-30s bandpass
+    # North Island study area, 10-30s bandpass. Tested on Forest inversion.
     "nznorth_10-30s": {
         "stalta_waterlevel": 0.10, 
         "tshift_acceptance_level": 10.0,  # based on sign-flip
@@ -111,8 +111,7 @@ pyflex_presets = {
         "c_4a": 2.5,
         "c_4b": 12.0
     },
-    # North Island study area, 8-30s bandpass
-    # !!! NOT YET TESTED, SIMPLY SCALED FROM 'nznorth_10-30s'
+    # North Island study area, 8-30s bandpass. Tested on Forest inversion.
     "nznorth_8-30s": {
         "stalta_waterlevel": 0.10, 
         "tshift_acceptance_level": 8.0,
@@ -130,20 +129,36 @@ pyflex_presets = {
         "c_4b": 12.0
     },
     # North Island study area, 6-30s bandpass
-    # !!! NOT YET TESTED, SIMPLY SCALED FROM 'nznorth_10-30s'
     "nznorth_6-30s": {
-        "stalta_waterlevel": 0.08,
-        "tshift_acceptance_level": 6.0,  
+        "stalta_waterlevel": 0.1,
+        "tshift_acceptance_level": 8.,  
         "dlna_acceptance_level": 1.5,
-        "cc_acceptance_level": 0.75,
+        "cc_acceptance_level": 0.65,
         "s2n_limit": 3.,
         "max_time_before_first_arrival": 5., 
-        "tshift_reference": 2.,
-        "min_surface_wave_velocity": 1.1,
+        "min_surface_wave_velocity": 1.05,
         "check_global_data_quality": True,
-        "c_0": 0.85,
-        "c_1": 3.0, 
-        "c_3a": 4.0,
+        "c_0": 0.8,     # reject if win.stalta.min < c_0 * stalta_wl
+        "c_1": 2.0,     # min window = c1 * tmin = 12s
+        "c_3a": 3.0,
+        "c_3b": 2.0,
+        "c_4a": 2.5,
+        "c_4b": 12.0
+    },
+    # North Island study area, 4-30s bandpass
+    # !!! NOT YET TESTED, LOOSELY BASED ON 'nznorth_6-30s'
+    "nznorth_4-30s": {
+        "stalta_waterlevel": 0.08,
+        "tshift_acceptance_level": 5.,  
+        "dlna_acceptance_level": 1.5,
+        "cc_acceptance_level": 0.65,
+        "s2n_limit": 3.,
+        "max_time_before_first_arrival": 5., 
+        "min_surface_wave_velocity": 1.05,
+        "check_global_data_quality": True,
+        "c_0": 0.8,     # reject if win.stalta.min < c_0 * stalta_wl
+        "c_1": 1.8,     # min window = c1 * tmin = 7.2s
+        "c_3a": 3.0,
         "c_3b": 2.0,
         "c_4a": 2.5,
         "c_4b": 12.0
