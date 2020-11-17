@@ -111,6 +111,44 @@ class InspectorPlotter:
 
         return f, ax
 
+    def scatter(self, x, y, iteration=None, step_count=None, save=None,
+                show=True, **kwargs):
+        """
+        Create a scatter plot between two chosen keys in the windows attribute
+
+        :type x: str
+        :param x: key to choose for the x axis of the plot
+        :type y: str
+        :param y: key to chooose for the y axis of the plot
+        :type iteration: str
+        :param iteration: the chosen iteration to plot for, if None will default
+            to the latest iteration available
+        :type step_coutn: str
+        :param step_count: chosen step count. If None, defaults to latest
+        """
+        if iteration is None:
+            iteration, _ = self.initial_model
+        if step_count is None:
+            step_count = self.steps.loc[iteration][-1]
+
+        # Ensure we have distance and backazimuth values in the dataframe
+        df = self.isolate(iteration=iteration, step_count=step_count, **kwargs)
+        df = df.merge(self.srcrcv, on=["event", "network", "station"])
+
+        assert(x in df.keys()), f"X value {x} does not match keys {df.keys()}"
+        assert(y in df.keys()), f"Y value {y} does not match keys {df.keys()}"
+
+        f, ax = plt.subplots(figsize=(8, 6))
+        plt.scatter(df[x].to_numpy(), df[y].to_numpy(), **kwargs)
+        default_axes(ax, **kwargs)
+
+        if save:
+            plt.savefig(save)
+        if show:
+            plt.show
+
+        return f, ax
+
     def event_depths(self, xaxis="longitude", show=True, save=None, **kwargs):
         """
         Create a scatter plot of events at depth. Compresses all events onto a
@@ -867,7 +905,7 @@ class InspectorPlotter:
             plt.close()
 
     def convergence(self, windows="length_s", trials=False, show=True,
-                    save=None, normalize=False, float_tolerance=1E-3,
+                    save=None, normalize=False, float_precision=3,
                     annotate=False, restarts=None, restart_annos=None, 
                     xvalues="model", **kwargs):
         """
@@ -885,15 +923,17 @@ class InspectorPlotter:
             * length_s: cumulative window length in seconds
             * nwin: number of misfit windows
             * None: will not plot window information
-        :type trials: bool
+        :type trials: str
         :param trials: plot the discarded trial step function evaluations from
-            the line searches. Useful for understanding how efficient the
-            optimization algorithm as
+            the line searches. Useful for understanding optimization efficiency
+
+            * marker: plot trial steps as red x's at their respective misfit val
+            * text: annotate the number of trial steps but not their misfit val
         :type normalize: bool
         :param normalize: normalize the objective function values between [0, 1]
-        :type float_tolerance: float
-        :param float_tolerance: acceptable floating point difference between
-            adjacent misfit values to say that they are equal
+        :type float_precision: int
+        :param float_precision: acceptable floating point precision for 
+            comparisons of misfits. Defaults to 3 values after decimal
         :type restarts: list of int
         :param restarts: If the inversion was restarted, e.g. for parameter
             changes, then the convergence figure should separate two line plots.
@@ -943,6 +983,7 @@ class InspectorPlotter:
 
         # It may take a while to calculate models so do it once here
         models = self.models
+        misfit = models.misfit.round(decimals=float_precision)
         nwin = self.nwin()
 
         # Set up the figure
@@ -966,7 +1007,7 @@ class InspectorPlotter:
                 if j == 0:
                     pass
                 # If initial eval matches line search final, treat equally
-                elif abs(models.misfit[i] - models.misfit[j]) < float_tolerance:
+                elif misfit[i] == misfit[j]:
                     continue
                 # If they differ, treat them as different points
                 else:
@@ -979,15 +1020,15 @@ class InspectorPlotter:
             # Status -1 means discarded trial step, plot on the same X value
             elif models.state[j] == -1:
                 xdiscards.append(x + 1)  # discards are related to next model
-                ydiscards.append(models.misfit[j])
+                ydiscards.append(misfit[j])
                 continue
 
             xvals.append(x)
-            yvals.append(models.misfit[j])
+            yvals.append(misfit[j])
             xlabs.append(xlab)
 
             # Convert restart values from Inspector.models indices
-            if restarts and j in restarts:
+            if restarts is not None and j in restarts:
                 xrestarts.append(x)
 
             # Get the corresponding window number based on iter/step count
@@ -1028,11 +1069,11 @@ class InspectorPlotter:
                            markeredgewidth=1.5)
             if annotate:
                 for x_anno, y_anno in zip(x_, y_):
-                    plt.text(x_anno, y_anno, f"{y_anno:.3f}", zorder=11,
+                    ax.text(x_anno, y_anno, f"{y_anno:.3f}", zorder=11,
                              fontsize=anno_fontsize)
 
             if restart_annos:
-                plt.text(x_[0], y_[0], restart_annos[idx - 1], zorder=12,
+                ax.text(x_[0], y_[0], restart_annos[idx - 1], zorder=12,
                          fontsize=anno_fontsize, verticalalignment="bottom")
 
             return line
@@ -1047,7 +1088,8 @@ class InspectorPlotter:
                 first = last
             # Plot the final leg
             lines += plot_vals(xvals[last:], yvals[last:], j + 1)
-            plt.text(xvals[last], yvals[last], restart_annos[j])
+            if restart_annos:
+                ax.text(xvals[last], yvals[last], restart_annos[j])
         else:
             # 2) plot the entire convergence in one line
             lines += plot_vals(xvals, yvals, idx=None)
@@ -1069,12 +1111,24 @@ class InspectorPlotter:
                            )
             ax2.ticklabel_format(style="sci", axis="y", scilimits=(0, 0))
 
-        # Secondary: Plot the discarded trial steps as x's
-        if trials:
+        # Secondary: Plot the discarded trial steps
+        if trials == "marker":
+            # Scatterplot as red X's to show the misfit value. Not the best
+            # because it throws off the scaling of the normal misfit values
             sc = ax.scatter(xdiscards, ydiscards, c=trial_color,
                             marker="x", s=10, zorder=9, label=trial_label
                             )
             lines.append(sc)
+        elif trials == "text":
+            # Annotate the number of trial steps next to the corresponding value
+            for xdiscard in set(xdiscards):
+                # Since yvalues are normalized elsewhere, just plot the text
+                # near the bottom of the visible axis
+                ymin, ymax = ax.get_ylim()
+                yval = 0.25 * (ymax - ymin) + ymin
+
+                num_discards = xdiscards.count(xdiscard)
+                ax.text(xdiscard, yval, f"{num_discards} trial(s)")
 
         # Format the axes
         if xvalues.lower() == "model":

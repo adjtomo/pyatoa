@@ -241,9 +241,12 @@ if __name__ == "__main__":
     xyz.zero_origin = True
     coast = ("/Users/Chow/Documents/academic/vuw/data/carto/coastline/"
              "coast_nznorth_utm60.txt")
+    x, y, z = interface = np.loadtxt(
+        "williams_hikurangi_interface_utm60_nonan.xyz").T
 
-    for fid in sorted(glob("tomography_model_shallow.xyz")):
+    for fid in sorted(glob("tomography_model_crust.xyz")):
         xyz.read(fid, fmt="specfem")
+        xyz.projection(x, y, z)
         # xyz.decimate(2)
         for depth in xyz.unique_z:
             xyz.depth_slice(depth, "vs", cmap="RdYlBu", levels=21)
