@@ -56,7 +56,7 @@ def write_stations(ds, path="./"):
             format="STATIONXML")
 
 
-def write_waveforms(ds, path="./"):
+def write_waveforms(ds, path="./", station=None, tag=None):
     """
     Write waveforms as MSEED files
 
@@ -67,9 +67,13 @@ def write_waveforms(ds, path="./"):
     """
     # Set up the directory structure
     for sta in ds.waveforms.list():
-        for tag in ds.waveforms[sta].get_waveform_tags():
-            st = ds.waveforms[sta][tag]
-            st.write(os.path.join(path, f"{sta.replace('.','_')}_{tag}.ms"), 
+        if station is not None and sta != station:
+            continue
+        for tag_ in ds.waveforms[sta].get_waveform_tags():
+            if tag is not None and tag_ != tag:
+                continue
+            st = ds.waveforms[sta][tag_]
+            st.write(os.path.join(path, f"{sta.replace('.','_')}_{tag_}.ms"), 
                      format="MSEED")
 
 

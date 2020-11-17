@@ -169,8 +169,22 @@ class Inspector(InspectorPlotter):
         """Return models that are only status 0 or 1 (initial or success)"""
         if self._models is None:
             self.get_models()
-        return self.models[self.models.state.isin([0, 1])].reset_index(
-                                                                    drop=True)
+        return self.models[self.models.state.isin([0, 1])]
+
+    @property
+    def restarts(self):
+        """
+        Try to guess the indices of restarts for convergence plot based on 
+        misfit increase in adjacent good models. Won't catch everything so
+        requires manual review using the convergence() function
+        """
+        if self._models is None:
+            self.get_models()
+        # Find out where the misfit values increase instead of decrease
+        misfit = self.good_models.misfit.round(decimals=3)
+        misfit_increase = np.where(misfit.diff() > 0)[0]
+        # Ensure that first row is also included
+        return self.good_models.iloc[np.insert(misfit_increase, 0, 0)]
 
     @property
     def evaluations(self):
