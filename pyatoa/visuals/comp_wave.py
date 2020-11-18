@@ -4,6 +4,7 @@ A stripped down (arguably better) version of the Waveform Improvement class,
 used to simply compare two synthetic waveforms from a given PyASDF DataSet.
 """
 import os
+from glob import glob
 import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
@@ -315,6 +316,50 @@ class CompWave:
             plt.close()
 
 
+def main_comp():
+    """
+    Main call script to choose event and station based on what's available
+    :return:
+    """
+    # =========================================================================
+    # PARAMETER CHOICE
+    min_period = 8
+    max_period = 30
+    m_init = None
+    # m_final = "i10/s02"
+    m_final = None
+    dsfid_glob = "aspen/*.h5"
+    dsfid_final_fmt = "birch/{}.h5"
+    # =========================================================================
+    for dsfid in glob(dsfid_glob):
+        event_id = os.path.splitext(os.path.basename(dsfid))[0]
+        # dsfid_final = dsfid_final_fmt.format(event_id)
+        # assert(os.path.exists(dsfid_final))
+        dsfid_final=None
+
+        print(event_id) 
+
+        # Get station information prior to plotting
+        with ASDFDataSet(dsfid) as ds:
+            stations = ds.waveforms.list()
+
+        for station in stations:
+            print(f"\t{station}")
+            fid_out = f"./figures/{event_id}_{station}.png"
+            if os.path.exists(fid_out):
+                continue
+            try:
+                cw = CompWave(dsfid=dsfid, dsfid_final=dsfid_final,
+                              station=station, min_period=min_period,
+                              max_period=max_period)
+                cw.gather(m_init, m_final)
+                cw.plot_with_map(show=False, save=fid_out)
+                plt.close()
+            except Exception as e:
+                print(e)
+                pass
+
+
 def main():
     """
     Main call script to choose event and station based on what's available
@@ -337,18 +382,17 @@ def main():
     # Get station information prior to plotting
     with ASDFDataSet(dsfid) as ds:
         stations = ds.waveforms.list()
-    for s, sta in enumerate(stations):
-        print(f"{s:0>3}: {sta}")
 
     # Ask user to choose station to plot
     if choice == "pick":
+        for s, sta in enumerate(stations):
+            print(f"{s}: {sta}")
         while True:
             idx = input(f"Which station index or name?: ")
             try:
                 stations = [stations[int(idx)]]
             except ValueError:
                 stations = [idx]
-
 
     for sta in stations:
         if station is not None and sta != station:
@@ -371,4 +415,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    main_comp()
