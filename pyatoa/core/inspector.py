@@ -175,16 +175,27 @@ class Inspector(InspectorPlotter):
     def restarts(self):
         """
         Try to guess the indices of restarts for convergence plot based on 
-        misfit increase in adjacent good models. Won't catch everything so
-        requires manual review using the convergence() function
+        misfit increase in adjacent good models as well as discontinous misfit 
+        values for the final line search model and subsequent initial model.
+        Not guaranteed to catch everything so may require manual review using 
+        the convergence() function
         """
         if self._models is None:
             self.get_models()
+
         # Find out where the misfit values increase instead of decrease
         misfit = self.good_models.misfit.round(decimals=3)
         misfit_increase = np.where(misfit.diff() > 0)[0]
-        # Ensure that first row is also included
-        return self.good_models.iloc[np.insert(misfit_increase, 0, 0)]
+        mi_idx = misfit.iloc[misfit_increase].index.values
+
+        # Find out where the same model shows a discontinuous misfit
+        dm = self.good_models[["model", "misfit"]].groupby(
+                                                 "model").diff().misfit.round(3)
+        dm_idx = dm[abs(dm) > 0].index.values
+
+        restart_indices = np.concatenate((mi_idx, dm_idx))
+
+        return self.models.iloc[np.unique(restart_indices)]
 
     @property
     def evaluations(self):

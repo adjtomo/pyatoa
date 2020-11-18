@@ -906,7 +906,7 @@ class InspectorPlotter:
 
     def convergence(self, windows="length_s", trials=False, show=True,
                     save=None, normalize=False, float_precision=3,
-                    annotate=False, restarts=None, restart_annos=None, 
+                    annotate=False, restarts="default", restart_annos=None, 
                     xvalues="model", **kwargs):
         """
         Plot the convergence rate over the course of an inversion.
@@ -974,6 +974,10 @@ class InspectorPlotter:
         if windows:
             assert (windows in ["nwin", "length_s"]), \
                 "plot_windows must be: 'nwin; or 'length_s'"
+        # Default restart values are chosen automatically by the Inspector
+        if restarts == "default":
+            restarts = self.restarts.index.values
+
         if restarts is not None and restart_annos is not None:
             assert(len(restarts) + 1 == len(restart_annos)), \
                     "Length of restart anno must match length of `restarts` + 1"
@@ -1005,6 +1009,7 @@ class InspectorPlotter:
             if models.state[j] == 0:
                 # Ignore very first function evaluation
                 if j == 0:
+                    xlab = "m00"
                     pass
                 # If initial eval matches line search final, treat equally
                 elif misfit[i] == misfit[j]:
@@ -1012,11 +1017,12 @@ class InspectorPlotter:
                 # If they differ, treat them as different points
                 else:
                     x += 1
-                xlab = f"{models.model[j]}_0"
+                    xlab = ""
+                # xlab = f"{models.model[j]}_r"
             # Status 1 means final evaluation in line search
             elif models.state[j] == 1:
                 x += 1
-                xlab = f"{models.model[j]}_1"
+                xlab = f"{models.model[j]}"
             # Status -1 means discarded trial step, plot on the same X value
             elif models.state[j] == -1:
                 xdiscards.append(x + 1)  # discards are related to next model
@@ -1079,6 +1085,7 @@ class InspectorPlotter:
             return line
 
         # Primary: Two methods of plotting:
+        import ipdb;ipdb.set_trace()
         if xrestarts:
             # 1) with user-defined restarts separating legs of the inversion
             first = 0  # first iteration in the current leg
@@ -1133,11 +1140,13 @@ class InspectorPlotter:
         # Format the axes
         if xvalues.lower() == "model":
             xlabel_ = "Model Number"
-            ax.set_xticklabels(xlabs, rotation=45, ha="right")
+            ax.set_xticklabels(xlabs, rotation=60, ha="center")
         elif xvalues.lower() == "eval":
             xlabel_ = "Function Evaluation"
             ax.set_xticklabels(np.arange(1, len(xvals) + 1, 1))
-
+        else:
+            xlabel = "Iteration"
+    
         ax.set_xlabel(xlabel_, fontsize=fontsize)
         ax.xaxis.set_ticks(xvals)
         ax.set_ylabel("Total Normalized Misfit", fontsize=fontsize)
