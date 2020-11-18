@@ -612,58 +612,6 @@ class InspectorPlotter:
 
         # Plot the mean of the histogram
         if meanline:
-            plt.axvline(x=mean, ymin=0, ymax=1, linewidth=2.5, c="k",
-                        linestyle="--", zorder=15, alpha=0.75)
-        # Plot one standard deviation
-        if stdline:
-            for sign in [-1, 1]:
-                plt.axvline(x=mean + sign * std, ymin=0, ymax=1, linewidth=2.5,
-                            c="k", linestyle=(0, (1, 1)), zorder=15, alpha=0.75)
-
-        # Set xlimits of the plot
-        if xlim:
-            plt.xlim(xlim)
-        else:
-            if choice == "dlna":
-                plt.xlim([-1.75, 1.75])
-        if ymax:
-            plt.ylim([0, ymax])
-
-        # Stats in the title by default
-        if not title:
-            tit_fmt = "mean: {mean:.2f} / std: {std:.2f} / med: {med:.2f}"
-            title = tit_fmt.format(mean=mean, std=std, med=med)
-            if iteration_comp:
-                tit_comp = tit_fmt.format(mean=mean_comp, std=std_comp,
-                                          med=med_comp)
-                title = " ".join([f"[{label or iteration}]", title, "\n",
-                                  f"[{label_comp or iteration_comp}]", tit_comp
-                                  ])
-
-        # Finalize plot details
-        if xlabel:
-            xlab_ = xlabel
-        else:
-            try:
-                # For cleaner formatting of x-axis label
-                xlab_ = common_labels[choice]
-            except KeyError:
-                xlab_ = choice
-
-        plt.xlabel(xlab_)
-        plt.ylabel("Count")
-        plt.title(title)
-        if label_range:
-            plt.xticks(np.arange(-1 * label_range, label_range + .1, 
-                                 step=xstep))
-
-        if legend:
-            leg = plt.legend(fontsize=fontsize / 1.25, loc=legend_loc)
-            # Thin border around legend objects, unnecessarily thick bois
-            for leg_ in leg.legendHandles:
-                leg_.set_linewidth(1.5)
-
-        default_axes(ax, **kwargs)
 
         plt.tight_layout()
 

@@ -129,6 +129,16 @@ class Inspector(InspectorPlotter):
         return self._srcrcv
 
     @property
+    def pairs(self):
+        """Determine the number of unique source-receiver pairs"""
+        cats = ["iteration", "step", "event", "station"]
+        df = self.windows.groupby(cats).count()
+        # Pick an arbitrary label as all the counts will be the same
+        df = df.groupby(cats[:2]).count()[["network"]]
+
+        return df.rename({"network": "count"}, axis=1)
+
+    @property
     def iterations(self):
         """Return an array of all iteration"""
         return self._try_print("iteration")

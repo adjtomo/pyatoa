@@ -289,7 +289,7 @@ class VTKModeler:
         colorscale(orientation="vertical", **self.kwargs)
         if anno_text is None:
             anno_text = tag.replace("_", " ")
-        annotate(s=anno_text, c="k", width=0.2)
+        annotate(s=anno_text, c="k", width=0.175)  # was 0.2
 
         # Finalize
         save_tag = None

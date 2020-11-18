@@ -327,8 +327,9 @@ def main():
     max_period = 30
     m_init = None
     m_final = "i10/s02"
-    dsfid = "2015p768477_aspen.h5"
-    dsfid_final = "2015p768477_birch.h5"
+    dsfid = "2017p084950a.h5"
+    dsfid_final = "2017p084950a.h5"
+    station = "NZ.HAZ"
     show = False
     plot_with_map = True
     # =========================================================================
@@ -349,18 +350,20 @@ def main():
                 stations = [idx]
 
 
-    for station in stations:
-        print(station)
+    for sta in stations:
+        if station is not None and sta != station:
+            continue
+        print(sta)
         try:
             cw = CompWave(dsfid=dsfid, dsfid_final=dsfid_final,
-                          station=station, min_period=min_period,
+                          station=sta, min_period=min_period,
                           max_period=max_period)
             cw.gather(m_init, m_final)
 
             if plot_with_map:
-                cw.plot_with_map(show=show, save=f"{station}.png")
+                cw.plot_with_map(show=show, save=f"{sta}.png")
             else:
-                cw.plot(show=show, save=f"{station}.png")
+                cw.plot(show=show, save=f"{sta}.png")
             plt.close()
         except Exception as e:
             print(e)
