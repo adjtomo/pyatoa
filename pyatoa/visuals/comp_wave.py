@@ -129,9 +129,9 @@ class CompWave:
         figure = kwargs.get("figure", None)
         subplot_spec = kwargs.get("subplot_spec", None)
         dpi = kwargs.get("dpi", 100)
-        figsize = kwargs.get("figsize", (800 / dpi, 600 / dpi))
+        figsize = kwargs.get("figsize", (1400 / dpi, 600 / dpi))
         fontsize = kwargs.get("fontsize", 8)
-        axis_linewidth = kwargs.get("axis_linewidth", 1.5)
+        axis_linewidth = kwargs.get("axis_linewidth", 1.75)
 
         # Initiate the figure, allow for external figure objects
         if figure is None:
@@ -140,16 +140,15 @@ class CompWave:
             f = figure
 
         # Initiate gridspec, allow for nested grids
+        subplot_kwargs = {"hspace": 0, "wspace": 0.025, 
+                          "width_ratios": [5] * ncols, 
+                          "height_ratios": [1] * nrows}
         if subplot_spec is None:
-            gs = mpl.gridspec.GridSpec(nrows, ncols, hspace=0, wspace=0.075,
-                                       width_ratios=[3] * ncols,
-                                       height_ratios=[1] * nrows
-                                       )
+            gs = mpl.gridspec.GridSpec(nrows, ncols, **subplot_kwargs)
         else:
             gs = mpl.gridspec.GridSpecFromSubplotSpec(nrows, ncols,
                                                       subplot_spec=subplot_spec,
-                                                      height_ratios=[1] * nrows,
-                                                      hspace=0, wspace=0.075,)
+                                                      **subplot_kwargs)
 
         axes = [[] for _ in range(nrows)]
         for row in range(0, gs.get_geometry()[0]):
@@ -217,7 +216,7 @@ class CompWave:
         :type save: str
         :param save: if given, save the figure to this path
         """
-        linewidth = kwargs.get("linewidth", 1.5)
+        linewidth = kwargs.get("linewidth", 1.25)
         fontsize = kwargs.get("fontsize", 8)
         xlim = kwargs.get("xlim", None)
         percent_over = kwargs.get("percent_over", 0.125)
@@ -254,9 +253,17 @@ class CompWave:
             axes[row][0].set_ylabel(comp.upper(), rotation="horizontal",
                                     ha="left", va="center")
 
+            # Set ylim based on ymax from either waveform
+            max_yvals = []
+            for data in [obs.data, syn_init.data, syn_final.data]:
+                max_yvals.append(max(abs(data)))
+            ylim = [-1 * max(max_yvals), max(max_yvals)]
+            axes[row][0].set_ylim(ylim)
+
         # Set xlim for master axis
         if xlim is None:
-            # xlim = [self._st_obs[0].times()[0], self._st_obs[0].times()[-1]]
+            xlim = [self._st_obs[0].times()[0], self._st_obs[0].times()[-1]]
+        elif xlim == "auto":
             xlim = self._xlim_from_envelope(
                 data=self._st_final.select(component="Z")[0].data,
                 dt=self._st_final[0].stats.delta
@@ -264,17 +271,21 @@ class CompWave:
         axes[0][0].set_xlim(xlim)
 
         # Main title ab"ove all the subplots
-        plt.suptitle(f"Waveform Improvement\n"
+        plt.suptitle(f"Waveform Improvement | "
                      f"{self.event_id} {self.station} "
                      f"[{self.min_period}, {self.max_period}]s",
                      fontsize=fontsize)
 
-        # Common x-label location
-        f.text(0.3, 0.04, "Time [s]", ha="center", fontsize=fontsize)
+        # Common X and Y labels, manually decided values
+        f.text(0.375, 0.05, "Time [s]", ha="center", fontsize=fontsize)
+        f.text(0.09, 0.375, "Displacement [m]", ha="center", rotation=90,
+               fontsize=fontsize)
 
         # Title each of the models
-        axes[0][0].set_title(f"INITIAL: {self._m_init}", fontsize=fontsize)
-        axes[0][1].set_title(f"FINAL: {self._m_final}", fontsize=fontsize)
+        # axes[0][0].set_title(f"INITIAL: {self._m_init}", fontsize=fontsize)
+        # axes[0][1].set_title(f"FINAL: {self._m_final}", fontsize=fontsize)
+        axes[0][0].set_title(f"Initial", fontsize=fontsize)
+        axes[0][1].set_title(f"Final", fontsize=fontsize)
 
         # Save the generated figure
         if save:
@@ -293,10 +304,12 @@ class CompWave:
         """
         # Default figure size
         if figsize is None:
-            figsize = (1400 / dpi, 600 / dpi)
+            figsize = (2400 / dpi, 600 / dpi)
 
         # Create an overlying GridSpec that will contain both plots
-        gs = mpl.gridspec.GridSpec(1, 2, wspace=0.25, hspace=0.)
+        gs = mpl.gridspec.GridSpec(1, 2, wspace=0.0, hspace=0.,
+                                   width_ratios=[2, 1], height_ratios=[1]
+                                   )
         fig = plt.figure(figsize=figsize, dpi=dpi)
 
         # Plot the waveform on the left
@@ -306,7 +319,8 @@ class CompWave:
         # Plot the map on the right
         mm = MapMaker(inv=self._inv, cat=self._event, **kwargs)
         ax = fig.add_subplot(gs[1])
-        mm.plot(corners=corners, figure=fig, ax=ax, show=False, save=False)
+        mm.plot(corners=corners, figure=fig, ax=ax, show=False, save=False,
+                **kwargs)
 
         if save:
             plt.savefig(save)
@@ -314,50 +328,6 @@ class CompWave:
             plt.show()
         else:
             plt.close()
-
-
-def main_comp():
-    """
-    Main call script to choose event and station based on what's available
-    :return:
-    """
-    # =========================================================================
-    # PARAMETER CHOICE
-    min_period = 8
-    max_period = 30
-    m_init = None
-    # m_final = "i10/s02"
-    m_final = None
-    dsfid_glob = "aspen/*.h5"
-    dsfid_final_fmt = "birch/{}.h5"
-    # =========================================================================
-    for dsfid in glob(dsfid_glob):
-        event_id = os.path.splitext(os.path.basename(dsfid))[0]
-        # dsfid_final = dsfid_final_fmt.format(event_id)
-        # assert(os.path.exists(dsfid_final))
-        dsfid_final=None
-
-        print(event_id) 
-
-        # Get station information prior to plotting
-        with ASDFDataSet(dsfid) as ds:
-            stations = ds.waveforms.list()
-
-        for station in stations:
-            print(f"\t{station}")
-            fid_out = f"./figures/{event_id}_{station}.png"
-            if os.path.exists(fid_out):
-                continue
-            try:
-                cw = CompWave(dsfid=dsfid, dsfid_final=dsfid_final,
-                              station=station, min_period=min_period,
-                              max_period=max_period)
-                cw.gather(m_init, m_final)
-                cw.plot_with_map(show=False, save=fid_out)
-                plt.close()
-            except Exception as e:
-                print(e)
-                pass
 
 
 def main():
@@ -368,15 +338,16 @@ def main():
     # =========================================================================
     # PARAMETER CHOICE
     choice = "all"  # pick or all
-    min_period = 4
+    min_period = 6
     max_period = 30
     m_init = None
     m_final = "i10/s02"
     dsfid = "2017p084950a.h5"
     dsfid_final = "2017p084950a.h5"
-    station = "NZ.HAZ"
+    station = None
     show = False
     plot_with_map = True
+    xlim = None
     # =========================================================================
 
     # Get station information prior to plotting
@@ -405,9 +376,9 @@ def main():
             cw.gather(m_init, m_final)
 
             if plot_with_map:
-                cw.plot_with_map(show=show, save=f"{sta}.png")
+                cw.plot_with_map(show=show, save=f"{sta}.png", xlim=xlim)
             else:
-                cw.plot(show=show, save=f"{sta}.png")
+                cw.plot(show=show, save=f"{sta}.png", xlim=xlim)
             plt.close()
         except Exception as e:
             print(e)
@@ -415,4 +386,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main_comp()
+    main()

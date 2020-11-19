@@ -1085,7 +1085,6 @@ class InspectorPlotter:
             return line
 
         # Primary: Two methods of plotting:
-        import ipdb;ipdb.set_trace()
         if xrestarts:
             # 1) with user-defined restarts separating legs of the inversion
             first = 0  # first iteration in the current leg
@@ -1117,6 +1116,7 @@ class InspectorPlotter:
                            labelpad=15., fontsize=fontsize
                            )
             ax2.ticklabel_format(style="sci", axis="y", scilimits=(0, 0))
+            ax2.tick_params(labelsize=fontsize)
 
         # Secondary: Plot the discarded trial steps
         if trials == "marker":
@@ -1164,6 +1164,7 @@ class InspectorPlotter:
         if legend:
             labels = [line.get_label() for line in lines]
             ax.legend(lines, labels, prop={"size": 12}, loc=legend_loc)
+
 
         f.tight_layout()
 
