@@ -125,7 +125,7 @@ class PathStructure:
         # This 'constants' list mandates that the following paths exist.
         # The Pyaflowa workflow assumes that it can read/write from all of the
         # paths associated with these keys
-        self._REQUIRED_PATHS = ["cwd", "datasets", "figures", "logs", "dsfid",
+        self._REQUIRED_PATHS = ["cwd", "datasets", "figures", "logs", "ds_file",
                                 "stations_file", "responses", "waveforms",
                                 "synthetics", "adjsrcs", "event_figures"]
 
@@ -167,7 +167,7 @@ class PathStructure:
 
         # Event-specific directories that only certain processes will write to
         self.cwd = os.path.join(self.workdir, "{source_name}")
-        self.dsfid = os.path.join(self.datasets, "{source_name}.h5")
+        self.ds_file = os.path.join(self.datasets, "{source_name}.h5")
         self.event_figures = os.path.join(self.figures, "{source_name}")
         self.synthetics = synthetics or os.path.join(self.workdir, "input",
                                                      "synthetics",
@@ -209,7 +209,7 @@ class PathStructure:
         self.figures = os.path.join(PATH.PREPROCESS, "figures")
         self.logs = os.path.join(PATH.PREPROCESS, "logs")
         
-        self.dsfid = os.path.join(self.datasets, "{source_name}.h5")
+        self.ds_file = os.path.join(self.datasets, "{source_name}.h5")
         self.event_figures = os.path.join(self.figures, "{source_name}")
 
         self.responses = [os.path.join(PATH.DATA, "seed")]
@@ -361,7 +361,7 @@ class Pyaflowa:
                                        loc="??", cha="HH?")
 
         # Open the dataset as a context manager and process all events in serial
-        with ASDFDataSet(io.paths.dsfid) as ds:
+        with ASDFDataSet(io.paths.ds_file) as ds:
             mgmt = pyatoa.Manager(ds=ds, config=io.config)
             for code in codes:
                 mgmt_out, io = self.process_station(mgmt=mgmt, code=code,
@@ -430,7 +430,7 @@ class Pyaflowa:
             config.client = None
 
         # Enure the ASDFDataSet has no previous data that may override current
-        with ASDFDataSet(paths.dsfid) as ds:
+        with ASDFDataSet(paths.ds_file) as ds:
             clean_dataset(ds, iteration=config.iteration, 
                           step_count=config.step_count) 
             config.write(write_to=ds)
