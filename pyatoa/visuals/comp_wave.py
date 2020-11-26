@@ -67,7 +67,7 @@ class CompWave:
         """
         assert(init_or_final in ["init", "final"])
 
-        with ASDFDataSet(dsfid) as ds:
+        with ASDFDataSet(dsfid, mode="r") as ds:
             if model is None:
                 configs = ds.auxiliary_data.Configs
                 if init_or_final is "init":
@@ -216,7 +216,7 @@ class CompWave:
         :type save: str
         :param save: if given, save the figure to this path
         """
-        linewidth = kwargs.get("linewidth", 1.25)
+        linewidth = kwargs.get("linewidth", 1.3)
         fontsize = kwargs.get("fontsize", 8)
         xlim = kwargs.get("xlim", None)
         percent_over = kwargs.get("percent_over", 0.125)
@@ -330,10 +330,9 @@ class CompWave:
             plt.close()
 
 
-def main():
+def main(event_id=None, station=None):
     """
     Main call script to choose event and station based on what's available
-    :return:
     """
     # =========================================================================
     # PARAMETER CHOICE
@@ -342,16 +341,17 @@ def main():
     max_period = 30
     m_init = None
     m_final = "i10/s02"
-    dsfid = "2017p084950a.h5"
-    dsfid_final = "2017p084950a.h5"
-    station = None
+    event_id = event_id
+    dsfid = f"./aspen/{event_id}.h5"
+    dsfid_final = f"./birch/{event_id}.h5"
+    station = station
     show = False
     plot_with_map = True
     xlim = None
     # =========================================================================
 
     # Get station information prior to plotting
-    with ASDFDataSet(dsfid) as ds:
+    with ASDFDataSet(dsfid, mode="r") as ds:
         stations = ds.waveforms.list()
 
     # Ask user to choose station to plot
@@ -368,6 +368,11 @@ def main():
     for sta in stations:
         if station is not None and sta != station:
             continue
+
+        fid_out = f"./figures/{event_id}_{sta}.png"
+        if os.path.exists(fid_out):
+            print(f"{fid_out} exists")
+            continue
         print(sta)
         try:
             cw = CompWave(dsfid=dsfid, dsfid_final=dsfid_final,
@@ -376,9 +381,9 @@ def main():
             cw.gather(m_init, m_final)
 
             if plot_with_map:
-                cw.plot_with_map(show=show, save=f"{sta}.png", xlim=xlim)
+                cw.plot_with_map(show=show, save=fid_out, xlim=xlim)
             else:
-                cw.plot(show=show, save=f"{sta}.png", xlim=xlim)
+                cw.plot(show=show, save=fid_out, xlim=xlim)
             plt.close()
         except Exception as e:
             print(e)
@@ -386,4 +391,7 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    for fid in sorted(glob("./aspen/*.h5")):
+        event_id = os.path.splitext(os.path.basename(fid))[0]
+        print(event_id)
+        main(event_id, None)
