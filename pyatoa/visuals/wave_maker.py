@@ -233,42 +233,25 @@ class WaveMaker:
             within the window
         """
         window_anno = self.kwargs.get("window_anno", None)
-        window_anno_alternate = self.kwargs.get("window_anno_alternate", None)
         window_color = self.kwargs.get("window_color", "orange")
-        window_anno_fontsize = self.kwargs.get("window_anno_fontsize", 7)
-        window_anno_height = self.kwargs.get("window_anno_height", 0.5)
-        alternate_anno_height = self.kwargs.get("alternate_anno_height", None)
-        window_anno_rotation = self.kwargs.get("window_anno_rotation", 0)
+        window_anno_fontsize = self.kwargs.get("window_anno_fontsize", 6)
+        window_anno_height = self.kwargs.get("window_anno_height", 1)
+        window_anno_rotation = self.kwargs.get("window_anno_rotation", 90)
         window_anno_fontcolor = self.kwargs.get("window_anno_fontcolor", "k")
         window_anno_fontweight = self.kwargs.get("window_anno_fontweight", 
                                                  "normal")
+        window_anno_ha = self.kwargs.get("window_anno_ha", "left")
+        window_anno_va = self.kwargs.get("window_anno_va", "top")
         window_anno_bbox = self.kwargs.get("window_anno_box", None)
         
         # Determine heights for the annotations, allow alternating heights so 
         # that adjacent windows don't write over one another
         ymin, ymax = ax.get_ylim()
         y_anno = window_anno_height * (ymax - ymin) + ymin
-        if alternate_anno_height is not None:
-            y_anno_alt = alternate_anno_height * (ymax - ymin) + ymin
-        else:
-            y_anno_alt = y_anno
 
         # Default window annotation string
         if window_anno is None:
-            window_anno = ("cc={max_cc:.2f}\n"
-                           "dT={cc_shift:.2f}s\n"
-                           "dlnA={dlnA:.2f}\n"
-                           "lft={left:.1f}s\n"
-                           "len={length:.1f}s\n"
-                           )
-        # Set the annotation for all windows that aren't the first
-        if window_anno_alternate is None:
-            window_anno_alternate = ("{max_cc:.2f}\n"
-                                     "{cc_shift:.2f}s\n"
-                                     "{dlnA:.2f}\n"
-                                     "{left:.1f}s\n"
-                                     "{length:.1f}s\n"
-                                     )
+            window_anno = "cc={max_cc:.2f} / dT={cc_shift:.2f} / dA={dlnA:.2f}"
 
         for j, window in enumerate(windows):
             tleft = window.left * window.dt + self.time_axis[0]
@@ -297,9 +280,8 @@ class WaveMaker:
                                 dlnA=window.dlnA,
                                 left=tleft,
                                 length=tright - tleft)
-                # Alternate the height of the annotations
-                ax.annotate(s=s_anno, 
-                            xy=(t_anno, [y_anno, y_anno_alt][j % 2]),
+                ax.annotate(s=s_anno, ha=window_anno_ha, va=window_anno_va,
+                            xy=(t_anno, y_anno),
                             zorder=12, fontsize=window_anno_fontsize,
                             rotation=window_anno_rotation, 
                             color=window_anno_fontcolor,
@@ -318,9 +300,6 @@ class WaveMaker:
                                         0.05 * (ymax-ymin) + ymin),
                                     fontsize=8
                                     )
-            # After the first window, set the alternate window anno str
-            if j == 0:
-                window_anno = window_anno_alternate
 
     def plot_rejected_windows(self, ax, rejwin, windows=None, skip_tags=None):
         """
