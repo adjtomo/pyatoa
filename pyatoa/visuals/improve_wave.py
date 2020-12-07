@@ -11,7 +11,7 @@ import pyasdf
 import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
-  
+from pyasdf import ASDFDataSet as asdf 
 from pyatoa import Manager, logger
 from pyatoa.utils.form import format_event_name
 from pyatoa.visuals.wave_maker import format_axis
@@ -33,14 +33,14 @@ class ImproveWave:
         wi.plot()
         wi.plot("NZ.KNZ", 8, 30)
     """
-    def __init__(self, ds):
+    def __init__(self):
         """
         Initiate empty objects and keep dataset as an internal attribute
 
         :type ds: pyasdf.ASDFDataSet
         :param ds: dataset containing waveform data and windows
         """
-        self.ds = ds
+        # self.ds = ds
 
         self.st_obs = None
         self.synthetics = None
@@ -140,6 +140,39 @@ class ImproveWave:
             reftime=st_obs[0].stats.starttime - mgmt.stats.time_offset_sec
             ) 
 
+    def gather_simple(self, event, sta, min_period, max_period):
+        """
+        Manually set the model values based on inspection of the Inspector
+        Don't return windows or anything, keep it simple
+        """
+
+        models = {"m00": ("i01/s00", "a"),
+                  "m05": ("i05/s01", "a"),
+                  "m10": ("i10/s02", "a"),
+                  "m15": ("i15/s01", "a"),
+                  "m20": ("i03/s01", "b"),
+                  "m25": ("i08/s02", "b"),
+                  "m28": ("i10/s02", "b"),
+                  }
+        st_obs, synthetics = None, {}
+        windows = None
+        for model, tup in models.items():
+            path, tag = tup
+            with asdf(f"{event_id}{tag}.h5", mode="r") as ds:
+                mgmt = Manager(ds=ds)
+                mgmt.load(sta, path)
+                mgmt.config.save_to_ds = False
+                mgmt.config.min_period = min_period
+                mgmt.config.max_period = max_period
+                mgmt.standardize().preprocess()
+
+                synthetics[model] = mgmt.st_syn.select(component="Z").copy()
+                if st_obs is None:
+                    st_obs = mgmt.st_obs.select(component="Z").copy()
+
+        self.st_obs = st_obs
+        self.synthetics = synthetics
+
     def setup_plot(self, nrows, ncols, **kwargs):
         """
         Dynamically set up plots according to number_of given
@@ -153,7 +186,7 @@ class ImproveWave:
         :rtype axes: matplotlib axes
         :return axes: axis objects
         """
-        figsize = kwargs.get("figsize", (6, 8))
+        figsize = kwargs.get("figsize", (4, 6))
         dpi = kwargs.get("dpi", 150)
         fontsize = kwargs.get("fontsize", 10)
         axis_linewidth = kwargs.get("axis_linewidth", 2)
@@ -164,17 +197,20 @@ class ImproveWave:
                                    height_ratios=[3] * nrows
                                    )
 
-        axes = []
+        axes = [[] for _ in range(nrows)]
         for row in range(0, gs.get_geometry()[0]):
-            components = []
             for col in range(0, gs.get_geometry()[1]):
-                if row == 0:
-                    ax = plt.subplot(gs[row, col])
+                # Ensure axis sharing
+                if col == 0:
+                    sharey = None
                 else:
-                    # Share the x axis with the same component in the column
-                    ax = plt.subplot(gs[row, col], sharex=axes[0][col],
-                                     # sharey=axes[0][col]
-                                     )
+                    sharey = axes[row][0]
+                if row == 0 and col == 0:
+                    sharex = None
+                else:
+                    sharex = axes[0][0]
+
+                ax = plt.subplot(gs[row, col], sharey=sharey, sharex=sharex)
                 ax.set_axisbelow(True)
                 ax.minorticks_on()
                 ax.tick_params(which='major', direction='in', top=True,
@@ -190,9 +226,8 @@ class ImproveWave:
                 # Turn off the y axes because we wont show units
                 ax.get_yaxis().set_ticks([])
 
-                # Set the grids on
-                components.append(ax)
-            axes.append(components)
+                axes[row].append(ax)
+
 
         # remove x-tick labels except for last axis
         for row in axes[:-1]:
@@ -224,7 +259,7 @@ class ImproveWave:
         :type save: str
         :param save: if given, save the figure to this path
         """
-        linewidth = kwargs.get("linewidth", 2)
+        linewidth = kwargs.get("linewidth", 1.)
         fontsize = kwargs.get("fontsize", 10)
         anno_fontsize = kwargs.get("anno_fontsize", 8)
         window_color = kwargs.get("window_color", "orange")
@@ -241,8 +276,8 @@ class ImproveWave:
         f, axes = self.setup_plot(nrows=len(self.synthetics.keys()), 
                                   ncols=len(self.st_obs), **kwargs)
 
-        if not trace_length:
-            trace_length = [self.time_axis[0], self.time_axis[-1]]
+        # if not trace_length:
+        #     trace_length = [self.time_axis[0], self.time_axis[-1]]
 
         # Plot each model on a different row
         synthetic_keys = list(self.synthetics.keys())
@@ -257,10 +292,10 @@ class ImproveWave:
                 syn = self.synthetics[syn_key].select(component=comp)[0]
 
                 # Plot waveforms
-                a1, = axes[row][col].plot(self.time_axis, obs.data, 'k', 
+                a1, = axes[row][col].plot(obs.times(), obs.data, 'k', 
                                           zorder=10, label="Obs", 
                                           linewidth=linewidth)
-                a2, = axes[row][col].plot(self.time_axis, syn.data, 
+                a2, = axes[row][col].plot(syn.times(), syn.data, 
                                           ["r", "b", "g"][col], zorder=10,
                                           label="Syn", linewidth=linewidth)
 
@@ -318,16 +353,16 @@ class ImproveWave:
                     # hardcode the trace length based on user params
                     if isinstance(trace_length, list):
                         axes[row][col].set_xlim(trace_length)
-                    else:
-                        axes[row][col].set_xlim([
-                            np.maximum(self.time_axis[0], -10), t[-1]
-                            ])
+                    # else:
+                    #     axes[row][col].set_xlim([
+                    #         np.maximum(self.time_axis[0], -10), t[-1]
+                    #         ])
 
                     # Set titles for the first row, middle column
                     if col == len(self.st_obs) // 2:
                         title = (f"{self.st_obs[0].stats.network}."
                                  f"{self.st_obs[0].stats.station} "
-                                 f"{format_event_name(self.ds)}")
+                                 f"2017p084950")
                         axes[row][col].set_title(title, fontsize=fontsize)
             
                     # Append component to bottom right of subplot  
@@ -354,4 +389,12 @@ class ImproveWave:
         return f, axes
 
 
+if __name__ == "__main__":
+    event_id = "2016p842451"
+    with asdf(f"{event_id}a.h5") as ds:
+        stations = ds.waveforms.list()
 
+    for sta in stations:
+        wi = ImproveWave()
+        wi.gather_simple(event_id, sta, 6, 30)
+        wi.plot()
