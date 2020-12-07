@@ -104,9 +104,9 @@ class InspectorPlotter:
         if save:
             plt.savefig(save)
         if show:
-            hover_on_plot(f, ax, sc_sources, self.sources.index, **kwargs)
+            hover_on_plot(f, ax, sc_sources, self.sources.index)
             for rcvs, rcv_names in zip(sc_receiver_list, sc_receiver_names):
-                hover_on_plot(f, ax, rcvs, rcv_names, **kwargs)
+                hover_on_plot(f, ax, rcvs, rcv_names)
             plt.show()
 
         return f, ax
@@ -331,8 +331,8 @@ class InspectorPlotter:
         else:
             plt.close()
 
-    def station_misfit_map(self, station, iteration, step_count, choice,
-                           show=True, save=False, **kwargs):
+    def station_event_misfit_map(self, station, iteration, step_count, choice,
+                                 show=True, save=False, **kwargs):
         """
         Plot a single station and all events that it has measurements for.
         Events will be colored by choice of value: misfit or nwin (num windows)
@@ -387,13 +387,13 @@ class InspectorPlotter:
         if save:
             plt.savefig(save)
         if show:
-            hover_on_plot(f, ax, src, df.index.to_numpy(), **kwargs)
+            hover_on_plot(f, ax, src, df.index.to_numpy())
             plt.show()
 
         return f, ax
 
-    def event_misfit_map(self, event, iteration, step_count, choice, show=True,
-                         save=False, **kwargs):
+    def event_station_misfit_map(self, event, iteration, step_count, choice,
+                                 show=True, save=False, **kwargs):
         """
         Plot a single event and all stations with measurements. Stations are
         colored by choice of value: misfit or nwin (number of windows)
@@ -444,7 +444,63 @@ class InspectorPlotter:
         if save:
             plt.savefig(save)
         if show:
-            hover_on_plot(f, ax, rcvs, df.index.to_numpy(), **kwargs)
+            hover_on_plot(f, ax, rcvs, df.index.to_numpy())
+            plt.show()
+
+        return f, ax
+
+    def event_misfit_map(self, choice=None, iteration=None, step_count=None,
+                         show=True, save=False, **kwargs):
+        """
+        Plot all events on a map and their corresponding scaled misfit value
+
+        :type iteration: str
+        :param iteration: iteration number e.g. 'i00'
+        :type step_count: str
+        :param step_count: step count e.g. 's00'
+        :type choice: str
+        :param choice: choice of misfit value, either 'misfit' or 'nwin' or
+            'unscaled_misfit'
+        :type show: bool
+        :param show: Show the plot
+        :type save: str
+        :param save: fid to save the given figure
+        """
+        cmap = kwargs.get("cmap", "viridis")
+        markersize = kwargs.get("markersize", 20)
+        marker = kwargs.get("marker", "o")
+
+        if iteration is None:
+            iteration, step_count = self.final_model
+
+        if choice is None:
+            choice = "misfit"
+
+        f, ax = plt.subplots()
+        sources = self.sources.drop(["time", "magnitude", "depth_km"], axis=1)
+        # Rename from event_id to event to match the naming of the dataframe
+        sources.rename_axis("event", inplace=True)
+        df = self.misfit(level="event").loc[iteration, step_count]
+        df = df.merge(sources, on="event")
+
+        srcs = plt.scatter(df.longitude.to_numpy(), df.latitude.to_numpy(),
+                           c=df[choice].to_numpy(), marker=marker, s=markersize,
+                           zorder=100, cmap=cmap)
+
+        plt.xlabel("Longitude")
+        plt.ylabel("Latitude")
+        plt.title(f"{iteration}{step_count}; {choice} {len(df)} events")
+
+        _, _, cbar = colormap_colorbar(cmap, vmin=df[choice].to_numpy().min(),
+                                       vmax=df[choice].to_numpy().max(),
+                                       cbar_label=choice,)
+
+        default_axes(ax, cbar, **kwargs)
+
+        if save:
+            plt.savefig(save)
+        if show:
+            hover_on_plot(f, ax, srcs, df.index.to_numpy())
             plt.show()
 
         return f, ax
@@ -650,8 +706,8 @@ class InspectorPlotter:
             except KeyError:
                 xlab_ = choice
 
-        plt.xlabel(xlab_)
-        plt.ylabel("Count")
+        plt.xlabel(xlab_, fontsize=fontsize)
+        plt.ylabel("Count", fontsize=fontsize)
         plt.title(title)
         if label_range:
             plt.xticks(np.arange(-1 * label_range, label_range + .1, 

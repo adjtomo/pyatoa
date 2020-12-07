@@ -163,16 +163,12 @@ class Inspector(InspectorPlotter):
     @property
     def initial_model(self):
         """Return tuple of the iteration and step count corresponding M00"""
-        if self._models is None:
-            self.get_models()
-        return self._models.iteration.iloc[0], self._models.step_count.iloc[0]
+        return self.steps.index[0], self.steps[0][0]
 
     @property
     def final_model(self):
         """Return tuple of iteration and step count for final accepted model"""
-        if self._models is None:
-            self.get_models()
-        return self.models.iteration.iloc[-1], self._models.step_count.iloc[-1]
+        return self.steps.index[-1], self.steps[-1][-1]
 
     @property
     def good_models(self):
@@ -796,48 +792,101 @@ class Inspector(InspectorPlotter):
 
         return df
 
-    def compare_misfit(self, iter_init=None, step_init=None, iter_final=None, 
-                       step_final=None):
+
+
+    def minmax(self, iteration=None, step_count=None, keys=None,
+               quantities=None, pprint=True):
         """
-        Calculate the difference in misfit for each source receiver pair,
-        comparing one iteration/step count with another.
+        Calculate and print the min/max values for a whole slew of parameters
+        for a given iteration and step count. Useful for understanding the
+        worst/ best case scenarios and their relation to the average.
 
-        .. note::
-            Comparison is defined as DELTA = M_FINAL - M_INIT 
-            Therefore a negative misfit value corresponds to a reduction/
-            improvement in misfit from init to final. Additionally a positive 
-            nwin value corresponds to more misfit windows chosen in the final 
-            model.
+        :type iteration: str
+        :param iteration: filter for a given iteration
+        :type step_count: str
+        :param step_count: filter for a given step count
+        :type keys: list of str
+        :param keys: keys to calculate minmax values for, must be a subset of
+            Inspector.windows.keys()
+        :type quantities: list of str
+        :param quantities: quantities to get values for, e.g. min, max, median,
+            must be an attribute of pandas.core.series.Series
+        :type pprint: bool
+        :param pprint: pretty print the resulting values
+        :rtype: dict
+        :return: dictionary containing the minmax stats
+        """
+        if iteration is None:
+            iteration, step_count = self.final_model
+        if keys is None:
+            keys = ["misfit", "length_s", "dlnA", "max_cc_value",
+                    "cc_shift_in_seconds"]
+        if quantities is None:
+            quantities = ["min", "max", "mean", "median", "std"]
 
-        :type iter_init: str
-        :param iter_init: initial iteration to use in comparison
-        :type step_init: str
-        :param step_init: initial step count to use in comparison
-        :type iter_final: str
-        :param iter_final: final iteration to use in comparison
-        :type step_final: str
-        :param step_final: final step count to use in comparison
+        minmax_dict = {}
+        df = self.windows[self.windows.iteration == iteration]
+        df = df[df.step == step_count]
+
+        minmax_dict["nwin"] = len(df)
+        minmax_dict["len"] = df.length_s.sum()
+
+        for key in keys:
+            for quantity in quantities:
+                minmax_dict[f"{key}_{quantity}"] = getattr(df[key], quantity)()
+
+        if pprint:
+            max_key_len = max([len(_) for _ in minmax_dict.keys()])
+            for key, val in minmax_dict.items():
+                print(f"{key + ':':<{max_key_len}} {val:.4f}")
+
+        return minmax_dict
+
+
+    def compare(self, iteration_a=None, step_count_a=None, iteration_b=None,
+                step_count_b=None):
+        """
+        Compare the misfit and number of windows on an event by event basis
+        between two evaluations. Provides absolute values as well as
+        differences. Final dataframe is sorted by the difference in misfit,
+        showing the most and least improved events.
+
+        :type iteration_a: str
+        :param iteration_a: initial iteration to use in comparison
+        :type step_count_a: str
+        :param step_count_a: initial step count to use in comparison
+        :type iteration_b: str
+        :param iteration_b: final iteration to use in comparison
+        :type step_count_b: str
+        :param step_count_b: final step count to use in comparison
         :rtype: pandas.core.data_frame.DataFrame
         :return: a sorted data frame containing the difference of misfit and
             number of windows between final and initial
         """
         # Assuming if first arg isnt given, default to first/last model
-        if iter_init is None:
-            iter_init, step_init = self.initial_model
-            iter_final, step_final = self.final_model
+        if iteration_a is None:
+            iteration_a, step_count_a = self.initial_model
+        if iteration_b is None:
+            iteration_b, step_count_b = self.final_model
 
-        misfit = self.misfit(level="station")
-        msft_1 = misfit.loc[iter_init].loc[step_init]
-        msft_2 = misfit.loc[iter_final].loc[step_final]
+        misfit = self.misfit(level="event")
+        msft_a = misfit.loc[iteration_a, step_count_a]
+        msft_b = misfit.loc[iteration_b, step_count_b]
 
         # Doesn't really make sense to compare unscaled misfit so drop column
-        msft_1.drop(["unscaled_misfit"], axis=1, inplace=True)
-        msft_2.drop(["unscaled_misfit"], axis=1, inplace=True)
+        msft_a.drop(["unscaled_misfit"], axis=1, inplace=True)
+        msft_b.drop(["unscaled_misfit"], axis=1, inplace=True)
 
-        # Subtract 2 from 1, drop NaN values that occur when no matching info
-        # and reverse sort so that improved misfit is shown at the top
-        return msft_2.subtract(msft_1).dropna().sort_values(by="misfit",
-                                                            ascending=True)
+        msft_a.rename({"nwin": "nwin_init", "misfit": "misfit_init"},
+                      axis="columns", inplace=True)
+        msft_b.rename({"nwin": "nwin_final", "misfit": "misfit_final"},
+                      axis="columns", inplace=True)
+
+        df = pd.merge(msft_a, msft_b, left_index=True, right_index=True)
+        df["diff_misfit"] = df["misfit_init"] - df["misfit_final"]
+        df["diff_nwin"] = df["nwin_final"] - df["nwin_init"]
+
+        return df.sort_values(by="diff_misfit")
 
     def filter_sources(self, lat_min=None, lat_max=None, lon_min=None,
                        lon_max=None, depth_min=None, depth_max=None,
@@ -990,10 +1039,4 @@ class Inspector(InspectorPlotter):
                 srcrcv_dict["backazimuth"].append(baz)
 
         self._srcrcv = pd.DataFrame(srcrcv_dict)
-
-
-
-
-
-
 

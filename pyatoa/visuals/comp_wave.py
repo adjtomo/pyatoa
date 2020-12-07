@@ -341,9 +341,9 @@ def main():
     min_period = 6
     max_period = 30
     m_init = None
-    m_final = "i10/s02"
-    dsfid = "2017p084950a.h5"
-    dsfid_final = "2017p084950a.h5"
+    m_final = None
+    dsfid = "/Users/Chow/Documents/academic/vuw/forest/aspen/datasets/2014p240655.h5"
+    dsfid_final = "2014p240655.h5"
     station = None
     show = False
     plot_with_map = True
