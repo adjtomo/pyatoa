@@ -877,14 +877,19 @@ class Inspector(InspectorPlotter):
         msft_a.drop(["unscaled_misfit"], axis=1, inplace=True)
         msft_b.drop(["unscaled_misfit"], axis=1, inplace=True)
 
-        msft_a.rename({"nwin": "nwin_init", "misfit": "misfit_init"},
+        # For renaming and access to renamed columns
+        initial = f"{iteration_a}{step_count_a}"
+        final = f"{iteration_b}{step_count_b}"
+    
+        msft_a.rename({"nwin": f"nwin_{initial}", 
+                       "misfit": f"misfit_{initial}"},
                       axis="columns", inplace=True)
-        msft_b.rename({"nwin": "nwin_final", "misfit": "misfit_final"},
+        msft_b.rename({"nwin": f"nwin_{final}", "misfit": f"misfit_{final}"},
                       axis="columns", inplace=True)
 
         df = pd.merge(msft_a, msft_b, left_index=True, right_index=True)
-        df["diff_misfit"] = df["misfit_init"] - df["misfit_final"]
-        df["diff_nwin"] = df["nwin_final"] - df["nwin_init"]
+        df["diff_misfit"] = df[f"misfit_{final}"] - df[f"misfit_{initial}"]
+        df["diff_nwin"] = df[f"nwin_{final}"] - df[f"nwin_{initial}"]
 
         return df.sort_values(by="diff_misfit")
 

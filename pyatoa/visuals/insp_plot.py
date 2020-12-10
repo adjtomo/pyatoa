@@ -59,11 +59,13 @@ class InspectorPlotter:
         if not self.sources.empty:
             # Allow for isolation of particular events
             if event is not None:
-                src_lat = self.sources.loc[event].latitude
-                src_lon = self.sources.loc[event].longitude
+                srcs = self.sources.loc[event]
             else:
-                src_lat = self.sources.latitude
-                src_lon = self.sources.longitude
+                srcs = self.sources
+
+            src_lat = srcs.latitude
+            src_lon = srcs.longitude
+            src_names = srcs.index
             sc_sources = plt.scatter(src_lat, src_lon, marker="o", c="None",
                                      edgecolors="k", s=markersize, zorder=100
                                      )
@@ -104,7 +106,7 @@ class InspectorPlotter:
         if save:
             plt.savefig(save)
         if show:
-            hover_on_plot(f, ax, sc_sources, self.sources.index)
+            hover_on_plot(f, ax, sc_sources, src_names)
             for rcvs, rcv_names in zip(sc_receiver_list, sc_receiver_names):
                 hover_on_plot(f, ax, rcvs, rcv_names)
             plt.show()
