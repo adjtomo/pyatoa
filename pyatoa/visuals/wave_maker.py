@@ -159,7 +159,7 @@ class WaveMaker:
             obs_tag = "OBS"
 
         # Convention of black for obs, red for syn
-        a1, = ax.plot(self.time_axis, obs.data, obs_color, zorder=10, 
+        a1, = ax.plot(self.time_axis, obs.data, obs_color, zorder=11, 
                       label=f"{obs.id} ({obs_tag})", linewidth=linewidth)
         a2, = ax.plot(self.time_axis, syn.data, syn_color, zorder=10, 
                       label=f"{syn.id} (SYN)", linewidth=linewidth)
