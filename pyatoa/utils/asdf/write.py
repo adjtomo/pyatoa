@@ -56,7 +56,7 @@ def write_stations(ds, path="./"):
             format="STATIONXML")
 
 
-def write_waveforms(ds, path="./", station=None, tag=None):
+def write_waveforms(ds, path="./", station=None, tag=None, format="MSEED"):
     """
     Write waveforms as MSEED files
 
@@ -73,8 +73,23 @@ def write_waveforms(ds, path="./", station=None, tag=None):
             if tag is not None and tag_ != tag:
                 continue
             st = ds.waveforms[sta][tag_]
-            st.write(os.path.join(path, f"{sta.replace('.','_')}_{tag_}.ms"), 
-                     format="MSEED")
+            if format.upper() == "MSEED":
+                st.write(os.path.join(path, 
+                                      f"{sta.replace('.','_')}_{tag_}.ms"), 
+                         format=format)
+            elif format.upper() == "ASCII":
+                origin_time = ds.events[0].preferred_origin().time
+                for tr in st:
+                    # Determine the time offset from the event origin time
+                    time_offset = tr.stats.starttime - origin_time
+                    times = tr.times() + time_offset
+                    d = np.vstack((times, tr.data)).T
+                   
+                    s = tr.stats 
+                    fid = f"{s.network}.{s.station}.{s.channel}"
+
+                    np.savetxt(f"{fid}_{tag_}.ascii", d, fmt="%13.6f    %13.6E")
+
 
 
 def write_windows(ds, path="./"):

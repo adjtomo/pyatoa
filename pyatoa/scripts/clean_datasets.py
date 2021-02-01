@@ -44,7 +44,7 @@ for i, fid in enumerate(h5_files):
     with ASDFDataSet(fid) as ds:
         # Simply remove all synthetic related data
         if iterations is None and step_counts is None:
-            clean_ds(ds, iteration=None, step_count=None)
+            clean_dataset(ds, iteration=None, step_count=None)
 
         # Remove specific iterations and/or step counts
         elif iterations is not None:
