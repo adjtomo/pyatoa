@@ -66,7 +66,7 @@ class InspectorPlotter:
             src_lat = srcs.latitude
             src_lon = srcs.longitude
             src_names = srcs.index
-            sc_sources = plt.scatter(src_lat, src_lon, marker="o", c="None",
+            sc_sources = plt.scatter(src_lon, src_lat, marker="o", c="None",
                                      edgecolors="k", s=markersize, zorder=100
                                      )
         if not self.receivers.empty:
@@ -93,7 +93,7 @@ class InspectorPlotter:
                     rcv_nam = self.receivers.loc[net].index.to_numpy()
 
                 # Random color cycle for networks
-                sc_receivers = plt.scatter(rcv_lat, rcv_lon, marker="v",
+                sc_receivers = plt.scatter(rcv_lon, rcv_lat, marker="v",
                                            s=markersize, zorder=100, label=net)
                 sc_receiver_list.append(sc_receivers)
                 sc_receiver_names.append(rcv_nam)

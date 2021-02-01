@@ -1,6 +1,8 @@
 """
 Functionality to plot regular xyz grid files
 """
+import os
+import sys
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -91,13 +93,16 @@ class XYZViewer:
         """
         A wrapper for pyplot.savefig()
         """
+        if not os.path.exists(os.path.dirname(fid)):
+            os.mkdir(os.path.dirname(fid))
+
         plt.savefig(fid)
 
-    def close(self):
+    def close(self, *args, **kwargs):
         """
         A warpper for pyplot.close('all')
         """
-        plt.close("all")
+        plt.close(*args, **kwargs)
 
     def grid(self):
         """
@@ -198,6 +203,7 @@ class XYZViewer:
 
         ax.set_xlim(ax.get_xlim())
         ax.set_ylim(ax.get_ylim())
+        ax.set_aspect("equal")
 
         plt.title(f"{variable.title()} at Z={depth_km} km")
 
@@ -216,7 +222,6 @@ class XYZViewer:
         assert(value in values), f"Value {value} not in {values}"
 
         idx = np.where(values == value)[0]
-
 
         f, ax = plt.subplots()
         plt.contourf()
@@ -241,17 +246,16 @@ if __name__ == "__main__":
     xyz.zero_origin = True
     coast = ("/Users/Chow/Documents/academic/vuw/data/carto/coastline/"
              "coast_nznorth_utm60.txt")
-    x, y, z = interface = np.loadtxt(
-        "williams_hikurangi_interface_utm60_nonan.xyz").T
-
-    for fid in sorted(glob("tomography_model_crust.xyz")):
+    # x, y, z = interface = np.loadtxt(
+    #     "williams_hikurangi_interface_utm60_nonan.xyz").T
+    for fid in sys.argv[1:]:
         xyz.read(fid, fmt="specfem")
-        xyz.projection(x, y, z)
         # xyz.decimate(2)
         for depth in xyz.unique_z:
             xyz.depth_slice(depth, "vs", cmap="RdYlBu", levels=21)
             xyz.coast(coast)
-            xyz.savefig(f"./figures/{fid}_{abs(int(depth))}km.png")
+            savefid = f"{os.path.splitext(fid)[0]}_{depth}m.png"
+            xyz.savefig(os.path.join("figures", savefid))
             xyz.close()
 
 

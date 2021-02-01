@@ -792,8 +792,6 @@ class Inspector(InspectorPlotter):
 
         return df
 
-
-
     def minmax(self, iteration=None, step_count=None, keys=None,
                quantities=None, pprint=True):
         """
@@ -1045,3 +1043,23 @@ class Inspector(InspectorPlotter):
 
         self._srcrcv = pd.DataFrame(srcrcv_dict)
 
+    def get_unique_models(self, float_precision=3):
+        """
+        Find all accepted models (status 0 or 1) that have a unique misfit
+        value. Because some forward evaluations are repeats of the previous
+        line search evaluation, they will effectively be the same evaluation so
+        they can be removed
+
+        :type float_precision: int
+        :param float_precision: identical misfit values will differ after some
+            decimal place. this value determines which decimal place to
+            truncate the values for comparison
+        """
+        models = self.good_models
+        models.reset_index(drop=True, inplace=True)
+        misfit = models.misfit.round(decimals=float_precision)
+        identical_misfit = np.where(misfit.diff() == 0)[0]
+        models.drop(axis=0, index=identical_misfit, inplace=True)
+        models.reset_index(drop=True, inplace=True)
+
+        return models
