@@ -146,54 +146,38 @@ pyflex_presets = {
         "c_4a": 2.5,
         "c_4b": 12.0
     },
-    # Used for Birch inversion but not enough windows, kept for legacy
-    "nznorth_6-30s_birch": {
-        "stalta_waterlevel": 0.1,
-        "tshift_acceptance_level": 8.,  
+    # North Island study area, 4-30s bandpass
+    "nznorth_4-30s": {
+        "stalta_waterlevel": 0.075,
+        "tshift_acceptance_level": 6.,  
         "dlna_acceptance_level": 1.5,
         "cc_acceptance_level": 0.65,
-        "s2n_limit": 3.,
+        "s2n_limit": 4.,
         "max_time_before_first_arrival": 5., 
-        "min_surface_wave_velocity": 1.05,
+        "min_surface_wave_velocity": 1.0,
         "check_global_data_quality": True,
-        "c_0": 0.8,     # reject if win.stalta.min < c_0 * stalta_wl
-        "c_1": 2.0,     # min window = c1 * tmin = 12s
-        "c_3a": 3.0,
-        "c_3b": 2.0,
-        "c_4a": 2.5,
-        "c_4b": 12.0
-    },
-    # North Island study area, 4-30s bandpass
-    # !!! NOT YET TESTED, LOOSELY BASED ON 'nznorth_6-30s'
-    "nznorth_4-30s": {
-        "stalta_waterlevel": 0.08,
-        "tshift_acceptance_level": 8.,  
-        "dlna_acceptance_level": 1.5,
-        "cc_acceptance_level": 0.6,
-        "s2n_limit": 3.,
-        "max_time_before_first_arrival": 5., 
-        "min_surface_wave_velocity": 1.05,
-        "check_global_data_quality": True,
-        "c_0": 0.8,     # reject if win.stalta.min < c_0 * stalta_wl
-        "c_1": 1.8,     # min window = c1 * tmin = 7.2s
-        "c_3a": 3.0,
-        "c_3b": 2.0,
-        "c_4a": 2.5,
-        "c_4b": 12.0
+        "snr_integrate_base": 3.5,  # exclude noisy data
+        "c_0": 0.9,     # reject if win.stalta.min < c_0 * stalta_wl
+        "c_1": 3.,     
+        "c_3a": 3.5,
+        "c_3b": 2.25,
+        "c_4a": 2.25,
+        "c_4b": 9.0
     },
     # North Island study area, 3-30s bandpass
     # !!! NOT YET TESTED, LOOSELY BASED ON 'socal_3-30s'
     "nznorth_3-30s": {
-        "stalta_waterlevel": 0.07,
-        "tshift_acceptance_level": 3.0, 
+        "stalta_waterlevel": 0.069,
+        "tshift_acceptance_level": 5.0, 
         "dlna_acceptance_level": 1.,
-        "cc_acceptance_level": 0.85,
+        "cc_acceptance_level": 0.675,
         "s2n_limit": 4.,
         "max_time_before_first_arrival": 5.,
         "min_surface_wave_velocity": 1.0,
         "check_global_data_quality": True, 
-        "c_0": 1.0,
-        "c_1": 5.0, 
+        "snr_integrate_base": 3.5, 
+        "c_0": .85,  # reject if win.stalta.min < c_0 * stalta_wl
+        "c_1": 2.66,  # min window = c1 * tmin
         "c_3a": 4.0,
         "c_3b": 2.5,
         "c_4a": 2.,
@@ -237,6 +221,23 @@ pyflex_presets = {
     # For the inversion of the 1D North Island velocity model of Ristau (2008)
     # looser bounds for wider window selection
     "nzni1D_10-30s_loose": {
+        "stalta_waterlevel": 0.08, 
+        "tshift_acceptance_level": 12.0,  # based on sign-flip
+        "dlna_acceptance_level": 2.0,
+        "cc_acceptance_level": 0.65,
+        "s2n_limit": 3.,
+        "max_time_before_first_arrival": 5.,
+        "min_surface_wave_velocity": 1.6,  # Default is 3.0, chow et al.==1.4
+        "check_global_data_quality": True,  # Default is False
+        "c_0": 0.7,
+        "c_1": 2.0, 
+        "c_3a": 3.0,
+        "c_3b": 2.0,
+        "c_4a": 2.5,
+        "c_4b": 12.0
+    },
+    # 1D North Island inversion 8-30s
+    "nzni1D_8-30s": {
         "stalta_waterlevel": 0.08, 
         "tshift_acceptance_level": 12.0,  # based on sign-flip
         "dlna_acceptance_level": 2.0,
