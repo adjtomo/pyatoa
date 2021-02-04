@@ -1218,6 +1218,8 @@ class InspectorPlotter:
             ax.set_title(f"{self.tag.title()} Convergence\n"
                          f"{len(self.events)} Events / "
                          f"{len(self.stations)} Stations")
+        else:
+            ax.set_title(title)
                         
         if legend:
             labels = [line.get_label() for line in lines]
