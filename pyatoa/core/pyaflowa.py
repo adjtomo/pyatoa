@@ -213,7 +213,7 @@ class PathStructure:
         self.event_figures = os.path.join(self.figures, "{source_name}")
 
         self.responses = []
-        self.waveforms = [os.path.join(self.cwd, "traces", "obs"]
+        self.waveforms = [os.path.join(self.cwd, "traces", "obs")]
         if PATH.DATA is not None: 
             self.responses.append(os.path.join(PATH.DATA, "seed"))
             self.waveforms.append(os.path.join(PATH.DATA, "mseed"))
@@ -249,12 +249,14 @@ class PathStructure:
             # Format using the kwargs, str with no format braces not affected
             fmt_paths = [os.path.abspath(_.format(**kwargs)) for _ in req_paths]
       
-            # Files don't need to go through makedirs but need to exist
+            # Files don't need to go through makedirs but need to exist. 
             if "_file" in key:
                 # Dict comp to see which files in the list dont exist, if any
                 file_bool = {f: os.path.exists(f) for f in fmt_paths 
                                                        if not os.path.exists(f)}
-                if file_bool:
+                # Kinda hacky way to skip over requiring dataset to exist,
+                # maybe try to find a more elegant way to exclude it 
+                if file_bool and key != "ds_file":
                     raise FileNotFoundError(f"Paths: {file_bool.keys()} "
                                             f"must exist and doesn't, please "
                                             f"check these files")
