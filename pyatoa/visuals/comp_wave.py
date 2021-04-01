@@ -4,16 +4,20 @@ A stripped down (arguably better) version of the Waveform Improvement class,
 used to simply compare two synthetic waveforms from a given PyASDF DataSet.
 """
 import os
+import sys
 from glob import glob
+import traceback
 import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 from pyatoa import Manager
 from pyasdf import ASDFDataSet
+from pyatoa.core.config import set_pyflex_config
 from pyatoa.visuals.wave_maker import format_axis
 from pyatoa.visuals.map_maker import MapMaker
+from pyatoa.utils.calculate import vrl
+from pyatoa.utils.process import match_npts
 from obspy.signal.filter import envelope
-
 
 
 class CompWave:
@@ -40,6 +44,7 @@ class CompWave:
         self.station = station
         self.min_period = min_period
         self.max_period = max_period
+        self.windows = None
 
         # Initialize empty attributes to be filled
         self._ds = None
@@ -51,7 +56,8 @@ class CompWave:
         self._m_init = None
         self._m_final = None
 
-    def _gather_model_from_dataset(self, dsfid, model=None, init_or_final=None):
+    def _gather_model_from_dataset(self, dsfid, model=None, init_or_final=None,
+                                   save_windows=False):
         """
         Gather data from an ASDFDataSet based on the given model (iter/step)
 
@@ -81,10 +87,29 @@ class CompWave:
             # Use the Manager class to load in waveform data
             mgmt = Manager(ds=ds)
             mgmt.load(code=self.station, path=model)
+            mgmt.config.save_to_ds = False
+
+            # !!! NZ Temp network skip remove response
+            net, sta = self.station.split(".")
+            remove_response = not bool(net in ["ZX", "Z8"])
+                
             # Overwrite the filter corners stored in the dataset
             mgmt.config.min_period = self.min_period
             mgmt.config.max_period = self.max_period
-            mgmt.standardize().preprocess()
+            mgmt.standardize().preprocess(remove_response=remove_response)
+            # See if windows can be picked for the given load setup
+            if save_windows:
+                pf_cfg = "nznorth_6-30s"
+                mgmt.config.pyflex_preset = pf_cfg
+                mgmt.config.pyflex_config, _ = set_pyflex_config(
+                                                         mgmt.config.min_period,
+                                                         mgmt.config.max_period,
+                                                         pf_cfg)
+                mgmt.window()
+                print(f"{mgmt.stats.nwin} windows for {init_or_final}")
+                # Any check that returns no windows will set this False
+                self.windows = mgmt.windows
+                
 
             # Store data in class attributes, obs waveforms will be the same
             if self._st_obs is None:
@@ -96,7 +121,7 @@ class CompWave:
             setattr(self, f"_st_{init_or_final}", mgmt.st_syn)
             setattr(self, f"_m_{init_or_final}", model)
 
-    def gather(self, m_init=None, m_final=None):
+    def gather(self, m_init=None, m_final=None, save_windows=False):
         """
         Gather data from the correct dataset. If no m_init or m_final given,
         will gather the first and last models
@@ -107,11 +132,58 @@ class CompWave:
         :param m_final: final iteration/step
         """
         self._gather_model_from_dataset(dsfid=self.dsfid, model=m_init,
-                                        init_or_final="init")
+                                        init_or_final="init", 
+                                        save_windows=bool(save_windows=="init"))
 
         # Default to dsfid if separate final dataset not provided
         self._gather_model_from_dataset(dsfid=self.dsfid_final or self.dsfid,
-                                        model=m_final, init_or_final="final")
+                                        model=m_final, init_or_final="final",
+                                        save_windows=bool(
+                                                        save_windows=="final"))
+
+    def calculate_vrl(self, init_or_final):
+        """
+        Caclulate the logarithmic variance reduction to look at how waveforms
+        imrpove from m_init to m_final. Following Eq. 8 of Tape et al. (2010).
+        """
+        st_d = self._st_obs.copy()
+        st_1 = self._st_init.copy()
+        st_2 = self._st_final.copy()
+
+        # Final synthetics dictate samp. rate because it will be higher
+        if init_or_final == "init":
+            sr = st_1[0].stats.sampling_rate
+            dt = st_1[0].stats.delta
+        elif init_or_final == "final":
+            sr = st_2[0].stats.sampling_rate
+            dt = st_2[0].stats.delta
+
+        st_d.resample(sr)
+        st_1.resample(sr)
+        st_2.resample(sr)
+
+        with open("vrl.txt", "a+") as f:
+            for tr_d in st_d:
+                comp = tr_d.stats.channel[-1] 
+                tr_1 = st_1.select(component=comp)[0]
+                tr_2 = st_2.select(component=comp)[0]
+                # If no windows, calculate VRL for the entire trace
+                if self.windows is None:
+                    vrl_ = vrl(d=tr_d.data, s1=tr_1.data, s2=tr_2.data)
+                    f.write(
+                       f"{self.event_id}, {self.station}, {comp}, {vrl_:.4f}\n")
+                # If windows, calculate VRL for each window
+                else:
+                    if comp in self.windows:
+                        for i, win in enumerate(self.windows[comp]):
+                            # Delta should match final synthetics
+                            assert(dt == win.dt), "delta dont match"
+                            vrl_ = vrl(d=tr_d.data[win.left:win.right], 
+                                       s1=tr_1.data[win.left:win.right],
+                                       s2=tr_2.data[win.left:win.right])
+                            f.write(f"{self.event_id}, {self.station}, {comp}, "
+                                    f"{i}, {vrl_:.4f}\n") 
+                        
 
     def setup_plot(self, nrows, ncols, **kwargs):
         """
@@ -130,8 +202,9 @@ class CompWave:
         subplot_spec = kwargs.get("subplot_spec", None)
         dpi = kwargs.get("dpi", 100)
         figsize = kwargs.get("figsize", (1400 / dpi, 600 / dpi))
-        fontsize = kwargs.get("fontsize", 8)
-        axis_linewidth = kwargs.get("axis_linewidth", 1.75)
+        # figsize = kwargs.get("figsize", (1400 / dpi, 400 / dpi))  # if only 1c
+        fontsize = kwargs.get("fontsize", 14)
+        axis_linewidth = kwargs.get("axis_linewidth", 2)
 
         # Initiate the figure, allow for external figure objects
         if figure is None:
@@ -176,7 +249,7 @@ class CompWave:
                                width=2*axis_linewidth/3)
                 if col == 0:
                     ax.ticklabel_format(style='sci', axis='y', scilimits=(0, 0))
-                    # Make sure the scientific notation has the same fontsize
+                    # Make sure the scientific notation has the same4fontsize
                     ax.yaxis.get_offset_text().set_fontsize(fontsize)
 
                 for axis in ["top", "bottom", "left", "right"]:
@@ -207,7 +280,7 @@ class CompWave:
         idx = np.where(env >= env.std())[0] * dt
         return [np.floor(idx[0]) - 20 , np.ceil(idx[-1]) + 20]
 
-    def plot(self, show=True, save=False, **kwargs):
+    def plot(self, component_list=None, show=True, save=False, **kwargs):
         """
         Plot waveforms iterative based on model updates
 
@@ -217,17 +290,19 @@ class CompWave:
         :param save: if given, save the figure to this path
         """
         linewidth = kwargs.get("linewidth", 1.3)
-        fontsize = kwargs.get("fontsize", 8)
+        fontsize = kwargs.get("fontsize", 14)
         xlim = kwargs.get("xlim", None)
         percent_over = kwargs.get("percent_over", 0.125)
         color_init = kwargs.get("color_init", "orangered")
         color_final = kwargs.get("color_final", "mediumorchid")
 
+        if component_list is None:
+            component_list = [_.stats.channel[-1] for _ in self._st_obs]
+
         # One row per component, one column for init and final each
-        f, axes = self.setup_plot(nrows=3, ncols=2, **kwargs)
+        f, axes = self.setup_plot(nrows=len(component_list), ncols=2, **kwargs)
 
         # Plot each component in a different column
-        component_list = [_.stats.channel[-1] for _ in self._st_obs]
         for row, comp in enumerate(component_list):
             obs = self._st_obs.select(component=comp)[0]
             syn_init = self._st_init.select(component=comp)[0]
@@ -277,8 +352,9 @@ class CompWave:
                      fontsize=fontsize)
 
         # Common X and Y labels, manually decided values
-        f.text(0.375, 0.05, "Time [s]", ha="center", fontsize=fontsize)
-        f.text(0.09, 0.375, "Displacement [m]", ha="center", rotation=90,
+        # f.text(0.375, 0.05, "Time [s]", ha="center", fontsize=fontsize)
+        f.text(0.5, 0.025, "Time [s]", ha="center", fontsize=fontsize)
+        f.text(0.08, 0.575, "Displacement [m]", ha="center", rotation=90,
                fontsize=fontsize)
 
         # Title each of the models
@@ -307,7 +383,7 @@ class CompWave:
             figsize = (2400 / dpi, 600 / dpi)
 
         # Create an overlying GridSpec that will contain both plots
-        gs = mpl.gridspec.GridSpec(1, 2, wspace=0.0, hspace=0.,
+        gs = mpl.gridspec.GridSpec(1, 2, wspace=1.0, hspace=0.,
                                    width_ratios=[2, 1], height_ratios=[1]
                                    )
         fig = plt.figure(figsize=figsize, dpi=dpi)
@@ -340,16 +416,20 @@ def main(event_id=None, station=None):
     min_period = 6
     max_period = 30
     m_init = None
-    m_final = None
-    dsfid = "/Users/Chow/Documents/academic/vuw/forest/aspen/datasets/2014p240655.h5"
-    dsfid_final = "2014p240655.h5"
-    station = None
+    m_final = "i11/s03"
+    dsfid = f"aspen/{event_id}.h5"
+    dsfid_final = f"birch/{event_id}.h5"
     show = False
-    plot_with_map = True
+    calc_vrl = True
+    save_win = "init"
+    plot = True
+    plot_with_map = False
     xlim = None
+    component_list = ["Z", "N", "E"]
     # =========================================================================
 
     # Get station information prior to plotting
+    assert(os.path.exists(dsfid)), f"{dsfid} does not exist"
     with ASDFDataSet(dsfid, mode="r") as ds:
         stations = ds.waveforms.list()
 
@@ -377,15 +457,19 @@ def main(event_id=None, station=None):
             cw = CompWave(dsfid=dsfid, dsfid_final=dsfid_final,
                           station=sta, min_period=min_period,
                           max_period=max_period)
-            cw.gather(m_init, m_final)
+            cw.gather(m_init, m_final, save_win)
 
-            if plot_with_map:
-                cw.plot_with_map(show=show, save=fid_out, xlim=xlim)
-            else:
-                cw.plot(show=show, save=fid_out, xlim=xlim)
-            plt.close()
+            if calc_vrl:
+                cw.calculate_vrl(save_win)
+            if plot:
+                if plot_with_map:
+                    cw.plot_with_map(show=show, save=fid_out, xlim=xlim)
+                else:
+                    cw.plot(component_list=component_list, show=show, 
+                            save=fid_out, xlim=xlim)
+                plt.close("all")
         except Exception as e:
-            print(e)
+            traceback.print_exc()
             pass
 
 

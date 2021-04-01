@@ -41,12 +41,12 @@ class ManagerStats(dict):
         self.dataset_id = None 
         self.event_id = None 
         self.inv_name = None 
-        self.nwin = 0
-        self.len_obs = 0
-        self.len_syn = 0 
-        self.misfit = 0
-        self.half_dur = 0
-        self.time_offset_sec = 0
+        self.nwin = None
+        self.len_obs = None
+        self.len_syn = None
+        self.misfit = None
+        self.half_dur = None
+        self.time_offset_sec = None
         self.standardized = False 
         self.obs_processed = False
         self.syn_processed = False
@@ -182,7 +182,7 @@ class Manager:
                 f"    obs_processed:         {self.stats.obs_processed}\n"
                 f"    syn_processed:         {self.stats.syn_processed}\n"
                 f"    nwin   [windows]:      {self.stats.nwin}\n"
-                f"    misfit [adjsrcs]:      {self.stats.misfit:.2E}\n"
+                f"    misfit [adjsrcs]:      {self.stats.misfit}\n"
                 )
 
     def __repr__(self):
@@ -256,7 +256,7 @@ class Manager:
                 pass
 
         # Count how many misfit windows are contained in the dataset
-        if self.stats.nwin == 0 and self.windows is not None:
+        if self.stats.nwin is None and self.windows is not None:
             self.stats.nwin = sum([len(_) for _ in self.windows.values()])
 
         # Determine the unscaled misfit
@@ -909,8 +909,8 @@ class Manager:
         elif not (self.stats.obs_processed and self.stats.syn_processed) \
                 and not force:
             raise ManagerError("cannot measure misfit, not filtered")
-        elif not self.stats.nwin and not force:
-            raise ManagerError("cannot measure misfit, no windows")
+        elif self.stats.nwin == 0 and not force:
+            raise ManagerError("cannot measure misfit, no windows recovered")
         logger.debug(f"running Pyadjoint w/ type: {self.config.adj_src_type}")
 
         # Create list of windows needed for Pyadjoint
@@ -1001,21 +1001,24 @@ class Manager:
             and corresponding to a list of lists containing window start and end
         """
         adjoint_windows = {}
+
         if self.windows is not None:
             for comp, window in self.windows.items():
                 adjoint_windows[comp] = []
+                dt = st_obs.select(component=comp)[0].stats.delta
                 # Prepare Pyflex window indices to give to Pyadjoint
                 for win in window:
-                    adj_win = [win.left * self.st_obs[0].stats.delta,
-                               win.right * self.st_obs[0].stats.delta]
+                    adj_win = [win.left * dt, win.right * dt]
                     adjoint_windows[comp].append(adj_win)
         # If no windows given, calculate adjoint source on whole trace
         else:
             logger.debug("no windows given, adjoint sources will be "
                          "calculated on full trace")
             for comp in self.config.component_list:
-                adjoint_windows[comp] = [[0, self.st_obs.select(
-                                                component=comp)[0].stats.npts]]
+                dt = st_obs.select(component=comp)[0].stats.delta
+                npts = st_obs.select(component=comp)[0].stats.npts
+
+                adjoint_windows[comp] = [[0, npts * dt]]
 
         return adjoint_windows
 
