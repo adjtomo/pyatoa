@@ -147,9 +147,122 @@ class InspectorPlotter:
         if save:
             plt.savefig(save)
         if show:
-            plt.show
+            plt.show()
 
         return f, ax
+
+    def travel_times(self, iteration=None, step_count=None, component=None,
+                     constants=None, t_offset=0, hist=False, hist_max=None, 
+                     save=None, show=True, **kwargs):
+        """
+        Plot relative window starttime (proxy for phase arrival) against 
+        source-receiver distance, to try to convey which phases are included
+        in the measurement. 
+        
+        Similar to Figure 4.18 in Shearer's Intro to Seismology.
+
+        :type iteration: str
+        :param iteration: the chosen iteration to plot for, if None will default
+            to the latest iteration available
+        :type step_count: str
+        :param step_count: chosen step count. If None, defaults to latest
+        :type component: str
+        :param component: optional specify a measurement component to isolate 
+            only e.g., 'Z' components to look at Rayleigh waves
+        :type constants: list of floats
+        :param constants: plot lines of constant velocity to estimate the 
+            average wavespeed that leads to some of the linear trends
+        :type t_offset: float
+        :param t_offset: if the synthetic offset time in SPECFEM is set then 
+            the constant lines will need to be offset by the same amount to 
+            match the measurements.
+        :type hist: bool
+        :param hist: create a histogram binning the approximate seismic 
+            velocities
+        """
+        hist_color = kwargs.get("hist_color", "deepskyblue")
+        title_plot = kwargs.get("title_plot", None)
+        title_hist = kwargs.get("title_hist", None)
+
+        if iteration is None:
+            iteration, _ = self.final_model
+        if step_count is None:
+            step_count = self.steps.loc[iteration][-1]
+
+        # Ensure we have distance and backazimuth values in the dataframe
+        df = self.isolate(iteration=iteration, step_count=step_count,
+                          component=component)
+        df = df.merge(self.srcrcv, on=["event", "network", "station"])
+
+        # Assuming that isolate has only picked values from a single iterstep
+        iterstep = f"{df.iteration[0]}{df.step[0]}"
+
+        dist, start, length = df[["distance_km", "relative_starttime", 
+                                  "length_s"]].to_numpy().T
+
+        # Shift relative starttimes by the user-defined offset
+        start -= t_offset
+
+        # size of the markers based on the length of the window
+        length = normalize_a_to_b(length, .5, .5)
+
+        f, ax = plt.subplots(figsize=(8, 6))
+
+        plt.scatter(dist, start, c="k", s=.25, marker="x", zorder=5)
+        if title_plot is not None:
+            plt.title(title_plot)
+        else:
+            plt.title(f"Apparent travel times ({iterstep} N={len(dist)})")
+        plt.xlabel("Source-receiver distance [km]")
+        plt.ylabel("Relative start time [s]")
+
+        if constants is not None:
+            x = np.linspace(0, dist.max(), len(dist))
+            for i, c in enumerate(constants):
+                y = x / c
+                plt.plot(x, y, c=f"C{i}", lw=1, zorder=1, label=f"{c} km/s")
+            plt.legend()
+
+        plt.xlim([0, dist.max()])
+        plt.ylim([0, start.max()])
+        f.tight_layout()
+        default_axes(ax, **kwargs)
+
+        if save:
+            plt.savefig(save)
+        if show:
+            plt.show()
+
+        plt.close()
+
+        # Now make a separate histogram showing the apparent velocities
+        if hist:
+            velocities = dist / start
+            # Max velocity based on PREM highest (ish) Vp
+            n, bins, patches = plt.hist(x=velocities, 
+                                        bins=np.arange(0, 12, .5), 
+                                        color=hist_color, histtype="bar", 
+                                        edgecolor="black", linewidth=2, 
+                                        zorder=11, alpha=1.
+                                        )
+            if hist_max:
+                plt.ylim([0, hist_max])
+
+            if title_hist is not None:
+                plt.title(title_hist)
+            else:
+                plt.title(f"Apparent velocities "
+                          f"({iterstep} N={len(velocities)})")
+            plt.xlabel("Velocity [km/s]")
+            plt.ylabel("Count")
+            plt.gcf().tight_layout()
+            default_axes(plt.gca(), **kwargs)
+
+            if save:
+                plt.savefig(f"hist_{save}")
+            if show:
+                plt.show()
+
 
     def event_depths(self, xaxis="longitude", show=True, save=None, **kwargs):
         """
@@ -294,6 +407,127 @@ class InspectorPlotter:
             plt.show()
 
         return f, ax
+
+    def raypath_density(self, iteration, step_count, point_spacing_km=.5,
+                        bin_spacing_km=8, cmap="viridis", show=True, save=False, 
+                        **kwargs):
+        """
+        Create a raypath density plot to provide a more deatiled illustration of 
+        raypath gradients, which may be interpreted alongside tomographic 
+        inversion results as a preliminary resolution test.
+
+        The idea behind this is to partition each individual raypath line into
+        discrete points and then create a 2D histogram with all points
+
+        :type point_spacing_km: float
+        :param point_spacing_km: approximate discretization interval for each
+            raypath line. Smaller numbers will lead to higher resolution but
+            also longer computation time.
+        :type bin_spacing_km: float
+        :param bin_spacing_km: the bin size in km of the 2d histogram. If
+            the same as 'point_spacing_km' then you'll probably just see the
+            lines. Should be larger than 'point_spacing_km' for a more
+            contour plot looking feel.
+        """
+        figsize = kwargs.get("figsize", (8, 8))
+
+        f, ax = plt.subplots(figsize=figsize)
+        df = self.misfit(level="station").loc[iteration, step_count]
+
+        # Get lat/lon information from sources and receivers
+        stations = self.receivers.droplevel(0)  # remove network index
+        events = self.sources.drop(["time", "magnitude", "depth_km"], axis=1)
+
+        # Determine grid bounds and required number of bins for histograms
+        x_min = min(stations.longitude.min(), events.longitude.min())
+        x_max = max(stations.longitude.max(), events.longitude.max())
+        y_min = min(stations.latitude.min(), events.latitude.min())
+        y_max = max(stations.latitude.max(), events.latitude.max())
+
+        # 111.11 VERY roughly converts degrees to km, not really geographically
+        # correct though. Should be okay for this low-res application
+        x_bins = int(abs(x_max - x_min)  * 111.11 / bin_spacing_km)
+        y_bins = int(abs(y_max - y_min)  * 111.11 / bin_spacing_km)
+
+        # Convert station names and event ids into coordinates
+        dx = point_spacing_km / 111.11  # grid spacing in degrees
+
+        # Initiate empty arrays to be filled
+        x = np.array([])
+        y = np.array([])
+        plotted = []
+        for event, sta in df.index.to_numpy():
+            elon, elat = events.loc[event].longitude, events.loc[event].latitude
+            slon, slat = stations.loc[sta].longitude, stations.loc[sta].latitude
+
+            # Plot a marker for each event and station
+            if event not in plotted:
+                plt.scatter(elon, elat, marker="o", c=event_color,
+                            edgecolors="k", s=markersize, zorder=100)
+                plotted.append(event)
+            if sta not in plotted:
+                plt.scatter(slon, slat, marker="v", c=station_color,
+                            edgecolors="k", s=markersize, zorder=100)
+                plotted.append(event)
+           
+            # Calculate the necessary number of discrete points to create line
+            nlon = int(abs(elon - slon) * 111.11 / point_spacing_km)
+            nlat = int(abs(elat - slat) * 111.11 / point_spacing_km)
+            nvals = max(nlon, nlat)
+
+            x_ = np.linspace(elon, slon, nvals)
+            y_ = np.linspace(elat, slat, nvals)
+
+            x = np.concatenate((x, x_))
+            y = np.concatenate((y, y_))
+
+        # Create the 2D histogram of raypath density
+        plt.hist2d(x, y, bins=(x_bins, y_bins), cmap=plt.get_cmap(cmap), 
+                   zorder=5)
+        cbar = plt.colorbar(label="counts", shrink=0.9, pad=0.025)
+
+        plt.scatter(coast[:,1], coast[:,0], s=.05, c="w", zorder=20)  # DELETE
+        plt.title(f"Raypath Density (N={len(df)} src-rcv pairs)")
+        plt.xlabel("Longitude")
+        plt.ylabel("Latitude")
+
+        # Calculate aspect ratio based on latitude
+        w = 1 / np.cos(np.radians(y[0]))
+        plt.gca().set_aspect(w)
+
+        default_axes(plt.gca(), cbar)
+
+        if save:
+            plt.savefig(save)
+        if show:
+            plt.show()
+
+        plt.close()
+
+
+
+
+
+    def event_hist(self, choice):
+        """
+        Make a histogram of event information
+        :return:
+        """
+        assert choice in self.sources.keys(), \
+            f"Choice must be in {self.sources.keys()}"
+
+        f, ax = plt.subplots()
+        arr = self.sources[choice].to_numpy()
+
+        # Compare iterations, plot original iteration on top
+        n, bins, patches = plt.hist(x=arr, color="w", histtype="bar",
+                                    bins=list(np.arange(4.5, 6.1, .1)),
+                                    edgecolor="black", linewidth=2.,
+                                    label=choice, alpha=1., zorder=20
+                                    )
+        mu, var, std = get_histogram_stats(n, bins)
+        default_axes(ax)
+
 
     def measurement_hist(self, iteration, step_count, choice="event", show=True,
                          save=False):
@@ -967,6 +1201,10 @@ class InspectorPlotter:
                     annotate=False, restarts="default", restart_annos=None, 
                     xvalues="model", **kwargs):
         """
+        TO DO:
+        Separate the sorting functionality from the plotting functionality,
+        this function is too confusing.
+
         Plot the convergence rate over the course of an inversion.
         Scatter plot of total misfit against iteration number, or by step count
 
@@ -1016,6 +1254,7 @@ class InspectorPlotter:
         """
         f = kwargs.get("f", None)
         ax = kwargs.get("ax", None)
+        dpi = kwargs.get("dpi", 100)
         fontsize = kwargs.get("fontsize", 15)
         anno_fontsize = kwargs.get("anno_fontsize", 15)
         figsize = kwargs.get("figsize", (8, 6))
@@ -1027,6 +1266,7 @@ class InspectorPlotter:
         trial_color = kwargs.get("trial_color", "r")
         window_color = kwargs.get("window_color", "orange")
         legend_loc = kwargs.get("legend_loc", "best")
+        axis_linewidth = kwargs.get("axis_linewidth", 2.)
 
         # Set some default parameters based on user choices, check parameters
         if windows:
@@ -1050,7 +1290,7 @@ class InspectorPlotter:
 
         # Set up the figure
         if f is None:
-            f, ax = plt.subplots(figsize=figsize)
+            f, ax = plt.subplots(figsize=figsize, dpi=dpi)
         if ax is None:
             ax = plt.gca()
 
@@ -1123,7 +1363,7 @@ class InspectorPlotter:
             # Overwrite default values 
             if idx is not None:
                 c = f"C{idx}"
-                label = f"{misfit_label} (leg {idx})"
+                label = f"{misfit_label}"
 
             if normalize:
                 y_ = [_ / max(y_) for _ in y_]
@@ -1148,7 +1388,7 @@ class InspectorPlotter:
             first = 0  # first iteration in the current leg
             for i, last in enumerate(xrestarts):
                 j = i + 1  # Leg counting should start at 1
-                lines += plot_vals(xvals[first:last], yvals[first:last], j)
+                plot_vals(xvals[first:last], yvals[first:last], j)
                 first = last
             # Plot the final leg
             lines += plot_vals(xvals[last:], yvals[last:], j + 1)
@@ -1174,6 +1414,8 @@ class InspectorPlotter:
                            labelpad=15., fontsize=fontsize
                            )
             ax2.ticklabel_format(style="sci", axis="y", scilimits=(0, 0))
+            ax2.yaxis.get_offset_text().set_fontsize(fontsize)
+
             ax2.tick_params(labelsize=fontsize)
 
         # Secondary: Plot the discarded trial steps
@@ -1214,6 +1456,9 @@ class InspectorPlotter:
         ax.xaxis.grid(True, which="minor", linestyle=":")
         ax.xaxis.grid(True, which="major", linestyle="-")
 
+        for axis in ["top", "bottom", "left", "right"]:
+            ax.spines[axis].set_linewidth(axis_linewidth)
+
         if title is None:
             ax.set_title(f"{self.tag.title()} Convergence\n"
                          f"{len(self.events)} Events / "
@@ -1246,7 +1491,7 @@ def default_axes(ax, cbar=None, **kwargs):
     Keyword Arguments
     ::
     """
-    tick_fontsize = kwargs.get("tick_fontsize", 8)
+    tick_fontsize = kwargs.get("tick_fontsize", 11)
     tick_linewidth = kwargs.get("tick_linewidth", 1.5)
     tick_length = kwargs.get("tick_length", 5)
     tick_direction = kwargs.get("tick_direction", "in")

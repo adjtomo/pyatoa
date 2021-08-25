@@ -1005,7 +1005,7 @@ class Manager:
         if self.windows is not None:
             for comp, window in self.windows.items():
                 adjoint_windows[comp] = []
-                dt = st_obs.select(component=comp)[0].stats.delta
+                dt = self.st_obs.select(component=comp)[0].stats.delta
                 # Prepare Pyflex window indices to give to Pyadjoint
                 for win in window:
                     adj_win = [win.left * dt, win.right * dt]
@@ -1015,8 +1015,8 @@ class Manager:
             logger.debug("no windows given, adjoint sources will be "
                          "calculated on full trace")
             for comp in self.config.component_list:
-                dt = st_obs.select(component=comp)[0].stats.delta
-                npts = st_obs.select(component=comp)[0].stats.npts
+                dt = self.st_obs.select(component=comp)[0].stats.delta
+                npts = self.st_obs.select(component=comp)[0].stats.npts
 
                 adjoint_windows[comp] = [[0, npts * dt]]
 

@@ -12,13 +12,20 @@ the Pyatoa workflow.
 import numpy as np
 import matplotlib.pyplot as plt
 
-from mpl_toolkits.basemap import Basemap
 from obspy.imaging.beachball import beach
 from obspy.geodetics.flinnengdahl import FlinnEngdahl
 from obspy.core.event.catalog import Catalog
 
 from pyatoa.utils.srcrcv import gcd_and_baz
 
+try:
+    from mpl_toolkits.basemap import Basemap
+except ImportError:
+    import warnings
+    warnings.warn("Matplotlib Basemap is deprecated in the latest version, "
+                  "please revert to Matplotlib version 3.0.3 or earlier to  " 
+                  "use mapping functionalities in Pyatoa", DeprecationWarning)
+    pass
 
 class MapMaker:
     """
