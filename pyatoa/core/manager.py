@@ -718,6 +718,10 @@ class Manager:
         # Pre-check to see if data has already been standardized
         self.check()
 
+        if self.config.pyflex_preset is None:
+            logger.info("pyflex preset is set to 'None', will not window")
+            return
+
         if not self.stats.standardized and not force:
             raise ManagerError("cannot window, waveforms not standardized")
 
@@ -903,6 +907,10 @@ class Manager:
         """
         self.check()
 
+        if self.config.adj_src_type is None:
+            logger.info("adjoint source type is 'None', will not measure")
+            return
+
         # Check that data has been filtered and standardized
         if not self.stats.standardized and not force:
             raise ManagerError("cannot measure misfit, not standardized")
@@ -1005,9 +1013,10 @@ class Manager:
         if self.windows is not None:
             for comp, window in self.windows.items():
                 adjoint_windows[comp] = []
-                dt = st_obs.select(component=comp)[0].stats.delta
+                dt = self.st_obs.select(component=comp)[0].stats.delta
                 # Prepare Pyflex window indices to give to Pyadjoint
                 for win in window:
+                    # Window units given in seconds
                     adj_win = [win.left * dt, win.right * dt]
                     adjoint_windows[comp].append(adj_win)
         # If no windows given, calculate adjoint source on whole trace
@@ -1015,10 +1024,12 @@ class Manager:
             logger.debug("no windows given, adjoint sources will be "
                          "calculated on full trace")
             for comp in self.config.component_list:
-                dt = st_obs.select(component=comp)[0].stats.delta
-                npts = st_obs.select(component=comp)[0].stats.npts
-
-                adjoint_windows[comp] = [[0, npts * dt]]
+                dt = self.st_obs.select(component=comp)[0].stats.delta
+                npts = self.st_obs.select(component=comp)[0].stats.npts
+                # We offset the bounds of the entire trace by 1s to play nice
+                # with PyAdjoints quirky method of generating the adjsrc. 
+                # The assumption being the end points will be zero anyway
+                adjoint_windows[comp] = [[1, npts * dt-1]]
 
         return adjoint_windows
 

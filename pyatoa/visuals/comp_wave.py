@@ -200,11 +200,13 @@ class CompWave:
         """
         figure = kwargs.get("figure", None)
         subplot_spec = kwargs.get("subplot_spec", None)
-        dpi = kwargs.get("dpi", 100)
-        figsize = kwargs.get("figsize", (1400 / dpi, 600 / dpi))
-        # figsize = kwargs.get("figsize", (1400 / dpi, 400 / dpi))  # if only 1c
-        fontsize = kwargs.get("fontsize", 14)
+        dpi = kwargs.get("dpi", 150)
+        figsize = kwargs.get("figsize", (1200 / dpi, (240 * nrows) / dpi))
+        fontsize = kwargs.get("fontsize", 12)
         axis_linewidth = kwargs.get("axis_linewidth", 2)
+        xticks = kwargs.get("xticks", True)
+        yticks = kwargs.get("yticks", True)
+        minor_ticks = kwargs.get("minor_ticks", False)
 
         # Initiate the figure, allow for external figure objects
         if figure is None:
@@ -240,13 +242,19 @@ class CompWave:
                 ax = plt.subplot(gs[row, col], sharey=sharey, sharex=sharex)
 
                 ax.set_axisbelow(True)
-                ax.minorticks_on()
-                ax.tick_params(which='major', direction='in', top=True,
-                               right=False, left=True, labelsize=fontsize,
-                               length=3, width=2*axis_linewidth/3)
-                ax.tick_params(which='minor', direction='in', length=1.5, 
-                               top=True, bottom=True, right=False, left=True,
-                               width=2*axis_linewidth/3)
+                
+                left = bool(yticks)
+                bottom = bool(xticks) 
+
+                ax.tick_params(which='major', direction='in', top=False,
+                               right=False, left=left, bottom=bottom, 
+                               labelsize=fontsize,
+                               length=5, width=2*axis_linewidth/3)
+                if minor_ticks:
+                    ax.minorticks_on()
+                    ax.tick_params(which='minor', direction='in', length=3, 
+                                   top=False, bottom=bottom, right=False, 
+                                   left=left, width=2*axis_linewidth/3)
                 if col == 0:
                     ax.ticklabel_format(style='sci', axis='y', scilimits=(0, 0))
                     # Make sure the scientific notation has the same4fontsize
@@ -265,7 +273,8 @@ class CompWave:
 
         # Turn off the y-tick labels and sci notation for columns except first
         for row in axes:
-            for col in row[1:]:
+            # for col in row[1:]:
+            for col in row[:]:
                 plt.setp(col.get_yticklabels(), visible=False)
                 col.yaxis.get_offset_text().set_visible(False)
 
@@ -290,11 +299,14 @@ class CompWave:
         :param save: if given, save the figure to this path
         """
         linewidth = kwargs.get("linewidth", 1.3)
-        fontsize = kwargs.get("fontsize", 14)
+        syn_linewidth = kwargs.get("syn_linewidth", 1.7)
+        fontsize = kwargs.get("fontsize", 12)
         xlim = kwargs.get("xlim", None)
         percent_over = kwargs.get("percent_over", 0.125)
         color_init = kwargs.get("color_init", "orangered")
         color_final = kwargs.get("color_final", "mediumorchid")
+        title = kwargs.get("title", True)
+        labels = kwargs.get("labels", True)
 
         if component_list is None:
             component_list = [_.stats.channel[-1] for _ in self._st_obs]
@@ -310,10 +322,10 @@ class CompWave:
 
             # Plot init synthetics to the left, final synthetics to the right
             axes[row][0].plot(syn_init.times(), syn_init.data, color_init,
-                              zorder=10, label="INIT", linewidth=linewidth
+                              zorder=10, label="INIT", linewidth=syn_linewidth
                               )
             axes[row][1].plot(syn_final.times(), syn_final.data, color_final,
-                              zorder=10, label="FINAL", linewidth=linewidth
+                              zorder=10, label="FINAL", linewidth=syn_linewidth
                               )
             # Plot obs in both columns
             for col in [0, 1]:
@@ -325,14 +337,24 @@ class CompWave:
                 format_axis(axes[row][col], percent_over=percent_over)
 
             # Component in the y-label
-            axes[row][0].set_ylabel(comp.upper(), rotation="horizontal",
-                                    ha="left", va="center")
+            if labels:
+                axes[row][0].set_ylabel(comp.upper(), rotation="horizontal",
+                                        ha="left", va="center")
+
+            # Annotation in coriner of fig
+            if len(component_list) == 1:
+                plt.suptitle(f"{self.event_id} {self.station} {comp}",
+                             fontsize=fontsize)
+            f.text(0.13, 0.765, "M00", ha="left", fontsize=fontsize)
+            f.text(0.525, 0.765, "M28", ha="left", fontsize=fontsize)
 
             # Set ylim based on ymax from either waveform
             max_yvals = []
             for data in [obs.data, syn_init.data, syn_final.data]:
                 max_yvals.append(max(abs(data)))
-            ylim = [-1 * max(max_yvals), max(max_yvals)]
+            max_yval = max(max_yvals) * 1.2
+
+            ylim = [-1 * max_yval, max_yval]
             axes[row][0].set_ylim(ylim)
 
         # Set xlim for master axis
@@ -346,22 +368,24 @@ class CompWave:
         axes[0][0].set_xlim(xlim)
 
         # Main title ab"ove all the subplots
-        plt.suptitle(f"Waveform Improvement | "
-                     f"{self.event_id} {self.station} "
-                     f"[{self.min_period}, {self.max_period}]s",
-                     fontsize=fontsize)
+        if title:
+            plt.suptitle(f"Waveform Improvement | "
+                         f"{self.event_id} {self.station} "
+                         f"[{self.min_period}, {self.max_period}]s",
+                         fontsize=fontsize)
 
-        # Common X and Y labels, manually decided values
-        # f.text(0.375, 0.05, "Time [s]", ha="center", fontsize=fontsize)
-        f.text(0.5, 0.025, "Time [s]", ha="center", fontsize=fontsize)
-        f.text(0.08, 0.575, "Displacement [m]", ha="center", rotation=90,
-               fontsize=fontsize)
+        if labels:
+            # Common X and Y labels, manually decided values
+            # f.text(0.375, 0.05, "Time [s]", ha="center", fontsize=fontsize)
+            f.text(0.5, 0.025, "Time [s]", ha="center", fontsize=fontsize)
+            f.text(0.08, 0.575, "Displacement [m]", ha="center", rotation=90,
+                   fontsize=fontsize)
+
 
         # Title each of the models
-        # axes[0][0].set_title(f"INITIAL: {self._m_init}", fontsize=fontsize)
-        # axes[0][1].set_title(f"FINAL: {self._m_final}", fontsize=fontsize)
-        axes[0][0].set_title(f"Initial", fontsize=fontsize)
-        axes[0][1].set_title(f"Final", fontsize=fontsize)
+        if title:
+            axes[0][0].set_title(f"Initial", fontsize=fontsize)
+            axes[0][1].set_title(f"Final", fontsize=fontsize)
 
         # Save the generated figure
         if save:
@@ -406,26 +430,54 @@ class CompWave:
             plt.close()
 
 
-def main(event_id=None, station=None):
+def main(event_id=None, station=None, component=None, xmin=None, xmax=None, 
+         cfg="plot"):
     """
     Main call script to choose event and station based on what's available
     """
-    # =========================================================================
-    # PARAMETER CHOICE
-    choice = "all"  # pick or all
-    min_period = 6
-    max_period = 30
-    m_init = None
-    m_final = "i11/s03"
-    dsfid = f"aspen/{event_id}.h5"
-    dsfid_final = f"birch/{event_id}.h5"
-    show = False
-    calc_vrl = True
-    save_win = "init"
-    plot = True
-    plot_with_map = False
-    xlim = None
-    component_list = ["Z", "N", "E"]
+    if cfg == "calc":
+        # VRL CALC PARAMETER CHOICE
+        choice = "all"  # pick or all
+        min_period = 6
+        max_period = 30
+        m_init = None
+        m_final = "i11/s03"
+        dsfid = f"aspen/{event_id}.h5"
+        dsfid_final = f"birch/{event_id}.h5"
+        show = False
+        calc_vrl = True
+        save_win = "final"
+        plot = False
+        plot_with_map = False
+        xlim = None
+        if component:
+            component_list = [component]
+        else:
+            component_list = ["Z", "N", "E"]
+    elif cfg == "plot":
+        choice = "all"  # pick or all
+        min_period = 6
+        max_period = 30
+        m_init = None
+        m_final = "i11/s03"
+        dsfid = f"aspen/{event_id}.h5"
+        dsfid_final = f"birch/{event_id}.h5"
+        show = False
+        calc_vrl = False
+        save_win = False
+        plot = True
+        plot_with_map = False   
+        if xmin is not None:
+            xlim = [float(xmin), float(xmax)]
+        else:
+            xlim = None
+        if component:
+            component_list = [component]
+        else:
+            component_list = ["Z", "N", "E"]
+
+    kwargs = {"title": False, "labels": False, "xticks": True, "yticks": False,
+              "minor_ticks": False}
     # =========================================================================
 
     # Get station information prior to plotting
@@ -449,9 +501,9 @@ def main(event_id=None, station=None):
             continue
 
         fid_out = f"./figures/{event_id}_{sta}.png"
-        if os.path.exists(fid_out):
-            print(f"{fid_out} exists")
-            continue
+        # if os.path.exists(fid_out):
+        #     print(f"{fid_out} exists")
+        #     continue
         print(sta)
         try:
             cw = CompWave(dsfid=dsfid, dsfid_final=dsfid_final,
@@ -466,15 +518,41 @@ def main(event_id=None, station=None):
                     cw.plot_with_map(show=show, save=fid_out, xlim=xlim)
                 else:
                     cw.plot(component_list=component_list, show=show, 
-                            save=fid_out, xlim=xlim)
+                            save=fid_out, xlim=xlim, **kwargs)
                 plt.close("all")
         except Exception as e:
             traceback.print_exc()
             pass
 
+def main_plot_specific():
+    """
+    """
+    vals = [
+["2013p617227", "NZ.TOZ", "Z", 47.5, 290],
+["2014p952799", "NZ.NTVZ", "N", 10, 290],
+["2016p105478", "NZ.PUZ", "Z", 90, 290],
+["2016p881118", "NZ.MWZ", "E", 40, 275],
+["2018p465580", "NZ.KHEZ", "E", 25, 275],
+["2019p738432", "NZ.KHZ", "Z", 90, 290],
+["2019p754447", "NZ.HIZ", "Z", 10, 290],
+["2019p927023", "NZ.VRZ", "Z", 45, 275],]
+    for val in vals:
+        # event, station, comp = val
+        # main(event, station, comp, cfg="plot")
+        try:
+            event, station, comp, xmin, xmax = val
+            main(event, station, comp, xmin, xmax, "plot")
+        except ValueError:
+            continue
+
 
 if __name__ == "__main__":
-    for fid in sorted(glob("./aspen/*.h5")):
-        event_id = os.path.splitext(os.path.basename(fid))[0]
-        print(event_id)
-        main(event_id, None)
+    main_plot_specific()
+    a=1/0
+    if len(sys.argv) > 1:
+        main(*sys.argv[1:])
+    else:
+        for fid in sorted(glob("./aspen/*.h5")):
+            event_id = os.path.splitext(os.path.basename(fid))[0]
+            print(event_id)
+            main(event_id, None)

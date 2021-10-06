@@ -6,11 +6,11 @@ the course of a seismic inversion.
 Show the changes in synthetic waveforms with progressive model updates. 
 Each individual model gets its on row in the plot.
 """
-
-import pyasdf
+import os
 import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
+import pyasdf
 from pyasdf import ASDFDataSet as asdf 
 from pyatoa import Manager, logger
 from pyatoa.utils.form import format_event_name
@@ -140,25 +140,30 @@ class ImproveWave:
             reftime=st_obs[0].stats.starttime - mgmt.stats.time_offset_sec
             ) 
 
-    def gather_simple(self, event, sta, min_period, max_period):
+    def gather_simple(self, event, sta, min_period, max_period, path_dict=None,
+                      component=None):
         """
         Manually set the model values based on inspection of the Inspector
         Don't return windows or anything, keep it simple
         """
 
         models = {"m00": ("i01/s00", "a"),
-                  "m05": ("i05/s01", "a"),
-                  "m10": ("i10/s02", "a"),
-                  "m15": ("i15/s01", "a"),
-                  "m20": ("i03/s01", "b"),
-                  "m25": ("i08/s02", "b"),
-                  "m28": ("i10/s02", "b"),
+                  "m03": ("i03/s03", "a"),
+                  "m09": ("i09/s02", "a"),
+                  "m12": ("i12/s04", "a"),
+                  "m17": ("i17/s01", "a"),
+                  "m24": ("i07/s01", "b"),
+                  "m28": ("i11/s03", "c"),
                   }
         st_obs, synthetics = None, {}
         windows = None
         for model, tup in models.items():
             path, tag = tup
-            with asdf(f"{event_id}{tag}.h5", mode="r") as ds:
+            if path_dict:
+                ds_fid = os.path.join(path_dict[tag], f"{event_id}.h5")
+            else:
+                ds_fid = f"{event_id}{tag}.h5"
+            with asdf(ds_fid, mode="r") as ds:
                 mgmt = Manager(ds=ds)
                 mgmt.load(sta, path)
                 mgmt.config.save_to_ds = False
@@ -166,9 +171,16 @@ class ImproveWave:
                 mgmt.config.max_period = max_period
                 mgmt.standardize().preprocess()
 
-                synthetics[model] = mgmt.st_syn.select(component="Z").copy()
+                if component:
+                    synthetics[model] = mgmt.st_syn.select(
+                                                     component=component).copy()
+                else:
+                    synthetics[model] = mgmt.st_syn.copy()
                 if st_obs is None:
-                    st_obs = mgmt.st_obs.select(component="Z").copy()
+                    if component:
+                        st_obs = mgmt.st_obs.select(component=component).copy()
+                    else:
+                        st_obs = mgmt.st_obs.copy()
 
         self.st_obs = st_obs
         self.synthetics = synthetics
@@ -186,13 +198,13 @@ class ImproveWave:
         :rtype axes: matplotlib axes
         :return axes: axis objects
         """
-        figsize = kwargs.get("figsize", (4, 6))
         dpi = kwargs.get("dpi", 150)
+        figsize = kwargs.get("figsize", (500/dpi, 800/dpi))
         fontsize = kwargs.get("fontsize", 10)
         axis_linewidth = kwargs.get("axis_linewidth", 2)
 
         f = plt.figure(figsize=figsize, dpi=dpi)
-        gs = mpl.gridspec.GridSpec(nrows, ncols, hspace=0, wspace=0.05, 
+        gs = mpl.gridspec.GridSpec(nrows, ncols, hspace=0, wspace=0.025, 
                                    width_ratios=[1] * ncols,
                                    height_ratios=[3] * nrows
                                    )
@@ -222,7 +234,7 @@ class ImproveWave:
 
                 for axis in ["top", "bottom", "left", "right"]:
                     ax.spines[axis].set_linewidth(axis_linewidth)
-                
+               
                 # Turn off the y axes because we wont show units
                 ax.get_yaxis().set_ticks([])
 
@@ -236,7 +248,7 @@ class ImproveWave:
 
         return f, axes
 
-    def plot(self, sta=None, min_period=None, max_period=None, 
+    def plot(self, sta=None, event_id=None, min_period=None, max_period=None, 
              plot_windows=False, trace_length=None, show=True, save=False, 
              **kwargs):
         """
@@ -362,22 +374,23 @@ class ImproveWave:
                     if col == len(self.st_obs) // 2:
                         title = (f"{self.st_obs[0].stats.network}."
                                  f"{self.st_obs[0].stats.station} "
-                                 f"2017p084950")
+                                 f"{event_id} Z")
                         axes[row][col].set_title(title, fontsize=fontsize)
             
                     # Append component to bottom right of subplot  
-                    axes[row][col].text(
-                                x=0.95, y=0.15, s=comp.upper(),
-                                horizontalalignment="center",
-                                verticalalignment="center",
-                                transform=axes[row][col].transAxes)
+                    if False:
+                        axes[row][col].text(
+                                    x=0.95, y=0.15, s=comp.upper(),
+                                    horizontalalignment="center",
+                                    verticalalignment="center",
+                                    transform=axes[row][col].transAxes)
           
             # y-label after all the processing has occurred
             axes[row][0].set_ylabel(ylab, rotation="horizontal", ha="right",
                                     fontsize=fontsize)
 
         # Label the time axis on the bottom row, middle column
-        axes[-1][len(self.st_obs) // 2].set_xlabel("time [sec]", 
+        axes[-1][len(self.st_obs) // 2].set_xlabel("time [s]", 
                                                    fontsize=fontsize)
 
         # Save the generated figure
@@ -390,7 +403,30 @@ class ImproveWave:
 
 
 if __name__ == "__main__":
-    event_id = "2016p842451"
+    pairs = [
+         ("2013p617227", "NZ.TOZ", "Z"),
+         # ("2014p952799", "NZ.NTVZ", "N"),
+         # ("2016p105478", "NZ.PUZ", "Z"),
+         # ("2016p881118", "NZ.MWZ", "E"),
+         # ("2018p465580", "NZ.KHEZ", "E"),
+         # ("2019p738432", "NZ.KHZ", "Z"),
+         # ("2019p754447", "NZ.HIZ", "Z"),
+         # ("2019p927023", "NZ.VRZ", "Z"),
+         ]    
+    
+    path_dict = {"a": "../waveform_comparisons/aspen/",
+                 "b": "/home/chowbr/current/birch/scratch/preprocess/datasets/i07_corrupted/",
+                 "c": "../waveform_comparisons/birch/"}
+
+    for event_id, sta, comp in pairs:
+        wi = ImproveWave()
+        wi.gather_simple(event_id, sta, 6, 30, path_dict=path_dict, component=comp)
+        wi.plot(show=False, save=f"{event_id}_{sta}.png", event_id=event_id,
+                trace_length=[70,290])
+    a=1/0
+
+    # MAIN
+    event_id = "2019p927023"
     with asdf(f"{event_id}a.h5") as ds:
         stations = ds.waveforms.list()
 

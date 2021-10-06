@@ -23,6 +23,9 @@ For variable descriptions see:
             where d_stalta = current max height above min
             and   d_stalta_center = central max height above min
             and   f_time = time decay function
+        :c_3b: d_time = separation between center of window and internal maxima
+            if d_time > c_3b then f_time is a time decay function, else its 1
+            - if c_3b goes down, 
     5. Emergent start/stops and coda wave curtailing
         :c_4a: time_decay_left = T_min * c_4a / dt
         :c_4b: time_decay_right: T_min * c_4b / dt
@@ -183,6 +186,27 @@ pyflex_presets = {
         "c_4a": 2.,
         "c_4b": 6.0
     },
+    # North Island study area, 6-30s bandpass post-hoc waveform improvement 
+    # analysis. Looser windowing parameters than the 6-30s preset, to try to
+    # get a more diverse look at the dataset rather than choosing only the
+    # good sections which is what we wanted to do in the inversion
+    "nznorth_6-30s_posthoc": {
+        "stalta_waterlevel": 0.08,
+        "tshift_acceptance_level": 12.,  
+        "dlna_acceptance_level": 1.5,
+        "cc_acceptance_level": 0.60,
+        "s2n_limit": 3.,
+        "max_time_before_first_arrival": 5., 
+        "min_surface_wave_velocity": 1.05,
+        "check_global_data_quality": True,
+        "snr_integrate_base": 3.5,  # exclude noisy data
+        "c_0": 0.8,     # reject if win.stalta.min < c_0 * stalta_wl
+        "c_1": 2.0,     # min window = c1 * tmin = 12s
+        "c_3a": 3.0,
+        "c_3b": 2.0,
+        "c_4a": 2.5,
+        "c_4b": 12.0
+    },
     # For the 1D velocity model of Ristau (2008)
     "nznorth_1D": {
         "stalta_waterlevel": 0.07,
@@ -239,15 +263,15 @@ pyflex_presets = {
     # 1D North Island inversion 8-30s
     "nzni1D_8-30s": {
         "stalta_waterlevel": 0.08, 
-        "tshift_acceptance_level": 12.0,  # based on sign-flip
+        "tshift_acceptance_level": 10.0,
         "dlna_acceptance_level": 2.0,
-        "cc_acceptance_level": 0.65,
+        "cc_acceptance_level": 0.675,
         "s2n_limit": 3.,
         "max_time_before_first_arrival": 5.,
-        "min_surface_wave_velocity": 1.6,  # Default is 3.0, chow et al.==1.4
+        "min_surface_wave_velocity": 1.4,  # Default is 3.0, chow et al.==1.4
         "check_global_data_quality": True,  # Default is False
         "c_0": 0.7,
-        "c_1": 2.0, 
+        "c_1": 2.5, 
         "c_3a": 3.0,
         "c_3b": 2.0,
         "c_4a": 2.5,

@@ -469,7 +469,7 @@ class Pyaflowa:
         self._write_specfem_stations_adjoint_to_disk(io)
         self._output_final_log_summary(io)
 
-        if io.misfit:
+        if io.misfit and io.nwin:
             return self._scale_raw_event_misfit(raw_misfit=io.misfit,
                                                 nwin=io.nwin)
         else:
@@ -550,7 +550,10 @@ class Pyaflowa:
         if status == 1:
             # Keep track of outputs for the final log summary and misfit value
             io.misfit += mgmt.stats.misfit
-            io.nwin += mgmt.stats.nwin
+            # The deal with the case where window selection is skipped and 
+            # mgmt.stats.nwin == None
+            num_new_win = mgmt.stats.nwin or 0
+            io.nwin += num_new_win
             io.processed += 1
 
             # SPECFEM wants adjsrcs for each comp, regardless if it has data
@@ -605,8 +608,8 @@ class Pyaflowa:
                     fix_windows_out = False
                 else:
                     fix_windows_out = True
-            # 'Once' picks windows only for the first function evaluation of the
-            # current set of iterations.
+            # 'Once' picks windows only for the first function evaluation of 
+            # the current set of iterations.
             elif fix_windows.upper() == "ONCE":
                 if self.config.iteration == self.begin and \
                         self.config.step_count == 0:
@@ -617,8 +620,8 @@ class Pyaflowa:
         elif isinstance(fix_windows, bool):
             fix_windows_out = fix_windows
         else:
-            raise NotImplementedError(f"Unknown choice {fix_windows} passed to "
-                                      f"fixed_windows argument in manager flow")
+            raise NotImplementedError(f"Unknown choice {fix_windows} passed to"
+                                      f"'fix_windows' argument in Manager.flow")
 
         # Update kwargs to simplify calls
         kwargs["fix_windows"] = fix_windows_out

@@ -2,6 +2,9 @@
 """
 Configuration of User-set parameters within the package.
 Contains external functions to set Config objects of Pyflex and Pyadjoint.
+
+To Do 02.04.21: Allow config to set pyflex and pyadjoint config as a function,
+    currently it's obscured behind some private functions
 """
 import yaml
 from pyatoa import logger

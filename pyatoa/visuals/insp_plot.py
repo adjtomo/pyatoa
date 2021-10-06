@@ -1242,7 +1242,7 @@ def default_axes(ax, cbar=None, **kwargs):
     Keyword Arguments
     ::
     """
-    tick_fontsize = kwargs.get("tick_fontsize", 8)
+    tick_fontsize = kwargs.get("tick_fontsize", 10)
     tick_linewidth = kwargs.get("tick_linewidth", 1.5)
     tick_length = kwargs.get("tick_length", 5)
     tick_direction = kwargs.get("tick_direction", "in")
