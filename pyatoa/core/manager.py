@@ -248,7 +248,7 @@ class Manager:
                 self.stats.standardized = True
 
         # Check for half duration used for source-time-function with synthetics
-        if self.stats.half_dur is None and self.event is not None:
+        if not self.stats.half_dur and self.event is not None:
             try:
                 mt = self.event.preferred_focal_mechanism().moment_tensor
                 self.stats.half_dur = mt.source_time_function.duration / 2

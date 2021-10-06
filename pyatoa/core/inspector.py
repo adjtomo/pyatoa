@@ -792,8 +792,6 @@ class Inspector(InspectorPlotter):
 
         return df
 
-
-
     def minmax(self, iteration=None, step_count=None, keys=None,
                quantities=None, pprint=True):
         """
@@ -877,16 +875,89 @@ class Inspector(InspectorPlotter):
         msft_a.drop(["unscaled_misfit"], axis=1, inplace=True)
         msft_b.drop(["unscaled_misfit"], axis=1, inplace=True)
 
-        msft_a.rename({"nwin": "nwin_init", "misfit": "misfit_init"},
+        # For renaming and access to renamed columns
+        initial = f"{iteration_a}{step_count_a}"
+        final = f"{iteration_b}{step_count_b}"
+    
+        msft_a.rename({"nwin": f"nwin_{initial}", 
+                       "misfit": f"misfit_{initial}"},
                       axis="columns", inplace=True)
-        msft_b.rename({"nwin": "nwin_final", "misfit": "misfit_final"},
+        msft_b.rename({"nwin": f"nwin_{final}", "misfit": f"misfit_{final}"},
                       axis="columns", inplace=True)
 
         df = pd.merge(msft_a, msft_b, left_index=True, right_index=True)
-        df["diff_misfit"] = df["misfit_init"] - df["misfit_final"]
-        df["diff_nwin"] = df["nwin_final"] - df["nwin_init"]
+        df["diff_misfit"] = df[f"misfit_{final}"] - df[f"misfit_{initial}"]
+        df["diff_nwin"] = df[f"nwin_{final}"] - df[f"nwin_{initial}"]
 
         return df.sort_values(by="diff_misfit")
+
+    def compare_windows(self, iteration_a=None, step_count_a=None, 
+                        iteration_b=None, step_count_b=None):
+        """
+        Compare individual, matching misfit windows between two evaluations.
+        
+        .. note::
+            This will only work/make sense if the windows were fixed between 
+            the two evaluations, such that they share the exact same window
+            selections.
+
+        :type iteration_a: str
+        :param iteration_a: initial iteration to use in comparison
+        :type step_count_a: str
+        :param step_count_a: initial step count to use in comparison
+        :type iteration_b: str
+        :param iteration_b: final iteration to use in comparison
+        :type step_count_b: str
+        :param step_count_b: final step count to use in comparison
+        :rtype: pandas.core.data_frame.DataFrame
+        :return: a data frame containing differences of windowing paramenters
+            between final and initial models
+        """
+        # These are the window values that will be different between two evals
+        comp_values = ["misfit", "dlnA", "window_weight", "max_cc_value",
+                       "cc_shift_in_seconds"]
+
+        # Assuming if first arg isnt given, default to first/last model
+        if iteration_a is None:
+            iteration_a, step_count_a = self.initial_model
+        if iteration_b is None:
+            iteration_b, step_count_b = self.final_model
+
+        # Use copies to ensure any inplace changes don't make it back to self
+        windows_a = self.isolate(iteration_a, step_count_a).copy()
+        windows_b = self.isolate(iteration_b, step_count_b).copy()
+    
+        assert(len(windows_a) == len(windows_b)), \
+                ("the number of windows does not match between the two "
+                 "evaluations, windows cannot be compared")
+
+        # We are using references of the windows to make inplace changes which
+        # throws chained assigment warnings. This is acceptable so ignore
+        evals = []
+        with pd.option_context("mode.chained_assignment", None):
+            for _win in [windows_a, windows_b]:
+                eval = f"{_win.iteration.iloc[0]}{_win.step.iloc[0]}"
+                evals.append(eval)
+                # Drop unncessary columns that are not useful in comparison
+                _win.drop(["length_s", "relative_endtime", "absolute_starttime",
+                           "absolute_endtime", "iteration", "step"],
+                             axis=1, inplace=True)
+                # Rename columns so they don't get merged into one another
+                for column in comp_values:
+                    _win.rename({column: f"{column}_{eval}"},
+                                       axis="columns", inplace=True)
+                # Set the index as a column so that the user can figure out
+                # the windows index in the original dataframe
+                _win[f"index_{eval}"] = _win.index
+
+        # Merge the evaluations using shared attributes i.e. src rcv info
+        df = pd.merge(windows_a, windows_b)
+        # Take differences of all the comparison values, 'final - initial'
+        initial, final = evals
+        for val in comp_values:
+            df[f"diff_{val}"] = df[f"{val}_{final}"] - df[f"{val}_{initial}"]
+
+        return df
 
     def filter_sources(self, lat_min=None, lat_max=None, lon_min=None,
                        lon_max=None, depth_min=None, depth_max=None,
@@ -1040,3 +1111,23 @@ class Inspector(InspectorPlotter):
 
         self._srcrcv = pd.DataFrame(srcrcv_dict)
 
+    def get_unique_models(self, float_precision=3):
+        """
+        Find all accepted models (status 0 or 1) that have a unique misfit
+        value. Because some forward evaluations are repeats of the previous
+        line search evaluation, they will effectively be the same evaluation so
+        they can be removed
+
+        :type float_precision: int
+        :param float_precision: identical misfit values will differ after some
+            decimal place. this value determines which decimal place to
+            truncate the values for comparison
+        """
+        models = self.good_models
+        models.reset_index(drop=True, inplace=True)
+        misfit = models.misfit.round(decimals=float_precision)
+        identical_misfit = np.where(misfit.diff() == 0)[0]
+        models.drop(axis=0, index=identical_misfit, inplace=True)
+        models.reset_index(drop=True, inplace=True)
+
+        return models

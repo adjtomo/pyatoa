@@ -1,5 +1,9 @@
 ## For Version 0.2.0
 
+### Updates
+- [ ] Replace Basemap mapping with PyGMT to avoid deprecated package
+- [ ] Upgrade PyYaml to > 5.4 to avoid security problem
+
 #### Features
 - [ ] Introduce event multiprocessing, and multithreaded data gathering.
 - [X] Use Pandas in the Inspector class to do the large-scale data analysis required for all the misfit windows, etc.

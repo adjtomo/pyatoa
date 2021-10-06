@@ -401,6 +401,27 @@ class ImproveWave:
 
         return f, axes
 
+    def gather_simple(self, models, event_id, sta, component,  min_period,
+                      max_period):
+        """
+        Gather waveforms from manually input model values, usually determined
+        by using the Inspector class
+
+        :type models: dict of tuples
+        :param models: model values as keys, (iter/step, tag) as tuple value.
+            Tags allow multiple datasets to be used, e.g. if an inversion
+            spans over multiple legs and more than one dataset is used to
+            store waveform data
+        :type event_id: str
+        :param event_id: name of the event, used to access the ASDFDataSet
+        ;type sta: str
+        :param sta: station id to gather data for
+        :type min_period: float
+        :param min_period: period to filter data at
+        :type max_period: float
+        :param max_period: period to filter data at
+        """
+        st_obs, synthetics = None, {}
 
 if __name__ == "__main__":
     pairs = [
@@ -429,8 +450,39 @@ if __name__ == "__main__":
     event_id = "2019p927023"
     with asdf(f"{event_id}a.h5") as ds:
         stations = ds.waveforms.list()
+        self.st_obs = st_obs
+        self.synthetics = synthetics
 
+
+if __name__ == "__main__":
+    event_id = "2013p507880"
+    component = "Z"
+    models = {"m00": ("i01/s00", ""),
+              "m01": ("i01/s04", ""),
+              "m02": ("i02/s01", ""),
+              "m02": ("i03/s00", ""),
+              "m03": ("i03/s01", ""),
+              "m03": ("i04/s00", ""),
+              "m04": ("i04/s04", ""),
+              "m04": ("i05/s00", ""),
+              "m05": ("i05/s04", ""),
+              "m05": ("i06/s00", ""),
+              "m06": ("i06/s01", ""),
+              "m07": ("i07/s01", ""),
+              "m08": ("i08/s03", ""),
+              "m09": ("i09/s01", ""),
+              "m10": ("i10/s04", ""),
+              "m10": ("i11/s00", ""),
+              "m11": ("i11/s03", ""),
+              "m12": ("i12/s01", ""),
+              "m13": ("i13/s01", ""),}
+
+    # with asdf(f"{event_id}.h5") as ds:
+    #     stations = ds.waveforms.list()
+    stations = ["NZ.TOZ"]
+
+        
     for sta in stations:
         wi = ImproveWave()
-        wi.gather_simple(event_id, sta, 6, 30)
+        wi.gather_simple(models, event_id, sta, component, 4, 30)
         wi.plot()
