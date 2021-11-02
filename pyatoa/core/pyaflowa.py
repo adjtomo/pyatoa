@@ -125,9 +125,10 @@ class PathStructure:
         # This 'constants' list mandates that the following paths exist.
         # The Pyaflowa workflow assumes that it can read/write from all of the
         # paths associated with these keys
-        self._REQUIRED_PATHS = ["cwd", "datasets", "figures", "logs", "ds_file",
-                                "stations_file", "responses", "waveforms",
-                                "synthetics", "adjsrcs", "event_figures"]
+        self._REQUIRED_PATHS = ["cwd", "data", "datasets", "figures", "logs", 
+                                "ds_file", "stations_file", "responses", 
+                                "waveforms", "synthetics", "adjsrcs", 
+                                "event_figures"]
 
         # Call the available function using its string representation,
         # which sets the internal path structure.
@@ -152,15 +153,20 @@ class PathStructure:
 
     def standalone(self, workdir=None, datasets=None, figures=None,
                    logs=None, responses=None, waveforms=None, 
-                   synthetics=None, adjsrcs=None, stations_file=None, **kwargs):
+                   synthetics=None, adjsrcs=None, stations_file=None, 
+                   event_file=None, **kwargs):
         """
         If Pyaflowa should be used in a standalone manner without external
         workflow management tools. Simply creates the necessary directory
         structure within the current working directory.
         Attributes can be used to overwrite the default path names
+
+        .. to do:
+            !!! How to work in event file recovery in standalone mode?
         """
         # General directories that all processes will write to
         self.workdir = workdir or os.getcwd()
+        self.data = data or os.path.join(self,workdir, "DATA") # !!!
         self.datasets = datasets or os.path.join(self.workdir, "datasets")
         self.figures = figures or os.path.join(self.workdir, "figures")
         self.logs = logs or os.path.join(self.workdir, "logs")
@@ -204,6 +210,7 @@ class PathStructure:
 
         self.workdir = PATH.WORKDIR
         self.cwd = os.path.join(PATH.SOLVER, "{source_name}")
+        self.data = os.path.join(self.cwd, "DATA")
 
         self.datasets = os.path.join(PATH.PREPROCESS, "datasets")
         self.figures = os.path.join(PATH.PREPROCESS, "figures")
@@ -324,6 +331,7 @@ class Pyaflowa:
             # check status in window fixing.
             self.config = pyatoa.Config(seisflows_par=sfpar, **kwargs)
             self.begin = sfpar.BEGIN
+            self.source_prefix = sfpar.SOURCE_PREFIX  # for event reading
         else:
             self.begin = -9999
             if config is None:
@@ -425,7 +433,8 @@ class Pyaflowa:
         config.event_id = source_name
         config.paths = {"responses": paths.responses,
                         "waveforms": paths.waveforms,
-                        "synthetics": paths.synthetics
+                        "synthetics": paths.synthetics,
+                        "events": paths.data,
                         }
 
         # Only query FDSN at the very first function evaluation, assuming no new
@@ -438,6 +447,14 @@ class Pyaflowa:
             clean_dataset(ds, iteration=config.iteration, 
                           step_count=config.step_count) 
             config.write(write_to=ds)
+
+            # Write event information to the dataset, stop the workflow if 
+            # event information cant be found as this will lead to failure later
+            mgmt = pyatoa.Manager(ds=ds, config=config)
+            # !!! Hardcoded in that the event file is named 'CMTSOLUTION'
+            # !!! Will this be the case all the time? 
+            mgmt.gather(choice="event", event_id="", 
+                        event_id_prefix="CMTSOLUTION")
 
         # Event-specific log files to track processing workflow
         log_fid = f"{config.iter_tag}{config.step_tag}_{config.event_id}.log"

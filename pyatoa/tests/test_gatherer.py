@@ -20,6 +20,14 @@ def code():
 
 
 @pytest.fixture
+def event_id():
+    """
+    Example NZ event identifier 
+    """
+    return "2018p130600"
+
+
+@pytest.fixture
 def dataset_fid():
     """
     The name for the dataset file id used for temporary storage
@@ -179,6 +187,20 @@ def test_asdf_waveform_fetch(internal_fetcher, dataset_fid, code, config):
             st = internal_fetcher.asdf_waveform_fetch(code, tag)
             assert len(st) == 3
 
+
+def test_fetch_event_by_dir(internal_fetcher, event_id):
+    """
+    Get response based on given directory structure
+    """
+    # No Config path means fetching returns nada
+    assert internal_fetcher.fetch_event_by_dir(event_id) is None
+
+    internal_fetcher.config.paths["events"] = "./test_data/"
+    event = internal_fetcher.fetch_event_by_dir(
+                                  event_id, event_id_prefix="test_CMTSOLUTION_")
+
+    assert event is not None
+    assert event_id in event.resource_id.id
 
 def test_fetch_resp_by_dir(internal_fetcher, code):
     """

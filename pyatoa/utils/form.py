@@ -79,8 +79,9 @@ def format_event_name(ds_or_event):
         # IRIS Client: smi:service.iris.edu/fdsnws/event/1/query?eventid=5197722
         elif "IRIS" in rid_up:
             return rid.split("eventid=")[-1]
-        # SPUD, GCMT: smi:local/ndk/C202005010101A/event
-        elif "NDK" in rid_up:
+        # SPUD, GCMT: smi:local/ndk/C202005010101A/event 
+        # or CMTSOLUTION: smi:local/cmtsolution/2013p617227/event 
+        elif ("NDK" in rid_up) or ("CMTSOLUTION" in rid_up):
             return rid.split("/")[-2]
         # USGS Client: quakeml:earthquake.usgs.gov/fdsnws/event/1/...
         #                          ...query?eventid=ak0198gdhuwa&format=quakeml

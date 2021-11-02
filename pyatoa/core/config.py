@@ -140,7 +140,8 @@ class Config:
                     paths[key] = [paths[key]]
             self.paths = paths
         else:
-            self.paths = {"waveforms": [], "synthetics": [], "responses": []}
+            self.paths = {"waveforms": [], "synthetics": [], "responses": [],
+                          "events": []}
 
         # If reading from a YAML file or from a dataset, do not set the external
         # Configs (pyflex and pyadjoint) because these will be read in verbatim
@@ -263,7 +264,7 @@ class Config:
             f"unit_output should be in {acceptable_units}"
 
         # Check that paths are in the proper format, dictated by Pyatoa
-        required_keys = ['synthetics', 'waveforms', 'responses']
+        required_keys = ['synthetics', 'waveforms', 'responses', 'events']
         assert(isinstance(self.paths, dict)), "paths should be a dict"
         for key in self.paths.keys():
             assert(key in required_keys), \

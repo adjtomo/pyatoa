@@ -466,7 +466,7 @@ class Manager:
                     step_count=step_count, force=force, save=save)
         self.measure(force=force, save=save)
 
-    def gather(self, code=None, choice=None, **kwargs):
+    def gather(self, code=None, choice=None, event_id=None, **kwargs):
         """
         Gather station dataless and waveform data using the Gatherer class.
         In order collect observed waveforms, dataless, and finally synthetics.
@@ -530,8 +530,10 @@ class Manager:
         try:
             # Attempt to gather event information before waveforms/metadata
             if "event" in choice and self.event is None:
-                if self.config.event_id is not None:
-                    self.event = self.gatherer.gather_event(try_fm=try_fm)
+                if event_id is None:
+                    event_id = self.config.event_id
+                self.event = self.gatherer.gather_event(event_id=event_id,
+                                                        try_fm=try_fm, **kwargs)
             if code is not None:
                 logger.info(f"gathering data for {code}")
                 if "st_obs" in choice:
