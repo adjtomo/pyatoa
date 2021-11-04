@@ -332,6 +332,10 @@ class Pyaflowa:
             self.config = pyatoa.Config(seisflows_par=sfpar, **kwargs)
             self.begin = sfpar.BEGIN
             self.source_prefix = sfpar.SOURCE_PREFIX  # for event reading
+
+            # Overwrite init parameters based on SeisFlows Par file
+            plot = sfpar.PLOT
+            log_level = sfpar.LOGGING 
         else:
             self.begin = -9999
             if config is None:
