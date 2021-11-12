@@ -536,6 +536,7 @@ class Config:
         for key, item in attrs.items():
             if hasattr(self, key.lower()):
                 # Special case: ensure paths don't overwrite, but append
+
                 if key == "paths":
                     for cfgkey, cfgitem in self.paths.items():
                         item[cfgkey] += cfgitem
@@ -619,7 +620,8 @@ class Config:
             cfgin = ds.auxiliary_data.Configs[path].parameters
 
         # Parameters from flattened dictionaries will need special treatment
-        paths = {"waveforms": [], "synthetics": [], "responses": []}
+        paths = {"waveforms": [], "synthetics": [], "responses": [], 
+                 "events": []}
         pyflex_config, pyadjoint_config = {}, {}
 
         for key, item in cfgin.items():

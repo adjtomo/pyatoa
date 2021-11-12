@@ -158,14 +158,18 @@ class MapMaker:
                          area_thresh=area_thresh, ax=ax,
                          )
 
-        # By default, no meridan or parallel lines
+        # By default, no meridan or parallel lines  
+        # !!! Set zorder=-2 as a workaround where linewidth=0 was causing .pdf
+        # !!! files to not show maps in some pdf viewers.
+        # !!! see https://github.com/matplotlib.basemap/issues/493
         self.m.drawparallels(np.arange(int(self.lat_min), int(self.lat_max), 1),
                              labels=[1, 0, 0, 0], linewidth=plw,
-                             fontsize=axis_fontsize
+                             fontsize=axis_fontsize, zorder=-2
                              )
         self.m.drawmeridians(
             np.arange(int(self.lon_min), int(self.lon_max) + 1, 1),
-            labels=[0, 0, 0, 1], linewidth=mlw, fontsize=axis_fontsize
+            labels=[0, 0, 0, 1], linewidth=mlw, fontsize=axis_fontsize,
+            zorder=-2
         )
 
         # Create auxiliary parts of the map for clarity
