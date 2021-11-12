@@ -750,22 +750,22 @@ class Gatherer(InternalFetcher, ExternalGetter):
         # Attempt to gather event information internally
         event = self.event_fetch(event_id, **kwargs)
         # If no data internally, query FDSN
+        if event is None and self.Client:
+            event = self.event_get(event_id)
+            # Append focal mechanism or moment tensor information, which is 
+            # likely stored in a separate catalog
+            if try_fm:
+                event = append_focal_mechanism(event, 
+                                               client=self.config.client)
+        # If no event after internal/external checks, throw error
         if event is None:
-
-            if self.Client:
-                event = self.event_get(event_id)
-            if event is None:
-                raise GathererNoDataException(f"no Event information found for "
-                                              f"{self.config.event_id}")
-            else:
-                logger.debug(f"matching event found: "
-                             f"{format_event_name(event)}")
-                self.origintime = event.preferred_origin().time
-                # Append extra information and save event before returning
-                if try_fm:
-                    event = append_focal_mechanism(event, 
-                                                   client=self.config.client)
-        # Save event information to dataset
+            raise GathererNoDataException(f"no Event information found for "
+                                          f"{self.config.event_id}")
+        # Otherwise state success and grab important origin information
+        else:        
+            logger.debug(f"matching event found: {format_event_name(event)}")
+            self.origintime = event.preferred_origin().time
+        # Save event information to dataset if necessary
         if self.ds and self.config.save_to_ds:
             try:
                 self.ds.add_quakeml(event)
@@ -915,6 +915,7 @@ class Gatherer(InternalFetcher, ExternalGetter):
                 else:
                     print(f"{code} data count: {status}")
 
+        #  GCMT
 
     def _save_waveforms_to_dataset(self, st, tag):
         """
@@ -1003,6 +1004,7 @@ def get_gcmt_moment_tensor(origintime, magnitude, time_wiggle_sec=120,
     from obspy import UTCDateTime, read_events
 
     if not isinstance(origintime, UTCDateTime):
+        #  GCMT
         origintime = UTCDateTime(origintime)
 
     # Determine filename using datetime properties
