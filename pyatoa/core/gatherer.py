@@ -1045,3 +1045,21 @@ def get_gcmt_moment_tensor(origintime, magnitude, time_wiggle_sec=120,
         logger.info("GCMT event found matching criteria")
         return cat_filt[0]
 
+
+def get_usgs_moment_tensor(origintime, magnitude, time_wiggle_sec=120,
+                           magnitude_wiggle=0.5):
+    """
+    Query GCMT moment tensor catalog for moment tensor components
+
+    :type origintime: UTCDateTime or str
+    :param origintime: event origin time
+    :type magnitude: float
+    :param magnitude: centroid moment magnitude for event lookup
+    :type time_wiggle_sec: int
+    :param time_wiggle_sec: padding on catalog filtering criteria realted to
+        event origin time
+    :type magnitude_wiggle: float
+    :param magnitude_wiggle: padding on catalog filter for magnitude
+    :rtype: obspy.core.event.Event
+    :return: event object for given earthquake
+    """
