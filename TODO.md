@@ -7,8 +7,11 @@
 #### Features
 - [ ] Introduce event multiprocessing, and multithreaded data gathering.
 - [X] Use Pandas in the Inspector class to do the large-scale data analysis required for all the misfit windows, etc.
+- [ ] Pyaflowa should be able to recreate the entire eval_misfit processing chain contained in SeisFlows
 
 #### Bugs
+- [ ] Regarding plotting windows: at shorter periods, windows become very short so many consecutive windows lead to overlap of window parameters making these values unreadable. For long periods windows are large enough that you can fit in a few characters. May need to aesthetically change how the stats are plotted. Perhaps a second bar below
+each components waveform that only displays window start times and the associated stats? Flexwin plots these values vertically oriented which may help if you only have one or two values. Or longer waveform plots
 - [X] Pyflex value Error is being thrown (pyflex.window_selector() line 427 np.abs(noise).max() zero size array). Very close source-receiver distances means P-wave arrival is within the first wavelength, meaning no noise amplitude calculations can take place, and windows are not picked even for good waveforms. Can this be reconciled in Pyflex, or do we need to exclude distances <100km e.g.?
 *Pyatoa now catches these as known exceptions*
 - [ ] If Manager.gather() is called after Manager.load() the gatherer attribute has no origintime. Also the synthetic tag is incorrectly set. These need to be properly propogated in the load() command.
