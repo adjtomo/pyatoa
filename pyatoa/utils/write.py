@@ -140,7 +140,7 @@ def write_stations_adjoint(ds, iteration, specfem_station_file, step_count=None,
     # Check which stations have adjoint sources
     stas_with_adjsrcs = []
     adj_srcs = ds.auxiliary_data.AdjointSources[format_iter(iteration)]
-    if step_count:
+    if step_count is not None:
         adj_srcs = adj_srcs[format_step(step_count)]
 
     for code in adj_srcs.list():
