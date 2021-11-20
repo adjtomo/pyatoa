@@ -10,11 +10,12 @@ import warnings
 from glob import glob
 from time import sleep
 from copy import deepcopy
+from concurrent.futures import ProcessPoolExecutor
 from pyasdf import ASDFDataSet
+
 from pyatoa.utils.images import merge_pdfs
 from pyatoa.utils.read import read_station_codes
 from pyatoa.utils.asdf.clean import clean_dataset
-from concurrent.futures import ProcessPoolExecutor
 
 
 class IO(dict):
@@ -151,7 +152,7 @@ class PathStructure:
         """Simple call string representation"""
         return self.__str__()
 
-    def standalone(self, workdir=None, datasets=None, figures=None,
+    def standalone(self, workdir=None, data=None, datasets=None, figures=None,
                    logs=None, responses=None, waveforms=None, 
                    synthetics=None, adjsrcs=None, stations_file=None, 
                    event_file=None, **kwargs):
@@ -166,13 +167,13 @@ class PathStructure:
         """
         # General directories that all processes will write to
         self.workdir = workdir or os.getcwd()
-        self.data = data or os.path.join(self,workdir, "DATA") # !!!
+        self.cwd = self.workdir
+
         self.datasets = datasets or os.path.join(self.workdir, "datasets")
         self.figures = figures or os.path.join(self.workdir, "figures")
         self.logs = logs or os.path.join(self.workdir, "logs")
 
         # Event-specific directories that only certain processes will write to
-        self.cwd = os.path.join(self.workdir, "{source_name}")
         self.ds_file = os.path.join(self.datasets, "{source_name}.h5")
         self.event_figures = os.path.join(self.figures, "{source_name}")
         self.synthetics = synthetics or os.path.join(self.workdir, "input",
@@ -181,14 +182,15 @@ class PathStructure:
                                                      )
 
         # General read-only directories that may or may not contain input data
+        self.data = data or os.path.join(self.workdir, "input", "DATA")
         self.responses = responses or os.path.join(self.workdir, "input", 
                                                    "responses")
         self.waveforms = waveforms or os.path.join(self.workdir, "input", 
                                                    "waveforms")
 
         # General write-only directories that processes will output data to
-        self.adjsrcs = adjsrcs or os.path.join(self.workdir, "{source_name}", 
-                                               "adjsrcs")
+        self.adjsrcs = adjsrcs or os.path.join(self.workdir, "adjsrcs", 
+                                               "{source_name}")
 
         # Event-specific read-only STATIONS file that defines stations to be
         # used during the workflow
@@ -369,7 +371,7 @@ class Pyaflowa:
         :return: the total scaled misfit collected during the processing chain
         """
         # Create the event specific configurations and attribute container (io)
-        io = self.setup(source_name)
+        io = self.setup(source_name, **kwargs)
        
         # Allow user to provide a list of codes, else read from station file 
         if codes is None:
@@ -386,6 +388,15 @@ class Pyaflowa:
         scaled_misfit = self.finalize(io)
 
         return scaled_misfit
+
+    def _process_event_multiprocess_true(self, *args, **kwargs):
+        """
+        A hacky way to get around problem in passing additional kwargs through
+        ProcessPoolExecutor. Simply define a new process_event function that 
+        hardcodes the 'multiprocess' parameter controlling logging. To be called
+        by multi_event_process() only.
+        """
+        return self.process_event(*args, **kwargs, multiprocess=True)
         
     def multi_event_process(self, source_names, max_workers=None, **kwargs):
         """
@@ -401,15 +412,19 @@ class Pyaflowa:
             None, automatically determined by system number of processors.
         """
         misfits = {}
+
+        print(f"Beginning parallel processing of {len(source_names)} events...")
+    
         with ProcessPoolExecutor(max_workers=max_workers) as executor:
             for source_name, misfit in zip(
-                    source_names, executor.map(self.process_event,
-                                               source_names, kwargs)):
+                    source_names, 
+                    executor.map(self._process_event_multiprocess_true,
+                                 source_names)
+                    ):
                 misfits[os.path.basename(source_name)] = misfit
-
         return misfits
 
-    def setup(self, source_name):
+    def setup(self, source_name, multiprocess=False):
         """
         One-time basic setup to be run before each event processing step.
         Works by creating Config, logger and  establishing the necessary file 
@@ -463,7 +478,12 @@ class Pyaflowa:
         # Event-specific log files to track processing workflow
         log_fid = f"{config.iter_tag}{config.step_tag}_{config.event_id}.log"
         log_fid = os.path.join(paths.logs, log_fid)
-        event_logger = self._create_event_log_handler(fid=log_fid)
+        if not multiprocess:
+            event_logger = self._create_event_log_handler(fid=log_fid)
+        else:
+            # Multiprocess logging is less verbose due to difficulty of 
+            # parallelizing the logging module.
+            event_logger = self._create_multiprocess_log_handler(fid=log_fid)
 
         # Dict-like object used to keep track of information for a single event
         # processing run, simplifies information passing between functions.
@@ -537,13 +557,22 @@ class Pyaflowa:
         except pyatoa.ManagerError as e:
             io.logger.warning(e)
             return None, io
+        
 
         # Data processing chunk; if fail, continue to plotting
         try:
             # Need to update fix window kwarg based on position in inversion
             kwargs = self._check_fix_windows(**kwargs)
-
             mgmt.flow(**kwargs)
+
+            # Basic log statement, mostly useful for multiprocesses which dont
+            # have access to the more detailed log statements
+            io.logger.info(f"\n\n\tOBS WAVS:  {mgmt.stats.len_obs}"
+                           f"\n\tSYN WAVS:  {mgmt.stats.len_syn}"
+                           f"\n\tWINDOWS:   {mgmt.stats.nwin}"
+                           f"\n\tMISFIT:    {mgmt.stats.misfit:.2f}\n"
+                           )
+    
             status = 1
         except pyatoa.ManagerError as e:
             io.logger.warning(e)
@@ -576,7 +605,7 @@ class Pyaflowa:
             num_new_win = mgmt.stats.nwin or 0
             io.nwin += num_new_win
             io.processed += 1
-
+            
             # SPECFEM wants adjsrcs for each comp, regardless if it has data
             mgmt.write_adjsrcs(path=io.paths.adjsrcs, write_blanks=True)
 
@@ -723,7 +752,9 @@ class Pyaflowa:
 
     def _create_event_log_handler(self, fid):
         """
-        Create a separate log file for each multiprocessed event.
+        Create a separate log file for each embarassingly parallel event.
+        SeisFlows just runs individual Pyaflowa instances so we can use the 
+        package-wide logger.
 
         :type fid: str
         :param fid: the name of the outputted log file
@@ -732,10 +763,12 @@ class Pyaflowa:
         """
         # Propogate logging to individual log files, always overwrite
         handler = logging.FileHandler(fid, mode="w")
+
         # Maintain the same look as the standard console log messages
         logfmt = "[%(asctime)s] - %(name)s - %(levelname)s: %(message)s"
         formatter = logging.Formatter(logfmt, datefmt="%Y-%m-%d %H:%M:%S")
         handler.setFormatter(formatter)
+        handler.setLevel(self.log_level)
 
         for log in ["pyflex", "pyadjoint", "pyatoa"]:
             # Set the overall log level
@@ -745,3 +778,39 @@ class Pyaflowa:
 
         return logger
 
+
+    def _create_multiprocess_log_handler(self, fid):
+        """
+        Create a separate logger and file for each multiprocessed event.
+
+        .. note::
+            Because of the way Pyatoa logging is written, we can't propagate the
+            log statements within the package into Pyaflowa, it just leads to 
+            all the processes writing everything to the same file.
+
+            Instead we turn off the package logger completely and instead create
+            a new 'Pyaflowa' logger which will be more restricted in the info
+            it can provide, but will be able to log separately for each multi
+            process
+
+        :type fid: str
+        :param fid: the name of the outputted log file
+        :rtype: logging.Logger
+        :return: an individualized logging handler
+        """
+        # Turn off the package-wide logger by setting to strictest mode
+        logging.getLogger("pyatoa").setLevel("CRITICAL")
+
+        # Create a new file-specific logger
+        logger = logging.getLogger(f"pyaflowa")
+        logfmt = "[%(asctime)s] - %(name)s - %(levelname)s: %(message)s"
+        formatter = logging.Formatter(logfmt, datefmt="%Y-%m-%d %H:%M:%S")
+
+        # Set handler with specific file name
+        handler = logging.FileHandler(fid, mode="w")
+        handler.setFormatter(formatter)
+
+        logger.setLevel(self.log_level)
+        logger.addHandler(handler)
+
+        return logger
