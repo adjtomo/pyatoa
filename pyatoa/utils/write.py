@@ -4,6 +4,7 @@ For writing various output files used by Pyatoa, Specfem and Seisflows
 import os
 import glob
 import numpy as np
+from obspy.core.inventory.channel import Channel
 from pyatoa.utils.form import (format_event_name, format_iter, format_step, 
                                channel_code)
 
@@ -42,6 +43,88 @@ def write_stations(inv, fid="./STATIONS", elevation=False, burial=0.):
 
                 f.write(f"{sta.code:>6}{net.code:>6}{lat:12.4f}{lon:12.4f}"
                         f"{elv:7.1f}{burial:7.1f}\n")
+
+
+def write_inv_seed(inv, path="./", dir_structure="{sta}.{net}",
+                   file_template="RESP.{net}.{sta}.{loc}.{cha}",
+                   components="ZNE", **kwargs):
+    """
+    Pyatoa requires stations to be discoverable in SEED format, i.e., in a data
+    center repository. This structure dictates that each component of each 
+    station has its own individual StationXML file, saved in a specific 
+    directory structure with a unique file naming schema. 
+
+    This utility is useful for creating the necessary StationXML files for 
+    temporary or synthetic stations which are not discoverable via
+    FDSN or through datacenters.
+
+    .. note::
+        kwargs are passed to obspy.core.inventory.channel.Channel
+
+    :type path: str
+    :param path: location to save StationXML files to
+    :type dir_structure: str
+    :param dir_structure: template for directory structure, likely should not 
+        need to change from the default 
+    :type file_template: str
+    :param file_template: template for file naming, likely should not change 
+        from default template
+    :type channels: str
+    :param channels: OPTIONAL, if inventory does not contain channels (e.g.,
+        if read from a SPECFEM STATIONS file), channels will be generated here.
+    """
+    # Explicitely defined default channel values for generating channels on
+    # the fly when none are provided by the inventory
+    channel_code = kwargs.get("channel_code", "HX{comp}")
+    location_code = kwargs.get("location_code", "")
+    elevation = kwargs.get("elevation", 0.)
+    depth = kwargs.get("depth", 0.)
+
+    assert(os.path.exists(path)), f"output path does not exist: {path}"
+    
+    for net in inv:
+        for sta in net:
+            # Create the directory to store individual channels
+            sta_dir = os.path.join(path, dir_structure.format(sta=sta.code, 
+                                                              net=net.code)
+                                   )
+            if not os.path.exists(sta_dir):
+                os.makedirs(sta_dir)
+          
+            # If the station has no channels inherently, generate them on the 
+            # fly based on default and user-defined information 
+            if len(sta) == 0:
+                channel_list = []
+                for comp in components:
+                    cha_ = Channel(code=channel_code.format(comp=comp),
+                                   location_code=location_code,
+                                   latitude=sta.latitude, 
+                                   longitude=sta.longitude, elevation=elevation,
+                                   depth=depth, **kwargs
+                                   )
+                    channel_list.append(cha_)
+                sta.channels = channel_list
+
+            # Cycle through the channels and generate individual StationXMLs
+            for cha in sta:
+                # Select the channel out of the inventory
+                channel_inv = inv.select(network=net.code, station=sta.code,
+                                         channel=cha.code
+                                         )
+                # If select returns properly, write out channel as StationXML
+                if channel_inv:
+                    fid_out = os.path.join(
+                        path, 
+                        dir_structure.format(sta=sta.code, net=net.code),
+                        file_template.format(net=net.code, sta=sta.code,
+                                             loc=cha.location_code,
+                                             cha=cha.code)
+                    )
+                    channel_inv.write(fid_out, format="STATIONXML")
+                else:
+                    print("{}.{} could not be selected".format(sta.code,
+                                                               cha.code)
+                          )
 
 
 def write_sem(st, unit, path="./", time_offset=0):
