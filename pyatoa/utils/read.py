@@ -8,6 +8,7 @@ import numpy as np
 from obspy import Stream, Trace, UTCDateTime, Inventory
 from obspy.core.inventory.network import Network
 from obspy.core.inventory.station import Station
+from obspy.core.event import Event
 
 
 def read_fortran_binary(path):
@@ -191,9 +192,36 @@ def read_station_codes(path_to_stations, loc="??", cha="HH?"):
     return codes
 
 
+def read_specfem2d_source(path_to_source, default_time="2000-01-01T00:00:00"):
+    """
+    Create a barebones ObsPy.Event object from a SPECFEM2D Source file. 
+    """
+    with open(path_to_source, "r") as f:
+        lines = f.readlines()
+   
+    # Place values from file into dict
+    source_dict = {}
+    for line in lines:
+        # Skip comments
+        if line[0] == "#":
+            continue
+        key, _, val, *_ = line.split()
+        source_dict[key] = val
+
+    # First line has the source name
+    source_dict["source_id"] = lines[0].strip().split(" ")[1]
+    
+    event = Source() 
+    event.resource_id = "pyatoa:source/{source_dict['source_id']}"
+    event.time = default_time
+    event.longitude = source_dict["xs"]
+    event.latitude = source_dict["xs"]
+    event.depth = source_dict["zs"]
+
+
 def read_specfem_vtk(path_to_vtk):
     """
-    Read the unstructured grid VTK files that are output by Specfem for model,
+    Read the unstructured grid VTlK files that are output by Specfem for model,
     gradient, and kernel visualizations. Returns a header as a dictionary, and
     the lines of the data file. Useful for manipulating VTK files in place.
 

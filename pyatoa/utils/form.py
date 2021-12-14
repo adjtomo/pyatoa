@@ -91,6 +91,8 @@ def format_event_name(ds_or_event):
         # USGS ANSS ComCat: quakeml:us.anss.org/event/20005ysu
         elif "ANSS" in rid_up:
             return rid.split("event/")[-1]
+        elif "PYATOA" in rid_up:
+            return rid.split("source/")[-1]
         else:
             raise NotImplementedError(f"Unknown resource id format {rid}, "
                                       "Please raise a GitHub issue and the"
