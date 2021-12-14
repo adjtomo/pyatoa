@@ -424,7 +424,8 @@ class Pyaflowa:
                 misfits[os.path.basename(source_name)] = misfit
         return misfits
 
-    def setup(self, source_name, multiprocess=False, **kwargs):
+    def setup(self, source_name, multiprocess=False, 
+              event_id_prefix="CMTSOLUTION", **kwargs):
         """
         One-time basic setup to be run before each event processing step.
         Works by creating Config, logger and  establishing the necessary file 
@@ -439,6 +440,13 @@ class Pyaflowa:
 
         :type cwd: str
         :param cwd: current event-specific working directory within SeisFlows
+        :type multiprocess: bool
+        :param multiprocess: flag to turn on parallel processing for a given 
+            event --- uses concurrent futures to perform multiprocessing
+        :type event_id_prefix: str
+        :param event_id_prefix: tells the gatherer what the prefix for events
+            will be. If doing earthquakes, usually 'CMTSOLUTION', but can also
+            be 'FORCESOLUTION' or 'SOURCE' (specfem2d)
         :rtype: pyatoa.core.pyaflowa.IO
         :return: dictionary like object that contains all the necessary
             information to perform processing for a single event
@@ -470,10 +478,8 @@ class Pyaflowa:
             # Write event information to the dataset, stop the workflow if 
             # event information cant be found as this will lead to failure later
             mgmt = pyatoa.Manager(ds=ds, config=config)
-            # !!! Hardcoded in that the event file is named 'CMTSOLUTION'
-            # !!! Will this be the case all the time? 
             mgmt.gather(choice="event", event_id="", 
-                        event_id_prefix="CMTSOLUTION")
+                        event_id_prefix=event_id_prefix)
 
         # Event-specific log files to track processing workflow
         log_fid = f"{config.iter_tag}{config.step_tag}_{config.event_id}.log"
