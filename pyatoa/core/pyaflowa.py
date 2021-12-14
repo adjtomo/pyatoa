@@ -424,7 +424,7 @@ class Pyaflowa:
                 misfits[os.path.basename(source_name)] = misfit
         return misfits
 
-    def setup(self, source_name, multiprocess=False):
+    def setup(self, source_name, multiprocess=False, **kwargs):
         """
         One-time basic setup to be run before each event processing step.
         Works by creating Config, logger and  establishing the necessary file 

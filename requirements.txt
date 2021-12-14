@@ -1,7 +1,6 @@
 obspy==1.2.2
 pyasdf==0.7.2
 pandas==1.1.0
-basemap==1.2.0
 pypdf2==1.26.0
 matplotlib==3.0.3
 pyyaml==5.4
