@@ -382,7 +382,7 @@ class Source:
     Essentially this class tries to mimic the ObsPy Event object and return
     required information that is queried throughout a Pyatoa workflow
     """
-    def __init__(self, resource_id, origin_time, x, y, depth):
+    def __init__(self, resource_id, origin_time, longitude, latitude, depth):
         """
         Only define the essential values required of a source
 
@@ -397,15 +397,22 @@ class Source:
         :type depth: float
         :param depth: depth in km, inverted Z axis, positive values means deeper
         """
-        self.resource_id = resource_id
+        self.id = resource_id
         self.time = UTCDateTime(origin_time)
-        self.longitude = x
-        self.latitude = y
-        self.depth = depth
+        self.longitude = float(longitude)
+        self.latitude = float(latitude)
+        self.depth = float(depth)
 
     def preferred_origin(self):
         """
         Convenience function to mimic behavior of ObsPy Event object
+        """
+        return self
+
+    @property
+    def resource_id(self):
+        """
+        Convenenience function to mimic behavior of ObsPy Event object
         """
         return self
 

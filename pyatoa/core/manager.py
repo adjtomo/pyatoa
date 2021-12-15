@@ -215,7 +215,7 @@ class Manager:
 
         # Determine the resource identifier for the Event object
         if self.stats.event_id is None and self.event is not None:
-            self.stats.event_id = self.event.resource_id
+            self.stats.event_id = self.event.resource_id.id
 
         # Get the network and station name from the Inventory object
         if self.stats.inv_name is None and self.inv is not None:

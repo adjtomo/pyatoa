@@ -9,6 +9,7 @@ into the correct formats.
 import os
 from pyasdf import ASDFDataSet
 from obspy.core.event import Event
+from pyatoa.utils.srcrcv import Source
 
 
 def format_iter(iteration):
@@ -69,7 +70,7 @@ def format_event_name(ds_or_event):
     :rtype: str
     :return: the event name to be used for naming schema in the workflow
     """
-    if isinstance(ds_or_event, Event):
+    if isinstance(ds_or_event, (Event, Source)):
         # Deals with the different formats of data center event ids
         rid = ds_or_event.resource_id.id
         rid_up = rid.upper()

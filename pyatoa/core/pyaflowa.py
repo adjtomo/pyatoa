@@ -424,8 +424,7 @@ class Pyaflowa:
                 misfits[os.path.basename(source_name)] = misfit
         return misfits
 
-    def setup(self, source_name, multiprocess=False, 
-              event_id_prefix="CMTSOLUTION", **kwargs):
+    def setup(self, source_name, multiprocess=False, **kwargs):
         """
         One-time basic setup to be run before each event processing step.
         Works by creating Config, logger and  establishing the necessary file 
@@ -479,7 +478,7 @@ class Pyaflowa:
             # event information cant be found as this will lead to failure later
             mgmt = pyatoa.Manager(ds=ds, config=config)
             mgmt.gather(choice="event", event_id="", 
-                        event_id_prefix=event_id_prefix)
+                        prefix=self.source_prefix)
 
         # Event-specific log files to track processing workflow
         log_fid = f"{config.iter_tag}{config.step_tag}_{config.event_id}.log"

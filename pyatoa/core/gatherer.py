@@ -24,7 +24,8 @@ from obspy import Stream, read, read_inventory, read_events
 from obspy.clients.fdsn.header import FDSNException
 
 from pyatoa import logger
-from pyatoa.utils.read import read_sem
+from pyatoa.utils.read import (read_sem, read_specfem2d_source, 
+                               read_forcesolution)
 from pyatoa.utils.form import format_event_name
 from pyatoa.utils.calculate import overlapping_days
 from pyatoa.utils.srcrcv import merge_inventories
@@ -309,7 +310,8 @@ class InternalFetcher:
         net, sta, loc, cha = code.split(".")
         return self.ds.waveforms[f"{net}_{sta}"][tag].select(component=cha[-1])
 
-    def fetch_event_by_dir(self, event_id, **kwargs):
+    def fetch_event_by_dir(self, event_id, prefix="", suffix="", format_=None, 
+                           **kwargs):
         """
         Fetch event information via directory structure on disk. Developed to
         parse CMTSOLUTION and QUAKEML files, but theoretically accepts any 
@@ -332,23 +334,16 @@ class InternalFetcher:
             will be tacked onto this 
         :rtype event: obspy.core.event.Event or None
         :return event: event object if found, else None.
-
-        Keyword Arguments
-        ::
-            str event_id_prefix
-                Prefix to prepend to event id for file name searching.
-                Wildcards are okay.
-            str event_id_suffix
-                Suffix to append to event id for file name searching.
-                Wildcards are okay.
-            str format
-                Expected format of the file to read, e.g., 'QUAKEML', passed to
-                ObsPy read_events. NoneType means read_events() will guess
+        :type prefix: str
+        :param prefix Prefix to prepend to event id for file name searching.
+            Wildcards are okay.
+        :type suffix: str
+        :param suffix: Suffix to append to event id for file name searching.
+            Wildcards are okay.
+        :type format_: str or NoneType
+        :param format_: Expected format of the file to read, e.g., 'QUAKEML', 
+            passed to ObsPy read_events. NoneType means read_events() will guess
         """
-        event_id_prefix = kwargs.get("event_id_prefix", "")
-        event_id_suffix = kwargs.get("event_id_suffix", "")
-        format = kwargs.get("format", None)
-
         # Ensure that the paths are a list so that iterating doesnt accidentally
         # try to iterate through a string.
         paths = self.config.paths["events"]
@@ -360,12 +355,21 @@ class InternalFetcher:
             if not os.path.exists(path_):
                 continue
             # Search for available event files
-            fid = os.path.join(path_, 
-                               f"{event_id_prefix}{event_id}{event_id_suffix}")
+            fid = os.path.join(path_, f"{prefix}{event_id}{suffix}")
             for filepath in glob.glob(fid):
                 if os.path.exists(filepath):
                     try:
-                        cat = read_events(filepath, format=format)
+                        # Allow input of various types of source files
+                        if "SOURCE" in prefix:
+                            logger.debug("reading source as SPECFEM2D SOURCE")
+                            cat = [read_specfem2d_source(filepath)]
+                        elif "FORCESOLUTION" in prefix:
+                            logger.debug("reading source as FORCESOLUTION")
+                            cat = [read_forcesolution(filepath)]
+                        else:
+                            logger.debug("reading source using ObsPy")
+                            cat = read_events(filepath, format=format_)
+
                         if len(cat) != 1:
                             logger.warning(
                                 f"{filepath} event file contains more than one "
