@@ -424,7 +424,7 @@ class Pyaflowa:
                 misfits[os.path.basename(source_name)] = misfit
         return misfits
 
-    def setup(self, source_name, multiprocess=False):
+    def setup(self, source_name, multiprocess=False, **kwargs):
         """
         One-time basic setup to be run before each event processing step.
         Works by creating Config, logger and  establishing the necessary file 
@@ -432,7 +432,7 @@ class Pyaflowa:
         sets up the IO attribute dictionary to be carried around through the 
         processing procedure.
 
-        ..note::
+        .. note::
             IO object is not made an internal attribute because multiprocessing
             may require multiple, different IO objects to exist simultaneously,
             so they need to be passed into each of the functions.
