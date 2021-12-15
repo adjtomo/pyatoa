@@ -432,7 +432,7 @@ class Pyaflowa:
         sets up the IO attribute dictionary to be carried around through the 
         processing procedure.
 
-        ..note::
+        .. note::
             IO object is not made an internal attribute because multiprocessing
             may require multiple, different IO objects to exist simultaneously,
             so they need to be passed into each of the functions.
