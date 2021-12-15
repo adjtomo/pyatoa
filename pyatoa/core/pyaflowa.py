@@ -477,8 +477,10 @@ class Pyaflowa:
             # Write event information to the dataset, stop the workflow if 
             # event information cant be found as this will lead to failure later
             mgmt = pyatoa.Manager(ds=ds, config=config)
-            mgmt.gather(choice="event", event_id="", 
-                        prefix=self.source_prefix)
+            # !!! Empty event name because SeisFlows has already copied the
+            # !!! the source to the DATA directory and named it generically 
+            # !!! after the prefix so we don't need to search specifically
+            mgmt.gather(choice="event", event_id="", prefix=self.source_prefix)
 
         # Event-specific log files to track processing workflow
         log_fid = f"{config.iter_tag}{config.step_tag}_{config.event_id}.log"

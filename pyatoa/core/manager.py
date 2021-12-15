@@ -489,6 +489,11 @@ class Manager:
             bool try_fm:
                 Try to retrieve and append focal mechanism information to the
                 Event object.
+            str prefix:
+                Prefix for event id when searching for event information,
+                can be used to search ordered files e.g., CMTSOLUTION_001
+            str suffix:
+                Suffix for event id when searching for event information
             str station_level:
                 The level of the station metadata if retrieved using the ObsPy
                 Client. Defaults to 'response'
@@ -522,8 +527,6 @@ class Manager:
                 The naming template of synthetic waveforms defaults to:
                 "{net}.{sta}.*{cmp}.sem{syn_unit}"
         """
-        try_fm = kwargs.get("try_fm", True)
-
         # Default to gathering all data
         if choice is None:
             choice = ["event", "inv", "st_obs", "st_syn"]
@@ -532,8 +535,7 @@ class Manager:
             if "event" in choice and self.event is None:
                 if event_id is None:
                     event_id = self.config.event_id
-                self.event = self.gatherer.gather_event(event_id=event_id,
-                                                        try_fm=try_fm, **kwargs)
+                self.event = self.gatherer.gather_event(event_id, **kwargs)
             if code is not None:
                 logger.info(f"gathering data for {code}")
                 if "st_obs" in choice:
