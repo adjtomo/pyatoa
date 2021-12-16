@@ -246,6 +246,9 @@ class PathStructure:
         :rtype: pyatoa.core.pyaflowa.PathStructure
         :return: a formatted PathStructure object
         """
+        assert("source_name" in kwargs.keys()), \
+                f"format() missing required argument 'source_name' (pos 1)"
+
         # Ensure we are not overwriting the template path structure
         path_structure_copy = deepcopy(self)
 
@@ -482,8 +485,13 @@ class Pyaflowa:
             # !!! after the prefix so we don't need to search specifically
             mgmt.gather(choice="event", event_id="", prefix=self.source_prefix)
 
-        # Event-specific log files to track processing workflow
-        log_fid = f"{config.iter_tag}{config.step_tag}_{config.event_id}.log"
+        # Event-specific log files to track processing workflow. If no iteration
+        # given, dont tag with iter/step, likely not an inversion scenario
+        if config.iter_tag:
+            log_fid = \
+                     f"{config.iter_tag}{config.step_tag}_{config.event_id}.log"
+        else:
+            log_fid = f"{config.event_id}.log"
         log_fid = os.path.join(paths.logs, log_fid)
         if not multiprocess:
             event_logger = self._create_event_log_handler(fid=log_fid)
@@ -775,12 +783,12 @@ class Pyaflowa:
         logfmt = "[%(asctime)s] - %(name)s - %(levelname)s: %(message)s"
         formatter = logging.Formatter(logfmt, datefmt="%Y-%m-%d %H:%M:%S")
         handler.setFormatter(formatter)
-        handler.setLevel(self.log_level)
+        handler.setLevel(self.log_level.upper())
 
         for log in ["pyflex", "pyadjoint", "pyatoa"]:
             # Set the overall log level
             logger = logging.getLogger(log)
-            logger.setLevel(self.log_level)
+            logger.setLevel(self.log_level.upper())
             logger.addHandler(handler)
 
         return logger
