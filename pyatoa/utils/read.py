@@ -185,6 +185,12 @@ def read_station_codes(path_to_stations, loc="??", cha="HH?"):
 
     codes = []
     stations = np.loadtxt(path_to_stations, dtype="str")
+
+    # Deal with the special case where the stations file is only 1 station long
+    # otherwise we end up iterating over a string and not an ndarray
+    if not isinstance(stations[0], np.ndarray):
+        stations = [stations]
+
     for station in stations:
         sta = station[0]
         net = station[1] 
