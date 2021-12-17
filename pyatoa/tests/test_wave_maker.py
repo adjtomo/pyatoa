@@ -82,83 +82,75 @@ def mgmt(config, event, st_obs, st_syn, inv):
     return mgmt
 
 
-def test_setup_plot(mgmt):
+@pytest.fixture
+def wm(mgmt):
     """
-    Make sure the correct number of axes are established
+    WaveMaker object to create waveform figures
     """
     wm = WaveMaker(mgmt=mgmt)
     wm.setup_plot(dpi=100, figsize=(140, 60))
+    return wm
+
+
+def test_setup_plot(wm):
+    """
+    Make sure the correct number of axes are established
+    """
     assert(len(wm.axes) == len(wm.twaxes) == 3)
 
 
-def test_plot_waveforms(mgmt):
+def test_plot_waveforms(wm):
     """
     Plot waveforms by themselves
     """
-    wm = WaveMaker(mgmt=mgmt)
-    wm.setup_plot(dpi=100, figsize=(140,60))
     for i, obs in enumerate(wm.st_obs):
         comp = obs.stats.channel[-1]
         syn = wm.st_syn.select(component=comp)[0]
-        wm.plot_waveforms(ax=axes[i], obs=obs, syn=syn)
-        wm.plot_amplitude_threshold(ax=axes[i], obs=obs)
-    plt.show()
+        wm.plot_waveforms(ax=wm.axes[i], obs=obs, syn=syn)
+        wm.plot_amplitude_threshold(ax=wm.axes[i], obs=obs)
     plt.close()
 
 
-def test_plot_stalta(mgmt):
+def test_plot_stalta(wm):
     """
     Plot STALTA waveforms by themselves
     """
-    wm = WaveMaker(mgmt=mgmt)
-    _, axes, _ = wm.setup_plot()
     for i, stalta in enumerate(wm.staltas.values()):
-        wm.plot_stalta(ax=axes[i], stalta=stalta)
-    plt.show()
+        wm.plot_stalta(ax=wm.axes[i], stalta=stalta)
     plt.close()
 
 
-def test_plot_windows(mgmt):
+def test_plot_windows(wm):
     """
-    Plot STALTA waveforms by themselves
+    Test plotting windows
     """
-    wm = WaveMaker(mgmt=mgmt)
-    _, axes, _ = wm.setup_plot()
     for i, windows in enumerate(wm.windows.values()):
-        wm.plot_windows(ax=axes[i], windows=windows)
-    plt.show()
+        wm.plot_windows(ax=wm.axes[i], windows=windows)
     plt.close() 
 
 
-def test_plot_adjsrcs(mgmt):
+def test_plot_adjsrcs(wm):
     """
-    Plot STALTA waveforms by themselves
+    Test plotting adjoint sources
     """
-    wm = WaveMaker(mgmt=mgmt)
-    _, _, twaxes = wm.setup_plot()
     for i, adjsrc in enumerate(wm.adjsrcs.values()):
-        wm.plot_adjsrcs(ax=twaxes[i], adjsrc=adjsrc)
-    plt.show()
+        wm.plot_adjsrcs(ax=wm.twaxes[i], adjsrc=adjsrc)
     plt.close()
 
 
-def test_plot_rejected_windows(mgmt):
+def test_plot_rejected_windows(wm):
     """
-    Plot STALTA waveforms by themselves
+    Test plotting rejected windows 
     """
-    wm = WaveMaker(mgmt=mgmt)
-    _, axes, _ = wm.setup_plot()
-    for i, rejwins in enumerate(wm.rejected_windows.values()):
-        wm.plot_rejected_windows(ax=axes[i], windows=rejwins)
-    plt.show()
+    for i, rejwins in enumerate(wm.rejwins.values()):
+        wm.plot_rejected_windows(ax=wm.axes[i], rejwin=rejwins)
     plt.close()
 
 
-def test_plot(mgmt):
+def test_plot(wm):
     """
-    Plot STALTA waveforms by themselves
+    Test the main plotting function
     """
-    wm = WaveMaker(mgmt=mgmt, show=True, save=None)
-    wm.plot()
+    wm.plot(show=False, save=False)
 
 
