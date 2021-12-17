@@ -354,7 +354,8 @@ class Pyaflowa:
         self.map_corners = map_corners
         self.log_level = log_level
 
-    def process_event(self, source_name, codes=None, **kwargs):
+    def process_event(self, source_name, codes=None, loc="??", cha="HH?",
+                      **kwargs):
         """
         The main processing function for Pyaflowa misfit quantification.
 
@@ -370,6 +371,18 @@ class Pyaflowa:
         :type codes: list of str
         :param codes: list of station codes to be used for processing. If None,
             will read station codes from the provided STATIONS file
+        :type loc: str
+        :param loc: if codes is None, Pyatoa will generate station codes based 
+            on the SPECFEM STATIONS file, which does not contain location info.
+            This allows user to set the location values manually when building
+            the list of station codes. Defaults to wildcard '??', which is 
+            usually acceptable
+        :type cha: str
+        :param cha: if codes is None, Pyatoa will generate station codes based
+            on the SPECFEM STATIONS file, which does not contain channel info. 
+            This variable allows the user to set channel searching manually,
+            wildcards okay. Defaults to 'HH?' for high-gain, high-sampling rate
+            broadband seismometers, but this is dependent on the available data.
         :rtype: float
         :return: the total scaled misfit collected during the processing chain
         """
@@ -379,7 +392,7 @@ class Pyaflowa:
         # Allow user to provide a list of codes, else read from station file 
         if codes is None:
             codes = read_station_codes(io.paths.stations_file, 
-                                       loc="??", cha="HH?")
+                                       loc=loc, cha=cha)
 
         # Open the dataset as a context manager and process all events in serial
         with ASDFDataSet(io.paths.ds_file) as ds:
@@ -606,6 +619,7 @@ class Pyaflowa:
                                  net, sta + ".pdf"]
                                 )
             save = os.path.join(io.paths.event_figures, plot_fid)
+            io.logger.info(f"saving figure to: {save}")
             mgmt.plot(corners=self.map_corners, show=False, save=save)
 
             # If a plot is made, keep track so it can be merged later on
@@ -704,6 +718,8 @@ class Pyaflowa:
         :param cwd: current SPECFEM run directory within the larger SeisFlows
             directory structure
         """
+        io.logger.info("generating STATIONS_ADJOINT file for SPECFEM")
+
         # These paths follow the structure of SeisFlows and SPECFEM
         adjoint_traces = glob(os.path.join(io.paths.adjsrcs, "*.adj"))
 
@@ -739,6 +755,7 @@ class Pyaflowa:
             path in this function
         """
         if io.plot_fids:
+            io.logger.info("creating single .pdf file of all output figures")
             # e.g. i01s00_2018p130600.pdf
             iterstep = f"{io.config.iter_tag}{io.config.step_tag}"
             output_fid = f"{iterstep}_{io.config.event_id}.pdf"

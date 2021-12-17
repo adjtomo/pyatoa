@@ -772,7 +772,6 @@ class Gatherer(InternalFetcher, ExternalGetter):
                                           f"{self.config.event_id}")
         # Otherwise state success and grab important origin information
         else:        
-            logger.debug(f"matching event found: {format_event_name(event)}")
             self.origintime = event.preferred_origin().time
         # Save event information to dataset if necessary
         if self.ds and self.config.save_to_ds:

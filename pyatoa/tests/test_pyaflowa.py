@@ -3,10 +3,12 @@ Test the workflow management class Pyaflowa and its supporting classes
 PathStructure and IO
 """
 import os
+import glob
 import shutil
 import pytest
 import yaml
 from pyasdf import ASDFDataSet
+from pyatoa import Manager
 from pyatoa.core.pyaflowa import IO, PathStructure, Pyaflowa
 
 
@@ -27,6 +29,14 @@ def source_name():
     Example path structure for Pyaflowa
     """
     return "2018p130600"
+
+
+@pytest.fixture
+def station_name():
+    """
+    Example path structure for Pyaflowa
+    """
+    return "NZ.BFZ.??.HH?"
 
 
 @pytest.fixture
@@ -162,7 +172,33 @@ def test_pyaflowa_setup(source_name, PAR, PATH):
 
 
 def test_pyaflowa_process_station(tmpdir, seisflows_workdir, seed_data,
-                                  source_name, PAR, PATH):
+                                  source_name, station_name, PAR, PATH):
+    """
+    Test the single station processing function 
+    """
+    # Turn off client to avoid searching FDSN, force local data search
+    PAR.CLIENT = None
+    PATH.DATA = tmpdir.strpath
+    pyaflowa = Pyaflowa(structure="seisflows", sfpaths=PATH, sfpar=PAR,
+                        iteration=1, step_count=0)
+
+    # Copy working directory to tmpdir to avoid creating unnecessary files
+    shutil.copytree(src=seisflows_workdir, dst=os.path.join(tmpdir, "scratch"))
+    shutil.copytree(src=seed_data, dst=os.path.join(tmpdir, "seed"))
+
+    # Set up the same machinery as process_event()
+    io = pyaflowa.setup(source_name)
+    with ASDFDataSet(io.paths.ds_file) as ds:
+        mgmt = Manager(ds=ds, config=io.config)
+        mgmt, io = pyaflowa.process_station(mgmt=mgmt, code="NZ.BFZ.??.???", 
+                                            io=io)
+
+    assert(io.nwin == mgmt.stats.nwin == 3)
+    assert(io.misfit == pytest.approx(65.39037, .001))
+
+
+def test_pyaflowa_process_event(tmpdir, seisflows_workdir, seed_data,
+                                source_name, PAR, PATH):
     """
     Test the actual machinery of processing a full station using Pyaflowa.
     Don't use FDSN gathering for simplicity, simply place all the requisite
@@ -175,7 +211,7 @@ def test_pyaflowa_process_station(tmpdir, seisflows_workdir, seed_data,
     PAR.CLIENT = None
     PATH.DATA = tmpdir.strpath
     pyaflowa = Pyaflowa(structure="seisflows", sfpaths=PATH, sfpar=PAR,
-                        iteration=1, step_count=1)
+                        iteration=1, step_count=0)
 
     # Copy working directory to tmpdir to avoid creating unnecessary files
     shutil.copytree(src=seisflows_workdir, dst=os.path.join(tmpdir, "scratch"))
@@ -184,4 +220,12 @@ def test_pyaflowa_process_station(tmpdir, seisflows_workdir, seed_data,
     misfit = pyaflowa.process_event(source_name=source_name, 
                                     fix_windows=PAR.FIX_WINDOWS,
                                     event_id_prefix=PAR.SOURCE_PREFIX)
+
+    # Make sure misfit value comes out right to a certain rounding error
+    assert(misfit == pytest.approx(10.898, .001))
+
+    # Make sure finalization files are created, including adj srcs and sta file
+    paths = pyaflowa.path_structure.format(source_name=source_name)
+    assert(len(glob.glob(os.path.join(paths.adjsrcs, "*"))) == 3)
+    assert(os.path.exists(os.path.join(paths.data, "STATIONS_ADJOINT")))
 

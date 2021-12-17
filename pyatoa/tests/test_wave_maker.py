@@ -87,8 +87,8 @@ def test_setup_plot(mgmt):
     Make sure the correct number of axes are established
     """
     wm = WaveMaker(mgmt=mgmt)
-    f, axes, twaxes = wm.setup_plot()
-    assert(len(axes) == len(twaxes) == 3)
+    wm.setup_plot(dpi=100, figsize=(140, 60))
+    assert(len(wm.axes) == len(wm.twaxes) == 3)
 
 
 def test_plot_waveforms(mgmt):
@@ -96,7 +96,7 @@ def test_plot_waveforms(mgmt):
     Plot waveforms by themselves
     """
     wm = WaveMaker(mgmt=mgmt)
-    _, axes, _ = wm.setup_plot()
+    wm.setup_plot(dpi=100, figsize=(140,60))
     for i, obs in enumerate(wm.st_obs):
         comp = obs.stats.channel[-1]
         syn = wm.st_syn.select(component=comp)[0]
