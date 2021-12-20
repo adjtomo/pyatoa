@@ -246,6 +246,9 @@ class PathStructure:
         :rtype: pyatoa.core.pyaflowa.PathStructure
         :return: a formatted PathStructure object
         """
+        assert("source_name" in kwargs.keys()), \
+                f"format() missing required argument 'source_name' (pos 1)"
+
         # Ensure we are not overwriting the template path structure
         path_structure_copy = deepcopy(self)
 
@@ -351,7 +354,8 @@ class Pyaflowa:
         self.map_corners = map_corners
         self.log_level = log_level
 
-    def process_event(self, source_name, codes=None, **kwargs):
+    def process_event(self, source_name, codes=None, loc="??", cha="HH?",
+                      **kwargs):
         """
         The main processing function for Pyaflowa misfit quantification.
 
@@ -367,6 +371,18 @@ class Pyaflowa:
         :type codes: list of str
         :param codes: list of station codes to be used for processing. If None,
             will read station codes from the provided STATIONS file
+        :type loc: str
+        :param loc: if codes is None, Pyatoa will generate station codes based 
+            on the SPECFEM STATIONS file, which does not contain location info.
+            This allows user to set the location values manually when building
+            the list of station codes. Defaults to wildcard '??', which is 
+            usually acceptable
+        :type cha: str
+        :param cha: if codes is None, Pyatoa will generate station codes based
+            on the SPECFEM STATIONS file, which does not contain channel info. 
+            This variable allows the user to set channel searching manually,
+            wildcards okay. Defaults to 'HH?' for high-gain, high-sampling rate
+            broadband seismometers, but this is dependent on the available data.
         :rtype: float
         :return: the total scaled misfit collected during the processing chain
         """
@@ -376,7 +392,7 @@ class Pyaflowa:
         # Allow user to provide a list of codes, else read from station file 
         if codes is None:
             codes = read_station_codes(io.paths.stations_file, 
-                                       loc="??", cha="HH?")
+                                       loc=loc, cha=cha)
 
         # Open the dataset as a context manager and process all events in serial
         with ASDFDataSet(io.paths.ds_file) as ds:
@@ -439,6 +455,13 @@ class Pyaflowa:
 
         :type cwd: str
         :param cwd: current event-specific working directory within SeisFlows
+        :type multiprocess: bool
+        :param multiprocess: flag to turn on parallel processing for a given 
+            event --- uses concurrent futures to perform multiprocessing
+        :type event_id_prefix: str
+        :param event_id_prefix: tells the gatherer what the prefix for events
+            will be. If doing earthquakes, usually 'CMTSOLUTION', but can also
+            be 'FORCESOLUTION' or 'SOURCE' (specfem2d)
         :rtype: pyatoa.core.pyaflowa.IO
         :return: dictionary like object that contains all the necessary
             information to perform processing for a single event
@@ -470,13 +493,18 @@ class Pyaflowa:
             # Write event information to the dataset, stop the workflow if 
             # event information cant be found as this will lead to failure later
             mgmt = pyatoa.Manager(ds=ds, config=config)
-            # !!! Hardcoded in that the event file is named 'CMTSOLUTION'
-            # !!! Will this be the case all the time? 
-            mgmt.gather(choice="event", event_id="", 
-                        event_id_prefix="CMTSOLUTION")
+            # !!! Empty event name because SeisFlows has already copied the
+            # !!! the source to the DATA directory and named it generically 
+            # !!! after the prefix so we don't need to search specifically
+            mgmt.gather(choice="event", event_id="", prefix=self.source_prefix)
 
-        # Event-specific log files to track processing workflow
-        log_fid = f"{config.iter_tag}{config.step_tag}_{config.event_id}.log"
+        # Event-specific log files to track processing workflow. If no iteration
+        # given, dont tag with iter/step, likely not an inversion scenario
+        if config.iter_tag:
+            log_fid = \
+                     f"{config.iter_tag}{config.step_tag}_{config.event_id}.log"
+        else:
+            log_fid = f"{config.event_id}.log"
         log_fid = os.path.join(paths.logs, log_fid)
         if not multiprocess:
             event_logger = self._create_event_log_handler(fid=log_fid)
@@ -588,6 +616,7 @@ class Pyaflowa:
                                  net, sta + ".pdf"]
                                 )
             save = os.path.join(io.paths.event_figures, plot_fid)
+            io.logger.info(f"saving figure to: {save}")
             mgmt.plot(corners=self.map_corners, show=False, save=save)
 
             # If a plot is made, keep track so it can be merged later on
@@ -690,6 +719,8 @@ class Pyaflowa:
         :param cwd: current SPECFEM run directory within the larger SeisFlows
             directory structure
         """
+        io.logger.info("generating STATIONS_ADJOINT file for SPECFEM")
+
         # These paths follow the structure of SeisFlows and SPECFEM
         adjoint_traces = glob(os.path.join(io.paths.adjsrcs, "*.adj"))
 
@@ -725,6 +756,7 @@ class Pyaflowa:
             path in this function
         """
         if io.plot_fids:
+            io.logger.info("creating single .pdf file of all output figures")
             # e.g. i01s00_2018p130600.pdf
             iterstep = f"{io.config.iter_tag}{io.config.step_tag}"
             output_fid = f"{iterstep}_{io.config.event_id}.pdf"
@@ -769,12 +801,12 @@ class Pyaflowa:
         logfmt = "[%(asctime)s] - %(name)s - %(levelname)s: %(message)s"
         formatter = logging.Formatter(logfmt, datefmt="%Y-%m-%d %H:%M:%S")
         handler.setFormatter(formatter)
-        handler.setLevel(self.log_level)
+        handler.setLevel(self.log_level.upper())
 
         for log in ["pyflex", "pyadjoint", "pyatoa"]:
             # Set the overall log level
             logger = logging.getLogger(log)
-            logger.setLevel(self.log_level)
+            logger.setLevel(self.log_level.upper())
             logger.addHandler(handler)
 
         return logger

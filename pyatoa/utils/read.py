@@ -8,6 +8,8 @@ import numpy as np
 from obspy import Stream, Trace, UTCDateTime, Inventory
 from obspy.core.inventory.network import Network
 from obspy.core.inventory.station import Station
+from obspy.core.event import Event
+from pyatoa.utils.srcrcv import Source
 
 
 def read_fortran_binary(path):
@@ -183,6 +185,12 @@ def read_station_codes(path_to_stations, loc="??", cha="HH?"):
 
     codes = []
     stations = np.loadtxt(path_to_stations, dtype="str")
+
+    # Deal with the special case where the stations file is only 1 station long
+    # otherwise we end up iterating over a string and not an ndarray
+    if not isinstance(stations[0], np.ndarray):
+        stations = [stations]
+
     for station in stations:
         sta = station[0]
         net = station[1] 
@@ -191,9 +199,66 @@ def read_station_codes(path_to_stations, loc="??", cha="HH?"):
     return codes
 
 
+def read_specfem2d_source(path_to_source, default_time="2000-01-01T00:00:00"):
+    """
+    Create a barebones Pyatoa Source object from a SPECFEM2D Source file, which
+    mimics the behavior of the more complex ObsPy Event object
+    """
+    with open(path_to_source, "r") as f:
+        lines = f.readlines()
+   
+    # Place values from file into dict
+    source_dict = {}
+    for line in lines:
+        # Skip comments and newlines
+        if line[0] == "#" or line == "\n":
+            continue
+        key, _, val, *_ = line.split()
+        source_dict[key] = val
+
+    # First line has the source name
+    source_dict["source_id"] = lines[0].strip().split()[-1]
+    
+    event = Source(
+            resource_id=f"pyatoa:source/{source_dict['source_id']}",
+            origin_time=default_time, latitude=source_dict["xs"],
+            longitude=source_dict["xs"], depth=source_dict["zs"]
+            )
+
+    return event
+
+
+def read_forcesolution(path_to_source, default_time="2000-01-01T00:00:00"):
+    """
+    Create a barebones Pyatoa Source object from a FORCESOLUTION Source file, 
+    which mimics the behavior of the more complex ObsPy Event object
+    """
+    with open(path_to_source, "r") as f:
+        lines = f.readlines()
+   
+    # Place values from file into dict
+    source_dict = {}
+    for line in lines[:]:
+        if ":" not in line:
+            continue
+        key, val = line.strip().split(":")
+        source_dict[key] = val
+
+    # First line has the source name
+    source_dict["source_id"] = lines[0].strip().split()[-1]
+    
+    event = Source(
+            resource_id=f"pyatoa:source/{source_dict['source_id']}",
+            origin_time=default_time, latitude=source_dict["latorUTM"],
+            longitude=source_dict["longorUTM"], depth=source_dict["depth"]
+            )
+
+    return event
+
+
 def read_specfem_vtk(path_to_vtk):
     """
-    Read the unstructured grid VTK files that are output by Specfem for model,
+    Read the unstructured grid VTlK files that are output by Specfem for model,
     gradient, and kernel visualizations. Returns a header as a dictionary, and
     the lines of the data file. Useful for manipulating VTK files in place.
 

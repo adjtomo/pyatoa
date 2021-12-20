@@ -24,7 +24,8 @@ from obspy import Stream, read, read_inventory, read_events
 from obspy.clients.fdsn.header import FDSNException
 
 from pyatoa import logger
-from pyatoa.utils.read import read_sem
+from pyatoa.utils.read import (read_sem, read_specfem2d_source, 
+                               read_forcesolution)
 from pyatoa.utils.form import format_event_name
 from pyatoa.utils.calculate import overlapping_days
 from pyatoa.utils.srcrcv import merge_inventories
@@ -309,7 +310,8 @@ class InternalFetcher:
         net, sta, loc, cha = code.split(".")
         return self.ds.waveforms[f"{net}_{sta}"][tag].select(component=cha[-1])
 
-    def fetch_event_by_dir(self, event_id, **kwargs):
+    def fetch_event_by_dir(self, event_id, prefix="", suffix="", format_=None, 
+                           **kwargs):
         """
         Fetch event information via directory structure on disk. Developed to
         parse CMTSOLUTION and QUAKEML files, but theoretically accepts any 
@@ -321,7 +323,7 @@ class InternalFetcher:
             This function will search for the following path
             /path/to/event_dir/{prefix}{event_id}{suffix}
             
-            so, if e.g., searching for a CMTSOLUTION file in the currente dir:
+            so, if e.g., searching for a CMTSOLUTION file in the current dir:
             ./CMTSOLUTION_{event_id}
 
             Wildcards are okay but the function will return the first match
@@ -332,23 +334,16 @@ class InternalFetcher:
             will be tacked onto this 
         :rtype event: obspy.core.event.Event or None
         :return event: event object if found, else None.
-
-        Keyword Arguments
-        ::
-            str event_id_prefix
-                Prefix to prepend to event id for file name searching.
-                Wildcards are okay.
-            str event_id_suffix
-                Suffix to append to event id for file name searching.
-                Wildcards are okay.
-            str format
-                Expected format of the file to read, e.g., 'QUAKEML', passed to
-                ObsPy read_events. NoneType means read_events() will guess
+        :type prefix: str
+        :param prefix Prefix to prepend to event id for file name searching.
+            Wildcards are okay.
+        :type suffix: str
+        :param suffix: Suffix to append to event id for file name searching.
+            Wildcards are okay.
+        :type format_: str or NoneType
+        :param format_: Expected format of the file to read, e.g., 'QUAKEML', 
+            passed to ObsPy read_events. NoneType means read_events() will guess
         """
-        event_id_prefix = kwargs.get("event_id_prefix", "")
-        event_id_suffix = kwargs.get("event_id_suffix", "")
-        format = kwargs.get("format", None)
-
         # Ensure that the paths are a list so that iterating doesnt accidentally
         # try to iterate through a string.
         paths = self.config.paths["events"]
@@ -360,12 +355,23 @@ class InternalFetcher:
             if not os.path.exists(path_):
                 continue
             # Search for available event files
-            fid = os.path.join(path_, 
-                               f"{event_id_prefix}{event_id}{event_id_suffix}")
+            fid = os.path.join(path_, f"{prefix}{event_id}{suffix}")
             for filepath in glob.glob(fid):
+                logger.debug(f"searching for event data: {filepath}")
                 if os.path.exists(filepath):
                     try:
-                        cat = read_events(filepath, format=format)
+                        # Allow input of various types of source files
+                        if "SOURCE" in prefix:
+                            logger.info(f"reading SPECFEM2D SOURCE: {filepath}")
+                            cat = [read_specfem2d_source(filepath)]
+                        elif "FORCESOLUTION" in prefix:
+                            logger.info(f"reading FORCESOLUTION: {filepath}")
+                            cat = [read_forcesolution(filepath)]
+                        else:
+                            logger.info(
+                                    f"reading source using ObsPy: {filepath}")
+                            cat = read_events(filepath, format=format_)
+
                         if len(cat) != 1:
                             logger.warning(
                                 f"{filepath} event file contains more than one "
@@ -376,9 +382,9 @@ class InternalFetcher:
                         logger.warning(f"{filepath} event file read error {e}")
 
         if event is not None:
-            logger.debug(f"retrieved local file:\n{filepath}")
+            logger.info(f"retrieved local file:\n{filepath}")
         else:
-            logger.debug(f"no local event file found")
+            logger.info(f"no local event file found")
 
         return event
 
@@ -433,6 +439,7 @@ class InternalFetcher:
             fid = os.path.join(path_, dir_structure, file_template).format(
                 net=net, sta=sta, cha=cha, loc=loc)
             for filepath in glob.glob(fid):
+                logger.debug(f"searching for response: {filepath}")
                 if inv is None:
                     # The first inventory becomes the main inv to return
                     inv = read_inventory(filepath)
@@ -442,7 +449,7 @@ class InternalFetcher:
                     # Merge inventories to remove repeated networks
                     inv = merge_inventories(inv, inv_append)
         if inv is not None:
-            logger.debug(f"retrieved local file:\n{filepath}")
+            logger.info(f"retrieved response locally:\n{filepath}")
 
         return inv
 
@@ -509,9 +516,10 @@ class InternalFetcher:
                                 )
             st = Stream()
             for fid in pathlist:
+                logger.debug(f"searching for observations: {fid}")
                 for filepath in glob.glob(fid):
                     st += read(filepath)
-                    logger.debug(f"retrieved local file:\n{filepath}")
+                    logger.info(f"retrieved observations locally:\n{filepath}")
             if len(st) > 0:
                 # Take care of gaps in data by converting to masked data
                 st.merge()
@@ -585,6 +593,7 @@ class InternalFetcher:
             # Here the path is determined for search. If event_id is given,
             # the function will search for an event_id directory.
             full_path = os.path.join(path_, syn_dir_template, syn_fid_template)
+            logger.debug(f"searching for synthetics: {full_path}")
             st = Stream()
             for filepath in glob.glob(full_path.format(
                     net=net, sta=sta, cmp=cha[2:], dva=syn_unit.lower())):
@@ -594,7 +603,7 @@ class InternalFetcher:
                 except UnicodeDecodeError:
                     # If the data file is for some reason already in miniseed
                     st += read(filepath)
-                logger.debug(f"retrieved local file:\n{filepath}")
+                logger.info(f"retrieved synthetics locally:\n{filepath}")
             if len(st) > 0:
                 st.merge()
                 st.trim(starttime=self.origintime - self.config.start_pad,
@@ -620,12 +629,12 @@ class InternalFetcher:
         if self.ds:
             try:
                 # Search the given ASDFDataSet first
-                logger.debug("searching ASDFDataSet")
+                logger.info("searching ASDFDataSet for observations")
                 return self.asdf_waveform_fetch(code,
                                                 tag=self.config.observed_tag)
             except KeyError:
                 pass
-        logger.debug("searching local filesystem")
+        logger.info("searching local filesystem for observations")
         if self.config.synthetics_only:
             return self.fetch_syn_by_dir(code, syn_cfgpath="waveforms",
                                          **kwargs)
@@ -653,12 +662,12 @@ class InternalFetcher:
         """
         if self.ds:
             try:
-                logger.debug("searching ASDFDataSet")
+                logger.info("searching ASDFDataSet for synthetics")
                 return self.asdf_waveform_fetch(code,
                                                 tag=self.config.synthetic_tag)
             except KeyError:
                 pass
-        logger.debug("searching local filesystem")
+        logger.info("searching local filesystem for synthetics")
         return self.fetch_syn_by_dir(code, **kwargs)
 
     def event_fetch(self, event_id, **kwargs):
@@ -675,11 +684,11 @@ class InternalFetcher:
         """
         if self.ds:
             try:
-                logger.debug("searching ASDFDataSet")
+                logger.info("searching ASDFDataSet for event info")
                 return self.asdf_event_fetch()
             except (IndexError, AttributeError):
                 pass
-        logger.debug("searching local filesystem")
+        logger.info("searching local filesystem for event info")
         return self.fetch_event_by_dir(event_id, **kwargs)
 
     def station_fetch(self, code, **kwargs):
@@ -699,11 +708,11 @@ class InternalFetcher:
         """
         if self.ds:
             try:
-                logger.debug("searching ASDFDataSet")
+                logger.info("searching ASDFDataSet for station info")
                 return self.asdf_station_fetch(code)
             except (KeyError, AttributeError):
                 pass
-        logger.debug("searching local filesystem")
+        logger.info("searching local filesystem for station info")
         return self.fetch_resp_by_dir(code, **kwargs)
 
 
@@ -763,7 +772,6 @@ class Gatherer(InternalFetcher, ExternalGetter):
                                           f"{self.config.event_id}")
         # Otherwise state success and grab important origin information
         else:        
-            logger.debug(f"matching event found: {format_event_name(event)}")
             self.origintime = event.preferred_origin().time
         # Save event information to dataset if necessary
         if self.ds and self.config.save_to_ds:
@@ -1049,9 +1057,11 @@ def get_gcmt_moment_tensor(origintime, magnitude, time_wiggle_sec=120,
 
 
 def get_usgs_moment_tensor(origintime, magnitude, time_wiggle_sec=120,
-                           magnitude_wiggle=0.5):
+                           **kwargs):
     """
-    Query GCMT moment tensor catalog for moment tensor components
+    Query FDSN webservices USGS client for moment tensors
+
+    Kwargs passed to Client.get_events() for additional event constraint pars
 
     :type origintime: UTCDateTime or str
     :param origintime: event origin time
@@ -1065,3 +1075,9 @@ def get_usgs_moment_tensor(origintime, magnitude, time_wiggle_sec=120,
     :rtype: obspy.core.event.Event
     :return: event object for given earthquake
     """
+    c = Client("USGS")
+    cat = c.get_events(starttime=origintime - time_wiggle_sec, 
+                       endtime=origintime + time_wiggle_sec, 
+                       includeallorigins=True, **kwargs
+                       )
+    return cat

@@ -190,17 +190,23 @@ def test_asdf_waveform_fetch(internal_fetcher, dataset_fid, code, config):
 
 def test_fetch_event_by_dir(internal_fetcher, event_id):
     """
-    Get response based on given directory structure
+    Get event information based on given directory structure. Test the various
+    types of input sources that are allowable by Pyatoa
     """
     # No Config path means fetching returns nada
     assert internal_fetcher.fetch_event_by_dir(event_id) is None
 
     internal_fetcher.config.paths["events"] = "./test_data/"
-    event = internal_fetcher.fetch_event_by_dir(
-                                  event_id, event_id_prefix="test_CMTSOLUTION_")
 
-    assert event is not None
-    assert event_id in event.resource_id.id
+    prefixes = ["test_CMTSOLUTION_", "test_FORCESOLUTION_", "test_SOURCE_"]
+    
+    # Test each type of available source from SPECFEM2D and SPECFEM3D
+    for prefix in prefixes:
+        event = internal_fetcher.fetch_event_by_dir(event_id=event_id, 
+                                                    prefix=prefix)
+
+        assert event is not None
+        assert event_id in event.resource_id.id
 
 def test_fetch_resp_by_dir(internal_fetcher, code):
     """
@@ -280,6 +286,21 @@ def test_syn_waveform_fetch(internal_fetcher, dataset_fid, code):
     with ASDFDataSet(dataset_fid) as ds:
         internal_fetcher.ds = ds
         assert internal_fetcher.syn_waveform_fetch(code) is not None
+
+
+def test_event_fetch(internal_fetcher, dataset_fid, event_id):
+    """
+    Test the mid level fetching function which chooses whether to search via
+    ASDFDataSet or directory structure for event information
+    """
+    internal_fetcher.config.paths["events"] = "./test_data"
+    assert internal_fetcher.event_fetch(
+                        event_id, prefix="test_CMTSOLUTION_") is not None
+    internal_fetcher.config.paths["events"] = None
+
+    with ASDFDataSet(dataset_fid) as ds:
+        internal_fetcher.ds = ds
+        assert internal_fetcher.event_fetch(code) is not None
 
 
 def test_station_fetch(internal_fetcher, dataset_fid, code):
