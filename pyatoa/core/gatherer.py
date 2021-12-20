@@ -438,7 +438,7 @@ class InternalFetcher:
             # positional arguements we dont have, so don't do that
             fid = os.path.join(path_, resp_dir_template, resp_fid_template)
             fid = fid.format(net=net, sta=sta, cha=cha, loc=loc)
-            logger.debug(f"searching for responses: {filepath}")
+            logger.debug(f"searching for responses: {fid}")
             for filepath in glob.glob(fid):
                 if inv is None:
                     # The first inventory becomes the main inv to return
@@ -448,8 +448,7 @@ class InternalFetcher:
                     inv_append = read_inventory(filepath)
                     # Merge inventories to remove repeated networks
                     inv = merge_inventories(inv, inv_append)
-        if inv is not None:
-            logger.info(f"retrieved response locally:\n{filepath}")
+                logger.info(f"retrieved response locally:\n{filepath}")
 
         return inv
 

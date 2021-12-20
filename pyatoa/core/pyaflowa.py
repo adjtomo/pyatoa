@@ -624,6 +624,7 @@ class Pyaflowa:
 
         # Finalization chunk; only if processing is successful
         if status == 1:
+            io.logger.info(f"\n{'=' * 80}\n\nFINALIZE\n\n{'=' * 80}")
             # Keep track of outputs for the final log summary and misfit value
             io.misfit += mgmt.stats.misfit
             # The deal with the case where window selection is skipped and 
