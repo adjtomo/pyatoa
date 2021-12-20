@@ -510,11 +510,8 @@ class Pyaflowa:
         self._write_specfem_stations_adjoint_to_disk(io)
         self._output_final_log_summary(io)
 
-        if io.misfit and io.nwin:
-            return self._scale_raw_event_misfit(raw_misfit=io.misfit,
-                                                nwin=io.nwin)
-        else:
-            return None
+        return self._scale_raw_event_misfit(raw_misfit=io.misfit,
+                                            nwin=io.nwin)
 
     def process_station(self, mgmt, code, io, **kwargs):
         """
@@ -624,6 +621,10 @@ class Pyaflowa:
         :rtype: float
         :return: scaled event misfit
         """
+        # Address the case where no windows are picked leading to division by
+        # zero error (e.g., if we are calculating misfit on the entire trace.)
+        if nwin == 0:
+            nwin += 1
         return 0.5 * raw_misfit / nwin
 
     def _check_fix_windows(self, fix_windows=False, **kwargs):
