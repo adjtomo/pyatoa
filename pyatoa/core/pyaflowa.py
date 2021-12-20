@@ -354,7 +354,7 @@ class Pyaflowa:
         self.map_corners = map_corners
         self.log_level = log_level
 
-    def process_event(self, source_name, codes=None, loc="??", cha="HH?",
+    def process_event(self, source_name, codes=None, loc="*", cha="*",
                       **kwargs):
         """
         The main processing function for Pyaflowa misfit quantification.

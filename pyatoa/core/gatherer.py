@@ -418,9 +418,9 @@ class InternalFetcher:
                 By default, follows the SEED convention
                 'RESP.{net}.{sta}.{loc}.{cha}'
         """
-        dir_structure = kwargs.get("resp_dir_template", "{sta}.{net}")
-        file_template = kwargs.get("resp_fid_template",
-                                   "RESP.{net}.{sta}.{loc}.{cha}")
+        resp_dir_template = kwargs.get("resp_dir_template", "{sta}.{net}")
+        resp_fid_template = kwargs.get("resp_fid_template",
+                                       "RESP.{net}.{sta}.{loc}.{cha}")
 
         inv = None
         net, sta, loc, cha = code.split('.')
@@ -436,10 +436,10 @@ class InternalFetcher:
                 continue
             # Attempting to instantiate an empty Inventory requires some 
             # positional arguements we dont have, so don't do that
-            fid = os.path.join(path_, dir_structure, file_template).format(
-                net=net, sta=sta, cha=cha, loc=loc)
+            fid = os.path.join(path_, resp_dir_template, resp_fid_template)
+            fid = fid.format(net=net, sta=sta, cha=cha, loc=loc)
+            logger.debug(f"searching for responses: {filepath}")
             for filepath in glob.glob(fid):
-                logger.debug(f"searching for response: {filepath}")
                 if inv is None:
                     # The first inventory becomes the main inv to return
                     inv = read_inventory(filepath)
@@ -483,9 +483,9 @@ class InternalFetcher:
                 Follows the SEED convention:
                 '{net}.{sta}.{loc}.{cha}*{year}.{jday:0>3}'
         """
-        dir_structure = kwargs.get("obs_dir_template",
+        obs_dir_template = kwargs.get("obs_dir_template",
                                    "{year}/{net}/{sta}/{cha}*")
-        file_template = kwargs.get("obs_fid_template",
+        obs_fid_template = kwargs.get("obs_fid_template",
                                    "{net}.{sta}.{loc}.{cha}*{year}.{jday:0>3}")
 
         if self.origintime is None:
@@ -507,7 +507,7 @@ class InternalFetcher:
         for path_ in paths:
             if not os.path.exists(path_):
                 continue
-            full_path = os.path.join(path_, dir_structure, file_template)
+            full_path = os.path.join(path_, obs_dir_template, obs_fid_template)
             pathlist = []
             for jday in jdays:
                 pathlist.append(full_path.format(net=net, sta=sta, cha=cha,
