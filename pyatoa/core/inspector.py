@@ -244,10 +244,10 @@ class Inspector(InspectorPlotter):
         :rtype receivers: multiindexed dataframe containing unique station info
         """
         # Create a dataframe with source information, ignore duplicates
-        event_id = format_event_name(ds)
+        event_id = format_event_name(ds.events[0])
         if event_id not in self.sources.index:
             src = {
-                "event_id": format_event_name(ds),
+                "event_id": format_event_name(ds.events[0]),
                 "time": str(ds.events[0].preferred_origin().time),
                 "magnitude": ds.events[0].preferred_magnitude().mag,
                 "depth_km": ds.events[0].preferred_origin().depth * 1E-3,
@@ -294,7 +294,7 @@ class Inspector(InspectorPlotter):
         :rtype: pandas.DataFrame
         :return: a dataframe object containing information per misfit window
         """
-        eid = format_event_name(ds)
+        eid = format_event_name(ds.events[0])
 
         # Initialize an empty dictionary that will be used to initalize
         # a Pandas DataFrame
@@ -368,7 +368,7 @@ class Inspector(InspectorPlotter):
             self.windows = pd.concat([self.windows, pd.DataFrame(window)],
                                      ignore_index=True)
     
-    def discover(self, path="./"):
+    def discover(self, path="./", ignore_symlinks=True):
         """
         Allow the Inspector to scour through a path and find relevant files,
         appending them to the internal structure as necessary.
@@ -376,8 +376,13 @@ class Inspector(InspectorPlotter):
         :type path: str
         :param path: path to the pyasdf.asdf_data_set.ASDFDataSets that were
             outputted by the Seisflows workflow
+        :type ignore_symlinks: bool
+        :param ignore_symlinks: skip over symlinked HDF5 files when discovering
         """
         dsfids = glob(os.path.join(path, "*.h5"))
+        # remove symlinks from the list if requested
+        if ignore_symlinks:
+            dsfids = [_ for _ in dsfids if not os.path.islink(_)]
         for i, dsfid in enumerate(dsfids):
             if self.verbose:
                 print(
