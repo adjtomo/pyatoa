@@ -34,7 +34,6 @@ def test_append(asdf_dataset_fid):
     """
     insp = Inspector()
     insp.append(asdf_dataset_fid)
-    pytest.set_trace()
 
 
 def test_discover(test_data):
@@ -43,5 +42,7 @@ def test_discover(test_data):
     """
     insp = Inspector()
     insp.discover(path=test_data)
+
+
 
 
