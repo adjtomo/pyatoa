@@ -4,11 +4,13 @@ A class to aggregate time windows, source-receiver information and misfit
 using Pandas.
 """
 import os
+import warnings
 import pyasdf
 import traceback
 import numpy as np
 import pandas as pd
 from glob import glob
+from copy import deepcopy
 from fnmatch import filter as fnf
 from obspy.geodetics import gps2dist_azimuth
 from pyatoa.utils.form import format_event_name
@@ -385,9 +387,9 @@ class Inspector(InspectorPlotter):
             dsfids = [_ for _ in dsfids if not os.path.islink(_)]
         for i, dsfid in enumerate(dsfids):
             if self.verbose:
-                print(
-                    f"{os.path.basename(dsfid):<25} {i:0>3}/{len(dsfids):0>3}",
-                    end="...")
+                print(f"{os.path.basename(dsfid):<25} "
+                      f"{i+1:0>3}/{len(dsfids):0>3}",  end="..."
+                      )
             try:
                 self.append(dsfid)
                 if self.verbose:
@@ -505,13 +507,20 @@ class Inspector(InspectorPlotter):
                 print("format 'hdf' requires pytables, defaulting to 'csv'")
 
         if fmt == "csv":
+            write_check = 0
             if not self.sources.empty:
                 self.sources.to_csv(os.path.join(path, f"{tag}_src.csv"))
+                write_check += 1
             if not self.receivers.empty:
                 self.receivers.to_csv(os.path.join(path, f"{tag}_rcv.csv"))
+                write_check += 1
             if not self.windows.empty:
                 self.windows.to_csv(os.path.join(path, f"{tag}.csv"),
                                     index=False)
+                write_check += 1
+            if write_check == 0:
+                warnings.warn("Inspector empty, will not write to disk",
+                              UserWarning)
         elif fmt == "hdf":
             with pd.HDFStore(os.path.join(path, f"{tag}.hdf")) as s:
                 s["sources"] = self.sources
@@ -565,10 +574,15 @@ class Inspector(InspectorPlotter):
         else:
             raise NotImplementedError
 
+    def copy(self):
+        """
+        Return a deep copy of the Inspector
+        """
+        return deepcopy(self)
+
     def reset(self):
         """
-        Simple function to wipe out all the internal attributes, not super
-        useful but may come in handy somewhere
+        Simple function to wipe out all the internal attributes
         """
         self.windows = pd.DataFrame()
         self.sources = pd.DataFrame()
@@ -582,7 +596,7 @@ class Inspector(InspectorPlotter):
         None, defaults to returning all available values
 
         :type event: str
-        :param event: event id e.g. '2018p130600' (optional
+        :param event: event id e.g. '2018p130600' (optional)
         :type iteration: str
         :param iteration: iteration e.g. 'i00' (optional)
         :type step_count: str
@@ -625,6 +639,8 @@ class Inspector(InspectorPlotter):
                            "channel", "comp", unique_key]
             df = df.loc[:, df.columns.intersection(unique_keys)]
         if exclude is not None:
+            if not isinstance(exclude, list):
+                exclude = [exclude]
             # delete excluded keys from key list one by one
             df_keys = df.keys().to_numpy()
             for e in exclude:
@@ -771,7 +787,7 @@ class Inspector(InspectorPlotter):
     def stats(self, level="event", choice="mean", key=None, iteration=None,
               step_count=None):
         """
-        Calculate statistical values for DataFrame
+        Calculate the per-level statistical values for DataFrame
 
         :type level: str
         :param level: get statistical values per 'event' or 'station'
@@ -844,7 +860,6 @@ class Inspector(InspectorPlotter):
                 print(f"{key + ':':<{max_key_len}} {val:.4f}")
 
         return minmax_dict
-
 
     def compare(self, iteration_a=None, step_count_a=None, iteration_b=None,
                 step_count_b=None):
