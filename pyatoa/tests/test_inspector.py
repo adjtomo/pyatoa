@@ -88,8 +88,7 @@ def test_read_write_csv(tmpdir, inspector):
     filled_insp = inspector.copy()
     empty_insp = Inspector()
 
-    with pytest.warns(UserWarning):
-        empty_insp.save(path=tmpdir, fmt="csv", tag="empty_inspector")
+    empty_insp.save(path=tmpdir, fmt="csv", tag="empty_inspector")
     filled_insp.save(path=tmpdir, fmt="csv", tag="filled_inspector")
 
     check_insp = Inspector()
@@ -175,9 +174,7 @@ def test_compare_no_data():
     Test that compare with no data returns NoneType
     """
     insp = Inspector()
-    # !!! Throws a bunch of logger warnings as DepWarnings, ignore for brevity
-    with pytest.warns(DeprecationWarning):
-        assert(insp.compare() is None)
+    assert(insp.compare() is None)
 
 
 def test_compare_windows(seisflows_inspector):

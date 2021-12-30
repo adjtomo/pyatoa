@@ -88,46 +88,75 @@ def test_filters(st_obs):
         assert np.array_equal(output[0].data, check_result)
 
 
-@pytest.mark.skip(reason="doesnt work starttimes differ milliseconds")
-def test_trim_streams(st_obs, st_syn):
+def test_zero_pad(st_obs):
     """
-    Make sure that time offset tapering does what it's expected to
-    :param st_obs:
-    :return:
+    Ensure that zero padding adds the same number of data points each time
     """
-    pass
+    dt = st_obs[0].stats.delta  # time step
+    npts = st_obs[0].stats.npts
+    pad_length_in_seconds = 20
+    pl_samples = pad_length_in_seconds / dt
+
+    st_pad_before = process.zero_pad(st_obs.copy(), pad_length_in_seconds,
+                                     before=True, after=False)
+    st_pad_after = process.zero_pad(st_obs.copy(), pad_length_in_seconds,
+                                    before=False, after=True)
+    st_pad_both = process.zero_pad(st_obs.copy(), pad_length_in_seconds,
+                                   before=True, after=True)
+
+    for st, npts_check in zip(
+            [st_pad_before, st_pad_after, st_pad_both],
+            [pl_samples, pl_samples, pl_samples * 2]
+    ):
+        assert(st[0].stats.npts - npts == npts_check)
+
+
+def test_trim_streams_and_match_npts(st_obs, st_syn):
+    """
+    Ensure that forcing number of points standardization works
+    """
     st_a = st_obs.copy()
     st_b = st_syn.copy()
 
-    starttime_a = st_a[0].stats.starttime
-    endtime_a = st_a[0].stats.endtime
-    starttime_b = st_b[0].stats.starttime
-    endtime_b = st_b[0].stats.endtime
+    # Downsample observations to synthetics
+    st_a.resample(st_b[0].stats.sampling_rate)
+    assert(st_a[0].stats.npts != st_b[0].stats.npts)
 
-    # Just make sure these values are different
-    assert starttime_a != starttime_b
-    assert endtime_a != endtime_b
+    # Trim obs data down to match syn data
+    st_a, st_b = process.trim_streams(st_a=st_a, st_b=st_b, force="b")
+    assert(st_a[0].stats.npts == st_b[0].stats.npts)
 
-    st_a, st_b = process.trim_streams(st_obs, st_syn, force="a")
-    assert (st_a[0].stats.starttime != starttime_b)
-    assert (st_a[0].stats.endtime != endtime_b)
-    assert (st_b[0].stats.starttime == starttime_a)
-    # assert (st_b[0].stats.endtime == endtime_a)  # endtime_b < endtime_a
+    # Purposefully mismatch npts and then pad with 0s
+    st_a[0].trim(endtime=st_a[0].stats.endtime - 1)
+    st_a, st_b = process.match_npts(st_a, st_b, force="b")
+    assert(st_a[0].stats.npts == st_b[0].stats.npts)
 
 
-    # This doesn't work because the starttimes differ by milliseconds?
-    st_a, st_b = process.trim_streams(st_obs, st_syn, force="b")
-    assert (st_a[0].stats.starttime == starttime_b)
-    assert (st_a[0].stats.endtime == endtime_b)
-    assert (st_b[0].stats.starttime != starttime_a)
-    assert (st_b[0].stats.endtime != endtime_a)
-
-
-def test_match_npts(st_obs, st_syn):
+def test_is_preprocessed(st_obs):
     """
+    Test the check function that determines if a stream is preprocessed
+    """
+    # Check for a few different, commonly used processing functions
+    st = st_obs.copy()
+    assert(process.is_preprocessed(st) is False)
+    st.filter("bandpass", freqmin=1, freqmax=5)
+    assert(process.is_preprocessed(st) is True)
 
-    :param st_obs:
-    :param st_syn:
-    :return:
+    st = st_obs.copy()
+    assert(process.is_preprocessed(st) is False)
+    st.detrend("demean")
+    assert(process.is_preprocessed(st, filter_only=False) is True)
+    assert(process.is_preprocessed(st, filter_only=True) is False)
+
+    st = st_obs.copy()
+    assert(process.is_preprocessed(st) is False)
+    st.resample(st[0].stats.sampling_rate // 2 )
+    assert(process.is_preprocessed(st, filter_only=False) is True)
+
+
+def test_stf_convolve():
+    """
+    !!! TO DO
     """
     pass
+

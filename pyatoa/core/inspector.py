@@ -168,7 +168,7 @@ class Inspector(InspectorPlotter):
         try:
             return self.steps.index[0], self.steps[0][0]
         except TypeError:
-            logger.warn("Inspector has no 'steps' data, returning None")
+            logger.warning("Inspector has no 'steps' data, returning None")
             return None, None
 
     @property
@@ -177,7 +177,7 @@ class Inspector(InspectorPlotter):
         try:
             return self.steps.index[-1], self.steps[-1][-1]
         except TypeError:
-            logger.warn("Inspector has no 'steps' data, returning None")
+            logger.warning("Inspector has no 'steps' data, returning None")
             return None, None
 
     @property
@@ -527,7 +527,7 @@ class Inspector(InspectorPlotter):
                                     index=False)
                 write_check += 1
             if write_check == 0:
-                logger.warn("Inspector empty, will not write to disk")
+                logger.warning("Inspector empty, will not write to disk")
         elif fmt == "hdf":
             with pd.HDFStore(os.path.join(path, f"{tag}.hdf")) as s:
                 s["sources"] = self.sources
@@ -896,7 +896,7 @@ class Inspector(InspectorPlotter):
 
         # If initial or final models not given, nothing to compare
         if None in [iteration_a, step_count_a, iteration_b, step_count_b]:
-            logger.warn("Cannot locate model indices to compare model data")
+            logger.warning("Cannot locate model indices to compare model data")
             return None
 
         misfit = self.misfit(level="event")
