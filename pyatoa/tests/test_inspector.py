@@ -170,6 +170,16 @@ def test_compare(seisflows_inspector):
     assert(insp.compare().diff_nwin["2013p617227"] == -110)
 
 
+def test_compare_no_data():
+    """
+    Test that compare with no data returns NoneType
+    """
+    insp = Inspector()
+    # !!! Throws a bunch of logger warnings as DepWarnings, ignore for brevity
+    with pytest.warns(DeprecationWarning):
+        assert(insp.compare() is None)
+
+
 def test_compare_windows(seisflows_inspector):
     """
     !!! TO DO: Need fixed window inversion results to make this work

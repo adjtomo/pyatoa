@@ -4,7 +4,6 @@ A class to aggregate time windows, source-receiver information and misfit
 using Pandas.
 """
 import os
-import warnings
 import pyasdf
 import traceback
 import numpy as np
@@ -13,6 +12,7 @@ from glob import glob
 from copy import deepcopy
 from fnmatch import filter as fnf
 from obspy.geodetics import gps2dist_azimuth
+from pyatoa import logger
 from pyatoa.utils.form import format_event_name
 from pyatoa.visuals.insp_plot import InspectorPlotter
 
@@ -165,12 +165,20 @@ class Inspector(InspectorPlotter):
     @property
     def initial_model(self):
         """Return tuple of the iteration and step count corresponding M00"""
-        return self.steps.index[0], self.steps[0][0]
+        try:
+            return self.steps.index[0], self.steps[0][0]
+        except TypeError:
+            logger.warn("Inspector has no 'steps' data, returning None")
+            return None, None
 
     @property
     def final_model(self):
         """Return tuple of iteration and step count for final accepted model"""
-        return self.steps.index[-1], self.steps[-1][-1]
+        try:
+            return self.steps.index[-1], self.steps[-1][-1]
+        except TypeError:
+            logger.warn("Inspector has no 'steps' data, returning None")
+            return None, None
 
     @property
     def good_models(self):
@@ -519,8 +527,7 @@ class Inspector(InspectorPlotter):
                                     index=False)
                 write_check += 1
             if write_check == 0:
-                warnings.warn("Inspector empty, will not write to disk",
-                              UserWarning)
+                logger.warn("Inspector empty, will not write to disk")
         elif fmt == "hdf":
             with pd.HDFStore(os.path.join(path, f"{tag}.hdf")) as s:
                 s["sources"] = self.sources
@@ -887,19 +894,24 @@ class Inspector(InspectorPlotter):
         if iteration_b is None:
             iteration_b, step_count_b = self.final_model
 
+        # If initial or final models not given, nothing to compare
+        if None in [iteration_a, step_count_a, iteration_b, step_count_b]:
+            logger.warn("Cannot locate model indices to compare model data")
+            return None
+
         misfit = self.misfit(level="event")
         msft_a = misfit.loc[iteration_a, step_count_a]
         msft_b = misfit.loc[iteration_b, step_count_b]
 
         # Doesn't really make sense to compare unscaled misfit so drop column
-        msft_a.drop(["unscaled_misfit"], axis=1, inplace=True)
-        msft_b.drop(["unscaled_misfit"], axis=1, inplace=True)
+        msft_a = msft_a.drop(["unscaled_misfit"], axis=1).copy()
+        msft_b = msft_b.drop(["unscaled_misfit"], axis=1).copy()
 
         # For renaming and access to renamed columns
         initial = f"{iteration_a}{step_count_a}"
         final = f"{iteration_b}{step_count_b}"
-    
-        msft_a.rename({"nwin": f"nwin_{initial}", 
+
+        msft_a.rename({"nwin": f"nwin_{initial}",
                        "misfit": f"misfit_{initial}"},
                       axis="columns", inplace=True)
         msft_b.rename({"nwin": f"nwin_{final}", "misfit": f"misfit_{final}"},

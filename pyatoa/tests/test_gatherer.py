@@ -138,7 +138,11 @@ def test_station_get(external_getter, code):
     """
     net, sta, loc, cha = code.split('.')
 
-    inv = external_getter.station_get(code, level="response")
+    # !!! This throws an ObsPy UserWarning that the StationXML file has version
+    # !!! 1, but ObsPy only accepts 1.0 or 1.1. Acceptable warning so pass.
+    with pytest.warns(UserWarning):
+        inv = external_getter.station_get(code, level="response")
+
     assert inv[0].code == net
     assert inv[0][0].code == sta
     assert hasattr(inv[0][0][0], "response")
