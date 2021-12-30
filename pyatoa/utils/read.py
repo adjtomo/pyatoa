@@ -144,7 +144,7 @@ def read_stations(path_to_stations):
         latitude_ = float(sta[2])
         longitude_ = float(sta[3])
         elevation_ = float(sta[4])
-        burial_ = float(sta[5])  # burial isnt an option in ObsPy
+        burial_ = float(sta[5])  # burial isnt an option in ObsPy, not used
 
         # Create the station object, temp store in a network
         station = Station(code=station_, latitude=latitude_,
