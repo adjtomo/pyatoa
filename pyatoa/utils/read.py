@@ -161,7 +161,7 @@ def read_stations(path_to_stations):
     return Inventory(networks=list_of_networks, source="PYATOA")
 
 
-def read_station_codes(path_to_stations, loc="??", cha="HH?"):
+def read_station_codes(path_to_stations, loc="??", cha="*"):
     """
     Read the SPECFEM3D STATIONS file and return a list of codes (Pyatoa format)
     that are accepted by the Manager and Pyaflowa classes. Since the STATIONS
