@@ -63,51 +63,50 @@ def format_step(count):
 
 def format_event_name(ds_or_event):
     """
-    Formalize the defition of Event ID in Pyatoa
+    Formalize the definition of Event ID in Pyatoa
 
     :type ds_or_event: pyasdf.ASDFDataSet or obspy.core.event.Event or str
-    :param ds_or_event: get dataset event name from the filename or pass the
-        resource_id directly as a string
+    :param ds_or_event: get dataset event name from the event resource_id
     :rtype: str
     :return: the event name to be used for naming schema in the workflow
     """
-    if isinstance(ds_or_event, (Event, Source, str)):
-        if isinstance(ds_or_event, str):
-            rid = ds_or_event
-        else:
-            # Deals with the different formats of data center event ids
-            rid = ds_or_event.resource_id.id
-        rid_up = rid.upper()
-        # GeoNet Client: smi:nz.org.geonet/2018p130600
-        if "GEONET" in rid_up:
-            return rid.split("/")[-1]
-        # IRIS Client: smi:service.iris.edu/fdsnws/event/1/query?eventid=5197722
-        elif "IRIS" in rid_up:
-            return rid.split("eventid=")[-1]
-        # SPUD, GCMT: smi:local/ndk/C202005010101A/event 
-        # or CMTSOLUTION: smi:local/cmtsolution/2013p617227/event 
-        elif ("NDK" in rid_up) or ("CMTSOLUTION" in rid_up):
-            return rid.split("/")[-2]
-        # USGS Client: quakeml:earthquake.usgs.gov/fdsnws/event/1/...
-        #                          ...query?eventid=ak0198gdhuwa&format=quakeml
-        elif "USGS" in rid_up:
-            rid_ = rid.split("eventid=")[-1]
-            return rid_.split("&")[0]
-        # USGS ANSS ComCat: quakeml:us.anss.org/event/20005ysu
-        elif "ANSS" in rid_up:
-            return rid.split("event/")[-1]
-        # PYATOA pyatoa.read.read_force_solution: pyatoa:source/
-        elif "PYATOA" in rid_up:
-            return rid.split("source/")[-1]
-        else:
-            raise NotImplementedError(f"Unknown resource id format {rid}, "
-                                      "Please raise a GitHub issue and the"
-                                      "developers will address this")
+    # Extract the resource id dependent on the input file type
+    if isinstance(ds_or_event, (Event, Source)):
+        rid = ds_or_event.resource_id.id
+    elif isinstance(ds_or_event, str):
+        rid = ds_or_event
     elif isinstance(ds_or_event, ASDFDataSet):
-        return os.path.basename(ds_or_event.filename).split(".")[0]
+        rid = ds_or_event.events[0].resource_id.id
     else:
         raise TypeError("format_event_name() only accepts pyasdf.ASDFDataSet "
                         "or obspy.core.event.Event objects")
+
+    rid_up = rid.upper()
+    # GeoNet Client: smi:nz.org.geonet/2018p130600
+    if "GEONET" in rid_up:
+        return rid.split("/")[-1]
+    # IRIS Client: smi:service.iris.edu/fdsnws/event/1/query?eventid=5197722
+    elif "IRIS" in rid_up:
+        return rid.split("eventid=")[-1]
+    # SPUD, GCMT: smi:local/ndk/C202005010101A/event
+    # or CMTSOLUTION: smi:local/cmtsolution/2013p617227/event
+    elif ("NDK" in rid_up) or ("CMTSOLUTION" in rid_up):
+        return rid.split("/")[-2]
+    # USGS Client: quakeml:earthquake.usgs.gov/fdsnws/event/1/...
+    #                          ...query?eventid=ak0198gdhuwa&format=quakeml
+    elif "USGS" in rid_up:
+        rid_ = rid.split("eventid=")[-1]
+        return rid_.split("&")[0]
+    # USGS ANSS ComCat: quakeml:us.anss.org/event/20005ysu
+    elif "ANSS" in rid_up:
+        return rid.split("event/")[-1]
+    # PYATOA pyatoa.read.read_force_solution: pyatoa:source/
+    elif "PYATOA" in rid_up:
+        return rid.split("source/")[-1]
+    else:
+        raise NotImplementedError(f"Unknown resource id format {rid}, "
+                                  "Please raise a GitHub issue and the"
+                                  "developers will address this")
 
 
 def channel_code(dt):
