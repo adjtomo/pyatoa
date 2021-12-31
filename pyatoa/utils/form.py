@@ -65,14 +65,18 @@ def format_event_name(ds_or_event):
     """
     Formalize the defition of Event ID in Pyatoa
 
-    :type ds_or_event: pyasdf.ASDFDataSet or obspy.core.event.Event
-    :param ds_or_event: get dataset event name from the filename
+    :type ds_or_event: pyasdf.ASDFDataSet or obspy.core.event.Event or str
+    :param ds_or_event: get dataset event name from the filename or pass the
+        resource_id directly as a string
     :rtype: str
     :return: the event name to be used for naming schema in the workflow
     """
-    if isinstance(ds_or_event, (Event, Source)):
-        # Deals with the different formats of data center event ids
-        rid = ds_or_event.resource_id.id
+    if isinstance(ds_or_event, (Event, Source, str)):
+        if isinstance(ds_or_event, str):
+            rid = ds_or_event
+        else:
+            # Deals with the different formats of data center event ids
+            rid = ds_or_event.resource_id.id
         rid_up = rid.upper()
         # GeoNet Client: smi:nz.org.geonet/2018p130600
         if "GEONET" in rid_up:
@@ -92,6 +96,7 @@ def format_event_name(ds_or_event):
         # USGS ANSS ComCat: quakeml:us.anss.org/event/20005ysu
         elif "ANSS" in rid_up:
             return rid.split("event/")[-1]
+        # PYATOA pyatoa.read.read_force_solution: pyatoa:source/
         elif "PYATOA" in rid_up:
             return rid.split("source/")[-1]
         else:
