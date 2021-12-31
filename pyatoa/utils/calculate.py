@@ -128,3 +128,23 @@ def vrl(d, s1, s2):
     return np.log(np.trapz((d - s1) ** 2) / (np.trapz(d - s2) ** 2))
 
 
+def time_offset(st, origintime):
+    """
+    Oft repeated calculation of finding the time offset between the start of
+    a stream and the origin time of an event. Important when dealing with
+    SPECFEM seismograms, which explicitely start at the time offset value,
+    w.r.t. streams which set starttime at 0 but contain their own
+    origin time information
+
+    .. note::
+        convention is that if the waveform starts BEFORE the event origin time,
+        then `time_offset` will be NEGATIVE.
+
+    :type st: obspy.core.stream.Stream
+    :param st: stream to check time offset of
+    :type origintime: obspy.UTCDateTime
+    :param origintime: the origin time of the event
+    :rtype: float
+    :return: the time offset, or: origintime - stream_origin_time
+    """
+    return st[0].stats.starttime - origintime

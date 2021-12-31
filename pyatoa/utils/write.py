@@ -47,7 +47,7 @@ def write_stations(inv, fid="./STATIONS", elevation=False, burial=0.):
 
 def write_inv_seed(inv, path="./", dir_structure="{sta}.{net}",
                    file_template="RESP.{net}.{sta}.{loc}.{cha}",
-                   components="ZNE", **kwargs):
+                   components="ZNE", channel_code="HX{comp}", **kwargs):
     """
     Pyatoa requires stations to be discoverable in SEED format, i.e., in a data
     center repository. This structure dictates that each component of each 
@@ -72,10 +72,11 @@ def write_inv_seed(inv, path="./", dir_structure="{sta}.{net}",
     :type channels: str
     :param channels: OPTIONAL, if inventory does not contain channels (e.g.,
         if read from a SPECFEM STATIONS file), channels will be generated here.
+    :type channel_code: str
+    :param channel_code: Explicitely defined default channel values for
+    generating channels on the fly when none are provided by the inventory
     """
-    # Explicitely defined default channel values for generating channels on
-    # the fly when none are provided by the inventory
-    channel_code = kwargs.get("channel_code", "HX{comp}")
+    # Default values for other values required by the inventory
     location_code = kwargs.get("location_code", "")
     elevation = kwargs.get("elevation", 0.)
     depth = kwargs.get("depth", 0.)
@@ -181,12 +182,12 @@ def write_misfit(ds, iteration, step_count=None, path="./", fidout=None):
     
     # Collect the total misfit calculated by Pyadjoint
     total_misfit = 0
-    adjoint_sources = ds.auxiliadry_data.AdjointSources[iter_tag]
+    adjoint_sources = ds.auxiliary_data.AdjointSources[iter_tag]
     if step_tag:
         adjoint_sources = adjoint_sources[step_tag]
 
     for adjsrc in adjoint_sources.list():
-        total_misfit += adjoint_sources[adjsrc].parameters["misfit_value"]
+        total_misfit += adjoint_sources[adjsrc].parameters["misfit"]
 
     # Count up the number of misfit windows
     win = ds.auxiliary_data.MisfitWindows[iter_tag]
