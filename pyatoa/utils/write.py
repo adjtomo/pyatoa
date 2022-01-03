@@ -5,6 +5,7 @@ import os
 import glob
 import numpy as np
 from obspy.core.inventory.channel import Channel
+from pyatoa import logger
 from pyatoa.utils.form import (format_event_name, format_iter, format_step, 
                                channel_code)
 
@@ -216,6 +217,7 @@ def write_stations_adjoint(ds, iteration, specfem_station_file, step_count=None,
     :param iteration: iteration number, e.g. "i01". Will be formatted so int ok.
     :type step_count: str or int
     :param step_count: step count e.g. "s00". Will be formatted so int ok.
+        If NoneType, final step of the iteration will be chosen automatically.
     :type specfem_station_file: str
     :param specfem_station_file: path/to/specfem/DATA/STATIONS
     :type pathout: str
@@ -224,8 +226,13 @@ def write_stations_adjoint(ds, iteration, specfem_station_file, step_count=None,
     # Check which stations have adjoint sources
     stas_with_adjsrcs = []
     adj_srcs = ds.auxiliary_data.AdjointSources[format_iter(iteration)]
-    if step_count is not None:
-        adj_srcs = adj_srcs[format_step(step_count)]
+    # Dynamically determine final step count in the iteration
+    if step_count is None:
+        step_count = adj_srcs.list()[-1]
+    logger.debug(f"writing stations adjoint for "
+                f"{format_iter(iteration)}{format_step(step_count)}"
+                )
+    adj_srcs = adj_srcs[format_step(step_count)]
 
     for code in adj_srcs.list():
         stas_with_adjsrcs.append(code.split('_')[1])
@@ -250,7 +257,7 @@ def write_stations_adjoint(ds, iteration, specfem_station_file, step_count=None,
 
 
 def write_adj_src_to_ascii(ds, iteration, step_count=None, pathout=None, 
-                           comp_list=["N", "E", "Z"]):
+                           comp_list="ZNE"):
     """
     Take AdjointSource auxiliary data from a Pyasdf dataset and write out
     the adjoint sources into ascii files with proper formatting, for input
@@ -268,9 +275,10 @@ def write_adj_src_to_ascii(ds, iteration, step_count=None, pathout=None,
     :param iteration: iteration number, e.g. "i00". Will be formatted so int ok.
     :type step_count: str or int
     :param step_count: step count e.g. "s00". Will be formatted so int ok.
+            If NoneType, final step of the iteration will be chosen automatically.
     :type pathout: str
     :param pathout: path to write the adjoint sources to
-    :type comp_list: list of str
+    :type comp_list: str
     :param comp_list: component list to check when writing blank adjoint sources
         defaults to N, E, Z, but can also be e.g. R, T, Z
     """
@@ -300,8 +308,12 @@ def write_adj_src_to_ascii(ds, iteration, step_count=None, pathout=None,
 
     # Shortcuts
     adjsrcs = ds.auxiliary_data.AdjointSources[format_iter(iteration)]
-    if step_count:
-        adjsrcs = adjsrcs[format_step(step_count)]
+    if step_count is None:
+        step_count = adjsrcs.list()[-1]
+    adjsrcs = adjsrcs[format_step(step_count)]
+    logger.debug(f"writing adjoint sources to ascii for "
+                f"{format_iter(iteration)}{format_step(step_count)}"
+                )
 
     # Set the path to write the data to.
     # If no path is given, default to current working directory
@@ -320,7 +332,7 @@ def write_adj_src_to_ascii(ds, iteration, step_count=None, pathout=None,
             write_to_ascii(f, adjsrcs[adj_src].data[()])
 
         # Write blank adjoint sources for components with no misfit windows
-        for comp in comp_list:
+        for comp in list(comp_list):
             station_blank = (adj_src[:-1] + comp).replace('_', '.')
             if station_blank.replace('.', '_') not in adjsrcs.list() and \
                     station_blank not in already_written:

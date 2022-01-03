@@ -113,13 +113,15 @@ def test_form_utils():
         "smi:service.iris.edu/fdsnws/event/1/query?eventid={eid}",  # IRIS
         "smi:local/ndk/{eid}/event",  # SPUD
         "smi:local/cmtsolution/{eid}/event",  # GCMT
-        "quakeml:earthquake.usgs.gov/fdsnws/event/1/query?eventid={eid}&format=quakeml",  # USGS
+        "quakeml:earthquake.usgs.gov/fdsnws/event/1/query?eventid={eid}"
+                                                    "&format=quakeml",  # USGS
         "quakeml:us.anss.org/event/{eid}",  # USGS COMCAT,
         "pyatoa:source/{eid}"
                   ]
     for test_case in test_cases:
         test_case = test_case.format(eid=eid)
         assert(form.format_event_name(test_case) == eid)
+
 
 # ============================= TEST IMAGE UTILS ===============================
 def test_images_utils():
@@ -128,6 +130,7 @@ def test_images_utils():
     """
     # !!! TO DO: add .pdf and .png files to test data to test this functionality
     pass
+
 
 # ============================= TEST READ/ WRITE UTILS =========================
 def test_read_utils(tmpdir, station_fid, sem_fid):
@@ -213,9 +216,28 @@ def test_write_utils(tmpdir, station_fid, sem_fid, ds):
     assert(misfit == 10.8984)
 
     # Test write_stations_adjoint
+    # This will only write out NZ.BFZ because STATION file only contains BFZ
+    write.write_stations_adjoint(ds=ds, iteration="i01",
+                                 specfem_station_file=station_fid,
+                                 pathout=tmpdir
+                                 )
+    sta_adj = np.loadtxt(os.path.join(tmpdir, "STATIONS_ADJOINT"), dtype=str)
+    assert(sta_adj[0] == "BFZ")
 
+    # Test write_adj_src_to_ascii
+    sta = "NZ_BFZ_BXE"
+    fid = sta.replace("_", ".") + ".adj"
 
+    write.write_adj_src_to_ascii(ds, iteration="i01", pathout=tmpdir)
+    max_val = ds.auxiliary_data.AdjointSources.i01.s00[sta].data[()].max()
+
+    path_check = os.path.join(tmpdir, fid)
+    check_max = np.loadtxt(path_check).max()
+    assert(max_val == pytest.approx(check_max, .1))
 
 # ============================= TEST SRCRCV UTILS ==============================
+# srcrcv functions are all pretty short, likely don't need a test
+
 # ============================= TEST WINDOW UTILS ==============================
-# ============================= TEST WRITE UTILS ===============================
+# not enough window utils to warrant writing tests
+
