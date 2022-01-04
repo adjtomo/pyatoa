@@ -12,12 +12,13 @@ else:
     install_requires = []
 
 setup(name='pyatoa',
-      version='0.0.1',
-      description="Python's Adjoint Tomography Operations Assitance",
+      version='0.1.0',
+      description="Python's Adjoint Tomography Operations Assistant",
       url='http://github.com/bch0w/pyatoa',
+      download_url='https://github.com/bch0w/pyatoa/archive/refs/tags/v0.1.0.tar.gz',
       author='Bryant Chow',
-      author_email='bryant.chow@vuw.ac.nz',
-      license='GPL',
+      author_email='bhchow@alaska.edu',
+      license='GPL-3.0',
       packages=find_packages(),
       install_requires=[],
       zip_safe=False)
