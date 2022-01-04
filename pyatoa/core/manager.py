@@ -8,7 +8,6 @@ import pyflex
 import warnings
 import pyadjoint
 from obspy.signal.filter import envelope
-
 from pyatoa import logger
 from pyatoa.core.config import Config
 from pyatoa.core.gatherer import Gatherer, GathererNoDataException
