@@ -1581,7 +1581,7 @@ appear-when-hovering-over-a-point-in-matplotlib
     :return hover: the hover function to be passed to matplotlib
     """
     # Make some objects to be used for hover-over capabilities
-    anno = ax.annotate(text="", xy=(0, 0), xytext=(20, 20),
+    anno = ax.annotate("", xy=(0, 0), xytext=(20, 20),
                        textcoords="offset points",
                        bbox=dict(boxstyle="round", fc="w"),
                        arrowprops=dict(arrowstyle="->"),
@@ -1681,4 +1681,4 @@ def annotate_txt(ax, txt, anno_location="lower-right", **kwargs):
         y = ymin + (ymax - ymin) * 0.745
         multialignment = "left"
 
-    ax.annotate(text=txt, xy=(x, y), multialignment=multialignment, **kwargs)
+    ax.annotate(txt, xy=(x, y), multialignment=multialignment, **kwargs)
