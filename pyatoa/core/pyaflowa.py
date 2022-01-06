@@ -534,6 +534,7 @@ class Pyaflowa:
             because that means theres a problem. If 0 were returned that would
             give the false impression of 0 misfit which is wrong.
         """
+        io.logger.info(f"\n{'=' * 80}\n\nFINALIZE\n\n{'=' * 80}")
         self._make_event_pdf_from_station_pdfs(io)
         self._write_specfem_stations_adjoint_to_disk(io)
         self._output_final_log_summary(io)
@@ -624,7 +625,6 @@ class Pyaflowa:
 
         # Finalization chunk; only if processing is successful
         if status == 1:
-            io.logger.info(f"\n{'=' * 80}\n\nFINALIZE\n\n{'=' * 80}")
             # Keep track of outputs for the final log summary and misfit value
             io.misfit += mgmt.stats.misfit
             # The deal with the case where window selection is skipped and 
