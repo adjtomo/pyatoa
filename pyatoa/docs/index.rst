@@ -30,7 +30,7 @@ Installation
 currently available, however pip and conda install procedures are on the to-do
 list. For now, install should be accomplished via pip and the GitHub repository.
 
-It is recommended that ``Pyatoa`` be installed inside a Conda environment to
+It is recommended that Pyatoa be installed inside a Conda environment to
 preserve your root environment. The 'devel' branch provides the latest codebase.
 
 .. code:: bash
