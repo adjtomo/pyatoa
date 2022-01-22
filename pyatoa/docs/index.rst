@@ -20,7 +20,7 @@ currently available. Install should be accomplished using pip, however Basemap
 will need to be installed via Conda so that the correct dependencies are
 installed.
 
-It is recomended that Pyatoa be installed inside a Conda environment to
+It is recommended that Pyatoa be installed inside a Conda environment to
 preserve your root environment. The 'devel' branch provides the latest codebase.
 
 
@@ -31,8 +31,7 @@ preserve your root environment. The 'devel' branch provides the latest codebase.
    $ git clone https://github.com/bch0w/pyatoa.git
    $ cd pyatoa
    $ git checkout devel
-   $ conda install -c conda-forge basemap
-   $ pip install -r requirements.txt .
+   $ pip install .
 
 
 Running Tests
@@ -42,7 +41,6 @@ Tests ensure ``Pyatoa`` runs as expected, these require installation of Pytest.
 
 .. code:: bash
 
-   $ pip install pytest
    $ cd pyatoa/tests
    $ pytest
 
