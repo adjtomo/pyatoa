@@ -3,27 +3,25 @@ Overview
 
 What is Pyatoa?
 ~~~~~~~~~~~~~~~
-At its core, Pyatoa is a waveform assessment package. Put very simply, it is 
-designed to compare one set of wiggles to another set of similar wiggles.
+At its core, Pyatoa is a waveform assessment package. The short version: it's
+designed to compare one set of wiggles to another set of (similar) wiggles. The
+objects within this package are meant to facilitate, augment, or complement
+this core functionality.
 
-The aim of Pyatoa is to simplify misfit quantification in adjoint tomography. 
-It does this by providing a high-level API to reduce the amount of code required 
-to accomplish repeatable tasks involved in waveform comparisons.
+The aim of Pyatoa is to simplify and automate misfit quantification in adjoint
+tomography. It does so by providing a high-level API to reduce the amount of
+code required to accomplish repeatable tasks involved in waveform comparisons.
 
 As the behavior of full waveform inversion is dependent on the input data, a 
-high level of care must be taken in curating what is fed in. 
-Pyatoa provides this attention to detail by carefully addressing the following
-tasks: seismic data gathering, waveform preprocessing, 
-time windowing, misfit quantification, and adjoint source creation. 
-
-To ensure an inversion stays on the rails, Pyatoa includes a custom data
+high level of care must be taken in curating what is fed in. To ensure an
+inversion stays on the rails, Pyatoa includes a custom data
 structure for data access and storage, as well as internal fault 
 tolerance and sanity checks throughout. Detailed logging is meant to ensure that
 Pyatoa is not a black box.
 
 Outside the standard routines, Pyatoa also includes a measurement aggregation 
-tool to simplify bulk measurement assessement, while a series of plotting 
-routines facilitate the rapid visualization of standard inversion results.
+tool to simplify bulk measurement assessment, while a series of plotting
+routines facilitate visualization of standard inversion results.
 
 Pyatoa is open-source and completely Python based.
 
@@ -31,21 +29,21 @@ Pyatoa is open-source and completely Python based.
 What isn't Pyatoa?
 ~~~~~~~~~~~~~~~~~~
 
-Pyatoa is not a standalone adjoint tomography tool, it does not have the 
-capability to generate sythetic waveforms, submit jobs on HPC systems,  
-interface with numerical models, etc. Rather, it is meant to augment the 
+Pyatoa is not a standalone adjoint tomography workflow tool, it does not have
+the capability to generate sythetic waveforms, submit jobs on HPC systems,
+interface with numerical models, etc. Rather, it was built to augment the
 capabilities of external numerical solvers (e.g. SPECFEM3D) and workflow tools
-(e.g. SeisFlows).
+(e.g. SeisFlows3).
 
-Pyatoa is not intellegent. Although it provides sanity checks and fault 
-tolerance, it cannot do your science for you. Careful attention must be paid in 
+Pyatoa is not smart. Although it provides quality checks along the way, it
+cannot do your science for you. Careful attention must be paid in
 properly choosing input data and processing parameters based on the problem at 
-hand. Garbage in will always mean garbage out.
+hand. Garbage in == garbage out.
 
 Pyatoa is not quiet, it logs almost every task that it performs. Although this
-can be overwhelming, each log statement is important. If you are running Pyatoa
-for the first time, be sure to read the logs to get an idea of what is going
-on under the hood.
+can be overwhelming, each log statement hold some importance. If you are running
+Pyatoa for the first time, be sure to read the logs to get an idea of what is
+going on under the hood.
 
 
 How do I use Pyatoa?
@@ -55,7 +53,7 @@ Pyatoa was written following the design philosophy of ObsPy, that means it's
 meant to be used as a Python tool, NOT as a standalone command-line tool, or 
 GUI based program.
 Pyatoa can be invoked through scripting, or in interactive Python
-environments such as the Python interpretor, IPython, Jupyter Notebooks, etc.
+environments such as the Python interpreter, IPython, Jupyter Notebooks, etc.
 
 The notebooks found in the introduction section should provide a quick overview
 of how Pyatoa and its underlying functionalities should be used. They are meant

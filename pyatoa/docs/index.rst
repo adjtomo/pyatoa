@@ -3,9 +3,20 @@ Python’s Adjoint Tomography Operations Assistant
 ===================================================
 ``Pyatoa`` is a Python-based toolbox meant to facilitate waveform comparisons in 
 adjoint tomography. With humble origins as a disjointed collection of scripts, 
-it has grown into a cohesive library for misfit quantification.
+it has grown into a cohesive library for misfit quantification with
+purpose-built objects to facilitate automation of common tasks in full-waveform
+tomography, including:
 
-This docs page provides an overview of Pyatoa through introductory material, 
+1. Metadata and waveform collection
+2. Waveform standardization and preprocesing
+3. Time windowing and adjoint source generation
+4. Hierarchical data storage of waveforms, metadata, and measurements
+5. Bulk measurement aggregation and analysis
+6. Waveform and measurement plotting
+7. Interface with broader workflow tools
+
+
+This docs page provides an overview of Pyatoa through introductory material,
 in-depth tutorials, and API for core classes and supporting utilities.
 
 Source code can be found on Github: https://github.com/bch0w/pyatoa
@@ -15,34 +26,31 @@ Source code can be found on Github: https://github.com/bch0w/pyatoa
 Installation
 ~~~~~~~~~~~~
 
-``Pyatoa`` is in ongoing development so package manager installation is not 
-currently available. Install should be accomplished using pip, however Basemap
-will need to be installed via Conda so that the correct dependencies are
-installed.
+``Pyatoa`` is in ongoing development so package manager installation is not
+currently available, however pip and conda install procedures are on the to-do
+list. For now, install should be accomplished via pip and the GitHub repository.
 
-It is recomended that Pyatoa be installed inside a Conda environment to
+It is recommended that ``Pyatoa`` be installed inside a Conda environment to
 preserve your root environment. The 'devel' branch provides the latest codebase.
-
 
 .. code:: bash
 
    $ conda create -n pyatoa python=3.7
-   $ source activate pyatoa
-   $ git clone https://github.com/bch0w/pyatoa.git
+   $ conda activate pyatoa
+   $ git clone --branch devel https://github.com/bch0w/pyatoa.git
    $ cd pyatoa
-   $ git checkout devel
-   $ conda install -c conda-forge basemap
-   $ pip install -r requirements.txt .
+   $ pip install .
 
 
 Running Tests
 ~~~~~~~~~~~~~
 
 Tests ensure ``Pyatoa`` runs as expected, these require installation of Pytest.
+If any changes are made to the source code, please run tests to ensure nothing
+is broken.
 
 .. code:: bash
 
-   $ pip install pytest
    $ cd pyatoa/tests
    $ pytest
 
@@ -51,7 +59,8 @@ Tests ensure ``Pyatoa`` runs as expected, these require installation of Pytest.
 Dependencies
 ~~~~~~~~~~~~
 
-Credit where credit is due, ``Pyatoa`` is a high-level API relying on the following:
+Credit where credit is due, ``Pyatoa`` is a high-level API built directly on
+top of on the following packages:
 
 -  `Obspy: <https://github.com/obspy/obspy/wiki>`__ for seismic
    data handling, data gathering, and waveform processing
@@ -84,6 +93,7 @@ Geophysical Journal International, 223(3), 1461-1480.
 
    overview
    quickstart
+   a_short_example
    prepwork
 
 .. toctree::
@@ -107,3 +117,12 @@ Geophysical Journal International, 223(3), 1461-1480.
    standards
    logging
    pyatoa_api
+
+.. toctree::
+   :maxdepth: 1
+   :hidden:
+   :caption: Development
+
+   to-do_list
+   changelog
+   contributing
