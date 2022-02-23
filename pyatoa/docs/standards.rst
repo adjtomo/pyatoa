@@ -130,6 +130,16 @@ The following **standard** is enforced throughout Pyatoa:
 
 --------------
 
+Evaluation
+----------
+
+An evaluation is a single step within a single inversion. We use the term
+evaluation to refer to line search evaluation belonging to a given iteration.
+For example, the first evaluation in an inversion is i01s00 (iteration 1, 
+step 0).
+
+--------------
+
 Observation Waveforms
 ---------------------
 
