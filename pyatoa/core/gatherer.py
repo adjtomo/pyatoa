@@ -439,6 +439,7 @@ class InternalFetcher:
             fid = os.path.join(path_, resp_dir_template, resp_fid_template)
             fid = fid.format(net=net, sta=sta, cha=cha, loc=loc)
             logger.debug(f"searching for responses: {fid}")
+
             for filepath in glob.glob(fid):
                 if inv is None:
                     # The first inventory becomes the main inv to return
@@ -483,9 +484,10 @@ class InternalFetcher:
                 '{net}.{sta}.{loc}.{cha}*{year}.{jday:0>3}'
         """
         obs_dir_template = kwargs.get("obs_dir_template",
-                                   "{year}/{net}/{sta}/{cha}*")
-        obs_fid_template = kwargs.get("obs_fid_template",
-                                   "{net}.{sta}.{loc}.{cha}*{year}.{jday:0>3}")
+                                      "{year}/{net}/{sta}/{cha}")
+        obs_fid_template = kwargs.get(
+            "obs_fid_template", "{net}.{sta}.{loc}.{cha}.{year}.{jday:0>3}"
+        )
 
         if self.origintime is None:
             raise AttributeError("'origintime' must be specified")

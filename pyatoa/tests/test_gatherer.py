@@ -16,7 +16,7 @@ def code():
     """
     Example NZ station code
     """
-    return "NZ.BFZ.??.HH?"
+    return "NZ.BFZ.??.HH*"
 
 
 @pytest.fixture

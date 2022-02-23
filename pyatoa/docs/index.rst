@@ -4,22 +4,24 @@ Python’s Adjoint Tomography Operations Assistant
 ``Pyatoa`` is a Python-based toolbox meant to facilitate waveform comparisons in 
 adjoint tomography. With humble origins as a disjointed collection of scripts, 
 it has grown into a cohesive library for misfit quantification with
-purpose-built objects to facilitate automation of common tasks in full-waveform
-tomography, including:
-
-1. Metadata and waveform collection
-2. Waveform standardization and preprocesing
-3. Time windowing and adjoint source generation
-4. Hierarchical data storage of waveforms, metadata, and measurements
-5. Bulk measurement aggregation and analysis
-6. Waveform and measurement plotting
-7. Interface with broader workflow tools
-
+purpose-built objects to facilitate automation of common tasks in full waveform
+tomography.
 
 This docs page provides an overview of Pyatoa through introductory material,
 in-depth tutorials, and API for core classes and supporting utilities.
 
-Source code can be found on Github: https://github.com/bch0w/pyatoa
+Source code can be found on GitHub: https://github.com/bch0w/pyatoa
+
+.. figure:: images/waveform_example.png
+    :alt: An example waveform figure showing off some of Pyatoa's features
+
+    An example of ``Pyatoa``'s waveform comparison capabilities. On the left
+    are observed (black) and synthetic (red) waveforms compared within
+    time windows (orange boxes). The green trace shows adjoint sources, or
+    time-dependent misfit functions. Rejected time windows (colored bars) help
+    illustrate why parts of the waveform are not windowed. The source-receiver
+    map (right) provides additional information for assessing waveform misfit.
+
 
 --------------
 
@@ -30,7 +32,7 @@ Installation
 currently available, however pip and conda install procedures are on the to-do
 list. For now, install should be accomplished via pip and the GitHub repository.
 
-It is recommended that Pyatoa be installed inside a Conda environment to
+It is recommended that ``Pyatoa`` be installed inside a Conda environment to
 preserve your root environment. The 'devel' branch provides the latest codebase.
 
 .. code:: bash

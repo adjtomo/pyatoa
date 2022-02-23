@@ -20,6 +20,7 @@ setup(name='pyatoa',
           "pyyaml>=5.4",
           "matplotlib==3.0.3",  
           "basemap>=1.3.0",
+          "pillow>=8.4.0",
           "pyflex @ git+https://github.com/bch0w/pyflex@0.2.0",
           "pyadjoint @ git+https://github.com/krischer/pyadjoint"
           ], 

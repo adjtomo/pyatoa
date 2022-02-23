@@ -6,7 +6,15 @@ What is Pyatoa?
 At its core, Pyatoa is a waveform assessment package. The short version: it's
 designed to compare one set of wiggles to another set of (similar) wiggles. The
 objects within this package are meant to facilitate, augment, or complement
-this core functionality.
+this core functionality. These include:
+
+- Metadata and waveform collection
+- Waveform standardization and preprocesing
+- Time windowing and adjoint source generation
+- Hierarchical data storage of waveforms, metadata, and measurements
+- Bulk measurement aggregation and analysis
+- Waveform and measurement plotting
+- Interface with broader workflow tools
 
 The aim of Pyatoa is to simplify and automate misfit quantification in adjoint
 tomography. It does so by providing a high-level API to reduce the amount of

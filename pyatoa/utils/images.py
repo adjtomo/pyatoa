@@ -4,6 +4,8 @@ Makes use use of the Python Pillow package if working with .png files, and
 the PyPDF2 package if manipulating pdf files. Internal imports for all functions
 to remove Pyatoa-wide dependencies on these packages for short functions.
 """
+import numpy as np
+from PIL import Image
 
 
 def merge_pdfs(fids, fid_out):
@@ -38,8 +40,6 @@ def imgs_to_pdf(fids, fid_out):
     :type fid_out: str
     :param fid_out: the name of the file to be saved with full pathname
     """
-    from PIL import Image
-
     images = []
     for fid in fids:
         # PNGs need to be converted to RGB to get alpha to play nice
@@ -61,8 +61,6 @@ def tile_imgs(fids, fid_out):
     :type fid_out: str
     :param fid_out: the name of the file to be saved with full pathname
     """
-    from PIL import Image
-
     # .png files require conversion to properly get the alpha layer
     images = []
     for fid in fids:
@@ -80,5 +78,36 @@ def tile_imgs(fids, fid_out):
         x_offset += im.size[0]
 
     im_out.save(fid_out)
+
+
+def tif_to_array(fid):
+    """
+    Convert GeoTiff images (e.g., ETOPO1 topography) to a numpy array for
+    conversion and processing
+
+    :type fid: str
+    :param fid: .tif(f) file
+    :rtype: np.array
+    :return: array of data contained within the tiff file
+    """
+    try:
+        im = Image.open(fid)
+    except Image.DecompressionBombError as e:
+        # If the image is too large, it will throw an error, we'll just need
+        # to adjust the acceptable size of the image. This may be bad if you 
+        # don't trust the image! But let's be reckless...
+        error_str = str(e)
+        # Assuming the error message looks like:
+        # 'Image size (N pixels) exceeds...'  Trying to get value N
+        pixels = int(error_str.split()[2][1:])
+        print(f"setting Image max pixel count to {pixels}")
+        Image.MAX_IMAGE_PIXELS = pixels
+        im = Image.open(fid)
+
+    imarray = np.array(im)
+    return imarray
+
+    
+
 
 
