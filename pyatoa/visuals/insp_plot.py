@@ -67,7 +67,8 @@ class InspectorPlotter:
             src_lon = srcs.longitude
             src_names = srcs.index
             sc_sources = plt.scatter(src_lon, src_lat, marker="o", c="None",
-                                     edgecolors="k", s=markersize, zorder=100
+                                     edgecolors="k", s=markersize, zorder=100,
+                                     label="event(s)"
                                      )
         if not self.receivers.empty:
             sc_receiver_names, sc_receiver_list = [], []
@@ -102,6 +103,10 @@ class InspectorPlotter:
         plt.ylabel("Latitude")
         plt.legend()
         plt.title(f"{len(self.events)} events; {len(self.receivers)} stations")
+
+        # Calculate aspect ratio based on latitude
+        w = 1 / np.cos(np.radians(rcv_lat[0]))
+        plt.gca().set_aspect(w)
 
         if save:
             plt.savefig(save)
@@ -142,6 +147,9 @@ class InspectorPlotter:
 
         f, ax = plt.subplots(figsize=(8, 6))
         plt.scatter(df[x].to_numpy(), df[y].to_numpy(), **kwargs)
+        plt.xlabel(x)
+        plt.ylabel(y)
+        plt.title(f"{x} vs. {y}; N={len(x)}")
         default_axes(ax, **kwargs)
 
         if save:
@@ -399,7 +407,9 @@ class InspectorPlotter:
         # plt.title(f"{len(df)} raypaths ({len(events)} events, "
         #           f"{len(stations)} stations)")
 
-        default_axes(ax, cbar, **kwargs)
+        # Calculate aspect ratio based on latitude
+        w = 1 / np.cos(np.radians(elat))
+        plt.gca().set_aspect(w)
 
         if save:
             plt.savefig(save)
@@ -430,6 +440,9 @@ class InspectorPlotter:
             contour plot looking feel.
         """
         figsize = kwargs.get("figsize", (8, 8))
+        event_color = kwargs.get("event_color", "orange")
+        station_color = kwargs.get("station_color", "cyan")
+        markersize = kwargs.get("markersize", 26)
 
         f, ax = plt.subplots(figsize=figsize)
         df = self.misfit(level="station").loc[iteration, step_count]
@@ -486,7 +499,6 @@ class InspectorPlotter:
                    zorder=5)
         cbar = plt.colorbar(label="counts", shrink=0.9, pad=0.025)
 
-        plt.scatter(coast[:,1], coast[:,0], s=.05, c="w", zorder=20)  # DELETE
         plt.title(f"Raypath Density (N={len(df)} src-rcv pairs)")
         plt.xlabel("Longitude")
         plt.ylabel("Latitude")
@@ -503,10 +515,6 @@ class InspectorPlotter:
             plt.show()
 
         plt.close()
-
-
-
-
 
     def event_hist(self, choice):
         """
@@ -527,6 +535,11 @@ class InspectorPlotter:
                                     )
         mu, var, std = get_histogram_stats(n, bins)
         default_axes(ax)
+
+        plt.xlabel(choice)
+        plt.ylabel("count")
+
+        return f, ax
 
 
     def measurement_hist(self, iteration, step_count, choice="event", show=True,
@@ -553,12 +566,20 @@ class InspectorPlotter:
                                     edgecolor="black", linewidth=4.,
                                     label=choice, alpha=1., zorder=20
                                     )
+
+        # Find mean and standard deviation of measurement number
         mu, var, std = get_histogram_stats(n, bins)
         plt.axvline(x=mu, ymin=0, ymax=1, linewidth=2, c="k",
                     linestyle="--", zorder=15, alpha=0.5)
         for sign in [-1, 1]:
             plt.axvline(x=mu + sign * std, ymin=0, ymax=1, linewidth=2,
                         c="k", linestyle=":", zorder=15, alpha=0.5)
+
+        default_axes(plt.gca())
+        plt.xlabel(f"{choice} number of measurements")
+        plt.ylabael("count")
+        plt.title(f"{iteration}{step_count}; N={n}\n"
+                  f"solid line = mean; dashed line = 1 std")
 
         if save:
             plt.savefig(save)
@@ -966,7 +987,7 @@ class InspectorPlotter:
 
         return f, ax
 
-    def plot_windows(self, iteration, step, iteration_comp=None,
+    def plot_windows(self, iteration, step_count, iteration_comp=None,
                      step_comp=None, choice="cc_shift_in_seconds",
                      event=None, network=None, station=None, component=None,
                      no_overlap=True, distances=False, annotate=False,
