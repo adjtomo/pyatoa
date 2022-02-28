@@ -272,7 +272,8 @@ class Inspector(InspectorPlotter):
             self.sources = pd.concat([self.sources, source])
 
         # Loop through all the stations in the dataset to create a dataframe
-        networks, stations, latitudes, longitudes = [], [], [], []
+        networks, stations, locations = [], [], []
+        latitudes, longitudes = [], []
         for sta, sta_info in ds.get_all_coordinates().items():
             # Append station information one time globally by checking name
             net, sta = sta.split(".")
