@@ -79,7 +79,7 @@ top of on the following packages:
 --------------
 
 How to Cite
-~~~~
+~~~~~~~~~~~~
 
 If you use ``Pyatoa``, consider citing the related publication:
 `Chow et al. (2020) <https://academic.oup.com/gji/article/223/3/1461/5897358>`__.

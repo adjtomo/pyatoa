@@ -34,6 +34,7 @@ routines facilitate visualization of standard inversion results.
 Pyatoa is open-source and completely Python based.
 
 
+
 What isn't Pyatoa?
 ~~~~~~~~~~~~~~~~~~
 
@@ -54,8 +55,39 @@ Pyatoa for the first time, be sure to read the logs to get an idea of what is
 going on under the hood.
 
 
-How do I use Pyatoa?
-~~~~~~~~~~~~~~~~~~~~
+Why is Pyatoa (necessary)?
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+One question that you might have regarding Pyatoa is: why is it necessary? If
+workflow tools like SeisFlows3 exist, what role does Pyatoa play in this
+code ecosystem? Is it necessary to run seismic inversions? What is the 
+difference between these tools?
+
+Well, SeisFlows3 was originally written (as SeisFlows) as an automated workflow 
+tool for full waveform inversion, allowing for generalizerd interfacing with a 
+number of numerical solvers and compute interfaces. 
+
+However, within the original SeisFlows, we identified some key features that are
+missing from the package but necessary for earthquake-based tomography, namely: 
+data gathering, waveform preprocessing, windowing, 
+flexible adjoint source creation, inversion assessment, and figure generation.
+
+Now, these tasks can be performed manually with existing tools, however the 
+name of the game here is automation. Consequently Pyatoa was develoepd to
+provide a high-level interface for users (or SeisFlows3) to automate the 
+above-named tasks. 
+
+If a user does not need the above capabilities, e.g., while running very simple
+2D synthetic inversions where data-synthetic misfits can be computed along the
+entire waveform, then Pyatoa is not necessary. If a user only needs to make 
+data-synthetic comparisons on a set of similar waveforms, then only Pyatoa is 
+needed. And if a user wants to automate an entire seismic inversion involving
+real data, then we recommend using a combination of Pyatoa and SeisFlows3 (see
+:doc:`Pyaflowa </pyaflowa>` documentation).
+
+
+How do (I use) Pyatoa?
+~~~~~~~~~~~~~~~~~~~~~~~
 
 Pyatoa was written following the design philosophy of ObsPy, that means it's 
 meant to be used as a Python tool, NOT as a standalone command-line tool, or 
