@@ -57,8 +57,8 @@ POSTPROCESS: base
 #
 # ==============================================================================
 TITLE: decluster
-BEGIN: 18
-END: 18
+BEGIN: 1
+END: 1
 VERBOSE: True
 
 # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -154,7 +154,7 @@ SLURMARGS: --hint=nomultithread
 #                      Seisflows currently supports: `fortran_binary`
 #
 # ==============================================================================
-CASE: Data
+CASE: Synthetic
 MATERIALS: Elastic
 DENSITY: Constant
 PRECOND: null
@@ -241,7 +241,7 @@ START_PAD: 20
 END_PAD: 350           
 PYFLEX_PRESET: nznorth_8-30s
 ADJ_SRC_TYPE: cc
-FIX_WINDOWS: once
+FIX_WINDOWS: False
 SNAPSHOT: True     
 PLOT: True
 MAP_CORNERS: null
@@ -356,10 +356,6 @@ PATHS:
     SCRATCH: "./scratch"
     OUTPUT: "./output"
     SPECFEM_DATA: "./sfDATA"
-    MODEL_INIT: "/scale_wlg_nobackup/filesets/nobackup/nesi00263/bchow/tomo/\
-                 seisflows/specfem/nznorth/1node_10s/\
-                 OUTPUT_FILES_INIT/DATABASES_MPI/"
-    SPECFEM_BIN: "/scale_wlg_persistent/filesets/project/nesi00263/bchow/\
-                  specfem/specfem3d_75e1785/\
-                  bin_75e1785_CrayGNU-19.04_openmp_mpi_vectorization"
-    DATA: "/scale_wlg_persistent/filesets/home/chowbr/primer/auxiliary/data"
+    MODEL_INIT: "./model_init"
+    SPECFEM_BIN: "./bin"
+    DATA: 

@@ -4,6 +4,8 @@ For writing various output files used by Pyatoa, Specfem and Seisflows
 import os
 import glob
 import numpy as np
+from obspy.core.inventory.channel import Channel
+from pyatoa import logger
 from pyatoa.utils.form import (format_event_name, format_iter, format_step, 
                                channel_code)
 
@@ -42,6 +44,89 @@ def write_stations(inv, fid="./STATIONS", elevation=False, burial=0.):
 
                 f.write(f"{sta.code:>6}{net.code:>6}{lat:12.4f}{lon:12.4f}"
                         f"{elv:7.1f}{burial:7.1f}\n")
+
+
+def write_inv_seed(inv, path="./", dir_structure="{sta}.{net}",
+                   file_template="RESP.{net}.{sta}.{loc}.{cha}",
+                   components="ZNE", channel_code="HX{comp}", **kwargs):
+    """
+    Pyatoa requires stations to be discoverable in SEED format, i.e., in a data
+    center repository. This structure dictates that each component of each 
+    station has its own individual StationXML file, saved in a specific 
+    directory structure with a unique file naming schema. 
+
+    This utility is useful for creating the necessary StationXML files for 
+    temporary or synthetic stations which are not discoverable via
+    FDSN or through datacenters.
+
+    .. note::
+        kwargs are passed to obspy.core.inventory.channel.Channel
+
+    :type path: str
+    :param path: location to save StationXML files to
+    :type dir_structure: str
+    :param dir_structure: template for directory structure, likely should not 
+        need to change from the default 
+    :type file_template: str
+    :param file_template: template for file naming, likely should not change 
+        from default template
+    :type channels: str
+    :param channels: OPTIONAL, if inventory does not contain channels (e.g.,
+        if read from a SPECFEM STATIONS file), channels will be generated here.
+    :type channel_code: str
+    :param channel_code: Explicitely defined default channel values for
+    generating channels on the fly when none are provided by the inventory
+    """
+    # Default values for other values required by the inventory
+    location_code = kwargs.get("location_code", "")
+    elevation = kwargs.get("elevation", 0.)
+    depth = kwargs.get("depth", 0.)
+
+    assert(os.path.exists(path)), f"output path does not exist: {path}"
+    
+    for net in inv:
+        for sta in net:
+            # Create the directory to store individual channels
+            sta_dir = os.path.join(path, dir_structure.format(sta=sta.code, 
+                                                              net=net.code)
+                                   )
+            if not os.path.exists(sta_dir):
+                os.makedirs(sta_dir)
+          
+            # If the station has no channels inherently, generate them on the 
+            # fly based on default and user-defined information 
+            if len(sta) == 0:
+                channel_list = []
+                for comp in components:
+                    cha_ = Channel(code=channel_code.format(comp=comp),
+                                   location_code=location_code,
+                                   latitude=sta.latitude, 
+                                   longitude=sta.longitude, elevation=elevation,
+                                   depth=depth, **kwargs
+                                   )
+                    channel_list.append(cha_)
+                sta.channels = channel_list
+
+            # Cycle through the channels and generate individual StationXMLs
+            for cha in sta:
+                # Select the channel out of the inventory
+                channel_inv = inv.select(network=net.code, station=sta.code,
+                                         channel=cha.code
+                                         )
+                # If select returns properly, write out channel as StationXML
+                if channel_inv:
+                    fid_out = os.path.join(
+                        path, 
+                        dir_structure.format(sta=sta.code, net=net.code),
+                        file_template.format(net=net.code, sta=sta.code,
+                                             loc=cha.location_code,
+                                             cha=cha.code)
+                    )
+                    channel_inv.write(fid_out, format="STATIONXML")
+                else:
+                    print("{}.{} could not be selected".format(sta.code,
+                                                               cha.code)
+                          )
 
 
 def write_sem(st, unit, path="./", time_offset=0):
@@ -98,12 +183,12 @@ def write_misfit(ds, iteration, step_count=None, path="./", fidout=None):
     
     # Collect the total misfit calculated by Pyadjoint
     total_misfit = 0
-    adjoint_sources = ds.auxiliadry_data.AdjointSources[iter_tag]
+    adjoint_sources = ds.auxiliary_data.AdjointSources[iter_tag]
     if step_tag:
         adjoint_sources = adjoint_sources[step_tag]
 
     for adjsrc in adjoint_sources.list():
-        total_misfit += adjoint_sources[adjsrc].parameters["misfit_value"]
+        total_misfit += adjoint_sources[adjsrc].parameters["misfit"]
 
     # Count up the number of misfit windows
     win = ds.auxiliary_data.MisfitWindows[iter_tag]
@@ -132,6 +217,7 @@ def write_stations_adjoint(ds, iteration, specfem_station_file, step_count=None,
     :param iteration: iteration number, e.g. "i01". Will be formatted so int ok.
     :type step_count: str or int
     :param step_count: step count e.g. "s00". Will be formatted so int ok.
+        If NoneType, final step of the iteration will be chosen automatically.
     :type specfem_station_file: str
     :param specfem_station_file: path/to/specfem/DATA/STATIONS
     :type pathout: str
@@ -140,8 +226,13 @@ def write_stations_adjoint(ds, iteration, specfem_station_file, step_count=None,
     # Check which stations have adjoint sources
     stas_with_adjsrcs = []
     adj_srcs = ds.auxiliary_data.AdjointSources[format_iter(iteration)]
-    if step_count:
-        adj_srcs = adj_srcs[format_step(step_count)]
+    # Dynamically determine final step count in the iteration
+    if step_count is None:
+        step_count = adj_srcs.list()[-1]
+    logger.debug(f"writing stations adjoint for "
+                f"{format_iter(iteration)}{format_step(step_count)}"
+                )
+    adj_srcs = adj_srcs[format_step(step_count)]
 
     for code in adj_srcs.list():
         stas_with_adjsrcs.append(code.split('_')[1])
@@ -166,7 +257,7 @@ def write_stations_adjoint(ds, iteration, specfem_station_file, step_count=None,
 
 
 def write_adj_src_to_ascii(ds, iteration, step_count=None, pathout=None, 
-                           comp_list=["N", "E", "Z"]):
+                           comp_list="ZNE"):
     """
     Take AdjointSource auxiliary data from a Pyasdf dataset and write out
     the adjoint sources into ascii files with proper formatting, for input
@@ -184,9 +275,10 @@ def write_adj_src_to_ascii(ds, iteration, step_count=None, pathout=None,
     :param iteration: iteration number, e.g. "i00". Will be formatted so int ok.
     :type step_count: str or int
     :param step_count: step count e.g. "s00". Will be formatted so int ok.
+            If NoneType, final step of the iteration will be chosen automatically.
     :type pathout: str
     :param pathout: path to write the adjoint sources to
-    :type comp_list: list of str
+    :type comp_list: str
     :param comp_list: component list to check when writing blank adjoint sources
         defaults to N, E, Z, but can also be e.g. R, T, Z
     """
@@ -216,8 +308,12 @@ def write_adj_src_to_ascii(ds, iteration, step_count=None, pathout=None,
 
     # Shortcuts
     adjsrcs = ds.auxiliary_data.AdjointSources[format_iter(iteration)]
-    if step_count:
-        adjsrcs = adjsrcs[format_step(step_count)]
+    if step_count is None:
+        step_count = adjsrcs.list()[-1]
+    adjsrcs = adjsrcs[format_step(step_count)]
+    logger.debug(f"writing adjoint sources to ascii for "
+                f"{format_iter(iteration)}{format_step(step_count)}"
+                )
 
     # Set the path to write the data to.
     # If no path is given, default to current working directory
@@ -236,7 +332,7 @@ def write_adj_src_to_ascii(ds, iteration, step_count=None, pathout=None,
             write_to_ascii(f, adjsrcs[adj_src].data[()])
 
         # Write blank adjoint sources for components with no misfit windows
-        for comp in comp_list:
+        for comp in list(comp_list):
             station_blank = (adj_src[:-1] + comp).replace('_', '.')
             if station_blank.replace('.', '_') not in adjsrcs.list() and \
                     station_blank not in already_written:

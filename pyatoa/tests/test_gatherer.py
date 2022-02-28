@@ -16,7 +16,15 @@ def code():
     """
     Example NZ station code
     """
-    return "NZ.BFZ.??.HH?"
+    return "NZ.BFZ.??.HH*"
+
+
+@pytest.fixture
+def event_id():
+    """
+    Example NZ event identifier 
+    """
+    return "2018p130600"
 
 
 @pytest.fixture
@@ -130,7 +138,11 @@ def test_station_get(external_getter, code):
     """
     net, sta, loc, cha = code.split('.')
 
-    inv = external_getter.station_get(code, level="response")
+    # !!! This throws an ObsPy UserWarning that the StationXML file has version
+    # !!! 1, but ObsPy only accepts 1.0 or 1.1. Acceptable warning so pass.
+    with pytest.warns(UserWarning):
+        inv = external_getter.station_get(code, level="response")
+
     assert inv[0].code == net
     assert inv[0][0].code == sta
     assert hasattr(inv[0][0][0], "response")
@@ -179,6 +191,26 @@ def test_asdf_waveform_fetch(internal_fetcher, dataset_fid, code, config):
             st = internal_fetcher.asdf_waveform_fetch(code, tag)
             assert len(st) == 3
 
+
+def test_fetch_event_by_dir(internal_fetcher, event_id):
+    """
+    Get event information based on given directory structure. Test the various
+    types of input sources that are allowable by Pyatoa
+    """
+    # No Config path means fetching returns nada
+    assert internal_fetcher.fetch_event_by_dir(event_id) is None
+
+    internal_fetcher.config.paths["events"] = "./test_data/"
+
+    prefixes = ["test_CMTSOLUTION_", "test_FORCESOLUTION_", "test_SOURCE_"]
+    
+    # Test each type of available source from SPECFEM2D and SPECFEM3D
+    for prefix in prefixes:
+        event = internal_fetcher.fetch_event_by_dir(event_id=event_id, 
+                                                    prefix=prefix)
+
+        assert event is not None
+        assert event_id in event.resource_id.id
 
 def test_fetch_resp_by_dir(internal_fetcher, code):
     """
@@ -258,6 +290,21 @@ def test_syn_waveform_fetch(internal_fetcher, dataset_fid, code):
     with ASDFDataSet(dataset_fid) as ds:
         internal_fetcher.ds = ds
         assert internal_fetcher.syn_waveform_fetch(code) is not None
+
+
+def test_event_fetch(internal_fetcher, dataset_fid, event_id):
+    """
+    Test the mid level fetching function which chooses whether to search via
+    ASDFDataSet or directory structure for event information
+    """
+    internal_fetcher.config.paths["events"] = "./test_data"
+    assert internal_fetcher.event_fetch(
+                        event_id, prefix="test_CMTSOLUTION_") is not None
+    internal_fetcher.config.paths["events"] = None
+
+    with ASDFDataSet(dataset_fid) as ds:
+        internal_fetcher.ds = ds
+        assert internal_fetcher.event_fetch(code) is not None
 
 
 def test_station_fetch(internal_fetcher, dataset_fid, code):

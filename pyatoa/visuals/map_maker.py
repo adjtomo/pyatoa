@@ -17,6 +17,7 @@ from obspy.geodetics.flinnengdahl import FlinnEngdahl
 from obspy.core.event.catalog import Catalog
 
 from pyatoa.utils.srcrcv import gcd_and_baz
+from pyatoa.utils.form import format_event_name
 
 try:
     from mpl_toolkits.basemap import Basemap
@@ -137,10 +138,18 @@ class MapMaker:
         axis_linewidth = self.kwargs.get("axis_linewidth", 2.0)
         axis_fontsize = self.kwargs.get("axis_fontsize", 8)
         fill_color = self.kwargs.get("fill_color", "w")
-        plw = self.kwargs.get("parallel_linewidth", 0.)
-        mlw = self.kwargs.get("meridian_linewidth", 0.)
+        plw = self.kwargs.get("parallel_linewidth", 1E-2)
+        mlw = self.kwargs.get("meridian_linewidth", 1E-2)
         projection = self.kwargs.get("projection", "stere")
         resolution = self.kwargs.get("resolution", "l")
+
+        if (plw == 0) or (mlw == 0):
+            import warnings
+            warnings.warn("Setting linewidth=0 for parallels and meridians "
+                          "leads to a known issue where PDF map figures will "
+                          "be corrupted. Please set lw to a nonzero value or "
+                          "see github.com/matplotlib/basemap/issues/493 for "
+                          "a workaround and more information")
 
         # Initiate matplotlib instances
         if figure is None:
@@ -158,14 +167,18 @@ class MapMaker:
                          area_thresh=area_thresh, ax=ax,
                          )
 
-        # By default, no meridan or parallel lines
+        # By default, no meridan or parallel lines  
+        # !!! Set zorder=-2 as a workaround where linewidth=0 was causing .pdf
+        # !!! files to not show maps in some pdf viewers.
+        # !!! see https://github.com/matplotlib.basemap/issues/493
         self.m.drawparallels(np.arange(int(self.lat_min), int(self.lat_max), 1),
                              labels=[1, 0, 0, 0], linewidth=plw,
-                             fontsize=axis_fontsize
+                             fontsize=axis_fontsize, zorder=-2
                              )
         self.m.drawmeridians(
             np.arange(int(self.lon_min), int(self.lon_max) + 1, 1),
-            labels=[0, 0, 0, 1], linewidth=mlw, fontsize=axis_fontsize
+            labels=[0, 0, 0, 1], linewidth=mlw, fontsize=axis_fontsize,
+            zorder=-2
         )
 
         # Create auxiliary parts of the map for clarity
@@ -308,7 +321,7 @@ class MapMaker:
             ha = ma = "right"
 
         # Collect some useful information
-        event_id = self.event.resource_id.id.split('/')[1]
+        event_id = format_event_name(self.event)
         sta_id = f"{self.inv[0].code}.{self.inv[0][0].code}"
         gc_dist, baz = gcd_and_baz(self.event, self.inv[0][0])
         origin_time = self.event.origins[0].time

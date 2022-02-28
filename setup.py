@@ -1,23 +1,28 @@
 import os
 from setuptools import setup, find_packages
 
-
-# Get the list of required dependencies from requirements.txt
-path_pyatoa = os.path.dirname(os.path.realpath(__file__))
-req_file = os.path.join(path_pyatoa, "requirements.txt")
-if os.path.exists(req_file):
-    with open(req_file, "r") as f:
-        install_requires = list(f.read().splitlines())
-else:
-    install_requires = []
-
+# Remove the public repos (not hosted) from install requires, put in dependency
 setup(name='pyatoa',
-      version='0.0.1',
-      description="Python's Adjoint Tomography Operations Assitance",
+      version='0.1.0',
+      description="Python's Adjoint Tomography Operations Assistant",
       url='http://github.com/bch0w/pyatoa',
+      download_url='https://github.com/bch0w/pyatoa/archive/refs/tags/v0.1.0.tar.gz',
       author='Bryant Chow',
-      author_email='bryant.chow@vuw.ac.nz',
-      license='GPL',
+      author_email='bhchow@alaska.edu',
+      license='GPL-3.0',
+      python_requires=">=3.7",
       packages=find_packages(),
-      install_requires=[],
-      zip_safe=False)
+      install_requires=[
+          "obspy>=1.2.2",
+          "pyasdf>=0.7.2",
+          "pandas>=1.1.0",
+          "pypdf2>=1.26.0",
+          "pyyaml>=5.4",
+          "matplotlib==3.0.3",  
+          "basemap>=1.3.0",
+          "pillow>=8.4.0",
+          "pyflex @ git+https://github.com/bch0w/pyflex@0.2.0",
+          "pyadjoint @ git+https://github.com/krischer/pyadjoint"
+          ], 
+      zip_safe=False
+      )

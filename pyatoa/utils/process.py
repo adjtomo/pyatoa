@@ -346,7 +346,7 @@ def match_npts(st_a, st_b, force=None):
         return st_change, st_const
 
 
-def is_preprocessed(st):
+def is_preprocessed(st, filter_only=True):
     """
     Check to make sure a stream object has not yet been run through
     preprocessing.
@@ -356,16 +356,24 @@ def is_preprocessed(st):
 
     :type st: obspy.stream.Stream
     :param st: stream to check processing on
+    :type filter_only: bool
+    :param filter_only: only check if the stream has been filtered, as other
+        processing steps (e.g., demeaning, rotating) will also lead to a
+        'processing' stat. Usually this is what you want to check as filtering
+        is one of the last steps in the processing chain.
     :rtype: bool
     :return: if preprocessing has occurred
     """
     for tr in st:
         if hasattr(tr.stats, "processing"):
-            for processing in tr.stats.processing:
-                # A little hacky, but processing flag will have the str
-                # ..': filter(options'... to signify that a filter is applied
-                if "filter(options" in processing:
-                    return True
+            if filter_only:
+                for processing in tr.stats.processing:
+                    # A little hacky, but processing flag will have the str
+                    # ..': filter(options'... to signify that a filter is applied
+                    if "filter(options" in processing:
+                        return True
+            else:
+                return bool(tr.stats.processing)
     # If nothing found, return False
     return False
 
@@ -374,9 +382,9 @@ def stf_convolve(st, half_duration, source_decay=4., time_shift=None,
                  time_offset=None):
     """
     Convolve function with a Gaussian window source time function.
-    Following borrowed from Specfem3D Cartesian "comp_source_time_function.f90"
+    Design follows Specfem3D Cartesian "comp_source_time_function.f90"
 
-    hdur given is hdur_Gaussian = hdur/SOURCE_DECAY_MIMIC_TRIANGLE
+    `hdur` given is `hdur`_Gaussian = hdur/SOURCE_DECAY_MIMIC_TRIANGLE
     with SOURCE_DECAY_MIMIC_TRIANGLE ~ 1.68
 
     This gaussian uses a strong decay rate to avoid non-zero onset times, while

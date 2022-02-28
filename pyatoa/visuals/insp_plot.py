@@ -67,7 +67,8 @@ class InspectorPlotter:
             src_lon = srcs.longitude
             src_names = srcs.index
             sc_sources = plt.scatter(src_lon, src_lat, marker="o", c="None",
-                                     edgecolors="k", s=markersize, zorder=100
+                                     edgecolors="k", s=markersize, zorder=100,
+                                     label="event(s)"
                                      )
         if not self.receivers.empty:
             sc_receiver_names, sc_receiver_list = [], []
@@ -102,6 +103,10 @@ class InspectorPlotter:
         plt.ylabel("Latitude")
         plt.legend()
         plt.title(f"{len(self.events)} events; {len(self.receivers)} stations")
+
+        # Calculate aspect ratio based on latitude
+        w = 1 / np.cos(np.radians(rcv_lat[0]))
+        plt.gca().set_aspect(w)
 
         if save:
             plt.savefig(save)
@@ -142,6 +147,9 @@ class InspectorPlotter:
 
         f, ax = plt.subplots(figsize=(8, 6))
         plt.scatter(df[x].to_numpy(), df[y].to_numpy(), **kwargs)
+        plt.xlabel(x)
+        plt.ylabel(y)
+        plt.title(f"{x} vs. {y}; N={len(x)}")
         default_axes(ax, **kwargs)
 
         if save:
@@ -430,7 +438,9 @@ class InspectorPlotter:
         # plt.title(f"{len(df)} raypaths ({len(events)} events, "
         #           f"{len(stations)} stations)")
 
-        default_axes(ax, cbar, **kwargs)
+        # Calculate aspect ratio based on latitude
+        w = 1 / np.cos(np.radians(elat))
+        plt.gca().set_aspect(w)
 
         if save:
             plt.savefig(save)
@@ -461,6 +471,9 @@ class InspectorPlotter:
             contour plot looking feel.
         """
         figsize = kwargs.get("figsize", (8, 8))
+        event_color = kwargs.get("event_color", "orange")
+        station_color = kwargs.get("station_color", "cyan")
+        markersize = kwargs.get("markersize", 26)
 
         f, ax = plt.subplots(figsize=figsize)
         df = self.misfit(level="station").loc[iteration, step_count]
@@ -517,7 +530,6 @@ class InspectorPlotter:
                    zorder=5)
         cbar = plt.colorbar(label="counts", shrink=0.9, pad=0.025)
 
-        plt.scatter(coast[:,1], coast[:,0], s=.05, c="w", zorder=20)  # DELETE
         plt.title(f"Raypath Density (N={len(df)} src-rcv pairs)")
         plt.xlabel("Longitude")
         plt.ylabel("Latitude")
@@ -535,11 +547,7 @@ class InspectorPlotter:
 
         plt.close()
 
-
-
-
-
-    def event_hist(self, choice):
+    def event_hist(self, choice, show=True, save=None):
         """
         Make a histogram of event information
         :return:
@@ -558,6 +566,18 @@ class InspectorPlotter:
                                     )
         mu, var, std = get_histogram_stats(n, bins)
         default_axes(ax)
+
+        plt.xlabel(choice)
+        plt.ylabel("count")
+
+        if save:
+            plt.savefig(save)
+        if show:
+            plt.show()
+
+        plt.close()
+
+        return f, ax
 
 
     def measurement_hist(self, iteration, step_count, choice="event", show=True,
@@ -584,12 +604,20 @@ class InspectorPlotter:
                                     edgecolor="black", linewidth=4.,
                                     label=choice, alpha=1., zorder=20
                                     )
+
+        # Find mean and standard deviation of measurement number
         mu, var, std = get_histogram_stats(n, bins)
         plt.axvline(x=mu, ymin=0, ymax=1, linewidth=2, c="k",
                     linestyle="--", zorder=15, alpha=0.5)
         for sign in [-1, 1]:
             plt.axvline(x=mu + sign * std, ymin=0, ymax=1, linewidth=2,
                         c="k", linestyle=":", zorder=15, alpha=0.5)
+
+        default_axes(plt.gca())
+        plt.xlabel(f"{choice} number of measurements")
+        plt.ylabel("count")
+        plt.title(f"{iteration}{step_count}; N={len(arr)}\n"
+                  f"solid line = mean; dashed line = 1 std")
 
         if save:
             plt.savefig(save)
@@ -997,8 +1025,8 @@ class InspectorPlotter:
 
         return f, ax
 
-    def plot_windows(self, iteration, step, iteration_comp=None,
-                     step_comp=None, choice="cc_shift_in_seconds",
+    def plot_windows(self, iteration, step_count, iteration_comp=None,
+                     step_count_comp=None, choice="cc_shift_in_seconds",
                      event=None, network=None, station=None, component=None,
                      no_overlap=True, distances=False, annotate=False,
                      bounds=False, show=True, save=False, **kwargs):
@@ -1010,14 +1038,14 @@ class InspectorPlotter:
 
         :type iteration: str
         :param iteration: iteration to analyze
-        :type step: str
-        :param step: step count to query, e.g. 's00'
+        :type step_count: str
+        :param step_count: step count to query, e.g. 's00'
         :type iteration_comp: str
         :param iteration_comp: Optional, if provided, difference the 'choice'
             values with the chosen 'iteration/step'. Useful for easily checking
             for improvement. Only works if the windows are the same.
-        :type step_comp: str
-        :param step_comp: associated step count for 'iteration_comp'
+        :type step_count_comp: str
+        :param step_count_comp: associated step count for 'iteration_comp'
         :type event: str
         :param event: filter for measurements for a given event
         :type network: str
@@ -1078,14 +1106,14 @@ class InspectorPlotter:
         anno_shift = kwargs.get("anno_shift", 50)
 
         assert(iteration in self.iterations and
-               step in self.steps[iteration]), \
+               step_count in self.steps[iteration]), \
             f"{iteration}{step} does not exist in Inspector"
 
         assert(choice in self.windows.keys()), (f"Color by choice {choice} not "
                                                 f"in list of available keys")
 
         # Filter out the specific windows that we're interested in
-        df = self.isolate(iteration=iteration, step_count=step,
+        df = self.isolate(iteration=iteration, step_count=step_count,
                           event=event, network=network, station=station,
                           component=component)
     
@@ -1093,7 +1121,7 @@ class InspectorPlotter:
         # subtract it from the main dataframe. The new plotted values are diffs!
         if iteration_comp:
             df_comp = self.isolate(iteration=iteration_comp,
-                                   step_count=step_comp, event=event,
+                                   step_count=step_count_comp, event=event,
                                    network=network, station=station,
                                    component=component)
             # This is enough unique info to identify a specific window
@@ -1105,8 +1133,9 @@ class InspectorPlotter:
             # Crude check to see if the number of windows is comparable
             assert(len(df) == len(df_comp)), (f"Number of windows does not "
                                               f"match between "
-                                              f"{iteration}{step} and "
-                                              f"{iteration_comp}{step_comp}")
+                                              f"{iteration}{step_count} and "
+                                              f"{iteration_comp}"
+                                              f"{step_count_comp}")
 
             df = df.merge(df_comp, on=merge_keys[:-1])
             # Subtract the comparison iteration from the initial check
@@ -1205,7 +1234,8 @@ class InspectorPlotter:
 
         # Finalize the look of the plot
         plt.title(f"Window Plot: N = {len(df)} "
-                  f"[{iteration}{step}] [{iteration_comp}{step_comp}]\n"
+                  f"[{iteration}{step_count}] "
+                  f"[{iteration_comp}{step_count_comp}]\n"
                   f"Event: {event} / Station: {station} / Network: {network} / "
                   f"Component: {component}")
         plt.xlabel("Time [s]")
@@ -1712,4 +1742,4 @@ def annotate_txt(ax, txt, anno_location="lower-right", **kwargs):
         y = ymin + (ymax - ymin) * 0.745
         multialignment = "left"
 
-    ax.annotate(s=txt, xy=(x, y), multialignment=multialignment, **kwargs)
+    ax.annotate(txt, xy=(x, y), multialignment=multialignment, **kwargs)

@@ -8,7 +8,6 @@ import pyflex
 import warnings
 import pyadjoint
 from obspy.signal.filter import envelope
-
 from pyatoa import logger
 from pyatoa.core.config import Config
 from pyatoa.core.gatherer import Gatherer, GathererNoDataException
@@ -215,7 +214,7 @@ class Manager:
 
         # Determine the resource identifier for the Event object
         if self.stats.event_id is None and self.event is not None:
-            self.stats.event_id = self.event.resource_id
+            self.stats.event_id = self.event.resource_id.id
 
         # Get the network and station name from the Inventory object
         if self.stats.inv_name is None and self.inv is not None:
@@ -466,7 +465,7 @@ class Manager:
                     step_count=step_count, force=force, save=save)
         self.measure(force=force, save=save)
 
-    def gather(self, code=None, choice=None, **kwargs):
+    def gather(self, code=None, choice=None, event_id=None, **kwargs):
         """
         Gather station dataless and waveform data using the Gatherer class.
         In order collect observed waveforms, dataless, and finally synthetics.
@@ -489,6 +488,11 @@ class Manager:
             bool try_fm:
                 Try to retrieve and append focal mechanism information to the
                 Event object.
+            str prefix:
+                Prefix for event id when searching for event information,
+                can be used to search ordered files e.g., CMTSOLUTION_001
+            str suffix:
+                Suffix for event id when searching for event information
             str station_level:
                 The level of the station metadata if retrieved using the ObsPy
                 Client. Defaults to 'response'
@@ -522,16 +526,15 @@ class Manager:
                 The naming template of synthetic waveforms defaults to:
                 "{net}.{sta}.*{cmp}.sem{syn_unit}"
         """
-        try_fm = kwargs.get("try_fm", True)
-
         # Default to gathering all data
         if choice is None:
             choice = ["event", "inv", "st_obs", "st_syn"]
         try:
             # Attempt to gather event information before waveforms/metadata
             if "event" in choice and self.event is None:
-                if self.config.event_id is not None:
-                    self.event = self.gatherer.gather_event(try_fm=try_fm)
+                if event_id is None:
+                    event_id = self.config.event_id
+                self.event = self.gatherer.gather_event(event_id, **kwargs)
             if code is not None:
                 logger.info(f"gathering data for {code}")
                 if "st_obs" in choice:

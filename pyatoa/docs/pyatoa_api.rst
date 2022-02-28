@@ -66,8 +66,6 @@ Classes and associated functions for generating figures.
     modules/visuals.wave_maker
     modules/visuals.map_maker
     modules/visuals.insp_plot
-    modules/visuals.xyz_viewer
-    modules/visuals.vtk_modeler
     modules/visuals.comp_wave
     modules/visuals.improve_wave
 

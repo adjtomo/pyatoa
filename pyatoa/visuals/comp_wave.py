@@ -10,6 +10,7 @@ import traceback
 import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
+from matplotlib.patches import Rectangle
 from pyatoa import Manager
 from pyasdf import ASDFDataSet
 from pyatoa.core.config import set_pyflex_config
@@ -45,6 +46,8 @@ class CompWave:
         self.min_period = min_period
         self.max_period = max_period
         self.windows = None
+        self.init_windows = None
+        self.final_windows = None
 
         # Initialize empty attributes to be filled
         self._ds = None
@@ -107,9 +110,14 @@ class CompWave:
                                                          pf_cfg)
                 mgmt.window()
                 print(f"{mgmt.stats.nwin} windows for {init_or_final}")
-                # Any check that returns no windows will set this False
-                self.windows = mgmt.windows
-                
+               
+                if save_windows == "init":
+                    self.init_windows = mgmt.windows
+                elif save_windows == "final":
+                    self.final_windows = mgmt.windows
+                else: 
+                    # Any check that returns no windows will set this False
+                    self.windows = mgmt.windows
 
             # Store data in class attributes, obs waveforms will be the same
             if self._st_obs is None:
@@ -133,13 +141,15 @@ class CompWave:
         """
         self._gather_model_from_dataset(dsfid=self.dsfid, model=m_init,
                                         init_or_final="init", 
-                                        save_windows=bool(save_windows=="init"))
+                                        # save_windows=bool(save_windows=="init"))
+                                        save_windows="init")
 
         # Default to dsfid if separate final dataset not provided
         self._gather_model_from_dataset(dsfid=self.dsfid_final or self.dsfid,
                                         model=m_final, init_or_final="final",
-                                        save_windows=bool(
-                                                        save_windows=="final"))
+                                        # save_windows=bool(
+                                        #                 save_windows=="final"))
+                                        save_windows="final")
 
     def calculate_vrl(self, init_or_final):
         """
@@ -357,6 +367,25 @@ class CompWave:
             ylim = [-1 * max_yval, max_yval]
             axes[row][0].set_ylim(ylim)
 
+            # Plot different windows for init and final model, if available
+            if self.init_windows and self.final_windows:
+                for i, windows in enumerate([self.init_windows[comp], 
+                                             self.final_windows[comp]]):
+                    ymin, ymax = axes[row][i].get_ylim()
+                    for win in windows:
+                        tleft = win.left * win.dt 
+                        tright = win.right * win.dt
+                        axes[row][i].axvline(x=tleft, c="k", lw=1.5)
+                        axes[row][i].axvline(x=tright, c="k", lw=1.5)
+                        axes[row][i].add_patch(
+                            Rectangle(xy=(tleft, ymin), 
+                                      width=tright - tleft,
+                                      height=(ymax + np.abs(ymin)),
+                                      fc="orange", ec="k",
+                                      alpha=0.25,
+                                      zorder=10
+                                      ))
+
         # Set xlim for master axis
         if xlim is None:
             xlim = [self._st_obs[0].times()[0], self._st_obs[0].times()[-1]]
@@ -464,7 +493,7 @@ def main(event_id=None, station=None, component=None, xmin=None, xmax=None,
         dsfid_final = f"birch/{event_id}.h5"
         show = False
         calc_vrl = False
-        save_win = False
+        save_win = True
         plot = True
         plot_with_map = False   
         if xmin is not None:

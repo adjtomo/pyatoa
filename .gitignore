@@ -3,6 +3,7 @@
 
 # Pyatoa files
 pyatoa/tests/test_data/scratch
+pyatoa/tests/test_data/docs_data/*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -66,7 +67,7 @@ coverage.xml
 pyatoa/docs/.ipynb_checkpoints
 pyatoa/docs/_build
 pyatoa/docs/_build/*
-# pyatoa/docs/*rst
+pyatoa/docs/*rst
 pyatoa/docs/*_files
 
 # PyBuilder

@@ -3,46 +3,57 @@ Python’s Adjoint Tomography Operations Assistant
 ===================================================
 ``Pyatoa`` is a Python-based toolbox meant to facilitate waveform comparisons in 
 adjoint tomography. With humble origins as a disjointed collection of scripts, 
-it has grown into a cohesive library for misfit quantification.
+it has grown into a cohesive library for misfit quantification with
+purpose-built objects to facilitate automation of common tasks in full waveform
+tomography.
 
-This docs page provides an overview of Pyatoa through introductory material, 
-in-depth tutorials, and API for core classes and supporting utilities.
+.. figure:: images/data-synthetic_misfit.png
+    :alt: An example waveform figure showing off some of Pyatoa's features
 
-Source code can be found on Github: https://github.com/bch0w/pyatoa
+    An example of ``Pyatoa``'s waveform comparison capabilities. Observed 
+    (black) and synthetic (red) waveforms compared within
+    time windows (orange boxes), culminating in adjoint sources (green)
+
+----------
+
+This docs page provides an overview of Pyatoa through introductory material,
+in-depth tutorials, and API for core classes and supporting utilities. Have a 
+look at the :doc:`Quick Start </quickstart>` and 
+:doc:`Gallery </gallery>` pages to get an introductory overview of the package.
+
+Source code can be found on GitHub: https://github.com/bch0w/pyatoa
+
 
 --------------
 
 Installation
 ~~~~~~~~~~~~
 
-``Pyatoa`` is in ongoing development so package manager installation is not 
-currently available. Install should be accomplished using pip, however Basemap
-will need to be installed via Conda so that the correct dependencies are
-installed.
+``Pyatoa`` is in ongoing development so package manager installation is not
+currently available, however pip and conda install procedures are on the to-do
+list. For now, install should be accomplished via pip and the GitHub repository.
 
-It is recomended that Pyatoa be installed inside a Conda environment to
+It is recommended that ``Pyatoa`` be installed inside a Conda environment to
 preserve your root environment. The 'devel' branch provides the latest codebase.
-
 
 .. code:: bash
 
    $ conda create -n pyatoa python=3.7
-   $ source activate pyatoa
-   $ git clone https://github.com/bch0w/pyatoa.git
+   $ conda activate pyatoa
+   $ git clone --branch devel https://github.com/bch0w/pyatoa.git
    $ cd pyatoa
-   $ git checkout devel
-   $ conda install -c conda-forge basemap
-   $ pip install -r requirements.txt .
+   $ pip install .
 
 
 Running Tests
 ~~~~~~~~~~~~~
 
 Tests ensure ``Pyatoa`` runs as expected, these require installation of Pytest.
+If any changes are made to the source code, please run tests to ensure nothing
+is broken.
 
 .. code:: bash
 
-   $ pip install pytest
    $ cd pyatoa/tests
    $ pytest
 
@@ -51,7 +62,8 @@ Tests ensure ``Pyatoa`` runs as expected, these require installation of Pytest.
 Dependencies
 ~~~~~~~~~~~~
 
-Credit where credit is due, ``Pyatoa`` is a high-level API relying on the following:
+Credit where credit is due, ``Pyatoa`` is a high-level API built directly on
+top of on the following packages:
 
 -  `Obspy: <https://github.com/obspy/obspy/wiki>`__ for seismic
    data handling, data gathering, and waveform processing
@@ -66,10 +78,10 @@ Credit where credit is due, ``Pyatoa`` is a high-level API relying on the follow
 
 --------------
 
-Cite
+How to Cite
 ~~~~
 
-If you use ``Pyatoa``, consider citing our recent publication:
+If you use ``Pyatoa``, consider citing the related publication:
 `Chow et al. (2020) <https://academic.oup.com/gji/article/223/3/1461/5897358>`__.
 
 Chow, B., Kaneko, Y., Tape, C., Modrak, R., & Townend, J. (2020).   
@@ -84,16 +96,24 @@ Geophysical Journal International, 223(3), 1461-1480.
 
    overview
    quickstart
-   prepwork
+   gallery
+
+.. toctree::
+   :maxdepth: 1
+   :hidden:
+   :caption: Tutorials
+
+   datasyn_misfit
+   inversion_prep
 
 .. toctree::
    :maxdepth: 3
    :hidden:
-   :caption: Tutorials
+   :caption: Core Functionality
 
    config
    manager
-   gathering
+   gatherer
    pyaflowa
    storage
    inspector
@@ -107,3 +127,10 @@ Geophysical Journal International, 223(3), 1461-1480.
    standards
    logging
    pyatoa_api
+
+.. toctree::
+   :maxdepth: 1
+   :hidden:
+   :caption: Development
+
+   changelog

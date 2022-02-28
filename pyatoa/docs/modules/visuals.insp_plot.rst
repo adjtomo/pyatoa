@@ -12,10 +12,15 @@ insp_plot
     .. rubric:: Methods
      
     .. automethod:: map
+    .. automethod:: scatter
+    .. automethod:: travel_times
     .. automethod:: event_depths
     .. automethod:: raypaths
+    .. automethod:: raypath_density
+    .. automethod:: event_hist
     .. automethod:: measurement_hist
-    .. automethod:: station_misfit_map
+    .. automethod:: station_event_misfit_map
+    .. automethod:: event_station_misfit_map
     .. automethod:: event_misfit_map
     .. automethod:: hist
     .. automethod:: plot_windows

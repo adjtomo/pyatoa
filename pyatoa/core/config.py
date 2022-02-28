@@ -140,7 +140,8 @@ class Config:
                     paths[key] = [paths[key]]
             self.paths = paths
         else:
-            self.paths = {"waveforms": [], "synthetics": [], "responses": []}
+            self.paths = {"waveforms": [], "synthetics": [], "responses": [],
+                          "events": []}
 
         # If reading from a YAML file or from a dataset, do not set the external
         # Configs (pyflex and pyadjoint) because these will be read in verbatim
@@ -263,7 +264,7 @@ class Config:
             f"unit_output should be in {acceptable_units}"
 
         # Check that paths are in the proper format, dictated by Pyatoa
-        required_keys = ['synthetics', 'waveforms', 'responses']
+        required_keys = ['synthetics', 'waveforms', 'responses', 'events']
         assert(isinstance(self.paths, dict)), "paths should be a dict"
         for key in self.paths.keys():
             assert(key in required_keys), \
@@ -535,6 +536,7 @@ class Config:
         for key, item in attrs.items():
             if hasattr(self, key.lower()):
                 # Special case: ensure paths don't overwrite, but append
+
                 if key == "paths":
                     for cfgkey, cfgitem in self.paths.items():
                         item[cfgkey] += cfgitem
@@ -618,7 +620,8 @@ class Config:
             cfgin = ds.auxiliary_data.Configs[path].parameters
 
         # Parameters from flattened dictionaries will need special treatment
-        paths = {"waveforms": [], "synthetics": [], "responses": []}
+        paths = {"waveforms": [], "synthetics": [], "responses": [], 
+                 "events": []}
         pyflex_config, pyadjoint_config = {}, {}
 
         for key, item in cfgin.items():

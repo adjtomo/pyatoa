@@ -205,7 +205,7 @@ class WaveMaker:
             ax.axhline(y=waterlevel, xmin=self.time_axis[0], 
                        xmax=self.time_axis[-1], alpha=0.4, zorder=8, 
                        linewidth=linewidth, c=stalta_color, linestyle='--')
-            ax.annotate(s=f"stalta_waterlevel = {stalta_wl}", alpha=0.7, 
+            ax.annotate(f"stalta_waterlevel = {stalta_wl}", alpha=0.7, 
                         fontsize=fontsize,
                         xy=(0.75 * (xmax - xmin) + xmin, waterlevel)
                         )
@@ -280,7 +280,7 @@ class WaveMaker:
                                 dlnA=window.dlnA,
                                 left=tleft,
                                 length=tright - tleft)
-                ax.annotate(s=s_anno, ha=window_anno_ha, va=window_anno_va,
+                ax.annotate(s_anno, ha=window_anno_ha, va=window_anno_va,
                             xy=(t_anno, y_anno),
                             zorder=12, fontsize=window_anno_fontsize,
                             rotation=window_anno_rotation, 
@@ -295,7 +295,7 @@ class WaveMaker:
                         ax.axvline(x=phase_arrivals["time"], ymin=0, ymax=0.05,
                                    color='b', alpha=0.5
                                    )
-                        ax.annotate(s=phase_arrivals["name"],
+                        ax.annotate(phase_arrivals["name"],
                                     xy=(0.975 * phase_arrivals["time"], 
                                         0.05 * (ymax-ymin) + ymin),
                                     fontsize=8
@@ -381,8 +381,8 @@ class WaveMaker:
                                  )
 
                 # Annotate the leftmost rejected window point with the tag
-                ax.annotate(xy=(rwin_arr[:, 0].min(), ymin), 
-                            s=tag.replace("_", " "), fontsize=fontsize,
+                ax.annotate(tag.replace("_", " "), 
+                            xy=(rwin_arr[:, 0].min(), ymin), fontsize=fontsize,
                             zorder=14)
                 ymin -= dy
 
@@ -441,9 +441,10 @@ class WaveMaker:
                        linewidth=1.25, c='k', linestyle=':')
 
         # Annotate window amplitude ratio
-        ax.annotate(s=f"{self.config.win_amp_ratio * 100:.0f}% peak amp. obs.", 
+        ax.annotate(f"{self.config.win_amp_ratio * 100:.0f}% peak amp. obs.", 
                     alpha=0.7, xy=(0.85 * (xmax-xmin) + xmin, threshold_amp), 
-                    fontsize=8)
+                    fontsize=8
+                    )
 
     def create_title(self, normalized=False, append_title=None):
         """

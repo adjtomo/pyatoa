@@ -1,0 +1,16 @@
+## Source 2018p130600
+source_surf                     = .false.        # source inside the medium, or surface
+xs                              = 362079.06      # source location x in meters
+zs                              = 61219.23       # source location z in meters
+source_type                     = 1              # 1: elastic force
+time_function_type              = 2              # 2: ricker
+name_of_source_file             = ""             # Only for option 8 : file containing the source wavelet
+tshift                          = 0.000e+00      # time shift when multi sources (if one source, must be zero)
+anglesource                     = 0.00           # for FORCE SOURCE, angle of source
+Mxx                             = 1.000000       # Mxx component (for a moment tensor source only, in Nm)
+Mzz                             = -1.000000      # Mzz component (for a moment tensor source only, in Nm)
+Mxz                             = 0.000000       # Mxz component (for a moment tensor source only, in Nm)
+factor                          = 1.000e+10      # amplification factor for STF
+vx                              = 0.0            # Moving source: Horizontal source velocity (m/s)
+vz                              = 0.0            # Moving source: Vertical source velocity (m/s)
+

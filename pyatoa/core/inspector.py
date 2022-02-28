@@ -9,8 +9,10 @@ import traceback
 import numpy as np
 import pandas as pd
 from glob import glob
+from copy import deepcopy
 from fnmatch import filter as fnf
 from obspy.geodetics import gps2dist_azimuth
+from pyatoa import logger
 from pyatoa.utils.form import format_event_name
 from pyatoa.visuals.insp_plot import InspectorPlotter
 
@@ -163,12 +165,20 @@ class Inspector(InspectorPlotter):
     @property
     def initial_model(self):
         """Return tuple of the iteration and step count corresponding M00"""
-        return self.steps.index[0], self.steps[0][0]
+        try:
+            return self.steps.index[0], self.steps[0][0]
+        except TypeError:
+            logger.warning("Inspector has no 'steps' data, returning None")
+            return None, None
 
     @property
     def final_model(self):
         """Return tuple of iteration and step count for final accepted model"""
-        return self.steps.index[-1], self.steps[-1][-1]
+        try:
+            return self.steps.index[-1], self.steps[-1][-1]
+        except TypeError:
+            logger.warning("Inspector has no 'steps' data, returning None")
+            return None, None
 
     @property
     def good_models(self):
@@ -244,10 +254,10 @@ class Inspector(InspectorPlotter):
         :rtype receivers: multiindexed dataframe containing unique station info
         """
         # Create a dataframe with source information, ignore duplicates
-        event_id = format_event_name(ds)
+        event_id = format_event_name(ds.events[0])
         if event_id not in self.sources.index:
             src = {
-                "event_id": format_event_name(ds),
+                "event_id": format_event_name(ds.events[0]),
                 "time": str(ds.events[0].preferred_origin().time),
                 "magnitude": ds.events[0].preferred_magnitude().mag,
                 "depth_km": ds.events[0].preferred_origin().depth * 1E-3,
@@ -294,7 +304,7 @@ class Inspector(InspectorPlotter):
         :rtype: pandas.DataFrame
         :return: a dataframe object containing information per misfit window
         """
-        eid = format_event_name(ds)
+        eid = format_event_name(ds.events[0])
 
         # Initialize an empty dictionary that will be used to initalize
         # a Pandas DataFrame
@@ -368,7 +378,7 @@ class Inspector(InspectorPlotter):
             self.windows = pd.concat([self.windows, pd.DataFrame(window)],
                                      ignore_index=True)
     
-    def discover(self, path="./"):
+    def discover(self, path="./", ignore_symlinks=True):
         """
         Allow the Inspector to scour through a path and find relevant files,
         appending them to the internal structure as necessary.
@@ -376,13 +386,18 @@ class Inspector(InspectorPlotter):
         :type path: str
         :param path: path to the pyasdf.asdf_data_set.ASDFDataSets that were
             outputted by the Seisflows workflow
+        :type ignore_symlinks: bool
+        :param ignore_symlinks: skip over symlinked HDF5 files when discovering
         """
         dsfids = glob(os.path.join(path, "*.h5"))
+        # remove symlinks from the list if requested
+        if ignore_symlinks:
+            dsfids = [_ for _ in dsfids if not os.path.islink(_)]
         for i, dsfid in enumerate(dsfids):
             if self.verbose:
-                print(
-                    f"{os.path.basename(dsfid):<25} {i:0>3}/{len(dsfids):0>3}",
-                    end="...")
+                print(f"{os.path.basename(dsfid):<25} "
+                      f"{i+1:0>3}/{len(dsfids):0>3}",  end="..."
+                      )
             try:
                 self.append(dsfid)
                 if self.verbose:
@@ -500,13 +515,19 @@ class Inspector(InspectorPlotter):
                 print("format 'hdf' requires pytables, defaulting to 'csv'")
 
         if fmt == "csv":
+            write_check = 0
             if not self.sources.empty:
                 self.sources.to_csv(os.path.join(path, f"{tag}_src.csv"))
+                write_check += 1
             if not self.receivers.empty:
                 self.receivers.to_csv(os.path.join(path, f"{tag}_rcv.csv"))
+                write_check += 1
             if not self.windows.empty:
                 self.windows.to_csv(os.path.join(path, f"{tag}.csv"),
                                     index=False)
+                write_check += 1
+            if write_check == 0:
+                logger.warning("Inspector empty, will not write to disk")
         elif fmt == "hdf":
             with pd.HDFStore(os.path.join(path, f"{tag}.hdf")) as s:
                 s["sources"] = self.sources
@@ -560,10 +581,15 @@ class Inspector(InspectorPlotter):
         else:
             raise NotImplementedError
 
+    def copy(self):
+        """
+        Return a deep copy of the Inspector
+        """
+        return deepcopy(self)
+
     def reset(self):
         """
-        Simple function to wipe out all the internal attributes, not super
-        useful but may come in handy somewhere
+        Simple function to wipe out all the internal attributes
         """
         self.windows = pd.DataFrame()
         self.sources = pd.DataFrame()
@@ -577,7 +603,7 @@ class Inspector(InspectorPlotter):
         None, defaults to returning all available values
 
         :type event: str
-        :param event: event id e.g. '2018p130600' (optional
+        :param event: event id e.g. '2018p130600' (optional)
         :type iteration: str
         :param iteration: iteration e.g. 'i00' (optional)
         :type step_count: str
@@ -620,6 +646,8 @@ class Inspector(InspectorPlotter):
                            "channel", "comp", unique_key]
             df = df.loc[:, df.columns.intersection(unique_keys)]
         if exclude is not None:
+            if not isinstance(exclude, list):
+                exclude = [exclude]
             # delete excluded keys from key list one by one
             df_keys = df.keys().to_numpy()
             for e in exclude:
@@ -766,7 +794,7 @@ class Inspector(InspectorPlotter):
     def stats(self, level="event", choice="mean", key=None, iteration=None,
               step_count=None):
         """
-        Calculate statistical values for DataFrame
+        Calculate the per-level statistical values for DataFrame
 
         :type level: str
         :param level: get statistical values per 'event' or 'station'
@@ -840,7 +868,6 @@ class Inspector(InspectorPlotter):
 
         return minmax_dict
 
-
     def compare(self, iteration_a=None, step_count_a=None, iteration_b=None,
                 step_count_b=None):
         """
@@ -867,19 +894,24 @@ class Inspector(InspectorPlotter):
         if iteration_b is None:
             iteration_b, step_count_b = self.final_model
 
+        # If initial or final models not given, nothing to compare
+        if None in [iteration_a, step_count_a, iteration_b, step_count_b]:
+            logger.warning("Cannot locate model indices to compare model data")
+            return None
+
         misfit = self.misfit(level="event")
         msft_a = misfit.loc[iteration_a, step_count_a]
         msft_b = misfit.loc[iteration_b, step_count_b]
 
         # Doesn't really make sense to compare unscaled misfit so drop column
-        msft_a.drop(["unscaled_misfit"], axis=1, inplace=True)
-        msft_b.drop(["unscaled_misfit"], axis=1, inplace=True)
+        msft_a = msft_a.drop(["unscaled_misfit"], axis=1).copy()
+        msft_b = msft_b.drop(["unscaled_misfit"], axis=1).copy()
 
         # For renaming and access to renamed columns
         initial = f"{iteration_a}{step_count_a}"
         final = f"{iteration_b}{step_count_b}"
-    
-        msft_a.rename({"nwin": f"nwin_{initial}", 
+
+        msft_a.rename({"nwin": f"nwin_{initial}",
                        "misfit": f"misfit_{initial}"},
                       axis="columns", inplace=True)
         msft_b.rename({"nwin": f"nwin_{final}", "misfit": f"misfit_{final}"},

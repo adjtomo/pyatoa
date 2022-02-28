@@ -18,6 +18,7 @@ sys.path.insert(0, os.path.abspath('..'))
 
 import sphinx_rtd_theme
 
+
 # Hacky way to get PROJ_LIB set for a fresh conda install
 on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
 if on_rtd:
@@ -30,11 +31,11 @@ else:
 # -- Project information -----------------------------------------------------
 
 project = 'Pyatoa'
-copyright = '2020, Bryant Chow'
+copyright = '2022, Bryant Chow'
 author = 'Bryant Chow'
 
 # The short X.Y version
-version = '0.1'
+version = '0.1.0'
 # The full version, including alpha/beta/rc tags
 release = ''
 
@@ -83,7 +84,7 @@ language = None
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path.
-exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
+exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store', '.ipynb']
 
 # The name of the Pygments (syntax highlighting) style to use.
 pygments_style = None
@@ -98,8 +99,8 @@ pygments_style = None
 html_theme = 'sphinx_rtd_theme'
 
 # Extra HTML options
-html_favicon = 'pyatoa_favicon.png'
-html_logo = 'pyatoa_inline_text_bigO.png'
+html_favicon = 'images/pyatoa_favicon.png'
+html_logo = 'images/pyatoa_inline_text_bigO.png'
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
