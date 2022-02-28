@@ -161,7 +161,7 @@ class InspectorPlotter:
 
     def travel_times(self, iteration=None, step_count=None, component=None,
                      constants=None, t_offset=0, hist=False, hist_max=None, 
-                     save=None, show=True, **kwargs):
+                     plot_end=False, save=None, show=True, **kwargs):
         """
         Plot relative window starttime (proxy for phase arrival) against 
         source-receiver distance, to try to convey which phases are included
@@ -187,10 +187,19 @@ class InspectorPlotter:
         :type hist: bool
         :param hist: create a histogram binning the approximate seismic 
             velocities
+        :type plot_end: bool
+        :param plot_end: if True, plots the beginning and end of the misfit 
+            window as a vertical line. If False, plots only the beginning of 
+            the misfit window
         """
         hist_color = kwargs.get("hist_color", "deepskyblue")
         title_plot = kwargs.get("title_plot", None)
         title_hist = kwargs.get("title_hist", None)
+        markersize = kwargs.get("markersize", 1)
+        markertype = kwargs.get("markertype", "x")
+        legend_fontsize = kwargs.get("legend_fontsize", 8)
+        ylim = kwargs.get("ylim", None)
+        xlim = kwargs.get("xlim", None)
 
         if iteration is None:
             iteration, _ = self.final_model
@@ -205,18 +214,28 @@ class InspectorPlotter:
         # Assuming that isolate has only picked values from a single iterstep
         iterstep = f"{df.iteration[0]}{df.step[0]}"
 
-        dist, start, length = df[["distance_km", "relative_starttime", 
-                                  "length_s"]].to_numpy().T
+        dist, start, end, length = df[["distance_km", "relative_starttime",
+                                       "relative_endtime", 
+                                       "length_s"]].to_numpy().T
 
         # Shift relative starttimes by the user-defined offset
         start -= t_offset
+        end -= t_offset
 
         # size of the markers based on the length of the window
         length = normalize_a_to_b(length, .5, .5)
 
         f, ax = plt.subplots(figsize=(8, 6))
+       
+        # Either plot the window start only, or plot the entire window
+        if not plot_end:
+            plt.scatter(dist, start, c="k", s=markersize, marker=markertype, 
+                        zorder=5, alpha=0.5)
+        else:
+            for d_, s_, e_ in zip(dist, start, end):
+                plt.plot([d_, d_], [s_, e_], f"k{markertype}-", zorder=5, 
+                         alpha=0.1,  markersize=markersize) 
 
-        plt.scatter(dist, start, c="k", s=.25, marker="x", zorder=5)
         if title_plot is not None:
             plt.title(title_plot)
         else:
@@ -224,16 +243,24 @@ class InspectorPlotter:
         plt.xlabel("Source-receiver distance [km]")
         plt.ylabel("Relative start time [s]")
 
+        # Plot apparent velocities as straight lines
         if constants is not None:
-            x = np.linspace(0, dist.max(), len(dist))
+            x = np.linspace(0, dist.max() + dist.max()/3, len(dist))
             for i, c in enumerate(constants):
                 y = x / c
-                plt.plot(x, y, c=f"C{i}", lw=1, zorder=1, label=f"{c} km/s")
-            plt.legend()
+                plt.plot(x, y, c=f"C{i}", lw=2, zorder=1, label=f"{c} km/s")
+            plt.legend(fontsize=legend_fontsize)
 
-        plt.xlim([0, dist.max()])
-        plt.ylim([0, start.max()])
-        f.tight_layout()
+        if xlim is not None:
+            plt.xlim(xlim)
+        else:
+            plt.xlim([0, dist.max()])
+        if ylim is not None:
+            plt.ylim(ylim)
+        else:
+            plt.ylim([0, start.max()])
+
+        # f.tight_layout()
         default_axes(ax, **kwargs)
 
         if save:
@@ -245,6 +272,7 @@ class InspectorPlotter:
 
         # Now make a separate histogram showing the apparent velocities
         if hist:
+            f, ax = plt.subplots(figsize=(8, 6))
             velocities = dist / start
             # Max velocity based on PREM highest (ish) Vp
             n, bins, patches = plt.hist(x=velocities, 
@@ -255,6 +283,9 @@ class InspectorPlotter:
                                         )
             if hist_max:
                 plt.ylim([0, hist_max])
+            
+            xmin, xmax = plt.gca().get_xlim()
+            plt.xlim([0, xmax])
 
             if title_hist is not None:
                 plt.title(title_hist)
@@ -263,7 +294,7 @@ class InspectorPlotter:
                           f"({iterstep} N={len(velocities)})")
             plt.xlabel("Velocity [km/s]")
             plt.ylabel("Count")
-            plt.gcf().tight_layout()
+            # f.tight_layout()
             default_axes(plt.gca(), **kwargs)
 
             if save:
