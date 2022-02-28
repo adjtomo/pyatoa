@@ -516,7 +516,7 @@ class InspectorPlotter:
 
         plt.close()
 
-    def event_hist(self, choice):
+    def event_hist(self, choice, show=True, save=None):
         """
         Make a histogram of event information
         :return:
@@ -538,6 +538,13 @@ class InspectorPlotter:
 
         plt.xlabel(choice)
         plt.ylabel("count")
+
+        if save:
+            plt.savefig(save)
+        if show:
+            plt.show()
+
+        plt.close()
 
         return f, ax
 
@@ -577,8 +584,8 @@ class InspectorPlotter:
 
         default_axes(plt.gca())
         plt.xlabel(f"{choice} number of measurements")
-        plt.ylabael("count")
-        plt.title(f"{iteration}{step_count}; N={n}\n"
+        plt.ylabel("count")
+        plt.title(f"{iteration}{step_count}; N={len(arr)}\n"
                   f"solid line = mean; dashed line = 1 std")
 
         if save:
@@ -988,7 +995,7 @@ class InspectorPlotter:
         return f, ax
 
     def plot_windows(self, iteration, step_count, iteration_comp=None,
-                     step_comp=None, choice="cc_shift_in_seconds",
+                     step_count_comp=None, choice="cc_shift_in_seconds",
                      event=None, network=None, station=None, component=None,
                      no_overlap=True, distances=False, annotate=False,
                      bounds=False, show=True, save=False, **kwargs):
@@ -1000,14 +1007,14 @@ class InspectorPlotter:
 
         :type iteration: str
         :param iteration: iteration to analyze
-        :type step: str
-        :param step: step count to query, e.g. 's00'
+        :type step_count: str
+        :param step_count: step count to query, e.g. 's00'
         :type iteration_comp: str
         :param iteration_comp: Optional, if provided, difference the 'choice'
             values with the chosen 'iteration/step'. Useful for easily checking
             for improvement. Only works if the windows are the same.
-        :type step_comp: str
-        :param step_comp: associated step count for 'iteration_comp'
+        :type step_count_comp: str
+        :param step_count_comp: associated step count for 'iteration_comp'
         :type event: str
         :param event: filter for measurements for a given event
         :type network: str
@@ -1068,14 +1075,14 @@ class InspectorPlotter:
         anno_shift = kwargs.get("anno_shift", 50)
 
         assert(iteration in self.iterations and
-               step in self.steps[iteration]), \
+               step_count in self.steps[iteration]), \
             f"{iteration}{step} does not exist in Inspector"
 
         assert(choice in self.windows.keys()), (f"Color by choice {choice} not "
                                                 f"in list of available keys")
 
         # Filter out the specific windows that we're interested in
-        df = self.isolate(iteration=iteration, step_count=step,
+        df = self.isolate(iteration=iteration, step_count=step_count,
                           event=event, network=network, station=station,
                           component=component)
     
@@ -1083,7 +1090,7 @@ class InspectorPlotter:
         # subtract it from the main dataframe. The new plotted values are diffs!
         if iteration_comp:
             df_comp = self.isolate(iteration=iteration_comp,
-                                   step_count=step_comp, event=event,
+                                   step_count=step_count_comp, event=event,
                                    network=network, station=station,
                                    component=component)
             # This is enough unique info to identify a specific window
@@ -1095,8 +1102,9 @@ class InspectorPlotter:
             # Crude check to see if the number of windows is comparable
             assert(len(df) == len(df_comp)), (f"Number of windows does not "
                                               f"match between "
-                                              f"{iteration}{step} and "
-                                              f"{iteration_comp}{step_comp}")
+                                              f"{iteration}{step_count} and "
+                                              f"{iteration_comp}"
+                                              f"{step_count_comp}")
 
             df = df.merge(df_comp, on=merge_keys[:-1])
             # Subtract the comparison iteration from the initial check
@@ -1195,7 +1203,8 @@ class InspectorPlotter:
 
         # Finalize the look of the plot
         plt.title(f"Window Plot: N = {len(df)} "
-                  f"[{iteration}{step}] [{iteration_comp}{step_comp}]\n"
+                  f"[{iteration}{step_count}] "
+                  f"[{iteration_comp}{step_count_comp}]\n"
                   f"Event: {event} / Station: {station} / Network: {network} / "
                   f"Component: {component}")
         plt.xlabel("Time [s]")

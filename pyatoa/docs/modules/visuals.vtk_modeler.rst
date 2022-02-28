@@ -1,29 +1,30 @@
-vtk_modeler
-===========================
+..
+    vtk_modeler
+    ===========================
 
-.. currentmodule:: pyatoa.visuals.vtk_modeler
+    .. currentmodule:: pyatoa.visuals.vtk_modeler
 
-.. automodule:: pyatoa.visuals.vtk_modeler
+    .. automodule:: pyatoa.visuals.vtk_modeler
 
---------------
+    --------------
 
-.. autoclass:: VTKModeler
+    .. autoclass:: VTKModeler
 
-    .. rubric:: Methods
-     
-    .. automethod:: __init__
-    .. automethod:: load
-    .. automethod:: depth_slice
-    .. automethod:: cross_section
+        .. rubric:: Methods
+         
+        .. automethod:: __init__
+        .. automethod:: load
+        .. automethod:: depth_slice
+        .. automethod:: cross_section
 
-Functions
-----------
+    Functions
+    ----------
 
-    .. autofunction:: get_coordinates
-    .. autofunction:: get_ranges
-    .. autofunction:: colorscale
-    .. autofunction:: set_axes
-    .. autofunction:: coastline
-    .. autofunction:: srcrcv
-    .. autofunction:: annotate
+        .. autofunction:: get_coordinates
+        .. autofunction:: get_ranges
+        .. autofunction:: colorscale
+        .. autofunction:: set_axes
+        .. autofunction:: coastline
+        .. autofunction:: srcrcv
+        .. autofunction:: annotate
 

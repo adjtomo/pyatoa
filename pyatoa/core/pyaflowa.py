@@ -306,7 +306,8 @@ class Pyaflowa:
     at once.
     """
     def __init__(self, structure="standalone", config=None, plot=True, 
-                 map_corners=None, log_level="DEBUG", **kwargs):
+                 map_corners=None, log_level="DEBUG", 
+                 source_prefix="CMTSOLUTION", **kwargs):
         """
         Initialize the flow. Feel the flow.
         
@@ -316,6 +317,9 @@ class Pyaflowa:
             figures, and logs
         :type par: seisflows.config.Dict
         :param par: Parameter list tracked internally by SeisFlows
+        :type source_prefix: str
+        :param source_prefix: How source files will be prefixed, e.g.,
+            CMTSOLUTION_???????? or FORCESOLUTION_??????
         """
         # Establish the internal workflow directories based on chosen structure
         self.structure = structure.lower()
@@ -343,6 +347,7 @@ class Pyaflowa:
             log_level = sfpar.LOGGING 
         else:
             self.begin = -9999
+            self.source_prefix = source_prefix
             if config is None:
                 warnings.warn("No Config object passed, initiating empty "
                               "Config", UserWarning)

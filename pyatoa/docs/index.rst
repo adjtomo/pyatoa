@@ -7,20 +7,21 @@ it has grown into a cohesive library for misfit quantification with
 purpose-built objects to facilitate automation of common tasks in full waveform
 tomography.
 
-This docs page provides an overview of Pyatoa through introductory material,
-in-depth tutorials, and API for core classes and supporting utilities.
-
-Source code can be found on GitHub: https://github.com/bch0w/pyatoa
-
-.. figure:: images/waveform_example.png
+.. figure:: images/data-synthetic_misfit.png
     :alt: An example waveform figure showing off some of Pyatoa's features
 
-    An example of ``Pyatoa``'s waveform comparison capabilities. On the left
-    are observed (black) and synthetic (red) waveforms compared within
-    time windows (orange boxes). The green trace shows adjoint sources, or
-    time-dependent misfit functions. Rejected time windows (colored bars) help
-    illustrate why parts of the waveform are not windowed. The source-receiver
-    map (right) provides additional information for assessing waveform misfit.
+    An example of ``Pyatoa``'s waveform comparison capabilities. Observed 
+    (black) and synthetic (red) waveforms compared within
+    time windows (orange boxes), culminating in adjoint sources (green)
+
+----------
+
+This docs page provides an overview of Pyatoa through introductory material,
+in-depth tutorials, and API for core classes and supporting utilities. Have a 
+look at the :doc:`Quick Start </quickstart>` and 
+:doc:`Gallery </gallery>` pages to get an introductory overview of the package.
+
+Source code can be found on GitHub: https://github.com/bch0w/pyatoa
 
 
 --------------
@@ -77,10 +78,10 @@ top of on the following packages:
 
 --------------
 
-Cite
+How to Cite
 ~~~~
 
-If you use ``Pyatoa``, consider citing our recent publication:
+If you use ``Pyatoa``, consider citing the related publication:
 `Chow et al. (2020) <https://academic.oup.com/gji/article/223/3/1461/5897358>`__.
 
 Chow, B., Kaneko, Y., Tape, C., Modrak, R., & Townend, J. (2020).   
@@ -95,17 +96,24 @@ Geophysical Journal International, 223(3), 1461-1480.
 
    overview
    quickstart
-   a_short_example
-   prepwork
+   gallery
+
+.. toctree::
+   :maxdepth: 1
+   :hidden:
+   :caption: Tutorials
+
+   datasyn_misfit
+   inversion_prep
 
 .. toctree::
    :maxdepth: 3
    :hidden:
-   :caption: Tutorials
+   :caption: Core Functionality
 
    config
    manager
-   gathering
+   gatherer
    pyaflowa
    storage
    inspector
@@ -125,6 +133,4 @@ Geophysical Journal International, 223(3), 1461-1480.
    :hidden:
    :caption: Development
 
-   to-do_list
    changelog
-   contributing

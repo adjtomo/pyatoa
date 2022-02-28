@@ -18,6 +18,7 @@ sys.path.insert(0, os.path.abspath('..'))
 
 import sphinx_rtd_theme
 
+
 # Hacky way to get PROJ_LIB set for a fresh conda install
 on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
 if on_rtd:
@@ -83,7 +84,7 @@ language = None
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path.
-exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
+exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store', '.ipynb']
 
 # The name of the Pygments (syntax highlighting) style to use.
 pygments_style = None
