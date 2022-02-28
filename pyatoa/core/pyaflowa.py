@@ -137,7 +137,7 @@ class PathStructure:
             getattr(self, structure)(**kwargs)
         except AttributeError as e:
             raise AttributeError(
-                "{structure} is not a valid path structure") from e
+                f"{structure} is not a valid path structure") from e
 
     def __str__(self):
         """String representation for PathStructure, print out dict"""

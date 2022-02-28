@@ -36,7 +36,7 @@ Waveform Breakdown
 --------------------------
 
 Inversion Flowchart
---------------
+-------------------
 
 .. figure:: images/inversion_flowchart.png
     :alt: An inversion flowchart showing Pyatoa's place in the workflow.
