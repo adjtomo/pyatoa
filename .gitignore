@@ -67,7 +67,7 @@ coverage.xml
 pyatoa/docs/.ipynb_checkpoints
 pyatoa/docs/_build
 pyatoa/docs/_build/*
-pyatoa/docs/*rst
+# pyatoa/docs/*rst
 pyatoa/docs/*_files
 
 # PyBuilder
