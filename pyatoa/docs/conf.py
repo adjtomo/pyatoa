@@ -50,7 +50,7 @@ release = ''
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
-    'sphinx.ext.autodoc',
+    # 'sphinx.ext.autodoc',
     'sphinx.ext.doctest',
     'sphinx.ext.intersphinx',
     'sphinx.ext.todo',
@@ -66,6 +66,7 @@ extensions = [
 # Need to tell the autoapi that our source code is one level up
 autoapi_type = "python"
 autoapi_dirs = [".."]
+autoapi_add_toctree_entry = True
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
