@@ -8,5 +8,5 @@ dependencies:
     - python=3.7
     - pip
     - pip:
-      - git+https://github.com/bch0w/pyflex.git@749f0cdd81a4505c418d484d6db29d1f6a5aa328#egg=return_reject_windows
+      - git+https://github/com/bch0w/pyflex.git#egg=master
       - git+https://github.com/krischer/pyadjoint.git#egg=master
