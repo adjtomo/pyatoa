@@ -7,6 +7,3 @@ dependencies:
     - nbsphinx=0.7.1
     - python=3.7
     - pip
-    - pip:
-      - git+https://github/com/bch0w/pyflex.git#egg=master
-      - git+https://github.com/krischer/pyadjoint.git#egg=master
