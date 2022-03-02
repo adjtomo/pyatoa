@@ -59,8 +59,13 @@ extensions = [
     'sphinx.ext.napoleon',
     'sphinx.ext.autosummary',
     'sphinx_rtd_theme',
+    'autoapi.extension',
     'nbsphinx'
 ]
+
+# Need to tell the autoapi that our source code is one level up
+autoapi_type = "python"
+autoapi_dirs = [".."]
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']

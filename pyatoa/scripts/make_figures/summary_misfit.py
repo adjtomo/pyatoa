@@ -20,7 +20,7 @@ def gen_fig(insp, choice="3x3"):
           ["relative_starttime", "cc_shift_in_seconds", "cc_shift_in_seconds"]
           ]
         binsizes = [[2, None, 0.1], 
-                    [2, 2, ,2]
+                    [2, 2, 2]]
     elif choice == "2x2":
         choices = [["cc_shift_in_seconds", "dlnA"],
                    ["max_cc_value", "relative_starttime"]]

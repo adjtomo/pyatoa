@@ -126,7 +126,6 @@ Geophysical Journal International, 223(3), 1461-1480.
 
    standards
    logging
-   pyatoa_api
 
 .. toctree::
    :maxdepth: 1

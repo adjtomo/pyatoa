@@ -171,7 +171,7 @@ The SEED standard for broadband instruments is “B” or “H”
 
 .. parsed-literal::
 
-    Inventory created at 2022-03-02T19:37:12.579000Z
+    Inventory created at 2022-03-02T23:08:39.770000Z
     	Created by: IRIS WEB SERVICE: fdsnws-station | version: 1.1.48
     		    http://service.iris.edu/fdsnws/station/1/query?starttime=2010-01-01...
     	Sending institution: IRIS-DMC (IRIS-DMC)
@@ -398,7 +398,7 @@ single event, and trying to fill it with all available data.
 
     NameError                                 Traceback (most recent call last)
 
-    /tmp/ipykernel_8642/1443690712.py in <module>
+    /tmp/ipykernel_77870/1443690712.py in <module>
           5 # First make sure were writing to an empty dataset
           6 ds_fid = f"../tests/test_data/docs_data/{event_id}.h5"
     ----> 7 if os.path.exists(ds_fid):

@@ -70,7 +70,7 @@ deferred to other packages like
 
     ModuleNotFoundError                       Traceback (most recent call last)
 
-    /tmp/ipykernel_9648/1554201936.py in <module>
+    /tmp/ipykernel_78906/1554201936.py in <module>
           1 # Allow mayavi visualizations to appear in notebook
     ----> 2 from mayavi import mlab
           3 mlab.init_notebook()
