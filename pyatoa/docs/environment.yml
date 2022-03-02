@@ -7,12 +7,12 @@ dependencies:
     - nbsphinx=0.7.1
     - python=3.7
     - basemap=1.2.0
-    - obspy=1.2.2
-    - matplotlib=3.1.1
-    - pyasdf=0.7.2
-    - pandas=1.1.0
-    - pyyaml=5.3.1
-    - proj4=5.2.0
+    - obspy>=1.2.2
+    - matplotlib=3.0.3
+    - pyasdf>=0.7.2
+    - pandas>=1.1.0
+    - pyyaml>=5.4
+      #- proj4=5.2.0
     - pip
     - pip:
       - git+https://github.com/bch0w/pyflex.git@749f0cdd81a4505c418d484d6db29d1f6a5aa328#egg=return_reject_windows

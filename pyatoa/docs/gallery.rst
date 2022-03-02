@@ -33,6 +33,20 @@ Waveform Breakdown
     E) A corresponding map with useful information pertaining to the given 
     source-receiver pair.
 
+
+--------------------------
+
+Inversion Workflow
+-------------------
+
+.. figure:: images/sps_workflow_wtext.png
+    :alt: An inversion workflow showing Pyatoa's place in the workflow.
+
+    A simplified workflow diagram showing how Pyatoa fits into the full 
+    waveform tomography environment. Annotations explain how each program,
+    SPECFEM3D, SeisFlows3 and Pyatoa accomplish individual tasks within the
+    workflow. 
+
 --------------------------
 
 Inversion Flowchart
@@ -58,5 +72,6 @@ Inversion Flowchart
     Pyatoa provides additional auxiliary input files required for subsequent 
     adjoint simulations launched by Seisflows. 
     D) Legend describing the flowchart shapes.
+
 
 
