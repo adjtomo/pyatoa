@@ -24,8 +24,8 @@ attribute.
 
 .. parsed-literal::
 
-    [2022-03-02 15:08:23] - pyatoa - INFO: no config provided, initiating default
-    [2022-03-02 15:08:23] - pyatoa - DEBUG: Component list set to E/N/Z
+    [2022-03-03 11:01:41] - pyatoa - INFO: no config provided, initiating default
+    [2022-03-03 11:01:41] - pyatoa - DEBUG: Component list set to E/N/Z
 
 
 
@@ -80,7 +80,7 @@ the Manager
 
 .. parsed-literal::
 
-    [2022-03-02 15:08:23] - pyatoa - DEBUG: Component list set to E/N/Z
+    [2022-03-03 11:01:41] - pyatoa - DEBUG: Component list set to E/N/Z
 
 
 
@@ -132,14 +132,14 @@ waveforms to ensure their time series match.
 
 .. parsed-literal::
 
-    [2022-03-02 15:08:23] - pyatoa - INFO: standardizing streams
-    [2022-03-02 15:08:23] - pyatoa - DEBUG: zero pad NZ.BFZ.10.HHE (0, 0) samples
-    [2022-03-02 15:08:23] - pyatoa - DEBUG: new starttime NZ.BFZ.10.HHE: 2018-02-18T07:43:28.127644Z
-    [2022-03-02 15:08:23] - pyatoa - DEBUG: zero pad NZ.BFZ.10.HHN (0, 0) samples
-    [2022-03-02 15:08:23] - pyatoa - DEBUG: new starttime NZ.BFZ.10.HHN: 2018-02-18T07:43:28.127644Z
-    [2022-03-02 15:08:23] - pyatoa - DEBUG: zero pad NZ.BFZ.10.HHZ (0, 0) samples
-    [2022-03-02 15:08:23] - pyatoa - DEBUG: new starttime NZ.BFZ.10.HHZ: 2018-02-18T07:43:28.127644Z
-    [2022-03-02 15:08:23] - pyatoa - DEBUG: time offset is -20.0s
+    [2022-03-03 11:01:41] - pyatoa - INFO: standardizing streams
+    [2022-03-03 11:01:41] - pyatoa - DEBUG: zero pad NZ.BFZ.10.HHE (0, 0) samples
+    [2022-03-03 11:01:41] - pyatoa - DEBUG: new starttime NZ.BFZ.10.HHE: 2018-02-18T07:43:28.127644Z
+    [2022-03-03 11:01:41] - pyatoa - DEBUG: zero pad NZ.BFZ.10.HHN (0, 0) samples
+    [2022-03-03 11:01:41] - pyatoa - DEBUG: new starttime NZ.BFZ.10.HHN: 2018-02-18T07:43:28.127644Z
+    [2022-03-03 11:01:41] - pyatoa - DEBUG: zero pad NZ.BFZ.10.HHZ (0, 0) samples
+    [2022-03-03 11:01:41] - pyatoa - DEBUG: new starttime NZ.BFZ.10.HHZ: 2018-02-18T07:43:28.127644Z
+    [2022-03-03 11:01:41] - pyatoa - DEBUG: time offset is -20.0s
 
 
 .. parsed-literal::
@@ -278,8 +278,8 @@ relevant parameters are located in the ``PROCESS`` section of the
     EXTERNAL
         pyflex_preset:           default
         adj_src_type:            cc_traveltime_misfit
-        pyflex_config:           <pyflex.config.Config object at 0x7efe96c0c550>
-        pyadjoint_config:        <pyadjoint.config.Config object at 0x7efe96c0c0d0>
+        pyflex_config:           <pyflex.config.Config object at 0x7f7b472beed0>
+        pyadjoint_config:        <pyadjoint.config.Config object at 0x7f7b472be050>
 
 
 
@@ -297,16 +297,16 @@ relevant parameters are located in the ``PROCESS`` section of the
 
 .. parsed-literal::
 
-    [2022-03-02 15:08:25] - pyatoa - INFO: preprocessing observation data
-    [2022-03-02 15:08:25] - pyatoa - INFO: adjusting taper to cover time offset -20.0
-    [2022-03-02 15:08:25] - pyatoa - DEBUG: removing response, units to DISP
-    [2022-03-02 15:08:25] - pyatoa - DEBUG: rotating from generic coordinate system to ZNE
-    [2022-03-02 15:08:25] - pyatoa - DEBUG: bandpass filter: 10.0 - 30.0s w/ 2.0 corners
-    [2022-03-02 15:08:25] - pyatoa - INFO: preprocessing synthetic data
-    [2022-03-02 15:08:25] - pyatoa - INFO: adjusting taper to cover time offset -20.0
-    [2022-03-02 15:08:25] - pyatoa - DEBUG: no response removal, synthetic data or requested not to
-    [2022-03-02 15:08:25] - pyatoa - DEBUG: bandpass filter: 10.0 - 30.0s w/ 2.0 corners
-    [2022-03-02 15:08:25] - pyatoa - DEBUG: convolving data w/ Gaussian (t/2=0.70s)
+    [2022-03-03 11:01:43] - pyatoa - INFO: preprocessing observation data
+    [2022-03-03 11:01:43] - pyatoa - INFO: adjusting taper to cover time offset -20.0
+    [2022-03-03 11:01:43] - pyatoa - DEBUG: removing response, units to DISP
+    [2022-03-03 11:01:43] - pyatoa - DEBUG: rotating from generic coordinate system to ZNE
+    [2022-03-03 11:01:43] - pyatoa - DEBUG: bandpass filter: 10.0 - 30.0s w/ 2.0 corners
+    [2022-03-03 11:01:43] - pyatoa - INFO: preprocessing synthetic data
+    [2022-03-03 11:01:43] - pyatoa - INFO: adjusting taper to cover time offset -20.0
+    [2022-03-03 11:01:43] - pyatoa - DEBUG: no response removal, synthetic data or requested not to
+    [2022-03-03 11:01:43] - pyatoa - DEBUG: bandpass filter: 10.0 - 30.0s w/ 2.0 corners
+    [2022-03-03 11:01:43] - pyatoa - DEBUG: convolving data w/ Gaussian (t/2=0.70s)
 
 
 
@@ -373,16 +373,16 @@ This functionality is illustrated below.
 
 .. parsed-literal::
 
-    [2022-03-02 15:08:25] - pyatoa - INFO: standardizing streams
-    [2022-03-02 15:08:25] - pyatoa - DEBUG: zero pad NZ.BFZ.10.HHE (0, 0) samples
-    [2022-03-02 15:08:25] - pyatoa - DEBUG: new starttime NZ.BFZ.10.HHE: 2018-02-18T07:43:28.127644Z
-    [2022-03-02 15:08:25] - pyatoa - DEBUG: zero pad NZ.BFZ.10.HHN (0, 0) samples
-    [2022-03-02 15:08:25] - pyatoa - DEBUG: new starttime NZ.BFZ.10.HHN: 2018-02-18T07:43:28.127644Z
-    [2022-03-02 15:08:25] - pyatoa - DEBUG: zero pad NZ.BFZ.10.HHZ (0, 0) samples
-    [2022-03-02 15:08:25] - pyatoa - DEBUG: new starttime NZ.BFZ.10.HHZ: 2018-02-18T07:43:28.127644Z
-    [2022-03-02 15:08:25] - pyatoa - DEBUG: time offset is -20.0s
-    [2022-03-02 15:08:25] - pyatoa - INFO: preprocessing observation data
-    [2022-03-02 15:08:25] - pyatoa - INFO: preprocessing synthetic data
+    [2022-03-03 11:01:43] - pyatoa - INFO: standardizing streams
+    [2022-03-03 11:01:43] - pyatoa - DEBUG: zero pad NZ.BFZ.10.HHE (0, 0) samples
+    [2022-03-03 11:01:43] - pyatoa - DEBUG: new starttime NZ.BFZ.10.HHE: 2018-02-18T07:43:28.127644Z
+    [2022-03-03 11:01:43] - pyatoa - DEBUG: zero pad NZ.BFZ.10.HHN (0, 0) samples
+    [2022-03-03 11:01:43] - pyatoa - DEBUG: new starttime NZ.BFZ.10.HHN: 2018-02-18T07:43:28.127644Z
+    [2022-03-03 11:01:43] - pyatoa - DEBUG: zero pad NZ.BFZ.10.HHZ (0, 0) samples
+    [2022-03-03 11:01:43] - pyatoa - DEBUG: new starttime NZ.BFZ.10.HHZ: 2018-02-18T07:43:28.127644Z
+    [2022-03-03 11:01:43] - pyatoa - DEBUG: time offset is -20.0s
+    [2022-03-03 11:01:43] - pyatoa - INFO: preprocessing observation data
+    [2022-03-03 11:01:43] - pyatoa - INFO: preprocessing synthetic data
 
 
 
@@ -413,12 +413,12 @@ water level.
 
 .. parsed-literal::
 
-    [2022-03-02 15:08:26] - pyatoa - INFO: running Pyflex w/ map: default
-    [2022-03-02 15:08:26] - pyatoa - INFO: 1 window(s) selected for comp E
-    [2022-03-02 15:08:26] - pyatoa - INFO: 1 window(s) selected for comp N
-    [2022-03-02 15:08:26] - pyatoa - INFO: 1 window(s) selected for comp Z
-    [2022-03-02 15:08:26] - pyatoa - WARNING: Manager has no ASDFDataSet, cannot save windows
-    [2022-03-02 15:08:26] - pyatoa - INFO: 3 window(s) total found
+    [2022-03-03 11:01:44] - pyatoa - INFO: running Pyflex w/ map: default
+    [2022-03-03 11:01:44] - pyatoa - INFO: 1 window(s) selected for comp E
+    [2022-03-03 11:01:44] - pyatoa - INFO: 1 window(s) selected for comp N
+    [2022-03-03 11:01:44] - pyatoa - INFO: 1 window(s) selected for comp Z
+    [2022-03-03 11:01:44] - pyatoa - WARNING: Manager has no ASDFDataSet, cannot save windows
+    [2022-03-03 11:01:44] - pyatoa - INFO: 3 window(s) total found
 
 
 
@@ -440,8 +440,8 @@ containing lists of ``Window`` objects.
 .. parsed-literal::
 
     {'E': [Window(left=849, right=2569, center=1709, channel_id=NZ.BFZ.10.HHE, max_cc_value=0.8272815676868746, cc_shift=29, dlnA=-0.06282611168496877)],
-     'N': [Window(left=827, right=2569, center=1698, channel_id=NZ.BFZ.10.HHN, max_cc_value=0.9873360888477708, cc_shift=64, dlnA=-0.13343443319126463)],
-     'Z': [Window(left=1557, right=2569, center=2063, channel_id=NZ.BFZ.10.HHZ, max_cc_value=0.8923893777352877, cc_shift=76, dlnA=-0.7922907145441169)]}
+     'N': [Window(left=827, right=2569, center=1698, channel_id=NZ.BFZ.10.HHN, max_cc_value=0.9873360888477785, cc_shift=64, dlnA=-0.13343443319115278)],
+     'Z': [Window(left=1557, right=2569, center=2063, channel_id=NZ.BFZ.10.HHZ, max_cc_value=0.8923893777352747, cc_shift=76, dlnA=-0.7922907145441184)]}
 
 
 
@@ -471,12 +471,12 @@ traces, as well as :math:`\chi` values for each component.
 
 .. parsed-literal::
 
-    [2022-03-02 15:08:27] - pyatoa - DEBUG: running Pyadjoint w/ type: cc_traveltime_misfit
-    [2022-03-02 15:08:27] - pyatoa - INFO: 0.179 misfit for comp E
-    [2022-03-02 15:08:27] - pyatoa - INFO: 1.786 misfit for comp N
-    [2022-03-02 15:08:27] - pyatoa - INFO: 2.808 misfit for comp Z
-    [2022-03-02 15:08:27] - pyatoa - WARNING: Manager has no ASDFDataSet, cannot save adjoint sources
-    [2022-03-02 15:08:27] - pyatoa - INFO: total misfit 4.774
+    [2022-03-03 11:01:44] - pyatoa - DEBUG: running Pyadjoint w/ type: cc_traveltime_misfit
+    [2022-03-03 11:01:44] - pyatoa - INFO: 0.179 misfit for comp E
+    [2022-03-03 11:01:44] - pyatoa - INFO: 1.786 misfit for comp N
+    [2022-03-03 11:01:44] - pyatoa - INFO: 2.808 misfit for comp Z
+    [2022-03-03 11:01:44] - pyatoa - WARNING: Manager has no ASDFDataSet, cannot save adjoint sources
+    [2022-03-03 11:01:44] - pyatoa - INFO: total misfit 4.774
 
 
 
@@ -496,9 +496,9 @@ attribute.
 
 .. parsed-literal::
 
-    {'E': <pyadjoint.adjoint_source.AdjointSource at 0x7efe8efa0450>,
-     'N': <pyadjoint.adjoint_source.AdjointSource at 0x7efe8efa0b90>,
-     'Z': <pyadjoint.adjoint_source.AdjointSource at 0x7efe8efa07d0>}
+    {'E': <pyadjoint.adjoint_source.AdjointSource at 0x7f7b46eed510>,
+     'N': <pyadjoint.adjoint_source.AdjointSource at 0x7f7b471dec10>,
+     'Z': <pyadjoint.adjoint_source.AdjointSource at 0x7f7b470bb510>}
 
 
 
@@ -606,36 +606,36 @@ accepted by each of its workflow functions.
 
 .. parsed-literal::
 
-    [2022-03-02 15:08:27] - pyatoa - INFO: standardizing streams
-    [2022-03-02 15:08:27] - pyatoa - DEBUG: zero pad NZ.BFZ.10.HHE (0, 0) samples
-    [2022-03-02 15:08:27] - pyatoa - DEBUG: new starttime NZ.BFZ.10.HHE: 2018-02-18T07:43:28.127644Z
-    [2022-03-02 15:08:27] - pyatoa - DEBUG: zero pad NZ.BFZ.10.HHN (0, 0) samples
-    [2022-03-02 15:08:27] - pyatoa - DEBUG: new starttime NZ.BFZ.10.HHN: 2018-02-18T07:43:28.127644Z
-    [2022-03-02 15:08:27] - pyatoa - DEBUG: zero pad NZ.BFZ.10.HHZ (0, 0) samples
-    [2022-03-02 15:08:27] - pyatoa - DEBUG: new starttime NZ.BFZ.10.HHZ: 2018-02-18T07:43:28.127644Z
-    [2022-03-02 15:08:27] - pyatoa - DEBUG: time offset is -20.0s
-    [2022-03-02 15:08:27] - pyatoa - INFO: preprocessing observation data
-    [2022-03-02 15:08:27] - pyatoa - INFO: adjusting taper to cover time offset -20.0
-    [2022-03-02 15:08:27] - pyatoa - DEBUG: removing response, units to DISP
-    [2022-03-02 15:08:27] - pyatoa - DEBUG: rotating from generic coordinate system to ZNE
-    [2022-03-02 15:08:27] - pyatoa - DEBUG: bandpass filter: 10.0 - 30.0s w/ 2.0 corners
-    [2022-03-02 15:08:27] - pyatoa - INFO: preprocessing synthetic data
-    [2022-03-02 15:08:27] - pyatoa - INFO: adjusting taper to cover time offset -20.0
-    [2022-03-02 15:08:27] - pyatoa - DEBUG: no response removal, synthetic data or requested not to
-    [2022-03-02 15:08:27] - pyatoa - DEBUG: bandpass filter: 10.0 - 30.0s w/ 2.0 corners
-    [2022-03-02 15:08:27] - pyatoa - DEBUG: convolving data w/ Gaussian (t/2=0.70s)
-    [2022-03-02 15:08:27] - pyatoa - INFO: running Pyflex w/ map: default
-    [2022-03-02 15:08:27] - pyatoa - INFO: 1 window(s) selected for comp E
-    [2022-03-02 15:08:28] - pyatoa - INFO: 1 window(s) selected for comp N
-    [2022-03-02 15:08:28] - pyatoa - INFO: 1 window(s) selected for comp Z
-    [2022-03-02 15:08:28] - pyatoa - WARNING: Manager has no ASDFDataSet, cannot save windows
-    [2022-03-02 15:08:28] - pyatoa - INFO: 3 window(s) total found
-    [2022-03-02 15:08:28] - pyatoa - DEBUG: running Pyadjoint w/ type: cc_traveltime_misfit
-    [2022-03-02 15:08:28] - pyatoa - INFO: 0.365 misfit for comp E
-    [2022-03-02 15:08:28] - pyatoa - INFO: 1.620 misfit for comp N
-    [2022-03-02 15:08:28] - pyatoa - INFO: 0.004 misfit for comp Z
-    [2022-03-02 15:08:28] - pyatoa - WARNING: Manager has no ASDFDataSet, cannot save adjoint sources
-    [2022-03-02 15:08:28] - pyatoa - INFO: total misfit 1.989
+    [2022-03-03 11:01:45] - pyatoa - INFO: standardizing streams
+    [2022-03-03 11:01:45] - pyatoa - DEBUG: zero pad NZ.BFZ.10.HHE (0, 0) samples
+    [2022-03-03 11:01:45] - pyatoa - DEBUG: new starttime NZ.BFZ.10.HHE: 2018-02-18T07:43:28.127644Z
+    [2022-03-03 11:01:45] - pyatoa - DEBUG: zero pad NZ.BFZ.10.HHN (0, 0) samples
+    [2022-03-03 11:01:45] - pyatoa - DEBUG: new starttime NZ.BFZ.10.HHN: 2018-02-18T07:43:28.127644Z
+    [2022-03-03 11:01:45] - pyatoa - DEBUG: zero pad NZ.BFZ.10.HHZ (0, 0) samples
+    [2022-03-03 11:01:45] - pyatoa - DEBUG: new starttime NZ.BFZ.10.HHZ: 2018-02-18T07:43:28.127644Z
+    [2022-03-03 11:01:45] - pyatoa - DEBUG: time offset is -20.0s
+    [2022-03-03 11:01:45] - pyatoa - INFO: preprocessing observation data
+    [2022-03-03 11:01:45] - pyatoa - INFO: adjusting taper to cover time offset -20.0
+    [2022-03-03 11:01:45] - pyatoa - DEBUG: removing response, units to DISP
+    [2022-03-03 11:01:45] - pyatoa - DEBUG: rotating from generic coordinate system to ZNE
+    [2022-03-03 11:01:45] - pyatoa - DEBUG: bandpass filter: 10.0 - 30.0s w/ 2.0 corners
+    [2022-03-03 11:01:45] - pyatoa - INFO: preprocessing synthetic data
+    [2022-03-03 11:01:45] - pyatoa - INFO: adjusting taper to cover time offset -20.0
+    [2022-03-03 11:01:45] - pyatoa - DEBUG: no response removal, synthetic data or requested not to
+    [2022-03-03 11:01:45] - pyatoa - DEBUG: bandpass filter: 10.0 - 30.0s w/ 2.0 corners
+    [2022-03-03 11:01:45] - pyatoa - DEBUG: convolving data w/ Gaussian (t/2=0.70s)
+    [2022-03-03 11:01:45] - pyatoa - INFO: running Pyflex w/ map: default
+    [2022-03-03 11:01:45] - pyatoa - INFO: 1 window(s) selected for comp E
+    [2022-03-03 11:01:45] - pyatoa - INFO: 1 window(s) selected for comp N
+    [2022-03-03 11:01:45] - pyatoa - INFO: 1 window(s) selected for comp Z
+    [2022-03-03 11:01:45] - pyatoa - WARNING: Manager has no ASDFDataSet, cannot save windows
+    [2022-03-03 11:01:45] - pyatoa - INFO: 3 window(s) total found
+    [2022-03-03 11:01:45] - pyatoa - DEBUG: running Pyadjoint w/ type: cc_traveltime_misfit
+    [2022-03-03 11:01:45] - pyatoa - INFO: 0.365 misfit for comp E
+    [2022-03-03 11:01:45] - pyatoa - INFO: 1.620 misfit for comp N
+    [2022-03-03 11:01:45] - pyatoa - INFO: 0.004 misfit for comp Z
+    [2022-03-03 11:01:45] - pyatoa - WARNING: Manager has no ASDFDataSet, cannot save adjoint sources
+    [2022-03-03 11:01:45] - pyatoa - INFO: total misfit 1.989
 
 
 

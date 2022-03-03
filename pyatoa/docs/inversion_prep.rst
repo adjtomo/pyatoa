@@ -172,7 +172,7 @@ The SEED standard for broadband instruments is “B” or “H”
 
 .. parsed-literal::
 
-    Inventory created at 2022-03-03T00:08:16.425000Z
+    Inventory created at 2022-03-03T20:03:50.250000Z
     	Created by: IRIS WEB SERVICE: fdsnws-station | version: 1.1.48
     		    http://service.iris.edu/fdsnws/station/1/query?starttime=2010-01-01...
     	Sending institution: IRIS-DMC (IRIS-DMC)
@@ -394,82 +394,110 @@ single event, and trying to fill it with all available data.
 
 .. parsed-literal::
 
-    AK.SCM.*.BH? data count: 0
-    AK.I23K.*.BH? data count: 0
-    AK.KLU.*.BH? data count: 0
-    AK.M20K.*.BH? data count: 0
-    AK.L20K.*.BH? data count: 0
-    AK.TRF.*.BH? data count: 0
-    AK.SWD.*.BH? data count: 0
-    AK.I21K.*.BH? data count: 0
-    AK.SGA.*.BH? data count: 0
-    AK.HDA.*.BH? data count: 0
-    AK.J20K.*.BH? data count: 0
-    AK.NKA.*.BH? data count: 0
-    AK.SSN.*.BH? data count: 0
-    AK.WAT3.*.BH? data count: 0
-    AK.PPLA.*.BH? data count: 0
-    AK.DDM.*.BH? data count: 0
-    AK.NEA.*.BH? data count: 0
-    AK.BRLK.*.BH? data count: 1
     AK.O19K.*.BH? data count: 0
-    AK.PWL.*.BH? data count: 0
-    AK.GHO.*.BH? data count: 0
-    AK.CAST.*.BH? data count: 1
-    AK.WAT1.*.BH? data count: 0
-    AK.CAPN.*.BH? data count: 0
-    AK.NICH.*.BH? data count: 0
-    AK.MDM.*.BH? data count: 0
-    AK.WAT2.*.BH? data count: 0
-    AK.MCK.*.BH? data count: 1
-    AK.M19K.*.BH? data count: 0
-    AK.DOT.*.BH? data count: 0
-    AK.P23K.*.BH? data count: 0
-    AK.MLY.*.BH? data count: 0
-    AK.GLI.*.BH? data count: 1
-    AK.L22K.*.BH? data count: 0
-    AK.K24K.*.BH? data count: 0
-    AK.SAW.*.BH? data count: 1
-    AK.EYAK.*.BH? data count: 0
-    AK.WAT4.*.BH? data count: 0
-    AK.WAT7.*.BH? data count: 0
-    AK.CCB.*.BH? data count: 0
-    AK.BWN.*.BH? data count: 1
-    AK.O20K.*.BH? data count: 0
-    AK.PAX.*.BH? data count: 0
-    AK.WAT6.*.BH? data count: 1
-    AK.HDA.*.BH? data count: 1
-    AK.K20K.*.BH? data count: 0
-    AK.WAT5.*.BH? data count: 0
-    AK.SLK.*.BH? data count: 1
-    AK.KAI.*.BH? data count: 1
-    AK.DIV.*.BH? data count: 1
-    AK.BMR.*.BH? data count: 1
     AK.FIB.*.BH? data count: 0
+    AK.WAT1.*.BH? data count: 0
+    AK.WAT4.*.BH? data count: 0
+    AK.MDM.*.BH? data count: 0
+    AK.WAT5.*.BH? data count: 0
+    AK.K24K.*.BH? data count: 0
+    AK.L20K.*.BH? data count: 0
+    AK.M20K.*.BH? data count: 0
+    AK.WAT2.*.BH? data count: 0
+    AK.DDM.*.BH? data count: 0
+    AK.SGA.*.BH? data count: 0
     AK.J25K.*.BH? data count: 0
-    AK.N19K.*.BH? data count: 0
+    AK.NEA.*.BH? data count: 0
     AK.GLM.*.BH? data count: 0
-    AK.RIDG.*.BH? data count: 1
-    AK.GLB.*.BH? data count: 1
-    AK.TRF.*.BH? data count: 1
-    AK.GOAT.*.BH? data count: 1
-    AK.BPAW.*.BH? data count: 1
-    AK.NEA2.*.BH? data count: 1
-    AK.SKN.*.BH? data count: 1
-    AK.CHUM.*.BH? data count: 1
-    AK.RC01.*.BH? data count: 1
-    AK.HIN.*.BH? data count: 1
-    AK.FIRE.*.BH? data count: 1
-    AK.KNK.*.BH? data count: 1
-    AK.SCRK.*.BH? data count: 1
-    AK.FID.*.BH? data count: 1
+    AK.O20K.*.BH? data count: 0
+    AK.NKA.*.BH? data count: 0
+    AK.I21K.*.BH? data count: 0
+    AK.N19K.*.BH? data count: 0
+    AK.K20K.*.BH? data count: 0
+    AK.M19K.*.BH? data count: 0
+    AK.P23K.*.BH? data count: 0
+    AK.WAT3.*.BH? data count: 0
+    AK.WAT6.*.BH? data count: 1
+    AK.I23K.*.BH? data count: 0
+    AK.MLY.*.BH? data count: 1
+    AK.J20K.*.BH? data count: 0
+    AK.L22K.*.BH? data count: 0
     AK.DHY.*.BH? data count: 1
-    AK.KTH.*.BH? data count: 1
-    AK.RAG.*.BH? data count: 1
-    AK.RND.*.BH? data count: 1
-    AK.HMT.*.BH? data count: 1
-    AK.CUT.*.BH? data count: 1
-    AK.WRH.*.BH? data count: 1
+    AK.GLI.*.BH? data count: 1
+    AK.PAX.*.BH? data count: 4
+    AK.CAPN.*.BH? data count: 4
+    AK.MCK.*.BH? data count: 4
+    AK.RND.*.BH? data count: 4
+    AK.TRF.*.BH? data count: 4
+    AK.GOAT.*.BH? data count: 4
+    AK.SCM.*.BH? data count: 4
+    AK.RC01.*.BH? data count: 4
+    AK.CAST.*.BH? data count: 4
+    AK.TRF.*.BH? data count: 4
+
+
+.. parsed-literal::
+
+    /home/bchow/miniconda3/envs/docs/lib/python3.7/site-packages/pyasdf/asdf_data_set.py:1553: ASDFWarning: Data 'AK.TRF/AK.TRF..BHE__2019-01-13T16:45:35__2019-01-13T16:54:15__observed' already exists in file. Will not be added!
+      warnings.warn(msg, ASDFWarning)
+    /home/bchow/miniconda3/envs/docs/lib/python3.7/site-packages/pyasdf/asdf_data_set.py:1553: ASDFWarning: Data 'AK.TRF/AK.TRF..BHN__2019-01-13T16:45:35__2019-01-13T16:54:15__observed' already exists in file. Will not be added!
+      warnings.warn(msg, ASDFWarning)
+    /home/bchow/miniconda3/envs/docs/lib/python3.7/site-packages/pyasdf/asdf_data_set.py:1553: ASDFWarning: Data 'AK.TRF/AK.TRF..BHZ__2019-01-13T16:45:35__2019-01-13T16:54:15__observed' already exists in file. Will not be added!
+      warnings.warn(msg, ASDFWarning)
+
+
+.. parsed-literal::
+
+    AK.SCRK.*.BH? data count: 4
+    AK.HMT.*.BH? data count: 4
+    AK.CUT.*.BH? data count: 4
+    AK.DIV.*.BH? data count: 4
+    AK.SLK.*.BH? data count: 4
+    AK.CCB.*.BH? data count: 4
+    AK.SWD.*.BH? data count: 4
+    AK.KLU.*.BH? data count: 4
+    AK.NICH.*.BH? data count: 4
+    AK.FID.*.BH? data count: 1
+    AK.WAT7.*.BH? data count: 1
+    AK.SSN.*.BH? data count: 1
+    AK.GLB.*.BH? data count: 4
+    AK.KNK.*.BH? data count: 4
+    AK.HDA.*.BH? data count: 4
+    AK.HDA.*.BH? data count: 4
+    AK.BPAW.*.BH? data count: 4
+    AK.NEA2.*.BH? data count: 4
+    AK.CHUM.*.BH? data count: 4
+    AK.WRH.*.BH? data count: 4
+
+.. parsed-literal::
+
+    /home/bchow/miniconda3/envs/docs/lib/python3.7/site-packages/pyasdf/asdf_data_set.py:1553: ASDFWarning: Data 'AK.HDA/AK.HDA..BHE__2019-01-13T16:45:35__2019-01-13T16:54:15__observed' already exists in file. Will not be added!
+      warnings.warn(msg, ASDFWarning)
+    /home/bchow/miniconda3/envs/docs/lib/python3.7/site-packages/pyasdf/asdf_data_set.py:1553: ASDFWarning: Data 'AK.HDA/AK.HDA..BHN__2019-01-13T16:45:35__2019-01-13T16:54:15__observed' already exists in file. Will not be added!
+      warnings.warn(msg, ASDFWarning)
+    /home/bchow/miniconda3/envs/docs/lib/python3.7/site-packages/pyasdf/asdf_data_set.py:1553: ASDFWarning: Data 'AK.HDA/AK.HDA..BHZ__2019-01-13T16:45:35__2019-01-13T16:54:15__observed' already exists in file. Will not be added!
+      warnings.warn(msg, ASDFWarning)
+
+
+.. parsed-literal::
+
+    
+    AK.PPLA.*.BH? data count: 4
+    AK.BMR.*.BH? data count: 4
+    AK.KTH.*.BH? data count: 4
+    AK.GHO.*.BH? data count: 4
+    AK.HIN.*.BH? data count: 4
+    AK.RIDG.*.BH? data count: 4
+    AK.KAI.*.BH? data count: 4
+    AK.BWN.*.BH? data count: 4
+    AK.DOT.*.BH? data count: 4
+    AK.SKN.*.BH? data count: 4
+    AK.RAG.*.BH? data count: 4
+    AK.EYAK.*.BH? data count: 4
+    AK.SAW.*.BH? data count: 4
+    AK.PWL.*.BH? data count: 4
+    AK.FIRE.*.BH? data count: 4
+    AK.BRLK.*.BH? data count: 4
 
 
 .. code:: ipython3
@@ -481,9 +509,9 @@ single event, and trying to fill it with all available data.
 
 .. parsed-literal::
 
-    []
+    ['AK.BMR', 'AK.BPAW', 'AK.BRLK', 'AK.BWN', 'AK.CAPN', 'AK.CAST', 'AK.CCB', 'AK.CHUM', 'AK.CUT', 'AK.DIV', 'AK.DOT', 'AK.EYAK', 'AK.FIRE', 'AK.GHO', 'AK.GLB', 'AK.GOAT', 'AK.HDA', 'AK.HIN', 'AK.HMT', 'AK.KAI', 'AK.KLU', 'AK.KNK', 'AK.KTH', 'AK.MCK', 'AK.NEA2', 'AK.NICH', 'AK.PAX', 'AK.PPLA', 'AK.PWL', 'AK.RAG', 'AK.RC01', 'AK.RIDG', 'AK.RND', 'AK.SAW', 'AK.SCM', 'AK.SCRK', 'AK.SKN', 'AK.SLK', 'AK.SWD', 'AK.TRF', 'AK.WRH']
     
-    0 stations collected
+    41 stations collected
 
 
 Great! Looks like we’ve got data for 41 stations just for this one

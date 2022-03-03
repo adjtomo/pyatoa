@@ -71,20 +71,20 @@ short example, we will manually fill a dataset to illustrate the
 
 .. parsed-literal::
 
-    [2022-03-02 15:07:50] - pyatoa - INFO: standardizing streams
-    [2022-03-02 15:07:50] - pyatoa - INFO: preprocessing observation data
-    [2022-03-02 15:07:50] - pyatoa - INFO: adjusting taper to cover time offset -20.0
-    [2022-03-02 15:07:50] - pyatoa - INFO: preprocessing synthetic data
-    [2022-03-02 15:07:50] - pyatoa - INFO: adjusting taper to cover time offset -20.0
-    [2022-03-02 15:07:50] - pyatoa - INFO: running Pyflex w/ map: default
-    [2022-03-02 15:07:50] - pyatoa - INFO: 1 window(s) selected for comp E
-    [2022-03-02 15:07:50] - pyatoa - INFO: 1 window(s) selected for comp N
-    [2022-03-02 15:07:51] - pyatoa - INFO: 1 window(s) selected for comp Z
-    [2022-03-02 15:07:51] - pyatoa - INFO: 3 window(s) total found
-    [2022-03-02 15:07:51] - pyatoa - INFO: 0.365 misfit for comp E
-    [2022-03-02 15:07:51] - pyatoa - INFO: 1.620 misfit for comp N
-    [2022-03-02 15:07:51] - pyatoa - INFO: 0.004 misfit for comp Z
-    [2022-03-02 15:07:51] - pyatoa - INFO: total misfit 1.989
+    [2022-03-03 11:01:17] - pyatoa - INFO: standardizing streams
+    [2022-03-03 11:01:17] - pyatoa - INFO: preprocessing observation data
+    [2022-03-03 11:01:17] - pyatoa - INFO: adjusting taper to cover time offset -20.0
+    [2022-03-03 11:01:17] - pyatoa - INFO: preprocessing synthetic data
+    [2022-03-03 11:01:17] - pyatoa - INFO: adjusting taper to cover time offset -20.0
+    [2022-03-03 11:01:17] - pyatoa - INFO: running Pyflex w/ map: default
+    [2022-03-03 11:01:18] - pyatoa - INFO: 1 window(s) selected for comp E
+    [2022-03-03 11:01:18] - pyatoa - INFO: 1 window(s) selected for comp N
+    [2022-03-03 11:01:18] - pyatoa - INFO: 1 window(s) selected for comp Z
+    [2022-03-03 11:01:18] - pyatoa - INFO: 3 window(s) total found
+    [2022-03-03 11:01:18] - pyatoa - INFO: 0.365 misfit for comp E
+    [2022-03-03 11:01:18] - pyatoa - INFO: 1.620 misfit for comp N
+    [2022-03-03 11:01:18] - pyatoa - INFO: 0.004 misfit for comp Z
+    [2022-03-03 11:01:18] - pyatoa - INFO: total misfit 1.989
 
 
 --------------
@@ -303,7 +303,7 @@ all standard Pandas operations can be used to access data.
 
 .. parsed-literal::
 
-    0.95137376274537122
+    0.95137376274536101
 
 
 
@@ -1000,7 +1000,7 @@ source-receiver metadata
 .. parsed-literal::
 
     (<Figure size 432x288 with 1 Axes>,
-     <matplotlib.axes._subplots.AxesSubplot at 0x7f5afd5ca8d0>)
+     <matplotlib.axes._subplots.AxesSubplot at 0x7f82c00b75d0>)
 
 
 
@@ -1015,7 +1015,7 @@ source-receiver metadata
 .. parsed-literal::
 
     (<Figure size 576x432 with 1 Axes>,
-     <matplotlib.axes._subplots.AxesSubplot at 0x7f5afd9a0910>)
+     <matplotlib.axes._subplots.AxesSubplot at 0x7f82c01e5e50>)
 
 
 
@@ -1038,7 +1038,7 @@ source-receiver metadata
 .. parsed-literal::
 
     (<Figure size 576x576 with 1 Axes>,
-     <matplotlib.axes._subplots.AxesSubplot at 0x7f5afd79f7d0>)
+     <matplotlib.axes._subplots.AxesSubplot at 0x7f82c01781d0>)
 
 
 
@@ -1075,7 +1075,7 @@ source-receiver metadata
 .. parsed-literal::
 
     (<Figure size 432x288 with 1 Axes>,
-     <matplotlib.axes._subplots.AxesSubplot at 0x7f5af5bb5cd0>)
+     <matplotlib.axes._subplots.AxesSubplot at 0x7f82c01e5b10>)
 
 
 
@@ -1135,7 +1135,7 @@ inversion is progressing by comparing iterations against one another
 .. parsed-literal::
 
     (<Figure size 800x600 with 2 Axes>,
-     <matplotlib.axes._subplots.AxesSubplot at 0x7f5af5c0c190>)
+     <matplotlib.axes._subplots.AxesSubplot at 0x7f82b86df790>)
 
 
 
@@ -1170,7 +1170,7 @@ inversion is progressing by comparing iterations against one another
 .. parsed-literal::
 
     (<Figure size 576x432 with 1 Axes>,
-     <matplotlib.axes._subplots.AxesSubplot at 0x7f5af46b6ad0>)
+     <matplotlib.axes._subplots.AxesSubplot at 0x7f82b689cf10>)
 
 
 
@@ -1208,7 +1208,7 @@ measurements, or comparisons against one another.
 .. parsed-literal::
 
     (<Figure size 576x432 with 1 Axes>,
-     <matplotlib.axes._subplots.AxesSubplot at 0x7f5af45114d0>)
+     <matplotlib.axes._subplots.AxesSubplot at 0x7f82b6788690>)
 
 
 
@@ -1258,7 +1258,7 @@ measurements, or comparisons against one another.
 .. parsed-literal::
 
     (<Figure size 432x288 with 2 Axes>,
-     <matplotlib.axes._subplots.AxesSubplot at 0x7f5af437ab10>)
+     <matplotlib.axes._subplots.AxesSubplot at 0x7f82b658bed0>)
 
 
 
@@ -1284,7 +1284,7 @@ measurements, or comparisons against one another.
 .. parsed-literal::
 
     (<Figure size 432x288 with 2 Axes>,
-     <matplotlib.axes._subplots.AxesSubplot at 0x7f5af4276050>)
+     <matplotlib.axes._subplots.AxesSubplot at 0x7f82b64b2150>)
 
 
 
@@ -1304,6 +1304,6 @@ measurements, or comparisons against one another.
 .. parsed-literal::
 
     (<Figure size 432x288 with 2 Axes>,
-     <matplotlib.axes._subplots.AxesSubplot at 0x7f5af41abc90>)
+     <matplotlib.axes._subplots.AxesSubplot at 0x7f82b63e5490>)
 
 

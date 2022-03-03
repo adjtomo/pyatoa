@@ -54,8 +54,8 @@ An empty :doc:`Config </autoapi/pyatoa/core/config/index.html>` class comes with
     EXTERNAL
         pyflex_preset:           default
         adj_src_type:            cc_traveltime_misfit
-        pyflex_config:           <pyflex.config.Config object at 0x7fb6a8336890>
-        pyadjoint_config:        <pyadjoint.config.Config object at 0x7fb6a833c190>
+        pyflex_config:           <pyflex.config.Config object at 0x7fed842d0910>
+        pyadjoint_config:        <pyadjoint.config.Config object at 0x7fed842c1a50>
 
 
 

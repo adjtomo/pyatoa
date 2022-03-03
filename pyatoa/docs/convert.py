@@ -32,11 +32,9 @@ def convert_nb(nbname):
 
 
 if __name__ == "__main__":
-    notebook_dir = "./notebooks"
-
     if sys.argv[1:]:
         for nbname in sys.argv[1:]:
             convert_nb(nbname)
     else:
-        for nbname in glob.glob(os.path.join(notebook_dir, "*ipynb")):
+        for nbname in glob.glob("*ipynb"):
             convert_nb(nbname)

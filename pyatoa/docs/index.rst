@@ -62,8 +62,8 @@ is broken.
 Dependencies
 ~~~~~~~~~~~~
 
-Credit where credit is due, ``Pyatoa`` is a high-level API built directly on
-top of on the following packages:
+Credit where credit is due, ``Pyatoa`` is a high-level purpose-buiolt wrapper 
+of the following packages:
 
 -  `Obspy: <https://github.com/obspy/obspy/wiki>`__ for seismic
    data handling, data gathering, and waveform processing
@@ -132,4 +132,6 @@ Geophysical Journal International, 223(3), 1461-1480.
    :hidden:
    :caption: Development
 
+   code_dev_plan
    changelog
+

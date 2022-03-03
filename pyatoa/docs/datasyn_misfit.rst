@@ -69,7 +69,7 @@ windowing and adjoint source generation algorithms.
 
 .. parsed-literal::
 
-    [2022-03-02 15:07:20] - pyatoa - DEBUG: Component list set to E/N/Z
+    [2022-03-03 11:02:43] - pyatoa - DEBUG: Component list set to E/N/Z
 
 
 Finally, the ``Manager`` class is instantiated. The ``Manager`` is
@@ -98,9 +98,9 @@ appended from the GeoNet moment tensor catalog.
 
 .. parsed-literal::
 
-    [2022-03-02 15:07:20] - pyatoa - DEBUG: gathering event
-    [2022-03-02 15:07:20] - pyatoa - INFO: searching ASDFDataSet for event info
-    [2022-03-02 15:07:20] - pyatoa - DEBUG: matching event found: 2018p130600
+    [2022-03-03 11:02:44] - pyatoa - DEBUG: gathering event
+    [2022-03-03 11:02:44] - pyatoa - INFO: searching ASDFDataSet for event info
+    [2022-03-03 11:02:44] - pyatoa - DEBUG: matching event found: 2018p130600
 
 
 
@@ -163,21 +163,21 @@ Pyatoa is calling the ObsPy FDSN webservice client.
 
 .. parsed-literal::
 
-    [2022-03-02 15:07:20] - pyatoa - INFO: gathering data for NZ.WEL.??.HH?
-    [2022-03-02 15:07:20] - pyatoa - INFO: gathering observed waveforms
-    [2022-03-02 15:07:20] - pyatoa - INFO: searching ASDFDataSet for observations
-    [2022-03-02 15:07:20] - pyatoa - INFO: searching local filesystem for observations
-    [2022-03-02 15:07:20] - pyatoa - DEBUG: querying client GEONET
-    [2022-03-02 15:07:23] - pyatoa - INFO: matching observed waveforms found
-    [2022-03-02 15:07:23] - pyatoa - INFO: saved to ASDFDataSet with tag 'observed'
-    [2022-03-02 15:07:23] - pyatoa - INFO: gathering StationXML
-    [2022-03-02 15:07:23] - pyatoa - INFO: searching ASDFDataSet for station info
-    [2022-03-02 15:07:23] - pyatoa - INFO: searching local filesystem for station info
-    [2022-03-02 15:07:23] - pyatoa - DEBUG: querying client GEONET
+    [2022-03-03 11:02:44] - pyatoa - INFO: gathering data for NZ.WEL.??.HH?
+    [2022-03-03 11:02:44] - pyatoa - INFO: gathering observed waveforms
+    [2022-03-03 11:02:44] - pyatoa - INFO: searching ASDFDataSet for observations
+    [2022-03-03 11:02:44] - pyatoa - INFO: searching local filesystem for observations
+    [2022-03-03 11:02:44] - pyatoa - DEBUG: querying client GEONET
+    [2022-03-03 11:02:46] - pyatoa - INFO: matching observed waveforms found
+    [2022-03-03 11:02:46] - pyatoa - INFO: saved to ASDFDataSet with tag 'observed'
+    [2022-03-03 11:02:46] - pyatoa - INFO: gathering StationXML
+    [2022-03-03 11:02:46] - pyatoa - INFO: searching ASDFDataSet for station info
+    [2022-03-03 11:02:46] - pyatoa - INFO: searching local filesystem for station info
+    [2022-03-03 11:02:46] - pyatoa - DEBUG: querying client GEONET
     /home/bchow/miniconda3/envs/docs/lib/python3.7/site-packages/obspy/io/stationxml/core.py:98: UserWarning: The StationXML file has version 1, ObsPy can read versions (1.0, 1.1). Proceed with caution.
       version, ", ".join(READABLE_VERSIONS)))
-    [2022-03-02 15:07:23] - pyatoa - INFO: matching StationXML found
-    [2022-03-02 15:07:23] - pyatoa - INFO: saved to ASDFDataSet
+    [2022-03-03 11:02:46] - pyatoa - INFO: matching StationXML found
+    [2022-03-03 11:02:46] - pyatoa - INFO: saved to ASDFDataSet
 
 
 
@@ -300,18 +300,18 @@ frequency domain filtering.
 
 .. parsed-literal::
 
-    [2022-03-02 15:07:23] - pyatoa - INFO: standardizing streams
-    [2022-03-02 15:07:23] - pyatoa - DEBUG: start and endtimes already match to 0.001
-    [2022-03-02 15:07:23] - pyatoa - DEBUG: time offset is -19.996908s
-    [2022-03-02 15:07:23] - pyatoa - INFO: preprocessing observation data
-    [2022-03-02 15:07:23] - pyatoa - INFO: adjusting taper to cover time offset -19.996908
-    [2022-03-02 15:07:23] - pyatoa - DEBUG: removing response, units to DISP
-    [2022-03-02 15:07:23] - pyatoa - DEBUG: rotating from generic coordinate system to ZNE
-    [2022-03-02 15:07:23] - pyatoa - DEBUG: bandpass filter: 10.0 - 30.0s w/ 2.0 corners
-    [2022-03-02 15:07:23] - pyatoa - INFO: preprocessing synthetic data
-    [2022-03-02 15:07:23] - pyatoa - INFO: adjusting taper to cover time offset -19.996908
-    [2022-03-02 15:07:23] - pyatoa - DEBUG: no response removal, synthetic data or requested not to
-    [2022-03-02 15:07:23] - pyatoa - DEBUG: bandpass filter: 10.0 - 30.0s w/ 2.0 corners
+    [2022-03-03 11:02:47] - pyatoa - INFO: standardizing streams
+    [2022-03-03 11:02:47] - pyatoa - DEBUG: start and endtimes already match to 0.001
+    [2022-03-03 11:02:47] - pyatoa - DEBUG: time offset is -19.996908s
+    [2022-03-03 11:02:47] - pyatoa - INFO: preprocessing observation data
+    [2022-03-03 11:02:47] - pyatoa - INFO: adjusting taper to cover time offset -19.996908
+    [2022-03-03 11:02:47] - pyatoa - DEBUG: removing response, units to DISP
+    [2022-03-03 11:02:47] - pyatoa - DEBUG: rotating from generic coordinate system to ZNE
+    [2022-03-03 11:02:47] - pyatoa - DEBUG: bandpass filter: 10.0 - 30.0s w/ 2.0 corners
+    [2022-03-03 11:02:47] - pyatoa - INFO: preprocessing synthetic data
+    [2022-03-03 11:02:47] - pyatoa - INFO: adjusting taper to cover time offset -19.996908
+    [2022-03-03 11:02:47] - pyatoa - DEBUG: no response removal, synthetic data or requested not to
+    [2022-03-03 11:02:47] - pyatoa - DEBUG: bandpass filter: 10.0 - 30.0s w/ 2.0 corners
 
 
 
@@ -358,12 +358,12 @@ agreement.
 
 .. parsed-literal::
 
-    [2022-03-02 15:07:24] - pyatoa - INFO: running Pyflex w/ map: nznorth_10-30s
-    [2022-03-02 15:07:24] - pyatoa - INFO: 1 window(s) selected for comp E
-    [2022-03-02 15:07:24] - pyatoa - INFO: 1 window(s) selected for comp N
-    [2022-03-02 15:07:25] - pyatoa - INFO: 1 window(s) selected for comp Z
-    [2022-03-02 15:07:25] - pyatoa - DEBUG: saving misfit windows to ASDFDataSet
-    [2022-03-02 15:07:25] - pyatoa - INFO: 3 window(s) total found
+    [2022-03-03 11:02:47] - pyatoa - INFO: running Pyflex w/ map: nznorth_10-30s
+    [2022-03-03 11:02:48] - pyatoa - INFO: 1 window(s) selected for comp E
+    [2022-03-03 11:02:48] - pyatoa - INFO: 1 window(s) selected for comp N
+    [2022-03-03 11:02:48] - pyatoa - INFO: 1 window(s) selected for comp Z
+    [2022-03-03 11:02:48] - pyatoa - DEBUG: saving misfit windows to ASDFDataSet
+    [2022-03-03 11:02:48] - pyatoa - INFO: 3 window(s) total found
 
 
 
@@ -396,9 +396,9 @@ agreement.
 
 .. parsed-literal::
 
-    {'E': [Window(left=4440, right=12487, center=8463, channel_id=NZ.WEL.10.HHE, max_cc_value=0.9874679817515194, cc_shift=-401, dlnA=0.28778062445774544)],
-     'N': [Window(left=4440, right=13755, center=9097, channel_id=NZ.WEL.10.HHN, max_cc_value=0.9882763627416445, cc_shift=-400, dlnA=0.27103148126016535)],
-     'Z': [Window(left=4440, right=14266, center=9353, channel_id=NZ.WEL.10.HHZ, max_cc_value=0.9980045265746181, cc_shift=-403, dlnA=0.2803855536521639)]}
+    {'E': [Window(left=4440, right=12487, center=8463, channel_id=NZ.WEL.10.HHE, max_cc_value=0.9874679817513736, cc_shift=-401, dlnA=0.28778062445734676)],
+     'N': [Window(left=4440, right=13755, center=9097, channel_id=NZ.WEL.10.HHN, max_cc_value=0.9882763627416018, cc_shift=-400, dlnA=0.27103148125935195)],
+     'Z': [Window(left=4440, right=14266, center=9353, channel_id=NZ.WEL.10.HHZ, max_cc_value=0.9980045265746231, cc_shift=-403, dlnA=0.28038555365102025)]}
 
 
 
@@ -424,12 +424,12 @@ adjoint sources within each of these time windows.
 
 .. parsed-literal::
 
-    [2022-03-02 15:07:25] - pyatoa - DEBUG: running Pyadjoint w/ type: cc_traveltime_misfit
-    [2022-03-02 15:07:25] - pyatoa - INFO: 8.040 misfit for comp E
-    [2022-03-02 15:07:25] - pyatoa - INFO: 8.000 misfit for comp N
-    [2022-03-02 15:07:25] - pyatoa - INFO: 8.120 misfit for comp Z
-    [2022-03-02 15:07:25] - pyatoa - DEBUG: saving adjoint sources to ASDFDataSet
-    [2022-03-02 15:07:25] - pyatoa - INFO: total misfit 24.161
+    [2022-03-03 11:02:49] - pyatoa - DEBUG: running Pyadjoint w/ type: cc_traveltime_misfit
+    [2022-03-03 11:02:49] - pyatoa - INFO: 8.040 misfit for comp E
+    [2022-03-03 11:02:49] - pyatoa - INFO: 8.000 misfit for comp N
+    [2022-03-03 11:02:49] - pyatoa - INFO: 8.120 misfit for comp Z
+    [2022-03-03 11:02:49] - pyatoa - DEBUG: saving adjoint sources to ASDFDataSet
+    [2022-03-03 11:02:49] - pyatoa - INFO: total misfit 24.161
 
 
 
@@ -462,9 +462,9 @@ adjoint sources within each of these time windows.
 
 .. parsed-literal::
 
-    {'E': <pyadjoint.adjoint_source.AdjointSource at 0x7ff6632e4990>,
-     'N': <pyadjoint.adjoint_source.AdjointSource at 0x7ff66315ea50>,
-     'Z': <pyadjoint.adjoint_source.AdjointSource at 0x7ff663176350>}
+    {'E': <pyadjoint.adjoint_source.AdjointSource at 0x7fa7f1160e10>,
+     'N': <pyadjoint.adjoint_source.AdjointSource at 0x7fa7f117ef50>,
+     'Z': <pyadjoint.adjoint_source.AdjointSource at 0x7fa7e115c490>}
 
 
 

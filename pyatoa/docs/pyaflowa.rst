@@ -103,7 +103,7 @@ We will use the Pyatoa function :doc:`append_focal_mechanism </modules/core.gath
 .. parsed-literal::
 
      PDE 2018 02 18 07 43 48.13  -39.9490  176.2995  20.6 5.2 5.2 NORTH ISLAND, NEW ZEALAND
-    event name:           51F0B8
+    event name:           0DBD19
     time shift:           0.0000
     half duration:        0.6989
     latitude:           -39.9490
@@ -434,8 +434,8 @@ attributes which keep track of how processing occurs.
     EXTERNAL
         pyflex_preset:           nznorth_10-30s
         adj_src_type:            cc_traveltime_misfit
-        pyflex_config:           <pyflex.config.Config object at 0x7f8ff345c2d0>
-        pyadjoint_config:        <pyadjoint.config.Config object at 0x7f8ff345cf50>
+        pyflex_config:           <pyflex.config.Config object at 0x7f0a73c55d90>
+        pyadjoint_config:        <pyadjoint.config.Config object at 0x7f0a73c55890>
     
     misfit 0
     nwin 0
@@ -481,395 +481,395 @@ rails.::
 
 .. parsed-literal::
 
-    [2022-03-02 15:08:33] - pyatoa - DEBUG: gathering event
-    [2022-03-02 15:08:33] - pyatoa - INFO: searching ASDFDataSet for event info
-    [2022-03-02 15:08:33] - pyatoa - DEBUG: matching event found: 81EE9F
-    [2022-03-02 15:08:33] - pyatoa - INFO: 
+    [2022-03-03 11:02:02] - pyatoa - DEBUG: gathering event
+    [2022-03-03 11:02:02] - pyatoa - INFO: searching ASDFDataSet for event info
+    [2022-03-03 11:02:02] - pyatoa - DEBUG: matching event found: A8E579
+    [2022-03-03 11:02:02] - pyatoa - INFO: 
     ================================================================================
     
     NZ.MRZ.*.HH?
     
     ================================================================================
-    [2022-03-02 15:08:33] - pyatoa - DEBUG: gathering event
-    [2022-03-02 15:08:33] - pyatoa - INFO: searching ASDFDataSet for event info
-    [2022-03-02 15:08:33] - pyatoa - DEBUG: matching event found: 81EE9F
-    [2022-03-02 15:08:33] - pyatoa - INFO: gathering data for NZ.MRZ.*.HH?
-    [2022-03-02 15:08:33] - pyatoa - INFO: gathering observed waveforms
-    [2022-03-02 15:08:33] - pyatoa - INFO: searching ASDFDataSet for observations
-    [2022-03-02 15:08:33] - pyatoa - INFO: matching observed waveforms found
-    [2022-03-02 15:08:33] - pyatoa - INFO: gathering StationXML
-    [2022-03-02 15:08:33] - pyatoa - INFO: searching ASDFDataSet for station info
-    [2022-03-02 15:08:33] - pyatoa - INFO: matching StationXML found
-    [2022-03-02 15:08:33] - pyatoa - INFO: saved to ASDFDataSet
-    [2022-03-02 15:08:33] - pyatoa - INFO: gathering synthetic waveforms
-    [2022-03-02 15:08:33] - pyatoa - INFO: searching ASDFDataSet for synthetics
-    [2022-03-02 15:08:33] - pyatoa - INFO: searching local filesystem for synthetics
-    [2022-03-02 15:08:33] - pyatoa - DEBUG: searching for synthetics: /home/bchow/REPOSITORIES/pyatoa/pyatoa/tests/test_data/docs_data/pyaflowa_doc/synthetics/2018p130600/{net}.{sta}.*{cmp}.sem{dva}
-    [2022-03-02 15:08:33] - pyatoa - INFO: retrieved synthetics locally:
+    [2022-03-03 11:02:02] - pyatoa - DEBUG: gathering event
+    [2022-03-03 11:02:02] - pyatoa - INFO: searching ASDFDataSet for event info
+    [2022-03-03 11:02:02] - pyatoa - DEBUG: matching event found: A8E579
+    [2022-03-03 11:02:02] - pyatoa - INFO: gathering data for NZ.MRZ.*.HH?
+    [2022-03-03 11:02:02] - pyatoa - INFO: gathering observed waveforms
+    [2022-03-03 11:02:02] - pyatoa - INFO: searching ASDFDataSet for observations
+    [2022-03-03 11:02:02] - pyatoa - INFO: matching observed waveforms found
+    [2022-03-03 11:02:02] - pyatoa - INFO: gathering StationXML
+    [2022-03-03 11:02:02] - pyatoa - INFO: searching ASDFDataSet for station info
+    [2022-03-03 11:02:02] - pyatoa - INFO: matching StationXML found
+    [2022-03-03 11:02:02] - pyatoa - INFO: saved to ASDFDataSet
+    [2022-03-03 11:02:02] - pyatoa - INFO: gathering synthetic waveforms
+    [2022-03-03 11:02:02] - pyatoa - INFO: searching ASDFDataSet for synthetics
+    [2022-03-03 11:02:02] - pyatoa - INFO: searching local filesystem for synthetics
+    [2022-03-03 11:02:02] - pyatoa - DEBUG: searching for synthetics: /home/bchow/REPOSITORIES/pyatoa/pyatoa/tests/test_data/docs_data/pyaflowa_doc/synthetics/2018p130600/{net}.{sta}.*{cmp}.sem{dva}
+    [2022-03-03 11:02:02] - pyatoa - INFO: retrieved synthetics locally:
     /home/bchow/REPOSITORIES/pyatoa/pyatoa/tests/test_data/docs_data/pyaflowa_doc/synthetics/2018p130600/NZ.MRZ.BXE.semd
-    [2022-03-02 15:08:33] - pyatoa - INFO: retrieved synthetics locally:
+    [2022-03-03 11:02:02] - pyatoa - INFO: retrieved synthetics locally:
     /home/bchow/REPOSITORIES/pyatoa/pyatoa/tests/test_data/docs_data/pyaflowa_doc/synthetics/2018p130600/NZ.MRZ.BXN.semd
-    [2022-03-02 15:08:33] - pyatoa - INFO: retrieved synthetics locally:
+    [2022-03-03 11:02:02] - pyatoa - INFO: retrieved synthetics locally:
     /home/bchow/REPOSITORIES/pyatoa/pyatoa/tests/test_data/docs_data/pyaflowa_doc/synthetics/2018p130600/NZ.MRZ.BXZ.semd
-    [2022-03-02 15:08:33] - pyatoa - INFO: matching synthetic waveforms found
-    [2022-03-02 15:08:33] - pyatoa - INFO: saved to ASDFDataSet with tag 'synthetic_i01s00'
-    [2022-03-02 15:08:33] - pyatoa - INFO: standardizing streams
-    [2022-03-02 15:08:34] - pyatoa - DEBUG: shifting NZ.MRZ.10.HHE starttime by 0.001607s
-    [2022-03-02 15:08:34] - pyatoa - DEBUG: shifting NZ.MRZ.10.HHN starttime by 0.001607s
-    [2022-03-02 15:08:34] - pyatoa - DEBUG: shifting NZ.MRZ.10.HHZ starttime by 0.001607s
-    [2022-03-02 15:08:34] - pyatoa - DEBUG: time offset is -20.0s
-    [2022-03-02 15:08:34] - pyatoa - INFO: preprocessing observation data
-    [2022-03-02 15:08:34] - pyatoa - INFO: adjusting taper to cover time offset -20.0
-    [2022-03-02 15:08:34] - pyatoa - DEBUG: removing response, units to DISP
-    [2022-03-02 15:08:34] - pyatoa - DEBUG: rotating from generic coordinate system to ZNE
-    [2022-03-02 15:08:34] - pyatoa - DEBUG: bandpass filter: 10.0 - 30.0s w/ 2.0 corners
-    [2022-03-02 15:08:34] - pyatoa - INFO: preprocessing synthetic data
-    [2022-03-02 15:08:34] - pyatoa - INFO: adjusting taper to cover time offset -20.0
-    [2022-03-02 15:08:34] - pyatoa - DEBUG: no response removal, synthetic data or requested not to
-    [2022-03-02 15:08:34] - pyatoa - DEBUG: bandpass filter: 10.0 - 30.0s w/ 2.0 corners
-    [2022-03-02 15:08:34] - pyatoa - DEBUG: convolving data w/ Gaussian (t/2=0.70s)
-    [2022-03-02 15:08:34] - pyatoa - INFO: running Pyflex w/ map: nznorth_10-30s
-    [2022-03-02 15:08:34,236] - pyflex - INFO: Calculated travel times.
-    [2022-03-02 15:08:34,236] - pyflex - INFO: Calculating envelope of synthetics.
-    [2022-03-02 15:08:34,237] - pyflex - INFO: Calculating STA/LTA.
-    [2022-03-02 15:08:34,238] - pyflex - INFO: Initial window selection yielded 2 possible windows.
-    [2022-03-02 15:08:34,238] - pyflex - INFO: Rejection based on travel times retained 2 windows.
-    [2022-03-02 15:08:34,239] - pyflex - INFO: Global SNR checks passed. Integrated SNR: 264017440516.493011, Amplitude SNR: 1258959.382416
-    [2022-03-02 15:08:34,239] - pyflex - INFO: Rejection based on minimum window length retained 2 windows.
-    [2022-03-02 15:08:34,239] - pyflex - INFO: Water level rejection retained 1 windows
-    [2022-03-02 15:08:34,239] - pyflex - INFO: Single phase group rejection retained 1 windows
-    [2022-03-02 15:08:34,240] - pyflex - INFO: Removing duplicates retains 1 windows.
-    [2022-03-02 15:08:34,240] - pyflex - INFO: Rejection based on minimum window length retained 1 windows.
-    [2022-03-02 15:08:34,240] - pyflex - INFO: SN amplitude ratio window rejection retained 1 windows
-    [2022-03-02 15:08:34,244] - pyflex - INFO: Rejection based on data fit criteria retained 1 windows.
-    [2022-03-02 15:08:34,245] - pyflex - INFO: Weighted interval schedule optimization retained 1 windows.
-    [2022-03-02 15:08:34] - pyatoa - INFO: 1 window(s) selected for comp E
-    [2022-03-02 15:08:34,383] - pyflex - INFO: Calculated travel times.
-    [2022-03-02 15:08:34,383] - pyflex - INFO: Calculating envelope of synthetics.
-    [2022-03-02 15:08:34,384] - pyflex - INFO: Calculating STA/LTA.
-    [2022-03-02 15:08:34,385] - pyflex - INFO: Initial window selection yielded 10 possible windows.
-    [2022-03-02 15:08:34,385] - pyflex - INFO: Rejection based on travel times retained 10 windows.
-    [2022-03-02 15:08:34,386] - pyflex - INFO: Global SNR checks passed. Integrated SNR: 77923017814.226379, Amplitude SNR: 910031.449339
-    [2022-03-02 15:08:34,386] - pyflex - INFO: Rejection based on minimum window length retained 10 windows.
-    [2022-03-02 15:08:34,387] - pyflex - INFO: Water level rejection retained 4 windows
-    [2022-03-02 15:08:34,387] - pyflex - INFO: Single phase group rejection retained 4 windows
-    [2022-03-02 15:08:34,388] - pyflex - INFO: Removing duplicates retains 3 windows.
-    [2022-03-02 15:08:34,388] - pyflex - INFO: Rejection based on minimum window length retained 3 windows.
-    [2022-03-02 15:08:34,388] - pyflex - INFO: SN amplitude ratio window rejection retained 3 windows
-    [2022-03-02 15:08:34,392] - pyflex - DEBUG: Window rejected due to CC value: 0.635155
-    [2022-03-02 15:08:34,392] - pyflex - INFO: Rejection based on data fit criteria retained 2 windows.
-    [2022-03-02 15:08:34,393] - pyflex - INFO: Weighted interval schedule optimization retained 1 windows.
-    [2022-03-02 15:08:34] - pyatoa - INFO: 1 window(s) selected for comp N
-    [2022-03-02 15:08:34,528] - pyflex - INFO: Calculated travel times.
-    [2022-03-02 15:08:34,529] - pyflex - INFO: Calculating envelope of synthetics.
-    [2022-03-02 15:08:34,529] - pyflex - INFO: Calculating STA/LTA.
-    [2022-03-02 15:08:34,531] - pyflex - INFO: Initial window selection yielded 10 possible windows.
-    [2022-03-02 15:08:34,531] - pyflex - INFO: Rejection based on travel times retained 10 windows.
-    [2022-03-02 15:08:34,531] - pyflex - INFO: Global SNR checks passed. Integrated SNR: 13630877755876006.000000, Amplitude SNR: 439117916.987834
-    [2022-03-02 15:08:34,532] - pyflex - INFO: Rejection based on minimum window length retained 9 windows.
-    [2022-03-02 15:08:34,532] - pyflex - INFO: Water level rejection retained 3 windows
-    [2022-03-02 15:08:34,532] - pyflex - INFO: Single phase group rejection retained 3 windows
-    [2022-03-02 15:08:34,533] - pyflex - INFO: Removing duplicates retains 2 windows.
-    [2022-03-02 15:08:34,533] - pyflex - INFO: Rejection based on minimum window length retained 2 windows.
-    [2022-03-02 15:08:34,534] - pyflex - INFO: SN amplitude ratio window rejection retained 2 windows
-    [2022-03-02 15:08:34,540] - pyflex - INFO: Rejection based on data fit criteria retained 2 windows.
-    [2022-03-02 15:08:34,540] - pyflex - INFO: Weighted interval schedule optimization retained 1 windows.
-    [2022-03-02 15:08:34] - pyatoa - INFO: 1 window(s) selected for comp Z
-    [2022-03-02 15:08:34] - pyatoa - DEBUG: saving misfit windows to ASDFDataSet
-    [2022-03-02 15:08:34] - pyatoa - INFO: 3 window(s) total found
-    [2022-03-02 15:08:34] - pyatoa - DEBUG: running Pyadjoint w/ type: cc_traveltime_misfit
-    [2022-03-02 15:08:34] - pyatoa - INFO: 0.366 misfit for comp E
-    [2022-03-02 15:08:34] - pyatoa - INFO: 0.154 misfit for comp N
-    [2022-03-02 15:08:34] - pyatoa - INFO: 0.095 misfit for comp Z
-    [2022-03-02 15:08:34] - pyatoa - DEBUG: saving adjoint sources to ASDFDataSet
-    [2022-03-02 15:08:34] - pyatoa - INFO: total misfit 0.614
-    [2022-03-02 15:08:34] - pyatoa - INFO: 
+    [2022-03-03 11:02:02] - pyatoa - INFO: matching synthetic waveforms found
+    [2022-03-03 11:02:02] - pyatoa - INFO: saved to ASDFDataSet with tag 'synthetic_i01s00'
+    [2022-03-03 11:02:02] - pyatoa - INFO: standardizing streams
+    [2022-03-03 11:02:02] - pyatoa - DEBUG: shifting NZ.MRZ.10.HHE starttime by 0.001607s
+    [2022-03-03 11:02:02] - pyatoa - DEBUG: shifting NZ.MRZ.10.HHN starttime by 0.001607s
+    [2022-03-03 11:02:02] - pyatoa - DEBUG: shifting NZ.MRZ.10.HHZ starttime by 0.001607s
+    [2022-03-03 11:02:02] - pyatoa - DEBUG: time offset is -20.0s
+    [2022-03-03 11:02:02] - pyatoa - INFO: preprocessing observation data
+    [2022-03-03 11:02:02] - pyatoa - INFO: adjusting taper to cover time offset -20.0
+    [2022-03-03 11:02:02] - pyatoa - DEBUG: removing response, units to DISP
+    [2022-03-03 11:02:02] - pyatoa - DEBUG: rotating from generic coordinate system to ZNE
+    [2022-03-03 11:02:02] - pyatoa - DEBUG: bandpass filter: 10.0 - 30.0s w/ 2.0 corners
+    [2022-03-03 11:02:02] - pyatoa - INFO: preprocessing synthetic data
+    [2022-03-03 11:02:02] - pyatoa - INFO: adjusting taper to cover time offset -20.0
+    [2022-03-03 11:02:02] - pyatoa - DEBUG: no response removal, synthetic data or requested not to
+    [2022-03-03 11:02:02] - pyatoa - DEBUG: bandpass filter: 10.0 - 30.0s w/ 2.0 corners
+    [2022-03-03 11:02:02] - pyatoa - DEBUG: convolving data w/ Gaussian (t/2=0.70s)
+    [2022-03-03 11:02:02] - pyatoa - INFO: running Pyflex w/ map: nznorth_10-30s
+    [2022-03-03 11:02:02,713] - pyflex - INFO: Calculated travel times.
+    [2022-03-03 11:02:02,714] - pyflex - INFO: Calculating envelope of synthetics.
+    [2022-03-03 11:02:02,714] - pyflex - INFO: Calculating STA/LTA.
+    [2022-03-03 11:02:02,715] - pyflex - INFO: Initial window selection yielded 2 possible windows.
+    [2022-03-03 11:02:02,716] - pyflex - INFO: Rejection based on travel times retained 2 windows.
+    [2022-03-03 11:02:02,716] - pyflex - INFO: Global SNR checks passed. Integrated SNR: 264017440517.820709, Amplitude SNR: 1258959.382420
+    [2022-03-03 11:02:02,716] - pyflex - INFO: Rejection based on minimum window length retained 2 windows.
+    [2022-03-03 11:02:02,716] - pyflex - INFO: Water level rejection retained 1 windows
+    [2022-03-03 11:02:02,717] - pyflex - INFO: Single phase group rejection retained 1 windows
+    [2022-03-03 11:02:02,717] - pyflex - INFO: Removing duplicates retains 1 windows.
+    [2022-03-03 11:02:02,717] - pyflex - INFO: Rejection based on minimum window length retained 1 windows.
+    [2022-03-03 11:02:02,717] - pyflex - INFO: SN amplitude ratio window rejection retained 1 windows
+    [2022-03-03 11:02:02,721] - pyflex - INFO: Rejection based on data fit criteria retained 1 windows.
+    [2022-03-03 11:02:02,722] - pyflex - INFO: Weighted interval schedule optimization retained 1 windows.
+    [2022-03-03 11:02:02] - pyatoa - INFO: 1 window(s) selected for comp E
+    [2022-03-03 11:02:02,852] - pyflex - INFO: Calculated travel times.
+    [2022-03-03 11:02:02,852] - pyflex - INFO: Calculating envelope of synthetics.
+    [2022-03-03 11:02:02,853] - pyflex - INFO: Calculating STA/LTA.
+    [2022-03-03 11:02:02,854] - pyflex - INFO: Initial window selection yielded 10 possible windows.
+    [2022-03-03 11:02:02,854] - pyflex - INFO: Rejection based on travel times retained 10 windows.
+    [2022-03-03 11:02:02,855] - pyflex - INFO: Global SNR checks passed. Integrated SNR: 77923017814.422638, Amplitude SNR: 910031.449340
+    [2022-03-03 11:02:02,855] - pyflex - INFO: Rejection based on minimum window length retained 10 windows.
+    [2022-03-03 11:02:02,855] - pyflex - INFO: Water level rejection retained 4 windows
+    [2022-03-03 11:02:02,855] - pyflex - INFO: Single phase group rejection retained 4 windows
+    [2022-03-03 11:02:02,856] - pyflex - INFO: Removing duplicates retains 3 windows.
+    [2022-03-03 11:02:02,856] - pyflex - INFO: Rejection based on minimum window length retained 3 windows.
+    [2022-03-03 11:02:02,856] - pyflex - INFO: SN amplitude ratio window rejection retained 3 windows
+    [2022-03-03 11:02:02,859] - pyflex - DEBUG: Window rejected due to CC value: 0.635155
+    [2022-03-03 11:02:02,859] - pyflex - INFO: Rejection based on data fit criteria retained 2 windows.
+    [2022-03-03 11:02:02,860] - pyflex - INFO: Weighted interval schedule optimization retained 1 windows.
+    [2022-03-03 11:02:02] - pyatoa - INFO: 1 window(s) selected for comp N
+    [2022-03-03 11:02:02,999] - pyflex - INFO: Calculated travel times.
+    [2022-03-03 11:02:03,000] - pyflex - INFO: Calculating envelope of synthetics.
+    [2022-03-03 11:02:03,000] - pyflex - INFO: Calculating STA/LTA.
+    [2022-03-03 11:02:03,001] - pyflex - INFO: Initial window selection yielded 10 possible windows.
+    [2022-03-03 11:02:03,002] - pyflex - INFO: Rejection based on travel times retained 10 windows.
+    [2022-03-03 11:02:03,002] - pyflex - INFO: Global SNR checks passed. Integrated SNR: 13630877749859348.000000, Amplitude SNR: 439117916.874931
+    [2022-03-03 11:02:03,002] - pyflex - INFO: Rejection based on minimum window length retained 9 windows.
+    [2022-03-03 11:02:03,002] - pyflex - INFO: Water level rejection retained 3 windows
+    [2022-03-03 11:02:03,003] - pyflex - INFO: Single phase group rejection retained 3 windows
+    [2022-03-03 11:02:03,003] - pyflex - INFO: Removing duplicates retains 2 windows.
+    [2022-03-03 11:02:03,003] - pyflex - INFO: Rejection based on minimum window length retained 2 windows.
+    [2022-03-03 11:02:03,004] - pyflex - INFO: SN amplitude ratio window rejection retained 2 windows
+    [2022-03-03 11:02:03,010] - pyflex - INFO: Rejection based on data fit criteria retained 2 windows.
+    [2022-03-03 11:02:03,010] - pyflex - INFO: Weighted interval schedule optimization retained 1 windows.
+    [2022-03-03 11:02:03] - pyatoa - INFO: 1 window(s) selected for comp Z
+    [2022-03-03 11:02:03] - pyatoa - DEBUG: saving misfit windows to ASDFDataSet
+    [2022-03-03 11:02:03] - pyatoa - INFO: 3 window(s) total found
+    [2022-03-03 11:02:03] - pyatoa - DEBUG: running Pyadjoint w/ type: cc_traveltime_misfit
+    [2022-03-03 11:02:03] - pyatoa - INFO: 0.366 misfit for comp E
+    [2022-03-03 11:02:03] - pyatoa - INFO: 0.154 misfit for comp N
+    [2022-03-03 11:02:03] - pyatoa - INFO: 0.095 misfit for comp Z
+    [2022-03-03 11:02:03] - pyatoa - DEBUG: saving adjoint sources to ASDFDataSet
+    [2022-03-03 11:02:03] - pyatoa - INFO: total misfit 0.614
+    [2022-03-03 11:02:03] - pyatoa - INFO: 
     
     	OBS WAVS:  3
     	SYN WAVS:  3
     	WINDOWS:   3
     	MISFIT:    0.61
     
-    [2022-03-02 15:08:34] - pyatoa - INFO: saving figure to: /home/bchow/REPOSITORIES/pyatoa/pyatoa/tests/test_data/docs_data/pyaflowa_doc/figures/2018p130600/i01_s00_NZ_MRZ.pdf
-    [2022-03-02 15:08:35] - pyatoa - INFO: 
+    [2022-03-03 11:02:03] - pyatoa - INFO: saving figure to: /home/bchow/REPOSITORIES/pyatoa/pyatoa/tests/test_data/docs_data/pyaflowa_doc/figures/2018p130600/i01_s00_NZ_MRZ.pdf
+    [2022-03-03 11:02:03] - pyatoa - INFO: 
     ================================================================================
     
     FINALIZE
     
     ================================================================================
-    [2022-03-02 15:08:35] - pyatoa - INFO: 
+    [2022-03-03 11:02:04] - pyatoa - INFO: 
     ================================================================================
     
     NZ.TSZ.*.HH?
     
     ================================================================================
-    [2022-03-02 15:08:35] - pyatoa - INFO: gathering data for NZ.TSZ.*.HH?
-    [2022-03-02 15:08:35] - pyatoa - INFO: gathering observed waveforms
-    [2022-03-02 15:08:35] - pyatoa - INFO: searching ASDFDataSet for observations
-    [2022-03-02 15:08:35] - pyatoa - INFO: matching observed waveforms found
-    [2022-03-02 15:08:35] - pyatoa - INFO: gathering StationXML
-    [2022-03-02 15:08:35] - pyatoa - INFO: searching ASDFDataSet for station info
-    [2022-03-02 15:08:35] - pyatoa - INFO: matching StationXML found
-    [2022-03-02 15:08:35] - pyatoa - INFO: saved to ASDFDataSet
-    [2022-03-02 15:08:35] - pyatoa - INFO: gathering synthetic waveforms
-    [2022-03-02 15:08:35] - pyatoa - INFO: searching ASDFDataSet for synthetics
-    [2022-03-02 15:08:35] - pyatoa - INFO: searching local filesystem for synthetics
-    [2022-03-02 15:08:35] - pyatoa - DEBUG: searching for synthetics: /home/bchow/REPOSITORIES/pyatoa/pyatoa/tests/test_data/docs_data/pyaflowa_doc/synthetics/2018p130600/{net}.{sta}.*{cmp}.sem{dva}
-    [2022-03-02 15:08:35] - pyatoa - INFO: retrieved synthetics locally:
+    [2022-03-03 11:02:04] - pyatoa - INFO: gathering data for NZ.TSZ.*.HH?
+    [2022-03-03 11:02:04] - pyatoa - INFO: gathering observed waveforms
+    [2022-03-03 11:02:04] - pyatoa - INFO: searching ASDFDataSet for observations
+    [2022-03-03 11:02:04] - pyatoa - INFO: matching observed waveforms found
+    [2022-03-03 11:02:04] - pyatoa - INFO: gathering StationXML
+    [2022-03-03 11:02:04] - pyatoa - INFO: searching ASDFDataSet for station info
+    [2022-03-03 11:02:04] - pyatoa - INFO: matching StationXML found
+    [2022-03-03 11:02:04] - pyatoa - INFO: saved to ASDFDataSet
+    [2022-03-03 11:02:04] - pyatoa - INFO: gathering synthetic waveforms
+    [2022-03-03 11:02:04] - pyatoa - INFO: searching ASDFDataSet for synthetics
+    [2022-03-03 11:02:04] - pyatoa - INFO: searching local filesystem for synthetics
+    [2022-03-03 11:02:04] - pyatoa - DEBUG: searching for synthetics: /home/bchow/REPOSITORIES/pyatoa/pyatoa/tests/test_data/docs_data/pyaflowa_doc/synthetics/2018p130600/{net}.{sta}.*{cmp}.sem{dva}
+    [2022-03-03 11:02:04] - pyatoa - INFO: retrieved synthetics locally:
     /home/bchow/REPOSITORIES/pyatoa/pyatoa/tests/test_data/docs_data/pyaflowa_doc/synthetics/2018p130600/NZ.TSZ.BXE.semd
-    [2022-03-02 15:08:35] - pyatoa - INFO: retrieved synthetics locally:
+    [2022-03-03 11:02:04] - pyatoa - INFO: retrieved synthetics locally:
     /home/bchow/REPOSITORIES/pyatoa/pyatoa/tests/test_data/docs_data/pyaflowa_doc/synthetics/2018p130600/NZ.TSZ.BXN.semd
-    [2022-03-02 15:08:35] - pyatoa - INFO: retrieved synthetics locally:
+    [2022-03-03 11:02:04] - pyatoa - INFO: retrieved synthetics locally:
     /home/bchow/REPOSITORIES/pyatoa/pyatoa/tests/test_data/docs_data/pyaflowa_doc/synthetics/2018p130600/NZ.TSZ.BXZ.semd
-    [2022-03-02 15:08:35] - pyatoa - INFO: matching synthetic waveforms found
-    [2022-03-02 15:08:35] - pyatoa - INFO: saved to ASDFDataSet with tag 'synthetic_i01s00'
-    [2022-03-02 15:08:35] - pyatoa - INFO: standardizing streams
-    [2022-03-02 15:08:35] - pyatoa - DEBUG: zero pad NZ.TSZ.10.HHE (0, 0) samples
-    [2022-03-02 15:08:35] - pyatoa - DEBUG: new starttime NZ.TSZ.10.HHE: 2018-02-18T07:43:28.130000Z
-    [2022-03-02 15:08:35] - pyatoa - DEBUG: zero pad NZ.TSZ.10.HHN (0, 0) samples
-    [2022-03-02 15:08:35] - pyatoa - DEBUG: new starttime NZ.TSZ.10.HHN: 2018-02-18T07:43:28.130001Z
-    [2022-03-02 15:08:35] - pyatoa - DEBUG: zero pad NZ.TSZ.10.HHZ (0, 0) samples
-    [2022-03-02 15:08:35] - pyatoa - DEBUG: new starttime NZ.TSZ.10.HHZ: 2018-02-18T07:43:28.130001Z
-    [2022-03-02 15:08:35] - pyatoa - DEBUG: time offset is -20.0s
-    [2022-03-02 15:08:35] - pyatoa - INFO: preprocessing observation data
-    [2022-03-02 15:08:35] - pyatoa - INFO: adjusting taper to cover time offset -20.0
-    [2022-03-02 15:08:35] - pyatoa - DEBUG: removing response, units to DISP
-    [2022-03-02 15:08:35] - pyatoa - DEBUG: rotating from generic coordinate system to ZNE
-    [2022-03-02 15:08:35] - pyatoa - DEBUG: bandpass filter: 10.0 - 30.0s w/ 2.0 corners
-    [2022-03-02 15:08:35] - pyatoa - INFO: preprocessing synthetic data
-    [2022-03-02 15:08:35] - pyatoa - INFO: adjusting taper to cover time offset -20.0
-    [2022-03-02 15:08:35] - pyatoa - DEBUG: no response removal, synthetic data or requested not to
-    [2022-03-02 15:08:35] - pyatoa - DEBUG: bandpass filter: 10.0 - 30.0s w/ 2.0 corners
-    [2022-03-02 15:08:35] - pyatoa - DEBUG: convolving data w/ Gaussian (t/2=0.70s)
-    [2022-03-02 15:08:35] - pyatoa - INFO: running Pyflex w/ map: nznorth_10-30s
-    [2022-03-02 15:08:35,942] - pyflex - INFO: Calculated travel times.
-    [2022-03-02 15:08:35,943] - pyflex - INFO: Calculating envelope of synthetics.
-    [2022-03-02 15:08:35,943] - pyflex - INFO: Calculating STA/LTA.
-    [2022-03-02 15:08:35] - pyatoa - WARNING: Cannot window, most likely because the source-receiver distance is too small w.r.t the minimum period
-    [2022-03-02 15:08:35] - pyatoa - INFO: saving figure to: /home/bchow/REPOSITORIES/pyatoa/pyatoa/tests/test_data/docs_data/pyaflowa_doc/figures/2018p130600/i01_s00_NZ_TSZ.pdf
-    [2022-03-02 15:08:36] - pyatoa - INFO: 
+    [2022-03-03 11:02:04] - pyatoa - INFO: matching synthetic waveforms found
+    [2022-03-03 11:02:04] - pyatoa - INFO: saved to ASDFDataSet with tag 'synthetic_i01s00'
+    [2022-03-03 11:02:04] - pyatoa - INFO: standardizing streams
+    [2022-03-03 11:02:04] - pyatoa - DEBUG: zero pad NZ.TSZ.10.HHE (0, 0) samples
+    [2022-03-03 11:02:04] - pyatoa - DEBUG: new starttime NZ.TSZ.10.HHE: 2018-02-18T07:43:28.130000Z
+    [2022-03-03 11:02:04] - pyatoa - DEBUG: zero pad NZ.TSZ.10.HHN (0, 0) samples
+    [2022-03-03 11:02:04] - pyatoa - DEBUG: new starttime NZ.TSZ.10.HHN: 2018-02-18T07:43:28.130001Z
+    [2022-03-03 11:02:04] - pyatoa - DEBUG: zero pad NZ.TSZ.10.HHZ (0, 0) samples
+    [2022-03-03 11:02:04] - pyatoa - DEBUG: new starttime NZ.TSZ.10.HHZ: 2018-02-18T07:43:28.130001Z
+    [2022-03-03 11:02:04] - pyatoa - DEBUG: time offset is -20.0s
+    [2022-03-03 11:02:04] - pyatoa - INFO: preprocessing observation data
+    [2022-03-03 11:02:04] - pyatoa - INFO: adjusting taper to cover time offset -20.0
+    [2022-03-03 11:02:04] - pyatoa - DEBUG: removing response, units to DISP
+    [2022-03-03 11:02:04] - pyatoa - DEBUG: rotating from generic coordinate system to ZNE
+    [2022-03-03 11:02:04] - pyatoa - DEBUG: bandpass filter: 10.0 - 30.0s w/ 2.0 corners
+    [2022-03-03 11:02:04] - pyatoa - INFO: preprocessing synthetic data
+    [2022-03-03 11:02:04] - pyatoa - INFO: adjusting taper to cover time offset -20.0
+    [2022-03-03 11:02:04] - pyatoa - DEBUG: no response removal, synthetic data or requested not to
+    [2022-03-03 11:02:04] - pyatoa - DEBUG: bandpass filter: 10.0 - 30.0s w/ 2.0 corners
+    [2022-03-03 11:02:04] - pyatoa - DEBUG: convolving data w/ Gaussian (t/2=0.70s)
+    [2022-03-03 11:02:04] - pyatoa - INFO: running Pyflex w/ map: nznorth_10-30s
+    [2022-03-03 11:02:04,718] - pyflex - INFO: Calculated travel times.
+    [2022-03-03 11:02:04,718] - pyflex - INFO: Calculating envelope of synthetics.
+    [2022-03-03 11:02:04,719] - pyflex - INFO: Calculating STA/LTA.
+    [2022-03-03 11:02:04] - pyatoa - WARNING: Cannot window, most likely because the source-receiver distance is too small w.r.t the minimum period
+    [2022-03-03 11:02:04] - pyatoa - INFO: saving figure to: /home/bchow/REPOSITORIES/pyatoa/pyatoa/tests/test_data/docs_data/pyaflowa_doc/figures/2018p130600/i01_s00_NZ_TSZ.pdf
+    [2022-03-03 11:02:05] - pyatoa - INFO: 
     ================================================================================
     
     NZ.VRZ.*.HH?
     
     ================================================================================
-    [2022-03-02 15:08:36] - pyatoa - INFO: gathering data for NZ.VRZ.*.HH?
-    [2022-03-02 15:08:36] - pyatoa - INFO: gathering observed waveforms
-    [2022-03-02 15:08:36] - pyatoa - INFO: searching ASDFDataSet for observations
-    [2022-03-02 15:08:36] - pyatoa - INFO: matching observed waveforms found
-    [2022-03-02 15:08:36] - pyatoa - INFO: gathering StationXML
-    [2022-03-02 15:08:36] - pyatoa - INFO: searching ASDFDataSet for station info
-    [2022-03-02 15:08:36] - pyatoa - INFO: matching StationXML found
-    [2022-03-02 15:08:36] - pyatoa - INFO: saved to ASDFDataSet
-    [2022-03-02 15:08:36] - pyatoa - INFO: gathering synthetic waveforms
-    [2022-03-02 15:08:36] - pyatoa - INFO: searching ASDFDataSet for synthetics
-    [2022-03-02 15:08:36] - pyatoa - INFO: searching local filesystem for synthetics
-    [2022-03-02 15:08:36] - pyatoa - DEBUG: searching for synthetics: /home/bchow/REPOSITORIES/pyatoa/pyatoa/tests/test_data/docs_data/pyaflowa_doc/synthetics/2018p130600/{net}.{sta}.*{cmp}.sem{dva}
-    [2022-03-02 15:08:36] - pyatoa - INFO: retrieved synthetics locally:
+    [2022-03-03 11:02:05] - pyatoa - INFO: gathering data for NZ.VRZ.*.HH?
+    [2022-03-03 11:02:05] - pyatoa - INFO: gathering observed waveforms
+    [2022-03-03 11:02:05] - pyatoa - INFO: searching ASDFDataSet for observations
+    [2022-03-03 11:02:05] - pyatoa - INFO: matching observed waveforms found
+    [2022-03-03 11:02:05] - pyatoa - INFO: gathering StationXML
+    [2022-03-03 11:02:05] - pyatoa - INFO: searching ASDFDataSet for station info
+    [2022-03-03 11:02:05] - pyatoa - INFO: matching StationXML found
+    [2022-03-03 11:02:05] - pyatoa - INFO: saved to ASDFDataSet
+    [2022-03-03 11:02:05] - pyatoa - INFO: gathering synthetic waveforms
+    [2022-03-03 11:02:05] - pyatoa - INFO: searching ASDFDataSet for synthetics
+    [2022-03-03 11:02:05] - pyatoa - INFO: searching local filesystem for synthetics
+    [2022-03-03 11:02:05] - pyatoa - DEBUG: searching for synthetics: /home/bchow/REPOSITORIES/pyatoa/pyatoa/tests/test_data/docs_data/pyaflowa_doc/synthetics/2018p130600/{net}.{sta}.*{cmp}.sem{dva}
+    [2022-03-03 11:02:05] - pyatoa - INFO: retrieved synthetics locally:
     /home/bchow/REPOSITORIES/pyatoa/pyatoa/tests/test_data/docs_data/pyaflowa_doc/synthetics/2018p130600/NZ.VRZ.BXE.semd
-    [2022-03-02 15:08:36] - pyatoa - INFO: retrieved synthetics locally:
+    [2022-03-03 11:02:05] - pyatoa - INFO: retrieved synthetics locally:
     /home/bchow/REPOSITORIES/pyatoa/pyatoa/tests/test_data/docs_data/pyaflowa_doc/synthetics/2018p130600/NZ.VRZ.BXN.semd
-    [2022-03-02 15:08:36] - pyatoa - INFO: retrieved synthetics locally:
+    [2022-03-03 11:02:05] - pyatoa - INFO: retrieved synthetics locally:
     /home/bchow/REPOSITORIES/pyatoa/pyatoa/tests/test_data/docs_data/pyaflowa_doc/synthetics/2018p130600/NZ.VRZ.BXZ.semd
-    [2022-03-02 15:08:36] - pyatoa - INFO: matching synthetic waveforms found
-    [2022-03-02 15:08:36] - pyatoa - INFO: saved to ASDFDataSet with tag 'synthetic_i01s00'
-    [2022-03-02 15:08:36] - pyatoa - INFO: standardizing streams
-    [2022-03-02 15:08:36] - pyatoa - DEBUG: shifting NZ.VRZ.10.HHE starttime by 0.001578s
-    [2022-03-02 15:08:36] - pyatoa - DEBUG: shifting NZ.VRZ.10.HHN starttime by 0.001578s
-    [2022-03-02 15:08:36] - pyatoa - DEBUG: shifting NZ.VRZ.10.HHZ starttime by 0.001578s
-    [2022-03-02 15:08:36] - pyatoa - DEBUG: time offset is -20.0s
-    [2022-03-02 15:08:36] - pyatoa - INFO: preprocessing observation data
-    [2022-03-02 15:08:36] - pyatoa - INFO: adjusting taper to cover time offset -20.0
-    [2022-03-02 15:08:36] - pyatoa - DEBUG: removing response, units to DISP
-    [2022-03-02 15:08:36] - pyatoa - DEBUG: rotating from generic coordinate system to ZNE
-    [2022-03-02 15:08:36] - pyatoa - DEBUG: bandpass filter: 10.0 - 30.0s w/ 2.0 corners
-    [2022-03-02 15:08:36] - pyatoa - INFO: preprocessing synthetic data
-    [2022-03-02 15:08:36] - pyatoa - INFO: adjusting taper to cover time offset -20.0
-    [2022-03-02 15:08:36] - pyatoa - DEBUG: no response removal, synthetic data or requested not to
-    [2022-03-02 15:08:36] - pyatoa - DEBUG: bandpass filter: 10.0 - 30.0s w/ 2.0 corners
-    [2022-03-02 15:08:36] - pyatoa - DEBUG: convolving data w/ Gaussian (t/2=0.70s)
-    [2022-03-02 15:08:36] - pyatoa - INFO: running Pyflex w/ map: nznorth_10-30s
-    [2022-03-02 15:08:37,060] - pyflex - INFO: Calculated travel times.
-    [2022-03-02 15:08:37,061] - pyflex - INFO: Calculating envelope of synthetics.
-    [2022-03-02 15:08:37,061] - pyflex - INFO: Calculating STA/LTA.
-    [2022-03-02 15:08:37,063] - pyflex - INFO: Initial window selection yielded 13 possible windows.
-    [2022-03-02 15:08:37,063] - pyflex - INFO: Rejection based on travel times retained 13 windows.
-    [2022-03-02 15:08:37,063] - pyflex - INFO: Global SNR checks passed. Integrated SNR: 23466401785.970848, Amplitude SNR: 384703.121688
-    [2022-03-02 15:08:37,064] - pyflex - INFO: Rejection based on minimum window length retained 13 windows.
-    [2022-03-02 15:08:37,064] - pyflex - INFO: Water level rejection retained 4 windows
-    [2022-03-02 15:08:37,064] - pyflex - INFO: Single phase group rejection retained 4 windows
-    [2022-03-02 15:08:37,064] - pyflex - INFO: Removing duplicates retains 3 windows.
-    [2022-03-02 15:08:37,065] - pyflex - INFO: Rejection based on minimum window length retained 3 windows.
-    [2022-03-02 15:08:37,065] - pyflex - INFO: SN amplitude ratio window rejection retained 3 windows
-    [2022-03-02 15:08:37,071] - pyflex - DEBUG: Window rejected due to CC value: 0.675487
-    [2022-03-02 15:08:37,071] - pyflex - INFO: Rejection based on data fit criteria retained 2 windows.
-    [2022-03-02 15:08:37,072] - pyflex - INFO: Weighted interval schedule optimization retained 1 windows.
-    [2022-03-02 15:08:37] - pyatoa - INFO: 1 window(s) selected for comp E
-    [2022-03-02 15:08:37,254] - pyflex - INFO: Calculated travel times.
-    [2022-03-02 15:08:37,254] - pyflex - INFO: Calculating envelope of synthetics.
-    [2022-03-02 15:08:37,255] - pyflex - INFO: Calculating STA/LTA.
-    [2022-03-02 15:08:37,256] - pyflex - INFO: Initial window selection yielded 10 possible windows.
-    [2022-03-02 15:08:37,256] - pyflex - INFO: Rejection based on travel times retained 10 windows.
-    [2022-03-02 15:08:37,256] - pyflex - INFO: Global SNR checks passed. Integrated SNR: 31526068792.362656, Amplitude SNR: 495295.417951
-    [2022-03-02 15:08:37,257] - pyflex - INFO: Rejection based on minimum window length retained 10 windows.
-    [2022-03-02 15:08:37,257] - pyflex - INFO: Water level rejection retained 4 windows
-    [2022-03-02 15:08:37,257] - pyflex - INFO: Single phase group rejection retained 4 windows
-    [2022-03-02 15:08:37,258] - pyflex - INFO: Removing duplicates retains 3 windows.
-    [2022-03-02 15:08:37,258] - pyflex - INFO: Rejection based on minimum window length retained 3 windows.
-    [2022-03-02 15:08:37,258] - pyflex - INFO: SN amplitude ratio window rejection retained 3 windows
-    [2022-03-02 15:08:37,262] - pyflex - INFO: Rejection based on data fit criteria retained 3 windows.
-    [2022-03-02 15:08:37,263] - pyflex - INFO: Weighted interval schedule optimization retained 1 windows.
-    [2022-03-02 15:08:37] - pyatoa - INFO: 1 window(s) selected for comp N
-    [2022-03-02 15:08:37,443] - pyflex - INFO: Calculated travel times.
-    [2022-03-02 15:08:37,443] - pyflex - INFO: Calculating envelope of synthetics.
-    [2022-03-02 15:08:37,444] - pyflex - INFO: Calculating STA/LTA.
-    [2022-03-02 15:08:37,445] - pyflex - INFO: Initial window selection yielded 10 possible windows.
-    [2022-03-02 15:08:37,445] - pyflex - INFO: Rejection based on travel times retained 10 windows.
-    [2022-03-02 15:08:37,446] - pyflex - INFO: Global SNR checks passed. Integrated SNR: 26562645048.905380, Amplitude SNR: 378503.886560
-    [2022-03-02 15:08:37,446] - pyflex - INFO: Rejection based on minimum window length retained 9 windows.
-    [2022-03-02 15:08:37,447] - pyflex - INFO: Water level rejection retained 3 windows
-    [2022-03-02 15:08:37,447] - pyflex - INFO: Single phase group rejection retained 3 windows
-    [2022-03-02 15:08:37,447] - pyflex - INFO: Removing duplicates retains 2 windows.
-    [2022-03-02 15:08:37,448] - pyflex - INFO: Rejection based on minimum window length retained 2 windows.
-    [2022-03-02 15:08:37,448] - pyflex - INFO: SN amplitude ratio window rejection retained 2 windows
-    [2022-03-02 15:08:37,458] - pyflex - INFO: Rejection based on data fit criteria retained 2 windows.
-    [2022-03-02 15:08:37,459] - pyflex - INFO: Weighted interval schedule optimization retained 1 windows.
-    [2022-03-02 15:08:37] - pyatoa - INFO: 1 window(s) selected for comp Z
-    [2022-03-02 15:08:37] - pyatoa - DEBUG: saving misfit windows to ASDFDataSet
-    [2022-03-02 15:08:37] - pyatoa - INFO: 3 window(s) total found
-    [2022-03-02 15:08:37] - pyatoa - DEBUG: running Pyadjoint w/ type: cc_traveltime_misfit
-    [2022-03-02 15:08:37] - pyatoa - INFO: 0.198 misfit for comp E
-    [2022-03-02 15:08:37] - pyatoa - INFO: 0.011 misfit for comp N
-    [2022-03-02 15:08:37] - pyatoa - INFO: 0.065 misfit for comp Z
-    [2022-03-02 15:08:37] - pyatoa - DEBUG: saving adjoint sources to ASDFDataSet
-    [2022-03-02 15:08:37] - pyatoa - INFO: total misfit 0.275
-    [2022-03-02 15:08:37] - pyatoa - INFO: 
+    [2022-03-03 11:02:05] - pyatoa - INFO: matching synthetic waveforms found
+    [2022-03-03 11:02:05] - pyatoa - INFO: saved to ASDFDataSet with tag 'synthetic_i01s00'
+    [2022-03-03 11:02:05] - pyatoa - INFO: standardizing streams
+    [2022-03-03 11:02:05] - pyatoa - DEBUG: shifting NZ.VRZ.10.HHE starttime by 0.001578s
+    [2022-03-03 11:02:05] - pyatoa - DEBUG: shifting NZ.VRZ.10.HHN starttime by 0.001578s
+    [2022-03-03 11:02:05] - pyatoa - DEBUG: shifting NZ.VRZ.10.HHZ starttime by 0.001578s
+    [2022-03-03 11:02:05] - pyatoa - DEBUG: time offset is -20.0s
+    [2022-03-03 11:02:05] - pyatoa - INFO: preprocessing observation data
+    [2022-03-03 11:02:05] - pyatoa - INFO: adjusting taper to cover time offset -20.0
+    [2022-03-03 11:02:05] - pyatoa - DEBUG: removing response, units to DISP
+    [2022-03-03 11:02:05] - pyatoa - DEBUG: rotating from generic coordinate system to ZNE
+    [2022-03-03 11:02:05] - pyatoa - DEBUG: bandpass filter: 10.0 - 30.0s w/ 2.0 corners
+    [2022-03-03 11:02:05] - pyatoa - INFO: preprocessing synthetic data
+    [2022-03-03 11:02:05] - pyatoa - INFO: adjusting taper to cover time offset -20.0
+    [2022-03-03 11:02:05] - pyatoa - DEBUG: no response removal, synthetic data or requested not to
+    [2022-03-03 11:02:05] - pyatoa - DEBUG: bandpass filter: 10.0 - 30.0s w/ 2.0 corners
+    [2022-03-03 11:02:05] - pyatoa - DEBUG: convolving data w/ Gaussian (t/2=0.70s)
+    [2022-03-03 11:02:05] - pyatoa - INFO: running Pyflex w/ map: nznorth_10-30s
+    [2022-03-03 11:02:06,106] - pyflex - INFO: Calculated travel times.
+    [2022-03-03 11:02:06,106] - pyflex - INFO: Calculating envelope of synthetics.
+    [2022-03-03 11:02:06,107] - pyflex - INFO: Calculating STA/LTA.
+    [2022-03-03 11:02:06,108] - pyflex - INFO: Initial window selection yielded 13 possible windows.
+    [2022-03-03 11:02:06,108] - pyflex - INFO: Rejection based on travel times retained 13 windows.
+    [2022-03-03 11:02:06,109] - pyflex - INFO: Global SNR checks passed. Integrated SNR: 23466401786.021927, Amplitude SNR: 384703.121689
+    [2022-03-03 11:02:06,109] - pyflex - INFO: Rejection based on minimum window length retained 13 windows.
+    [2022-03-03 11:02:06,109] - pyflex - INFO: Water level rejection retained 4 windows
+    [2022-03-03 11:02:06,110] - pyflex - INFO: Single phase group rejection retained 4 windows
+    [2022-03-03 11:02:06,110] - pyflex - INFO: Removing duplicates retains 3 windows.
+    [2022-03-03 11:02:06,110] - pyflex - INFO: Rejection based on minimum window length retained 3 windows.
+    [2022-03-03 11:02:06,110] - pyflex - INFO: SN amplitude ratio window rejection retained 3 windows
+    [2022-03-03 11:02:06,116] - pyflex - DEBUG: Window rejected due to CC value: 0.675487
+    [2022-03-03 11:02:06,116] - pyflex - INFO: Rejection based on data fit criteria retained 2 windows.
+    [2022-03-03 11:02:06,116] - pyflex - INFO: Weighted interval schedule optimization retained 1 windows.
+    [2022-03-03 11:02:06] - pyatoa - INFO: 1 window(s) selected for comp E
+    [2022-03-03 11:02:06,299] - pyflex - INFO: Calculated travel times.
+    [2022-03-03 11:02:06,299] - pyflex - INFO: Calculating envelope of synthetics.
+    [2022-03-03 11:02:06,300] - pyflex - INFO: Calculating STA/LTA.
+    [2022-03-03 11:02:06,302] - pyflex - INFO: Initial window selection yielded 10 possible windows.
+    [2022-03-03 11:02:06,302] - pyflex - INFO: Rejection based on travel times retained 10 windows.
+    [2022-03-03 11:02:06,303] - pyflex - INFO: Global SNR checks passed. Integrated SNR: 31526068792.227688, Amplitude SNR: 495295.417950
+    [2022-03-03 11:02:06,303] - pyflex - INFO: Rejection based on minimum window length retained 10 windows.
+    [2022-03-03 11:02:06,303] - pyflex - INFO: Water level rejection retained 4 windows
+    [2022-03-03 11:02:06,303] - pyflex - INFO: Single phase group rejection retained 4 windows
+    [2022-03-03 11:02:06,304] - pyflex - INFO: Removing duplicates retains 3 windows.
+    [2022-03-03 11:02:06,304] - pyflex - INFO: Rejection based on minimum window length retained 3 windows.
+    [2022-03-03 11:02:06,304] - pyflex - INFO: SN amplitude ratio window rejection retained 3 windows
+    [2022-03-03 11:02:06,308] - pyflex - INFO: Rejection based on data fit criteria retained 3 windows.
+    [2022-03-03 11:02:06,308] - pyflex - INFO: Weighted interval schedule optimization retained 1 windows.
+    [2022-03-03 11:02:06] - pyatoa - INFO: 1 window(s) selected for comp N
+    [2022-03-03 11:02:06,485] - pyflex - INFO: Calculated travel times.
+    [2022-03-03 11:02:06,486] - pyflex - INFO: Calculating envelope of synthetics.
+    [2022-03-03 11:02:06,486] - pyflex - INFO: Calculating STA/LTA.
+    [2022-03-03 11:02:06,487] - pyflex - INFO: Initial window selection yielded 10 possible windows.
+    [2022-03-03 11:02:06,488] - pyflex - INFO: Rejection based on travel times retained 10 windows.
+    [2022-03-03 11:02:06,488] - pyflex - INFO: Global SNR checks passed. Integrated SNR: 26562645048.805443, Amplitude SNR: 378503.886559
+    [2022-03-03 11:02:06,488] - pyflex - INFO: Rejection based on minimum window length retained 9 windows.
+    [2022-03-03 11:02:06,489] - pyflex - INFO: Water level rejection retained 3 windows
+    [2022-03-03 11:02:06,489] - pyflex - INFO: Single phase group rejection retained 3 windows
+    [2022-03-03 11:02:06,489] - pyflex - INFO: Removing duplicates retains 2 windows.
+    [2022-03-03 11:02:06,489] - pyflex - INFO: Rejection based on minimum window length retained 2 windows.
+    [2022-03-03 11:02:06,490] - pyflex - INFO: SN amplitude ratio window rejection retained 2 windows
+    [2022-03-03 11:02:06,498] - pyflex - INFO: Rejection based on data fit criteria retained 2 windows.
+    [2022-03-03 11:02:06,498] - pyflex - INFO: Weighted interval schedule optimization retained 1 windows.
+    [2022-03-03 11:02:06] - pyatoa - INFO: 1 window(s) selected for comp Z
+    [2022-03-03 11:02:06] - pyatoa - DEBUG: saving misfit windows to ASDFDataSet
+    [2022-03-03 11:02:06] - pyatoa - INFO: 3 window(s) total found
+    [2022-03-03 11:02:06] - pyatoa - DEBUG: running Pyadjoint w/ type: cc_traveltime_misfit
+    [2022-03-03 11:02:06] - pyatoa - INFO: 0.198 misfit for comp E
+    [2022-03-03 11:02:06] - pyatoa - INFO: 0.011 misfit for comp N
+    [2022-03-03 11:02:06] - pyatoa - INFO: 0.065 misfit for comp Z
+    [2022-03-03 11:02:06] - pyatoa - DEBUG: saving adjoint sources to ASDFDataSet
+    [2022-03-03 11:02:06] - pyatoa - INFO: total misfit 0.275
+    [2022-03-03 11:02:06] - pyatoa - INFO: 
     
     	OBS WAVS:  3
     	SYN WAVS:  3
     	WINDOWS:   3
     	MISFIT:    0.27
     
-    [2022-03-02 15:08:37] - pyatoa - INFO: saving figure to: /home/bchow/REPOSITORIES/pyatoa/pyatoa/tests/test_data/docs_data/pyaflowa_doc/figures/2018p130600/i01_s00_NZ_VRZ.pdf
-    [2022-03-02 15:08:38] - pyatoa - INFO: 
+    [2022-03-03 11:02:06] - pyatoa - INFO: saving figure to: /home/bchow/REPOSITORIES/pyatoa/pyatoa/tests/test_data/docs_data/pyaflowa_doc/figures/2018p130600/i01_s00_NZ_VRZ.pdf
+    [2022-03-03 11:02:07] - pyatoa - INFO: 
     ================================================================================
     
     FINALIZE
     
     ================================================================================
-    [2022-03-02 15:08:38] - pyatoa - INFO: 
+    [2022-03-03 11:02:07] - pyatoa - INFO: 
     ================================================================================
     
     NZ.WAZ.*.HH?
     
     ================================================================================
-    [2022-03-02 15:08:38] - pyatoa - INFO: gathering data for NZ.WAZ.*.HH?
-    [2022-03-02 15:08:38] - pyatoa - INFO: gathering observed waveforms
-    [2022-03-02 15:08:38] - pyatoa - INFO: searching ASDFDataSet for observations
-    [2022-03-02 15:08:38] - pyatoa - INFO: matching observed waveforms found
-    [2022-03-02 15:08:38] - pyatoa - INFO: gathering StationXML
-    [2022-03-02 15:08:38] - pyatoa - INFO: searching ASDFDataSet for station info
-    [2022-03-02 15:08:38] - pyatoa - INFO: matching StationXML found
-    [2022-03-02 15:08:38] - pyatoa - INFO: saved to ASDFDataSet
-    [2022-03-02 15:08:38] - pyatoa - INFO: gathering synthetic waveforms
-    [2022-03-02 15:08:38] - pyatoa - INFO: searching ASDFDataSet for synthetics
-    [2022-03-02 15:08:38] - pyatoa - INFO: searching local filesystem for synthetics
-    [2022-03-02 15:08:38] - pyatoa - DEBUG: searching for synthetics: /home/bchow/REPOSITORIES/pyatoa/pyatoa/tests/test_data/docs_data/pyaflowa_doc/synthetics/2018p130600/{net}.{sta}.*{cmp}.sem{dva}
-    [2022-03-02 15:08:38] - pyatoa - INFO: retrieved synthetics locally:
+    [2022-03-03 11:02:07] - pyatoa - INFO: gathering data for NZ.WAZ.*.HH?
+    [2022-03-03 11:02:07] - pyatoa - INFO: gathering observed waveforms
+    [2022-03-03 11:02:07] - pyatoa - INFO: searching ASDFDataSet for observations
+    [2022-03-03 11:02:07] - pyatoa - INFO: matching observed waveforms found
+    [2022-03-03 11:02:07] - pyatoa - INFO: gathering StationXML
+    [2022-03-03 11:02:07] - pyatoa - INFO: searching ASDFDataSet for station info
+    [2022-03-03 11:02:07] - pyatoa - INFO: matching StationXML found
+    [2022-03-03 11:02:07] - pyatoa - INFO: saved to ASDFDataSet
+    [2022-03-03 11:02:07] - pyatoa - INFO: gathering synthetic waveforms
+    [2022-03-03 11:02:07] - pyatoa - INFO: searching ASDFDataSet for synthetics
+    [2022-03-03 11:02:07] - pyatoa - INFO: searching local filesystem for synthetics
+    [2022-03-03 11:02:07] - pyatoa - DEBUG: searching for synthetics: /home/bchow/REPOSITORIES/pyatoa/pyatoa/tests/test_data/docs_data/pyaflowa_doc/synthetics/2018p130600/{net}.{sta}.*{cmp}.sem{dva}
+    [2022-03-03 11:02:07] - pyatoa - INFO: retrieved synthetics locally:
     /home/bchow/REPOSITORIES/pyatoa/pyatoa/tests/test_data/docs_data/pyaflowa_doc/synthetics/2018p130600/NZ.WAZ.BXE.semd
-    [2022-03-02 15:08:38] - pyatoa - INFO: retrieved synthetics locally:
+    [2022-03-03 11:02:07] - pyatoa - INFO: retrieved synthetics locally:
     /home/bchow/REPOSITORIES/pyatoa/pyatoa/tests/test_data/docs_data/pyaflowa_doc/synthetics/2018p130600/NZ.WAZ.BXN.semd
-    [2022-03-02 15:08:38] - pyatoa - INFO: retrieved synthetics locally:
+    [2022-03-03 11:02:07] - pyatoa - INFO: retrieved synthetics locally:
     /home/bchow/REPOSITORIES/pyatoa/pyatoa/tests/test_data/docs_data/pyaflowa_doc/synthetics/2018p130600/NZ.WAZ.BXZ.semd
-    [2022-03-02 15:08:38] - pyatoa - INFO: matching synthetic waveforms found
-    [2022-03-02 15:08:38] - pyatoa - INFO: saved to ASDFDataSet with tag 'synthetic_i01s00'
-    [2022-03-02 15:08:38] - pyatoa - INFO: standardizing streams
-    [2022-03-02 15:08:38] - pyatoa - DEBUG: shifting NZ.WAZ.10.HHE starttime by 0.001607s
-    [2022-03-02 15:08:38] - pyatoa - DEBUG: shifting NZ.WAZ.10.HHN starttime by 0.001607s
-    [2022-03-02 15:08:38] - pyatoa - DEBUG: shifting NZ.WAZ.10.HHZ starttime by 0.001607s
-    [2022-03-02 15:08:38] - pyatoa - DEBUG: time offset is -20.0s
-    [2022-03-02 15:08:38] - pyatoa - INFO: preprocessing observation data
-    [2022-03-02 15:08:38] - pyatoa - INFO: adjusting taper to cover time offset -20.0
-    [2022-03-02 15:08:38] - pyatoa - DEBUG: removing response, units to DISP
-    [2022-03-02 15:08:38] - pyatoa - DEBUG: rotating from generic coordinate system to ZNE
-    [2022-03-02 15:08:38] - pyatoa - DEBUG: bandpass filter: 10.0 - 30.0s w/ 2.0 corners
-    [2022-03-02 15:08:38] - pyatoa - INFO: preprocessing synthetic data
-    [2022-03-02 15:08:38] - pyatoa - INFO: adjusting taper to cover time offset -20.0
-    [2022-03-02 15:08:38] - pyatoa - DEBUG: no response removal, synthetic data or requested not to
-    [2022-03-02 15:08:38] - pyatoa - DEBUG: bandpass filter: 10.0 - 30.0s w/ 2.0 corners
-    [2022-03-02 15:08:38] - pyatoa - DEBUG: convolving data w/ Gaussian (t/2=0.70s)
-    [2022-03-02 15:08:38] - pyatoa - INFO: running Pyflex w/ map: nznorth_10-30s
-    [2022-03-02 15:08:38,804] - pyflex - INFO: Calculated travel times.
-    [2022-03-02 15:08:38,804] - pyflex - INFO: Calculating envelope of synthetics.
-    [2022-03-02 15:08:38,805] - pyflex - INFO: Calculating STA/LTA.
-    [2022-03-02 15:08:38,806] - pyflex - INFO: Initial window selection yielded 22 possible windows.
-    [2022-03-02 15:08:38,807] - pyflex - INFO: Rejection based on travel times retained 22 windows.
-    [2022-03-02 15:08:38,807] - pyflex - INFO: Global SNR checks passed. Integrated SNR: 28382657308.924114, Amplitude SNR: 494242.727553
-    [2022-03-02 15:08:38,808] - pyflex - INFO: Rejection based on minimum window length retained 20 windows.
-    [2022-03-02 15:08:38,808] - pyflex - INFO: Water level rejection retained 8 windows
-    [2022-03-02 15:08:38,809] - pyflex - INFO: Single phase group rejection retained 8 windows
-    [2022-03-02 15:08:38,809] - pyflex - INFO: Removing duplicates retains 4 windows.
-    [2022-03-02 15:08:38,810] - pyflex - INFO: Rejection based on minimum window length retained 4 windows.
-    [2022-03-02 15:08:38,810] - pyflex - INFO: SN amplitude ratio window rejection retained 4 windows
-    [2022-03-02 15:08:38,820] - pyflex - INFO: Rejection based on data fit criteria retained 4 windows.
-    [2022-03-02 15:08:38,820] - pyflex - INFO: Weighted interval schedule optimization retained 1 windows.
-    [2022-03-02 15:08:38] - pyatoa - INFO: 1 window(s) selected for comp E
-    [2022-03-02 15:08:38,974] - pyflex - INFO: Calculated travel times.
-    [2022-03-02 15:08:38,975] - pyflex - INFO: Calculating envelope of synthetics.
-    [2022-03-02 15:08:38,976] - pyflex - INFO: Calculating STA/LTA.
-    [2022-03-02 15:08:38,977] - pyflex - INFO: Initial window selection yielded 10 possible windows.
-    [2022-03-02 15:08:38,977] - pyflex - INFO: Rejection based on travel times retained 10 windows.
-    [2022-03-02 15:08:38,977] - pyflex - INFO: Global SNR checks passed. Integrated SNR: 60358322015.940735, Amplitude SNR: 576780.923206
-    [2022-03-02 15:08:38,978] - pyflex - INFO: Rejection based on minimum window length retained 9 windows.
-    [2022-03-02 15:08:38,978] - pyflex - INFO: Water level rejection retained 3 windows
-    [2022-03-02 15:08:38,978] - pyflex - INFO: Single phase group rejection retained 3 windows
-    [2022-03-02 15:08:38,979] - pyflex - INFO: Removing duplicates retains 2 windows.
-    [2022-03-02 15:08:38,979] - pyflex - INFO: Rejection based on minimum window length retained 2 windows.
-    [2022-03-02 15:08:38,979] - pyflex - INFO: SN amplitude ratio window rejection retained 2 windows
-    [2022-03-02 15:08:38,983] - pyflex - DEBUG: Window rejected due to amplitude fit: 3.871042
-    [2022-03-02 15:08:38,983] - pyflex - DEBUG: Window rejected due to amplitude fit: 3.793857
-    [2022-03-02 15:08:38,983] - pyflex - INFO: Rejection based on data fit criteria retained 0 windows.
-    [2022-03-02 15:08:38,984] - pyflex - INFO: Weighted interval schedule optimization retained 0 windows.
-    [2022-03-02 15:08:38] - pyatoa - INFO: 0 window(s) selected for comp N
-    [2022-03-02 15:08:39,122] - pyflex - INFO: Calculated travel times.
-    [2022-03-02 15:08:39,123] - pyflex - INFO: Calculating envelope of synthetics.
-    [2022-03-02 15:08:39,124] - pyflex - INFO: Calculating STA/LTA.
-    [2022-03-02 15:08:39,125] - pyflex - INFO: Initial window selection yielded 10 possible windows.
-    [2022-03-02 15:08:39,125] - pyflex - INFO: Rejection based on travel times retained 10 windows.
-    [2022-03-02 15:08:39,125] - pyflex - INFO: Global SNR checks passed. Integrated SNR: 4763134899.314076, Amplitude SNR: 166126.234705
-    [2022-03-02 15:08:39,126] - pyflex - INFO: Rejection based on minimum window length retained 9 windows.
-    [2022-03-02 15:08:39,126] - pyflex - INFO: Water level rejection retained 3 windows
-    [2022-03-02 15:08:39,126] - pyflex - INFO: Single phase group rejection retained 3 windows
-    [2022-03-02 15:08:39,127] - pyflex - INFO: Removing duplicates retains 2 windows.
-    [2022-03-02 15:08:39,127] - pyflex - INFO: Rejection based on minimum window length retained 2 windows.
-    [2022-03-02 15:08:39,127] - pyflex - INFO: SN amplitude ratio window rejection retained 2 windows
-    [2022-03-02 15:08:39,134] - pyflex - INFO: Rejection based on data fit criteria retained 2 windows.
-    [2022-03-02 15:08:39,134] - pyflex - INFO: Weighted interval schedule optimization retained 1 windows.
-    [2022-03-02 15:08:39] - pyatoa - INFO: 1 window(s) selected for comp Z
-    [2022-03-02 15:08:39] - pyatoa - DEBUG: saving misfit windows to ASDFDataSet
-    [2022-03-02 15:08:39] - pyatoa - INFO: 2 window(s) total found
-    [2022-03-02 15:08:39] - pyatoa - DEBUG: running Pyadjoint w/ type: cc_traveltime_misfit
-    [2022-03-02 15:08:39] - pyatoa - INFO: 1.037 misfit for comp E
-    [2022-03-02 15:08:39] - pyatoa - INFO: 0.293 misfit for comp Z
-    [2022-03-02 15:08:39] - pyatoa - DEBUG: saving adjoint sources to ASDFDataSet
-    [2022-03-02 15:08:39] - pyatoa - INFO: total misfit 1.329
-    [2022-03-02 15:08:39] - pyatoa - INFO: 
+    [2022-03-03 11:02:07] - pyatoa - INFO: matching synthetic waveforms found
+    [2022-03-03 11:02:07] - pyatoa - INFO: saved to ASDFDataSet with tag 'synthetic_i01s00'
+    [2022-03-03 11:02:07] - pyatoa - INFO: standardizing streams
+    [2022-03-03 11:02:07] - pyatoa - DEBUG: shifting NZ.WAZ.10.HHE starttime by 0.001607s
+    [2022-03-03 11:02:07] - pyatoa - DEBUG: shifting NZ.WAZ.10.HHN starttime by 0.001607s
+    [2022-03-03 11:02:07] - pyatoa - DEBUG: shifting NZ.WAZ.10.HHZ starttime by 0.001607s
+    [2022-03-03 11:02:07] - pyatoa - DEBUG: time offset is -20.0s
+    [2022-03-03 11:02:07] - pyatoa - INFO: preprocessing observation data
+    [2022-03-03 11:02:07] - pyatoa - INFO: adjusting taper to cover time offset -20.0
+    [2022-03-03 11:02:07] - pyatoa - DEBUG: removing response, units to DISP
+    [2022-03-03 11:02:08] - pyatoa - DEBUG: rotating from generic coordinate system to ZNE
+    [2022-03-03 11:02:08] - pyatoa - DEBUG: bandpass filter: 10.0 - 30.0s w/ 2.0 corners
+    [2022-03-03 11:02:08] - pyatoa - INFO: preprocessing synthetic data
+    [2022-03-03 11:02:08] - pyatoa - INFO: adjusting taper to cover time offset -20.0
+    [2022-03-03 11:02:08] - pyatoa - DEBUG: no response removal, synthetic data or requested not to
+    [2022-03-03 11:02:08] - pyatoa - DEBUG: bandpass filter: 10.0 - 30.0s w/ 2.0 corners
+    [2022-03-03 11:02:08] - pyatoa - DEBUG: convolving data w/ Gaussian (t/2=0.70s)
+    [2022-03-03 11:02:08] - pyatoa - INFO: running Pyflex w/ map: nznorth_10-30s
+    [2022-03-03 11:02:08,295] - pyflex - INFO: Calculated travel times.
+    [2022-03-03 11:02:08,296] - pyflex - INFO: Calculating envelope of synthetics.
+    [2022-03-03 11:02:08,296] - pyflex - INFO: Calculating STA/LTA.
+    [2022-03-03 11:02:08,298] - pyflex - INFO: Initial window selection yielded 22 possible windows.
+    [2022-03-03 11:02:08,298] - pyflex - INFO: Rejection based on travel times retained 22 windows.
+    [2022-03-03 11:02:08,298] - pyflex - INFO: Global SNR checks passed. Integrated SNR: 28382657308.948811, Amplitude SNR: 494242.727553
+    [2022-03-03 11:02:08,298] - pyflex - INFO: Rejection based on minimum window length retained 20 windows.
+    [2022-03-03 11:02:08,299] - pyflex - INFO: Water level rejection retained 8 windows
+    [2022-03-03 11:02:08,299] - pyflex - INFO: Single phase group rejection retained 8 windows
+    [2022-03-03 11:02:08,299] - pyflex - INFO: Removing duplicates retains 4 windows.
+    [2022-03-03 11:02:08,300] - pyflex - INFO: Rejection based on minimum window length retained 4 windows.
+    [2022-03-03 11:02:08,300] - pyflex - INFO: SN amplitude ratio window rejection retained 4 windows
+    [2022-03-03 11:02:08,308] - pyflex - INFO: Rejection based on data fit criteria retained 4 windows.
+    [2022-03-03 11:02:08,309] - pyflex - INFO: Weighted interval schedule optimization retained 1 windows.
+    [2022-03-03 11:02:08] - pyatoa - INFO: 1 window(s) selected for comp E
+    [2022-03-03 11:02:08,448] - pyflex - INFO: Calculated travel times.
+    [2022-03-03 11:02:08,448] - pyflex - INFO: Calculating envelope of synthetics.
+    [2022-03-03 11:02:08,449] - pyflex - INFO: Calculating STA/LTA.
+    [2022-03-03 11:02:08,450] - pyflex - INFO: Initial window selection yielded 10 possible windows.
+    [2022-03-03 11:02:08,450] - pyflex - INFO: Rejection based on travel times retained 10 windows.
+    [2022-03-03 11:02:08,450] - pyflex - INFO: Global SNR checks passed. Integrated SNR: 60358322016.534302, Amplitude SNR: 576780.923209
+    [2022-03-03 11:02:08,451] - pyflex - INFO: Rejection based on minimum window length retained 9 windows.
+    [2022-03-03 11:02:08,451] - pyflex - INFO: Water level rejection retained 3 windows
+    [2022-03-03 11:02:08,451] - pyflex - INFO: Single phase group rejection retained 3 windows
+    [2022-03-03 11:02:08,452] - pyflex - INFO: Removing duplicates retains 2 windows.
+    [2022-03-03 11:02:08,452] - pyflex - INFO: Rejection based on minimum window length retained 2 windows.
+    [2022-03-03 11:02:08,452] - pyflex - INFO: SN amplitude ratio window rejection retained 2 windows
+    [2022-03-03 11:02:08,455] - pyflex - DEBUG: Window rejected due to amplitude fit: 3.871042
+    [2022-03-03 11:02:08,456] - pyflex - DEBUG: Window rejected due to amplitude fit: 3.793857
+    [2022-03-03 11:02:08,456] - pyflex - INFO: Rejection based on data fit criteria retained 0 windows.
+    [2022-03-03 11:02:08,456] - pyflex - INFO: Weighted interval schedule optimization retained 0 windows.
+    [2022-03-03 11:02:08] - pyatoa - INFO: 0 window(s) selected for comp N
+    [2022-03-03 11:02:08,594] - pyflex - INFO: Calculated travel times.
+    [2022-03-03 11:02:08,595] - pyflex - INFO: Calculating envelope of synthetics.
+    [2022-03-03 11:02:08,595] - pyflex - INFO: Calculating STA/LTA.
+    [2022-03-03 11:02:08,596] - pyflex - INFO: Initial window selection yielded 10 possible windows.
+    [2022-03-03 11:02:08,597] - pyflex - INFO: Rejection based on travel times retained 10 windows.
+    [2022-03-03 11:02:08,597] - pyflex - INFO: Global SNR checks passed. Integrated SNR: 4763134899.306085, Amplitude SNR: 166126.234705
+    [2022-03-03 11:02:08,597] - pyflex - INFO: Rejection based on minimum window length retained 9 windows.
+    [2022-03-03 11:02:08,598] - pyflex - INFO: Water level rejection retained 3 windows
+    [2022-03-03 11:02:08,598] - pyflex - INFO: Single phase group rejection retained 3 windows
+    [2022-03-03 11:02:08,598] - pyflex - INFO: Removing duplicates retains 2 windows.
+    [2022-03-03 11:02:08,599] - pyflex - INFO: Rejection based on minimum window length retained 2 windows.
+    [2022-03-03 11:02:08,599] - pyflex - INFO: SN amplitude ratio window rejection retained 2 windows
+    [2022-03-03 11:02:08,605] - pyflex - INFO: Rejection based on data fit criteria retained 2 windows.
+    [2022-03-03 11:02:08,605] - pyflex - INFO: Weighted interval schedule optimization retained 1 windows.
+    [2022-03-03 11:02:08] - pyatoa - INFO: 1 window(s) selected for comp Z
+    [2022-03-03 11:02:08] - pyatoa - DEBUG: saving misfit windows to ASDFDataSet
+    [2022-03-03 11:02:08] - pyatoa - INFO: 2 window(s) total found
+    [2022-03-03 11:02:08] - pyatoa - DEBUG: running Pyadjoint w/ type: cc_traveltime_misfit
+    [2022-03-03 11:02:08] - pyatoa - INFO: 1.037 misfit for comp E
+    [2022-03-03 11:02:08] - pyatoa - INFO: 0.293 misfit for comp Z
+    [2022-03-03 11:02:08] - pyatoa - DEBUG: saving adjoint sources to ASDFDataSet
+    [2022-03-03 11:02:08] - pyatoa - INFO: total misfit 1.329
+    [2022-03-03 11:02:08] - pyatoa - INFO: 
     
     	OBS WAVS:  3
     	SYN WAVS:  3
     	WINDOWS:   2
     	MISFIT:    1.33
     
-    [2022-03-02 15:08:39] - pyatoa - INFO: saving figure to: /home/bchow/REPOSITORIES/pyatoa/pyatoa/tests/test_data/docs_data/pyaflowa_doc/figures/2018p130600/i01_s00_NZ_WAZ.pdf
-    [2022-03-02 15:08:39] - pyatoa - INFO: 
+    [2022-03-03 11:02:08] - pyatoa - INFO: saving figure to: /home/bchow/REPOSITORIES/pyatoa/pyatoa/tests/test_data/docs_data/pyaflowa_doc/figures/2018p130600/i01_s00_NZ_WAZ.pdf
+    [2022-03-03 11:02:09] - pyatoa - INFO: 
     ================================================================================
     
     FINALIZE
     
     ================================================================================
-    [2022-03-02 15:08:39] - pyatoa - INFO: creating single .pdf file of all output figures
-    [2022-03-02 15:08:39] - pyatoa - INFO: generating STATIONS_ADJOINT file for SPECFEM
-    [2022-03-02 15:08:39] - pyatoa - INFO: 
+    [2022-03-03 11:02:09] - pyatoa - INFO: creating single .pdf file of all output figures
+    [2022-03-03 11:02:09] - pyatoa - INFO: generating STATIONS_ADJOINT file for SPECFEM
+    [2022-03-03 11:02:09] - pyatoa - INFO: 
     ================================================================================
     
     SUMMARY
@@ -922,9 +922,8 @@ The ASDFDataSet contains all the data and metadata collected and created during 
 
 .. parsed-literal::
 
-    NZ.BFZ.BXE.adj	NZ.MRZ.BXE.adj	NZ.VRZ.BXE.adj	NZ.WAZ.BXE.adj
-    NZ.BFZ.BXN.adj	NZ.MRZ.BXN.adj	NZ.VRZ.BXN.adj	NZ.WAZ.BXN.adj
-    NZ.BFZ.BXZ.adj	NZ.MRZ.BXZ.adj	NZ.VRZ.BXZ.adj	NZ.WAZ.BXZ.adj
+    NZ.MRZ.BXE.adj	NZ.MRZ.BXZ.adj	NZ.VRZ.BXN.adj	NZ.WAZ.BXE.adj	NZ.WAZ.BXZ.adj
+    NZ.MRZ.BXN.adj	NZ.VRZ.BXE.adj	NZ.VRZ.BXZ.adj	NZ.WAZ.BXN.adj
 
 
 .. code:: ipython3
@@ -1009,392 +1008,392 @@ The ASDFDataSet contains all the data and metadata collected and created during 
 
 .. parsed-literal::
 
-    [2022-03-02 15:08:33] - pyatoa - INFO: 
+    [2022-03-03 11:02:02] - pyatoa - INFO: 
     ================================================================================
     
     NZ.MRZ.*.HH?
     
     ================================================================================
-    [2022-03-02 15:08:33] - pyatoa - DEBUG: gathering event
-    [2022-03-02 15:08:33] - pyatoa - INFO: searching ASDFDataSet for event info
-    [2022-03-02 15:08:33] - pyatoa - DEBUG: matching event found: 81EE9F
-    [2022-03-02 15:08:33] - pyatoa - INFO: gathering data for NZ.MRZ.*.HH?
-    [2022-03-02 15:08:33] - pyatoa - INFO: gathering observed waveforms
-    [2022-03-02 15:08:33] - pyatoa - INFO: searching ASDFDataSet for observations
-    [2022-03-02 15:08:33] - pyatoa - INFO: matching observed waveforms found
-    [2022-03-02 15:08:33] - pyatoa - INFO: gathering StationXML
-    [2022-03-02 15:08:33] - pyatoa - INFO: searching ASDFDataSet for station info
-    [2022-03-02 15:08:33] - pyatoa - INFO: matching StationXML found
-    [2022-03-02 15:08:33] - pyatoa - INFO: saved to ASDFDataSet
-    [2022-03-02 15:08:33] - pyatoa - INFO: gathering synthetic waveforms
-    [2022-03-02 15:08:33] - pyatoa - INFO: searching ASDFDataSet for synthetics
-    [2022-03-02 15:08:33] - pyatoa - INFO: searching local filesystem for synthetics
-    [2022-03-02 15:08:33] - pyatoa - DEBUG: searching for synthetics: /home/bchow/REPOSITORIES/pyatoa/pyatoa/tests/test_data/docs_data/pyaflowa_doc/synthetics/2018p130600/{net}.{sta}.*{cmp}.sem{dva}
-    [2022-03-02 15:08:33] - pyatoa - INFO: retrieved synthetics locally:
+    [2022-03-03 11:02:02] - pyatoa - DEBUG: gathering event
+    [2022-03-03 11:02:02] - pyatoa - INFO: searching ASDFDataSet for event info
+    [2022-03-03 11:02:02] - pyatoa - DEBUG: matching event found: A8E579
+    [2022-03-03 11:02:02] - pyatoa - INFO: gathering data for NZ.MRZ.*.HH?
+    [2022-03-03 11:02:02] - pyatoa - INFO: gathering observed waveforms
+    [2022-03-03 11:02:02] - pyatoa - INFO: searching ASDFDataSet for observations
+    [2022-03-03 11:02:02] - pyatoa - INFO: matching observed waveforms found
+    [2022-03-03 11:02:02] - pyatoa - INFO: gathering StationXML
+    [2022-03-03 11:02:02] - pyatoa - INFO: searching ASDFDataSet for station info
+    [2022-03-03 11:02:02] - pyatoa - INFO: matching StationXML found
+    [2022-03-03 11:02:02] - pyatoa - INFO: saved to ASDFDataSet
+    [2022-03-03 11:02:02] - pyatoa - INFO: gathering synthetic waveforms
+    [2022-03-03 11:02:02] - pyatoa - INFO: searching ASDFDataSet for synthetics
+    [2022-03-03 11:02:02] - pyatoa - INFO: searching local filesystem for synthetics
+    [2022-03-03 11:02:02] - pyatoa - DEBUG: searching for synthetics: /home/bchow/REPOSITORIES/pyatoa/pyatoa/tests/test_data/docs_data/pyaflowa_doc/synthetics/2018p130600/{net}.{sta}.*{cmp}.sem{dva}
+    [2022-03-03 11:02:02] - pyatoa - INFO: retrieved synthetics locally:
     /home/bchow/REPOSITORIES/pyatoa/pyatoa/tests/test_data/docs_data/pyaflowa_doc/synthetics/2018p130600/NZ.MRZ.BXE.semd
-    [2022-03-02 15:08:33] - pyatoa - INFO: retrieved synthetics locally:
+    [2022-03-03 11:02:02] - pyatoa - INFO: retrieved synthetics locally:
     /home/bchow/REPOSITORIES/pyatoa/pyatoa/tests/test_data/docs_data/pyaflowa_doc/synthetics/2018p130600/NZ.MRZ.BXN.semd
-    [2022-03-02 15:08:33] - pyatoa - INFO: retrieved synthetics locally:
+    [2022-03-03 11:02:02] - pyatoa - INFO: retrieved synthetics locally:
     /home/bchow/REPOSITORIES/pyatoa/pyatoa/tests/test_data/docs_data/pyaflowa_doc/synthetics/2018p130600/NZ.MRZ.BXZ.semd
-    [2022-03-02 15:08:33] - pyatoa - INFO: matching synthetic waveforms found
-    [2022-03-02 15:08:33] - pyatoa - INFO: saved to ASDFDataSet with tag 'synthetic_i01s00'
-    [2022-03-02 15:08:33] - pyatoa - INFO: standardizing streams
-    [2022-03-02 15:08:34] - pyatoa - DEBUG: shifting NZ.MRZ.10.HHE starttime by 0.001607s
-    [2022-03-02 15:08:34] - pyatoa - DEBUG: shifting NZ.MRZ.10.HHN starttime by 0.001607s
-    [2022-03-02 15:08:34] - pyatoa - DEBUG: shifting NZ.MRZ.10.HHZ starttime by 0.001607s
-    [2022-03-02 15:08:34] - pyatoa - DEBUG: time offset is -20.0s
-    [2022-03-02 15:08:34] - pyatoa - INFO: preprocessing observation data
-    [2022-03-02 15:08:34] - pyatoa - INFO: adjusting taper to cover time offset -20.0
-    [2022-03-02 15:08:34] - pyatoa - DEBUG: removing response, units to DISP
-    [2022-03-02 15:08:34] - pyatoa - DEBUG: rotating from generic coordinate system to ZNE
-    [2022-03-02 15:08:34] - pyatoa - DEBUG: bandpass filter: 10.0 - 30.0s w/ 2.0 corners
-    [2022-03-02 15:08:34] - pyatoa - INFO: preprocessing synthetic data
-    [2022-03-02 15:08:34] - pyatoa - INFO: adjusting taper to cover time offset -20.0
-    [2022-03-02 15:08:34] - pyatoa - DEBUG: no response removal, synthetic data or requested not to
-    [2022-03-02 15:08:34] - pyatoa - DEBUG: bandpass filter: 10.0 - 30.0s w/ 2.0 corners
-    [2022-03-02 15:08:34] - pyatoa - DEBUG: convolving data w/ Gaussian (t/2=0.70s)
-    [2022-03-02 15:08:34] - pyatoa - INFO: running Pyflex w/ map: nznorth_10-30s
-    [2022-03-02 15:08:34] - pyflex - INFO: Calculated travel times.
-    [2022-03-02 15:08:34] - pyflex - INFO: Calculating envelope of synthetics.
-    [2022-03-02 15:08:34] - pyflex - INFO: Calculating STA/LTA.
-    [2022-03-02 15:08:34] - pyflex - INFO: Initial window selection yielded 2 possible windows.
-    [2022-03-02 15:08:34] - pyflex - INFO: Rejection based on travel times retained 2 windows.
-    [2022-03-02 15:08:34] - pyflex - INFO: Global SNR checks passed. Integrated SNR: 264017440516.493011, Amplitude SNR: 1258959.382416
-    [2022-03-02 15:08:34] - pyflex - INFO: Rejection based on minimum window length retained 2 windows.
-    [2022-03-02 15:08:34] - pyflex - INFO: Water level rejection retained 1 windows
-    [2022-03-02 15:08:34] - pyflex - INFO: Single phase group rejection retained 1 windows
-    [2022-03-02 15:08:34] - pyflex - INFO: Removing duplicates retains 1 windows.
-    [2022-03-02 15:08:34] - pyflex - INFO: Rejection based on minimum window length retained 1 windows.
-    [2022-03-02 15:08:34] - pyflex - INFO: SN amplitude ratio window rejection retained 1 windows
-    [2022-03-02 15:08:34] - pyflex - INFO: Rejection based on data fit criteria retained 1 windows.
-    [2022-03-02 15:08:34] - pyflex - INFO: Weighted interval schedule optimization retained 1 windows.
-    [2022-03-02 15:08:34] - pyatoa - INFO: 1 window(s) selected for comp E
-    [2022-03-02 15:08:34] - pyflex - INFO: Calculated travel times.
-    [2022-03-02 15:08:34] - pyflex - INFO: Calculating envelope of synthetics.
-    [2022-03-02 15:08:34] - pyflex - INFO: Calculating STA/LTA.
-    [2022-03-02 15:08:34] - pyflex - INFO: Initial window selection yielded 10 possible windows.
-    [2022-03-02 15:08:34] - pyflex - INFO: Rejection based on travel times retained 10 windows.
-    [2022-03-02 15:08:34] - pyflex - INFO: Global SNR checks passed. Integrated SNR: 77923017814.226379, Amplitude SNR: 910031.449339
-    [2022-03-02 15:08:34] - pyflex - INFO: Rejection based on minimum window length retained 10 windows.
-    [2022-03-02 15:08:34] - pyflex - INFO: Water level rejection retained 4 windows
-    [2022-03-02 15:08:34] - pyflex - INFO: Single phase group rejection retained 4 windows
-    [2022-03-02 15:08:34] - pyflex - INFO: Removing duplicates retains 3 windows.
-    [2022-03-02 15:08:34] - pyflex - INFO: Rejection based on minimum window length retained 3 windows.
-    [2022-03-02 15:08:34] - pyflex - INFO: SN amplitude ratio window rejection retained 3 windows
-    [2022-03-02 15:08:34] - pyflex - DEBUG: Window rejected due to CC value: 0.635155
-    [2022-03-02 15:08:34] - pyflex - INFO: Rejection based on data fit criteria retained 2 windows.
-    [2022-03-02 15:08:34] - pyflex - INFO: Weighted interval schedule optimization retained 1 windows.
-    [2022-03-02 15:08:34] - pyatoa - INFO: 1 window(s) selected for comp N
-    [2022-03-02 15:08:34] - pyflex - INFO: Calculated travel times.
-    [2022-03-02 15:08:34] - pyflex - INFO: Calculating envelope of synthetics.
-    [2022-03-02 15:08:34] - pyflex - INFO: Calculating STA/LTA.
-    [2022-03-02 15:08:34] - pyflex - INFO: Initial window selection yielded 10 possible windows.
-    [2022-03-02 15:08:34] - pyflex - INFO: Rejection based on travel times retained 10 windows.
-    [2022-03-02 15:08:34] - pyflex - INFO: Global SNR checks passed. Integrated SNR: 13630877755876006.000000, Amplitude SNR: 439117916.987834
-    [2022-03-02 15:08:34] - pyflex - INFO: Rejection based on minimum window length retained 9 windows.
-    [2022-03-02 15:08:34] - pyflex - INFO: Water level rejection retained 3 windows
-    [2022-03-02 15:08:34] - pyflex - INFO: Single phase group rejection retained 3 windows
-    [2022-03-02 15:08:34] - pyflex - INFO: Removing duplicates retains 2 windows.
-    [2022-03-02 15:08:34] - pyflex - INFO: Rejection based on minimum window length retained 2 windows.
-    [2022-03-02 15:08:34] - pyflex - INFO: SN amplitude ratio window rejection retained 2 windows
-    [2022-03-02 15:08:34] - pyflex - INFO: Rejection based on data fit criteria retained 2 windows.
-    [2022-03-02 15:08:34] - pyflex - INFO: Weighted interval schedule optimization retained 1 windows.
-    [2022-03-02 15:08:34] - pyatoa - INFO: 1 window(s) selected for comp Z
-    [2022-03-02 15:08:34] - pyatoa - DEBUG: saving misfit windows to ASDFDataSet
-    [2022-03-02 15:08:34] - pyatoa - INFO: 3 window(s) total found
-    [2022-03-02 15:08:34] - pyatoa - DEBUG: running Pyadjoint w/ type: cc_traveltime_misfit
-    [2022-03-02 15:08:34] - pyatoa - INFO: 0.366 misfit for comp E
-    [2022-03-02 15:08:34] - pyatoa - INFO: 0.154 misfit for comp N
-    [2022-03-02 15:08:34] - pyatoa - INFO: 0.095 misfit for comp Z
-    [2022-03-02 15:08:34] - pyatoa - DEBUG: saving adjoint sources to ASDFDataSet
-    [2022-03-02 15:08:34] - pyatoa - INFO: total misfit 0.614
-    [2022-03-02 15:08:34] - pyatoa - INFO: 
+    [2022-03-03 11:02:02] - pyatoa - INFO: matching synthetic waveforms found
+    [2022-03-03 11:02:02] - pyatoa - INFO: saved to ASDFDataSet with tag 'synthetic_i01s00'
+    [2022-03-03 11:02:02] - pyatoa - INFO: standardizing streams
+    [2022-03-03 11:02:02] - pyatoa - DEBUG: shifting NZ.MRZ.10.HHE starttime by 0.001607s
+    [2022-03-03 11:02:02] - pyatoa - DEBUG: shifting NZ.MRZ.10.HHN starttime by 0.001607s
+    [2022-03-03 11:02:02] - pyatoa - DEBUG: shifting NZ.MRZ.10.HHZ starttime by 0.001607s
+    [2022-03-03 11:02:02] - pyatoa - DEBUG: time offset is -20.0s
+    [2022-03-03 11:02:02] - pyatoa - INFO: preprocessing observation data
+    [2022-03-03 11:02:02] - pyatoa - INFO: adjusting taper to cover time offset -20.0
+    [2022-03-03 11:02:02] - pyatoa - DEBUG: removing response, units to DISP
+    [2022-03-03 11:02:02] - pyatoa - DEBUG: rotating from generic coordinate system to ZNE
+    [2022-03-03 11:02:02] - pyatoa - DEBUG: bandpass filter: 10.0 - 30.0s w/ 2.0 corners
+    [2022-03-03 11:02:02] - pyatoa - INFO: preprocessing synthetic data
+    [2022-03-03 11:02:02] - pyatoa - INFO: adjusting taper to cover time offset -20.0
+    [2022-03-03 11:02:02] - pyatoa - DEBUG: no response removal, synthetic data or requested not to
+    [2022-03-03 11:02:02] - pyatoa - DEBUG: bandpass filter: 10.0 - 30.0s w/ 2.0 corners
+    [2022-03-03 11:02:02] - pyatoa - DEBUG: convolving data w/ Gaussian (t/2=0.70s)
+    [2022-03-03 11:02:02] - pyatoa - INFO: running Pyflex w/ map: nznorth_10-30s
+    [2022-03-03 11:02:02] - pyflex - INFO: Calculated travel times.
+    [2022-03-03 11:02:02] - pyflex - INFO: Calculating envelope of synthetics.
+    [2022-03-03 11:02:02] - pyflex - INFO: Calculating STA/LTA.
+    [2022-03-03 11:02:02] - pyflex - INFO: Initial window selection yielded 2 possible windows.
+    [2022-03-03 11:02:02] - pyflex - INFO: Rejection based on travel times retained 2 windows.
+    [2022-03-03 11:02:02] - pyflex - INFO: Global SNR checks passed. Integrated SNR: 264017440517.820709, Amplitude SNR: 1258959.382420
+    [2022-03-03 11:02:02] - pyflex - INFO: Rejection based on minimum window length retained 2 windows.
+    [2022-03-03 11:02:02] - pyflex - INFO: Water level rejection retained 1 windows
+    [2022-03-03 11:02:02] - pyflex - INFO: Single phase group rejection retained 1 windows
+    [2022-03-03 11:02:02] - pyflex - INFO: Removing duplicates retains 1 windows.
+    [2022-03-03 11:02:02] - pyflex - INFO: Rejection based on minimum window length retained 1 windows.
+    [2022-03-03 11:02:02] - pyflex - INFO: SN amplitude ratio window rejection retained 1 windows
+    [2022-03-03 11:02:02] - pyflex - INFO: Rejection based on data fit criteria retained 1 windows.
+    [2022-03-03 11:02:02] - pyflex - INFO: Weighted interval schedule optimization retained 1 windows.
+    [2022-03-03 11:02:02] - pyatoa - INFO: 1 window(s) selected for comp E
+    [2022-03-03 11:02:02] - pyflex - INFO: Calculated travel times.
+    [2022-03-03 11:02:02] - pyflex - INFO: Calculating envelope of synthetics.
+    [2022-03-03 11:02:02] - pyflex - INFO: Calculating STA/LTA.
+    [2022-03-03 11:02:02] - pyflex - INFO: Initial window selection yielded 10 possible windows.
+    [2022-03-03 11:02:02] - pyflex - INFO: Rejection based on travel times retained 10 windows.
+    [2022-03-03 11:02:02] - pyflex - INFO: Global SNR checks passed. Integrated SNR: 77923017814.422638, Amplitude SNR: 910031.449340
+    [2022-03-03 11:02:02] - pyflex - INFO: Rejection based on minimum window length retained 10 windows.
+    [2022-03-03 11:02:02] - pyflex - INFO: Water level rejection retained 4 windows
+    [2022-03-03 11:02:02] - pyflex - INFO: Single phase group rejection retained 4 windows
+    [2022-03-03 11:02:02] - pyflex - INFO: Removing duplicates retains 3 windows.
+    [2022-03-03 11:02:02] - pyflex - INFO: Rejection based on minimum window length retained 3 windows.
+    [2022-03-03 11:02:02] - pyflex - INFO: SN amplitude ratio window rejection retained 3 windows
+    [2022-03-03 11:02:02] - pyflex - DEBUG: Window rejected due to CC value: 0.635155
+    [2022-03-03 11:02:02] - pyflex - INFO: Rejection based on data fit criteria retained 2 windows.
+    [2022-03-03 11:02:02] - pyflex - INFO: Weighted interval schedule optimization retained 1 windows.
+    [2022-03-03 11:02:02] - pyatoa - INFO: 1 window(s) selected for comp N
+    [2022-03-03 11:02:02] - pyflex - INFO: Calculated travel times.
+    [2022-03-03 11:02:03] - pyflex - INFO: Calculating envelope of synthetics.
+    [2022-03-03 11:02:03] - pyflex - INFO: Calculating STA/LTA.
+    [2022-03-03 11:02:03] - pyflex - INFO: Initial window selection yielded 10 possible windows.
+    [2022-03-03 11:02:03] - pyflex - INFO: Rejection based on travel times retained 10 windows.
+    [2022-03-03 11:02:03] - pyflex - INFO: Global SNR checks passed. Integrated SNR: 13630877749859348.000000, Amplitude SNR: 439117916.874931
+    [2022-03-03 11:02:03] - pyflex - INFO: Rejection based on minimum window length retained 9 windows.
+    [2022-03-03 11:02:03] - pyflex - INFO: Water level rejection retained 3 windows
+    [2022-03-03 11:02:03] - pyflex - INFO: Single phase group rejection retained 3 windows
+    [2022-03-03 11:02:03] - pyflex - INFO: Removing duplicates retains 2 windows.
+    [2022-03-03 11:02:03] - pyflex - INFO: Rejection based on minimum window length retained 2 windows.
+    [2022-03-03 11:02:03] - pyflex - INFO: SN amplitude ratio window rejection retained 2 windows
+    [2022-03-03 11:02:03] - pyflex - INFO: Rejection based on data fit criteria retained 2 windows.
+    [2022-03-03 11:02:03] - pyflex - INFO: Weighted interval schedule optimization retained 1 windows.
+    [2022-03-03 11:02:03] - pyatoa - INFO: 1 window(s) selected for comp Z
+    [2022-03-03 11:02:03] - pyatoa - DEBUG: saving misfit windows to ASDFDataSet
+    [2022-03-03 11:02:03] - pyatoa - INFO: 3 window(s) total found
+    [2022-03-03 11:02:03] - pyatoa - DEBUG: running Pyadjoint w/ type: cc_traveltime_misfit
+    [2022-03-03 11:02:03] - pyatoa - INFO: 0.366 misfit for comp E
+    [2022-03-03 11:02:03] - pyatoa - INFO: 0.154 misfit for comp N
+    [2022-03-03 11:02:03] - pyatoa - INFO: 0.095 misfit for comp Z
+    [2022-03-03 11:02:03] - pyatoa - DEBUG: saving adjoint sources to ASDFDataSet
+    [2022-03-03 11:02:03] - pyatoa - INFO: total misfit 0.614
+    [2022-03-03 11:02:03] - pyatoa - INFO: 
     
     	OBS WAVS:  3
     	SYN WAVS:  3
     	WINDOWS:   3
     	MISFIT:    0.61
     
-    [2022-03-02 15:08:34] - pyatoa - INFO: saving figure to: /home/bchow/REPOSITORIES/pyatoa/pyatoa/tests/test_data/docs_data/pyaflowa_doc/figures/2018p130600/i01_s00_NZ_MRZ.pdf
-    [2022-03-02 15:08:35] - pyatoa - INFO: 
+    [2022-03-03 11:02:03] - pyatoa - INFO: saving figure to: /home/bchow/REPOSITORIES/pyatoa/pyatoa/tests/test_data/docs_data/pyaflowa_doc/figures/2018p130600/i01_s00_NZ_MRZ.pdf
+    [2022-03-03 11:02:03] - pyatoa - INFO: 
     ================================================================================
     
     FINALIZE
     
     ================================================================================
-    [2022-03-02 15:08:35] - pyatoa - INFO: 
+    [2022-03-03 11:02:04] - pyatoa - INFO: 
     ================================================================================
     
     NZ.TSZ.*.HH?
     
     ================================================================================
-    [2022-03-02 15:08:35] - pyatoa - INFO: gathering data for NZ.TSZ.*.HH?
-    [2022-03-02 15:08:35] - pyatoa - INFO: gathering observed waveforms
-    [2022-03-02 15:08:35] - pyatoa - INFO: searching ASDFDataSet for observations
-    [2022-03-02 15:08:35] - pyatoa - INFO: matching observed waveforms found
-    [2022-03-02 15:08:35] - pyatoa - INFO: gathering StationXML
-    [2022-03-02 15:08:35] - pyatoa - INFO: searching ASDFDataSet for station info
-    [2022-03-02 15:08:35] - pyatoa - INFO: matching StationXML found
-    [2022-03-02 15:08:35] - pyatoa - INFO: saved to ASDFDataSet
-    [2022-03-02 15:08:35] - pyatoa - INFO: gathering synthetic waveforms
-    [2022-03-02 15:08:35] - pyatoa - INFO: searching ASDFDataSet for synthetics
-    [2022-03-02 15:08:35] - pyatoa - INFO: searching local filesystem for synthetics
-    [2022-03-02 15:08:35] - pyatoa - DEBUG: searching for synthetics: /home/bchow/REPOSITORIES/pyatoa/pyatoa/tests/test_data/docs_data/pyaflowa_doc/synthetics/2018p130600/{net}.{sta}.*{cmp}.sem{dva}
-    [2022-03-02 15:08:35] - pyatoa - INFO: retrieved synthetics locally:
+    [2022-03-03 11:02:04] - pyatoa - INFO: gathering data for NZ.TSZ.*.HH?
+    [2022-03-03 11:02:04] - pyatoa - INFO: gathering observed waveforms
+    [2022-03-03 11:02:04] - pyatoa - INFO: searching ASDFDataSet for observations
+    [2022-03-03 11:02:04] - pyatoa - INFO: matching observed waveforms found
+    [2022-03-03 11:02:04] - pyatoa - INFO: gathering StationXML
+    [2022-03-03 11:02:04] - pyatoa - INFO: searching ASDFDataSet for station info
+    [2022-03-03 11:02:04] - pyatoa - INFO: matching StationXML found
+    [2022-03-03 11:02:04] - pyatoa - INFO: saved to ASDFDataSet
+    [2022-03-03 11:02:04] - pyatoa - INFO: gathering synthetic waveforms
+    [2022-03-03 11:02:04] - pyatoa - INFO: searching ASDFDataSet for synthetics
+    [2022-03-03 11:02:04] - pyatoa - INFO: searching local filesystem for synthetics
+    [2022-03-03 11:02:04] - pyatoa - DEBUG: searching for synthetics: /home/bchow/REPOSITORIES/pyatoa/pyatoa/tests/test_data/docs_data/pyaflowa_doc/synthetics/2018p130600/{net}.{sta}.*{cmp}.sem{dva}
+    [2022-03-03 11:02:04] - pyatoa - INFO: retrieved synthetics locally:
     /home/bchow/REPOSITORIES/pyatoa/pyatoa/tests/test_data/docs_data/pyaflowa_doc/synthetics/2018p130600/NZ.TSZ.BXE.semd
-    [2022-03-02 15:08:35] - pyatoa - INFO: retrieved synthetics locally:
+    [2022-03-03 11:02:04] - pyatoa - INFO: retrieved synthetics locally:
     /home/bchow/REPOSITORIES/pyatoa/pyatoa/tests/test_data/docs_data/pyaflowa_doc/synthetics/2018p130600/NZ.TSZ.BXN.semd
-    [2022-03-02 15:08:35] - pyatoa - INFO: retrieved synthetics locally:
+    [2022-03-03 11:02:04] - pyatoa - INFO: retrieved synthetics locally:
     /home/bchow/REPOSITORIES/pyatoa/pyatoa/tests/test_data/docs_data/pyaflowa_doc/synthetics/2018p130600/NZ.TSZ.BXZ.semd
-    [2022-03-02 15:08:35] - pyatoa - INFO: matching synthetic waveforms found
-    [2022-03-02 15:08:35] - pyatoa - INFO: saved to ASDFDataSet with tag 'synthetic_i01s00'
-    [2022-03-02 15:08:35] - pyatoa - INFO: standardizing streams
-    [2022-03-02 15:08:35] - pyatoa - DEBUG: zero pad NZ.TSZ.10.HHE (0, 0) samples
-    [2022-03-02 15:08:35] - pyatoa - DEBUG: new starttime NZ.TSZ.10.HHE: 2018-02-18T07:43:28.130000Z
-    [2022-03-02 15:08:35] - pyatoa - DEBUG: zero pad NZ.TSZ.10.HHN (0, 0) samples
-    [2022-03-02 15:08:35] - pyatoa - DEBUG: new starttime NZ.TSZ.10.HHN: 2018-02-18T07:43:28.130001Z
-    [2022-03-02 15:08:35] - pyatoa - DEBUG: zero pad NZ.TSZ.10.HHZ (0, 0) samples
-    [2022-03-02 15:08:35] - pyatoa - DEBUG: new starttime NZ.TSZ.10.HHZ: 2018-02-18T07:43:28.130001Z
-    [2022-03-02 15:08:35] - pyatoa - DEBUG: time offset is -20.0s
-    [2022-03-02 15:08:35] - pyatoa - INFO: preprocessing observation data
-    [2022-03-02 15:08:35] - pyatoa - INFO: adjusting taper to cover time offset -20.0
-    [2022-03-02 15:08:35] - pyatoa - DEBUG: removing response, units to DISP
-    [2022-03-02 15:08:35] - pyatoa - DEBUG: rotating from generic coordinate system to ZNE
-    [2022-03-02 15:08:35] - pyatoa - DEBUG: bandpass filter: 10.0 - 30.0s w/ 2.0 corners
-    [2022-03-02 15:08:35] - pyatoa - INFO: preprocessing synthetic data
-    [2022-03-02 15:08:35] - pyatoa - INFO: adjusting taper to cover time offset -20.0
-    [2022-03-02 15:08:35] - pyatoa - DEBUG: no response removal, synthetic data or requested not to
-    [2022-03-02 15:08:35] - pyatoa - DEBUG: bandpass filter: 10.0 - 30.0s w/ 2.0 corners
-    [2022-03-02 15:08:35] - pyatoa - DEBUG: convolving data w/ Gaussian (t/2=0.70s)
-    [2022-03-02 15:08:35] - pyatoa - INFO: running Pyflex w/ map: nznorth_10-30s
-    [2022-03-02 15:08:35] - pyflex - INFO: Calculated travel times.
-    [2022-03-02 15:08:35] - pyflex - INFO: Calculating envelope of synthetics.
-    [2022-03-02 15:08:35] - pyflex - INFO: Calculating STA/LTA.
-    [2022-03-02 15:08:35] - pyatoa - WARNING: Cannot window, most likely because the source-receiver distance is too small w.r.t the minimum period
-    [2022-03-02 15:08:35] - pyatoa - INFO: saving figure to: /home/bchow/REPOSITORIES/pyatoa/pyatoa/tests/test_data/docs_data/pyaflowa_doc/figures/2018p130600/i01_s00_NZ_TSZ.pdf
-    [2022-03-02 15:08:36] - pyatoa - INFO: 
+    [2022-03-03 11:02:04] - pyatoa - INFO: matching synthetic waveforms found
+    [2022-03-03 11:02:04] - pyatoa - INFO: saved to ASDFDataSet with tag 'synthetic_i01s00'
+    [2022-03-03 11:02:04] - pyatoa - INFO: standardizing streams
+    [2022-03-03 11:02:04] - pyatoa - DEBUG: zero pad NZ.TSZ.10.HHE (0, 0) samples
+    [2022-03-03 11:02:04] - pyatoa - DEBUG: new starttime NZ.TSZ.10.HHE: 2018-02-18T07:43:28.130000Z
+    [2022-03-03 11:02:04] - pyatoa - DEBUG: zero pad NZ.TSZ.10.HHN (0, 0) samples
+    [2022-03-03 11:02:04] - pyatoa - DEBUG: new starttime NZ.TSZ.10.HHN: 2018-02-18T07:43:28.130001Z
+    [2022-03-03 11:02:04] - pyatoa - DEBUG: zero pad NZ.TSZ.10.HHZ (0, 0) samples
+    [2022-03-03 11:02:04] - pyatoa - DEBUG: new starttime NZ.TSZ.10.HHZ: 2018-02-18T07:43:28.130001Z
+    [2022-03-03 11:02:04] - pyatoa - DEBUG: time offset is -20.0s
+    [2022-03-03 11:02:04] - pyatoa - INFO: preprocessing observation data
+    [2022-03-03 11:02:04] - pyatoa - INFO: adjusting taper to cover time offset -20.0
+    [2022-03-03 11:02:04] - pyatoa - DEBUG: removing response, units to DISP
+    [2022-03-03 11:02:04] - pyatoa - DEBUG: rotating from generic coordinate system to ZNE
+    [2022-03-03 11:02:04] - pyatoa - DEBUG: bandpass filter: 10.0 - 30.0s w/ 2.0 corners
+    [2022-03-03 11:02:04] - pyatoa - INFO: preprocessing synthetic data
+    [2022-03-03 11:02:04] - pyatoa - INFO: adjusting taper to cover time offset -20.0
+    [2022-03-03 11:02:04] - pyatoa - DEBUG: no response removal, synthetic data or requested not to
+    [2022-03-03 11:02:04] - pyatoa - DEBUG: bandpass filter: 10.0 - 30.0s w/ 2.0 corners
+    [2022-03-03 11:02:04] - pyatoa - DEBUG: convolving data w/ Gaussian (t/2=0.70s)
+    [2022-03-03 11:02:04] - pyatoa - INFO: running Pyflex w/ map: nznorth_10-30s
+    [2022-03-03 11:02:04] - pyflex - INFO: Calculated travel times.
+    [2022-03-03 11:02:04] - pyflex - INFO: Calculating envelope of synthetics.
+    [2022-03-03 11:02:04] - pyflex - INFO: Calculating STA/LTA.
+    [2022-03-03 11:02:04] - pyatoa - WARNING: Cannot window, most likely because the source-receiver distance is too small w.r.t the minimum period
+    [2022-03-03 11:02:04] - pyatoa - INFO: saving figure to: /home/bchow/REPOSITORIES/pyatoa/pyatoa/tests/test_data/docs_data/pyaflowa_doc/figures/2018p130600/i01_s00_NZ_TSZ.pdf
+    [2022-03-03 11:02:05] - pyatoa - INFO: 
     ================================================================================
     
     NZ.VRZ.*.HH?
     
     ================================================================================
-    [2022-03-02 15:08:36] - pyatoa - INFO: gathering data for NZ.VRZ.*.HH?
-    [2022-03-02 15:08:36] - pyatoa - INFO: gathering observed waveforms
-    [2022-03-02 15:08:36] - pyatoa - INFO: searching ASDFDataSet for observations
-    [2022-03-02 15:08:36] - pyatoa - INFO: matching observed waveforms found
-    [2022-03-02 15:08:36] - pyatoa - INFO: gathering StationXML
-    [2022-03-02 15:08:36] - pyatoa - INFO: searching ASDFDataSet for station info
-    [2022-03-02 15:08:36] - pyatoa - INFO: matching StationXML found
-    [2022-03-02 15:08:36] - pyatoa - INFO: saved to ASDFDataSet
-    [2022-03-02 15:08:36] - pyatoa - INFO: gathering synthetic waveforms
-    [2022-03-02 15:08:36] - pyatoa - INFO: searching ASDFDataSet for synthetics
-    [2022-03-02 15:08:36] - pyatoa - INFO: searching local filesystem for synthetics
-    [2022-03-02 15:08:36] - pyatoa - DEBUG: searching for synthetics: /home/bchow/REPOSITORIES/pyatoa/pyatoa/tests/test_data/docs_data/pyaflowa_doc/synthetics/2018p130600/{net}.{sta}.*{cmp}.sem{dva}
-    [2022-03-02 15:08:36] - pyatoa - INFO: retrieved synthetics locally:
+    [2022-03-03 11:02:05] - pyatoa - INFO: gathering data for NZ.VRZ.*.HH?
+    [2022-03-03 11:02:05] - pyatoa - INFO: gathering observed waveforms
+    [2022-03-03 11:02:05] - pyatoa - INFO: searching ASDFDataSet for observations
+    [2022-03-03 11:02:05] - pyatoa - INFO: matching observed waveforms found
+    [2022-03-03 11:02:05] - pyatoa - INFO: gathering StationXML
+    [2022-03-03 11:02:05] - pyatoa - INFO: searching ASDFDataSet for station info
+    [2022-03-03 11:02:05] - pyatoa - INFO: matching StationXML found
+    [2022-03-03 11:02:05] - pyatoa - INFO: saved to ASDFDataSet
+    [2022-03-03 11:02:05] - pyatoa - INFO: gathering synthetic waveforms
+    [2022-03-03 11:02:05] - pyatoa - INFO: searching ASDFDataSet for synthetics
+    [2022-03-03 11:02:05] - pyatoa - INFO: searching local filesystem for synthetics
+    [2022-03-03 11:02:05] - pyatoa - DEBUG: searching for synthetics: /home/bchow/REPOSITORIES/pyatoa/pyatoa/tests/test_data/docs_data/pyaflowa_doc/synthetics/2018p130600/{net}.{sta}.*{cmp}.sem{dva}
+    [2022-03-03 11:02:05] - pyatoa - INFO: retrieved synthetics locally:
     /home/bchow/REPOSITORIES/pyatoa/pyatoa/tests/test_data/docs_data/pyaflowa_doc/synthetics/2018p130600/NZ.VRZ.BXE.semd
-    [2022-03-02 15:08:36] - pyatoa - INFO: retrieved synthetics locally:
+    [2022-03-03 11:02:05] - pyatoa - INFO: retrieved synthetics locally:
     /home/bchow/REPOSITORIES/pyatoa/pyatoa/tests/test_data/docs_data/pyaflowa_doc/synthetics/2018p130600/NZ.VRZ.BXN.semd
-    [2022-03-02 15:08:36] - pyatoa - INFO: retrieved synthetics locally:
+    [2022-03-03 11:02:05] - pyatoa - INFO: retrieved synthetics locally:
     /home/bchow/REPOSITORIES/pyatoa/pyatoa/tests/test_data/docs_data/pyaflowa_doc/synthetics/2018p130600/NZ.VRZ.BXZ.semd
-    [2022-03-02 15:08:36] - pyatoa - INFO: matching synthetic waveforms found
-    [2022-03-02 15:08:36] - pyatoa - INFO: saved to ASDFDataSet with tag 'synthetic_i01s00'
-    [2022-03-02 15:08:36] - pyatoa - INFO: standardizing streams
-    [2022-03-02 15:08:36] - pyatoa - DEBUG: shifting NZ.VRZ.10.HHE starttime by 0.001578s
-    [2022-03-02 15:08:36] - pyatoa - DEBUG: shifting NZ.VRZ.10.HHN starttime by 0.001578s
-    [2022-03-02 15:08:36] - pyatoa - DEBUG: shifting NZ.VRZ.10.HHZ starttime by 0.001578s
-    [2022-03-02 15:08:36] - pyatoa - DEBUG: time offset is -20.0s
-    [2022-03-02 15:08:36] - pyatoa - INFO: preprocessing observation data
-    [2022-03-02 15:08:36] - pyatoa - INFO: adjusting taper to cover time offset -20.0
-    [2022-03-02 15:08:36] - pyatoa - DEBUG: removing response, units to DISP
-    [2022-03-02 15:08:36] - pyatoa - DEBUG: rotating from generic coordinate system to ZNE
-    [2022-03-02 15:08:36] - pyatoa - DEBUG: bandpass filter: 10.0 - 30.0s w/ 2.0 corners
-    [2022-03-02 15:08:36] - pyatoa - INFO: preprocessing synthetic data
-    [2022-03-02 15:08:36] - pyatoa - INFO: adjusting taper to cover time offset -20.0
-    [2022-03-02 15:08:36] - pyatoa - DEBUG: no response removal, synthetic data or requested not to
-    [2022-03-02 15:08:36] - pyatoa - DEBUG: bandpass filter: 10.0 - 30.0s w/ 2.0 corners
-    [2022-03-02 15:08:36] - pyatoa - DEBUG: convolving data w/ Gaussian (t/2=0.70s)
-    [2022-03-02 15:08:36] - pyatoa - INFO: running Pyflex w/ map: nznorth_10-30s
-    [2022-03-02 15:08:37] - pyflex - INFO: Calculated travel times.
-    [2022-03-02 15:08:37] - pyflex - INFO: Calculating envelope of synthetics.
-    [2022-03-02 15:08:37] - pyflex - INFO: Calculating STA/LTA.
-    [2022-03-02 15:08:37] - pyflex - INFO: Initial window selection yielded 13 possible windows.
-    [2022-03-02 15:08:37] - pyflex - INFO: Rejection based on travel times retained 13 windows.
-    [2022-03-02 15:08:37] - pyflex - INFO: Global SNR checks passed. Integrated SNR: 23466401785.970848, Amplitude SNR: 384703.121688
-    [2022-03-02 15:08:37] - pyflex - INFO: Rejection based on minimum window length retained 13 windows.
-    [2022-03-02 15:08:37] - pyflex - INFO: Water level rejection retained 4 windows
-    [2022-03-02 15:08:37] - pyflex - INFO: Single phase group rejection retained 4 windows
-    [2022-03-02 15:08:37] - pyflex - INFO: Removing duplicates retains 3 windows.
-    [2022-03-02 15:08:37] - pyflex - INFO: Rejection based on minimum window length retained 3 windows.
-    [2022-03-02 15:08:37] - pyflex - INFO: SN amplitude ratio window rejection retained 3 windows
-    [2022-03-02 15:08:37] - pyflex - DEBUG: Window rejected due to CC value: 0.675487
-    [2022-03-02 15:08:37] - pyflex - INFO: Rejection based on data fit criteria retained 2 windows.
-    [2022-03-02 15:08:37] - pyflex - INFO: Weighted interval schedule optimization retained 1 windows.
-    [2022-03-02 15:08:37] - pyatoa - INFO: 1 window(s) selected for comp E
-    [2022-03-02 15:08:37] - pyflex - INFO: Calculated travel times.
-    [2022-03-02 15:08:37] - pyflex - INFO: Calculating envelope of synthetics.
-    [2022-03-02 15:08:37] - pyflex - INFO: Calculating STA/LTA.
-    [2022-03-02 15:08:37] - pyflex - INFO: Initial window selection yielded 10 possible windows.
-    [2022-03-02 15:08:37] - pyflex - INFO: Rejection based on travel times retained 10 windows.
-    [2022-03-02 15:08:37] - pyflex - INFO: Global SNR checks passed. Integrated SNR: 31526068792.362656, Amplitude SNR: 495295.417951
-    [2022-03-02 15:08:37] - pyflex - INFO: Rejection based on minimum window length retained 10 windows.
-    [2022-03-02 15:08:37] - pyflex - INFO: Water level rejection retained 4 windows
-    [2022-03-02 15:08:37] - pyflex - INFO: Single phase group rejection retained 4 windows
-    [2022-03-02 15:08:37] - pyflex - INFO: Removing duplicates retains 3 windows.
-    [2022-03-02 15:08:37] - pyflex - INFO: Rejection based on minimum window length retained 3 windows.
-    [2022-03-02 15:08:37] - pyflex - INFO: SN amplitude ratio window rejection retained 3 windows
-    [2022-03-02 15:08:37] - pyflex - INFO: Rejection based on data fit criteria retained 3 windows.
-    [2022-03-02 15:08:37] - pyflex - INFO: Weighted interval schedule optimization retained 1 windows.
-    [2022-03-02 15:08:37] - pyatoa - INFO: 1 window(s) selected for comp N
-    [2022-03-02 15:08:37] - pyflex - INFO: Calculated travel times.
-    [2022-03-02 15:08:37] - pyflex - INFO: Calculating envelope of synthetics.
-    [2022-03-02 15:08:37] - pyflex - INFO: Calculating STA/LTA.
-    [2022-03-02 15:08:37] - pyflex - INFO: Initial window selection yielded 10 possible windows.
-    [2022-03-02 15:08:37] - pyflex - INFO: Rejection based on travel times retained 10 windows.
-    [2022-03-02 15:08:37] - pyflex - INFO: Global SNR checks passed. Integrated SNR: 26562645048.905380, Amplitude SNR: 378503.886560
-    [2022-03-02 15:08:37] - pyflex - INFO: Rejection based on minimum window length retained 9 windows.
-    [2022-03-02 15:08:37] - pyflex - INFO: Water level rejection retained 3 windows
-    [2022-03-02 15:08:37] - pyflex - INFO: Single phase group rejection retained 3 windows
-    [2022-03-02 15:08:37] - pyflex - INFO: Removing duplicates retains 2 windows.
-    [2022-03-02 15:08:37] - pyflex - INFO: Rejection based on minimum window length retained 2 windows.
-    [2022-03-02 15:08:37] - pyflex - INFO: SN amplitude ratio window rejection retained 2 windows
-    [2022-03-02 15:08:37] - pyflex - INFO: Rejection based on data fit criteria retained 2 windows.
-    [2022-03-02 15:08:37] - pyflex - INFO: Weighted interval schedule optimization retained 1 windows.
-    [2022-03-02 15:08:37] - pyatoa - INFO: 1 window(s) selected for comp Z
-    [2022-03-02 15:08:37] - pyatoa - DEBUG: saving misfit windows to ASDFDataSet
-    [2022-03-02 15:08:37] - pyatoa - INFO: 3 window(s) total found
-    [2022-03-02 15:08:37] - pyatoa - DEBUG: running Pyadjoint w/ type: cc_traveltime_misfit
-    [2022-03-02 15:08:37] - pyatoa - INFO: 0.198 misfit for comp E
-    [2022-03-02 15:08:37] - pyatoa - INFO: 0.011 misfit for comp N
-    [2022-03-02 15:08:37] - pyatoa - INFO: 0.065 misfit for comp Z
-    [2022-03-02 15:08:37] - pyatoa - DEBUG: saving adjoint sources to ASDFDataSet
-    [2022-03-02 15:08:37] - pyatoa - INFO: total misfit 0.275
-    [2022-03-02 15:08:37] - pyatoa - INFO: 
+    [2022-03-03 11:02:05] - pyatoa - INFO: matching synthetic waveforms found
+    [2022-03-03 11:02:05] - pyatoa - INFO: saved to ASDFDataSet with tag 'synthetic_i01s00'
+    [2022-03-03 11:02:05] - pyatoa - INFO: standardizing streams
+    [2022-03-03 11:02:05] - pyatoa - DEBUG: shifting NZ.VRZ.10.HHE starttime by 0.001578s
+    [2022-03-03 11:02:05] - pyatoa - DEBUG: shifting NZ.VRZ.10.HHN starttime by 0.001578s
+    [2022-03-03 11:02:05] - pyatoa - DEBUG: shifting NZ.VRZ.10.HHZ starttime by 0.001578s
+    [2022-03-03 11:02:05] - pyatoa - DEBUG: time offset is -20.0s
+    [2022-03-03 11:02:05] - pyatoa - INFO: preprocessing observation data
+    [2022-03-03 11:02:05] - pyatoa - INFO: adjusting taper to cover time offset -20.0
+    [2022-03-03 11:02:05] - pyatoa - DEBUG: removing response, units to DISP
+    [2022-03-03 11:02:05] - pyatoa - DEBUG: rotating from generic coordinate system to ZNE
+    [2022-03-03 11:02:05] - pyatoa - DEBUG: bandpass filter: 10.0 - 30.0s w/ 2.0 corners
+    [2022-03-03 11:02:05] - pyatoa - INFO: preprocessing synthetic data
+    [2022-03-03 11:02:05] - pyatoa - INFO: adjusting taper to cover time offset -20.0
+    [2022-03-03 11:02:05] - pyatoa - DEBUG: no response removal, synthetic data or requested not to
+    [2022-03-03 11:02:05] - pyatoa - DEBUG: bandpass filter: 10.0 - 30.0s w/ 2.0 corners
+    [2022-03-03 11:02:05] - pyatoa - DEBUG: convolving data w/ Gaussian (t/2=0.70s)
+    [2022-03-03 11:02:05] - pyatoa - INFO: running Pyflex w/ map: nznorth_10-30s
+    [2022-03-03 11:02:06] - pyflex - INFO: Calculated travel times.
+    [2022-03-03 11:02:06] - pyflex - INFO: Calculating envelope of synthetics.
+    [2022-03-03 11:02:06] - pyflex - INFO: Calculating STA/LTA.
+    [2022-03-03 11:02:06] - pyflex - INFO: Initial window selection yielded 13 possible windows.
+    [2022-03-03 11:02:06] - pyflex - INFO: Rejection based on travel times retained 13 windows.
+    [2022-03-03 11:02:06] - pyflex - INFO: Global SNR checks passed. Integrated SNR: 23466401786.021927, Amplitude SNR: 384703.121689
+    [2022-03-03 11:02:06] - pyflex - INFO: Rejection based on minimum window length retained 13 windows.
+    [2022-03-03 11:02:06] - pyflex - INFO: Water level rejection retained 4 windows
+    [2022-03-03 11:02:06] - pyflex - INFO: Single phase group rejection retained 4 windows
+    [2022-03-03 11:02:06] - pyflex - INFO: Removing duplicates retains 3 windows.
+    [2022-03-03 11:02:06] - pyflex - INFO: Rejection based on minimum window length retained 3 windows.
+    [2022-03-03 11:02:06] - pyflex - INFO: SN amplitude ratio window rejection retained 3 windows
+    [2022-03-03 11:02:06] - pyflex - DEBUG: Window rejected due to CC value: 0.675487
+    [2022-03-03 11:02:06] - pyflex - INFO: Rejection based on data fit criteria retained 2 windows.
+    [2022-03-03 11:02:06] - pyflex - INFO: Weighted interval schedule optimization retained 1 windows.
+    [2022-03-03 11:02:06] - pyatoa - INFO: 1 window(s) selected for comp E
+    [2022-03-03 11:02:06] - pyflex - INFO: Calculated travel times.
+    [2022-03-03 11:02:06] - pyflex - INFO: Calculating envelope of synthetics.
+    [2022-03-03 11:02:06] - pyflex - INFO: Calculating STA/LTA.
+    [2022-03-03 11:02:06] - pyflex - INFO: Initial window selection yielded 10 possible windows.
+    [2022-03-03 11:02:06] - pyflex - INFO: Rejection based on travel times retained 10 windows.
+    [2022-03-03 11:02:06] - pyflex - INFO: Global SNR checks passed. Integrated SNR: 31526068792.227688, Amplitude SNR: 495295.417950
+    [2022-03-03 11:02:06] - pyflex - INFO: Rejection based on minimum window length retained 10 windows.
+    [2022-03-03 11:02:06] - pyflex - INFO: Water level rejection retained 4 windows
+    [2022-03-03 11:02:06] - pyflex - INFO: Single phase group rejection retained 4 windows
+    [2022-03-03 11:02:06] - pyflex - INFO: Removing duplicates retains 3 windows.
+    [2022-03-03 11:02:06] - pyflex - INFO: Rejection based on minimum window length retained 3 windows.
+    [2022-03-03 11:02:06] - pyflex - INFO: SN amplitude ratio window rejection retained 3 windows
+    [2022-03-03 11:02:06] - pyflex - INFO: Rejection based on data fit criteria retained 3 windows.
+    [2022-03-03 11:02:06] - pyflex - INFO: Weighted interval schedule optimization retained 1 windows.
+    [2022-03-03 11:02:06] - pyatoa - INFO: 1 window(s) selected for comp N
+    [2022-03-03 11:02:06] - pyflex - INFO: Calculated travel times.
+    [2022-03-03 11:02:06] - pyflex - INFO: Calculating envelope of synthetics.
+    [2022-03-03 11:02:06] - pyflex - INFO: Calculating STA/LTA.
+    [2022-03-03 11:02:06] - pyflex - INFO: Initial window selection yielded 10 possible windows.
+    [2022-03-03 11:02:06] - pyflex - INFO: Rejection based on travel times retained 10 windows.
+    [2022-03-03 11:02:06] - pyflex - INFO: Global SNR checks passed. Integrated SNR: 26562645048.805443, Amplitude SNR: 378503.886559
+    [2022-03-03 11:02:06] - pyflex - INFO: Rejection based on minimum window length retained 9 windows.
+    [2022-03-03 11:02:06] - pyflex - INFO: Water level rejection retained 3 windows
+    [2022-03-03 11:02:06] - pyflex - INFO: Single phase group rejection retained 3 windows
+    [2022-03-03 11:02:06] - pyflex - INFO: Removing duplicates retains 2 windows.
+    [2022-03-03 11:02:06] - pyflex - INFO: Rejection based on minimum window length retained 2 windows.
+    [2022-03-03 11:02:06] - pyflex - INFO: SN amplitude ratio window rejection retained 2 windows
+    [2022-03-03 11:02:06] - pyflex - INFO: Rejection based on data fit criteria retained 2 windows.
+    [2022-03-03 11:02:06] - pyflex - INFO: Weighted interval schedule optimization retained 1 windows.
+    [2022-03-03 11:02:06] - pyatoa - INFO: 1 window(s) selected for comp Z
+    [2022-03-03 11:02:06] - pyatoa - DEBUG: saving misfit windows to ASDFDataSet
+    [2022-03-03 11:02:06] - pyatoa - INFO: 3 window(s) total found
+    [2022-03-03 11:02:06] - pyatoa - DEBUG: running Pyadjoint w/ type: cc_traveltime_misfit
+    [2022-03-03 11:02:06] - pyatoa - INFO: 0.198 misfit for comp E
+    [2022-03-03 11:02:06] - pyatoa - INFO: 0.011 misfit for comp N
+    [2022-03-03 11:02:06] - pyatoa - INFO: 0.065 misfit for comp Z
+    [2022-03-03 11:02:06] - pyatoa - DEBUG: saving adjoint sources to ASDFDataSet
+    [2022-03-03 11:02:06] - pyatoa - INFO: total misfit 0.275
+    [2022-03-03 11:02:06] - pyatoa - INFO: 
     
     	OBS WAVS:  3
     	SYN WAVS:  3
     	WINDOWS:   3
     	MISFIT:    0.27
     
-    [2022-03-02 15:08:37] - pyatoa - INFO: saving figure to: /home/bchow/REPOSITORIES/pyatoa/pyatoa/tests/test_data/docs_data/pyaflowa_doc/figures/2018p130600/i01_s00_NZ_VRZ.pdf
-    [2022-03-02 15:08:38] - pyatoa - INFO: 
+    [2022-03-03 11:02:06] - pyatoa - INFO: saving figure to: /home/bchow/REPOSITORIES/pyatoa/pyatoa/tests/test_data/docs_data/pyaflowa_doc/figures/2018p130600/i01_s00_NZ_VRZ.pdf
+    [2022-03-03 11:02:07] - pyatoa - INFO: 
     ================================================================================
     
     FINALIZE
     
     ================================================================================
-    [2022-03-02 15:08:38] - pyatoa - INFO: 
+    [2022-03-03 11:02:07] - pyatoa - INFO: 
     ================================================================================
     
     NZ.WAZ.*.HH?
     
     ================================================================================
-    [2022-03-02 15:08:38] - pyatoa - INFO: gathering data for NZ.WAZ.*.HH?
-    [2022-03-02 15:08:38] - pyatoa - INFO: gathering observed waveforms
-    [2022-03-02 15:08:38] - pyatoa - INFO: searching ASDFDataSet for observations
-    [2022-03-02 15:08:38] - pyatoa - INFO: matching observed waveforms found
-    [2022-03-02 15:08:38] - pyatoa - INFO: gathering StationXML
-    [2022-03-02 15:08:38] - pyatoa - INFO: searching ASDFDataSet for station info
-    [2022-03-02 15:08:38] - pyatoa - INFO: matching StationXML found
-    [2022-03-02 15:08:38] - pyatoa - INFO: saved to ASDFDataSet
-    [2022-03-02 15:08:38] - pyatoa - INFO: gathering synthetic waveforms
-    [2022-03-02 15:08:38] - pyatoa - INFO: searching ASDFDataSet for synthetics
-    [2022-03-02 15:08:38] - pyatoa - INFO: searching local filesystem for synthetics
-    [2022-03-02 15:08:38] - pyatoa - DEBUG: searching for synthetics: /home/bchow/REPOSITORIES/pyatoa/pyatoa/tests/test_data/docs_data/pyaflowa_doc/synthetics/2018p130600/{net}.{sta}.*{cmp}.sem{dva}
-    [2022-03-02 15:08:38] - pyatoa - INFO: retrieved synthetics locally:
+    [2022-03-03 11:02:07] - pyatoa - INFO: gathering data for NZ.WAZ.*.HH?
+    [2022-03-03 11:02:07] - pyatoa - INFO: gathering observed waveforms
+    [2022-03-03 11:02:07] - pyatoa - INFO: searching ASDFDataSet for observations
+    [2022-03-03 11:02:07] - pyatoa - INFO: matching observed waveforms found
+    [2022-03-03 11:02:07] - pyatoa - INFO: gathering StationXML
+    [2022-03-03 11:02:07] - pyatoa - INFO: searching ASDFDataSet for station info
+    [2022-03-03 11:02:07] - pyatoa - INFO: matching StationXML found
+    [2022-03-03 11:02:07] - pyatoa - INFO: saved to ASDFDataSet
+    [2022-03-03 11:02:07] - pyatoa - INFO: gathering synthetic waveforms
+    [2022-03-03 11:02:07] - pyatoa - INFO: searching ASDFDataSet for synthetics
+    [2022-03-03 11:02:07] - pyatoa - INFO: searching local filesystem for synthetics
+    [2022-03-03 11:02:07] - pyatoa - DEBUG: searching for synthetics: /home/bchow/REPOSITORIES/pyatoa/pyatoa/tests/test_data/docs_data/pyaflowa_doc/synthetics/2018p130600/{net}.{sta}.*{cmp}.sem{dva}
+    [2022-03-03 11:02:07] - pyatoa - INFO: retrieved synthetics locally:
     /home/bchow/REPOSITORIES/pyatoa/pyatoa/tests/test_data/docs_data/pyaflowa_doc/synthetics/2018p130600/NZ.WAZ.BXE.semd
-    [2022-03-02 15:08:38] - pyatoa - INFO: retrieved synthetics locally:
+    [2022-03-03 11:02:07] - pyatoa - INFO: retrieved synthetics locally:
     /home/bchow/REPOSITORIES/pyatoa/pyatoa/tests/test_data/docs_data/pyaflowa_doc/synthetics/2018p130600/NZ.WAZ.BXN.semd
-    [2022-03-02 15:08:38] - pyatoa - INFO: retrieved synthetics locally:
+    [2022-03-03 11:02:07] - pyatoa - INFO: retrieved synthetics locally:
     /home/bchow/REPOSITORIES/pyatoa/pyatoa/tests/test_data/docs_data/pyaflowa_doc/synthetics/2018p130600/NZ.WAZ.BXZ.semd
-    [2022-03-02 15:08:38] - pyatoa - INFO: matching synthetic waveforms found
-    [2022-03-02 15:08:38] - pyatoa - INFO: saved to ASDFDataSet with tag 'synthetic_i01s00'
-    [2022-03-02 15:08:38] - pyatoa - INFO: standardizing streams
-    [2022-03-02 15:08:38] - pyatoa - DEBUG: shifting NZ.WAZ.10.HHE starttime by 0.001607s
-    [2022-03-02 15:08:38] - pyatoa - DEBUG: shifting NZ.WAZ.10.HHN starttime by 0.001607s
-    [2022-03-02 15:08:38] - pyatoa - DEBUG: shifting NZ.WAZ.10.HHZ starttime by 0.001607s
-    [2022-03-02 15:08:38] - pyatoa - DEBUG: time offset is -20.0s
-    [2022-03-02 15:08:38] - pyatoa - INFO: preprocessing observation data
-    [2022-03-02 15:08:38] - pyatoa - INFO: adjusting taper to cover time offset -20.0
-    [2022-03-02 15:08:38] - pyatoa - DEBUG: removing response, units to DISP
-    [2022-03-02 15:08:38] - pyatoa - DEBUG: rotating from generic coordinate system to ZNE
-    [2022-03-02 15:08:38] - pyatoa - DEBUG: bandpass filter: 10.0 - 30.0s w/ 2.0 corners
-    [2022-03-02 15:08:38] - pyatoa - INFO: preprocessing synthetic data
-    [2022-03-02 15:08:38] - pyatoa - INFO: adjusting taper to cover time offset -20.0
-    [2022-03-02 15:08:38] - pyatoa - DEBUG: no response removal, synthetic data or requested not to
-    [2022-03-02 15:08:38] - pyatoa - DEBUG: bandpass filter: 10.0 - 30.0s w/ 2.0 corners
-    [2022-03-02 15:08:38] - pyatoa - DEBUG: convolving data w/ Gaussian (t/2=0.70s)
-    [2022-03-02 15:08:38] - pyatoa - INFO: running Pyflex w/ map: nznorth_10-30s
-    [2022-03-02 15:08:38] - pyflex - INFO: Calculated travel times.
-    [2022-03-02 15:08:38] - pyflex - INFO: Calculating envelope of synthetics.
-    [2022-03-02 15:08:38] - pyflex - INFO: Calculating STA/LTA.
-    [2022-03-02 15:08:38] - pyflex - INFO: Initial window selection yielded 22 possible windows.
-    [2022-03-02 15:08:38] - pyflex - INFO: Rejection based on travel times retained 22 windows.
-    [2022-03-02 15:08:38] - pyflex - INFO: Global SNR checks passed. Integrated SNR: 28382657308.924114, Amplitude SNR: 494242.727553
-    [2022-03-02 15:08:38] - pyflex - INFO: Rejection based on minimum window length retained 20 windows.
-    [2022-03-02 15:08:38] - pyflex - INFO: Water level rejection retained 8 windows
-    [2022-03-02 15:08:38] - pyflex - INFO: Single phase group rejection retained 8 windows
-    [2022-03-02 15:08:38] - pyflex - INFO: Removing duplicates retains 4 windows.
-    [2022-03-02 15:08:38] - pyflex - INFO: Rejection based on minimum window length retained 4 windows.
-    [2022-03-02 15:08:38] - pyflex - INFO: SN amplitude ratio window rejection retained 4 windows
-    [2022-03-02 15:08:38] - pyflex - INFO: Rejection based on data fit criteria retained 4 windows.
-    [2022-03-02 15:08:38] - pyflex - INFO: Weighted interval schedule optimization retained 1 windows.
-    [2022-03-02 15:08:38] - pyatoa - INFO: 1 window(s) selected for comp E
-    [2022-03-02 15:08:38] - pyflex - INFO: Calculated travel times.
-    [2022-03-02 15:08:38] - pyflex - INFO: Calculating envelope of synthetics.
-    [2022-03-02 15:08:38] - pyflex - INFO: Calculating STA/LTA.
-    [2022-03-02 15:08:38] - pyflex - INFO: Initial window selection yielded 10 possible windows.
-    [2022-03-02 15:08:38] - pyflex - INFO: Rejection based on travel times retained 10 windows.
-    [2022-03-02 15:08:38] - pyflex - INFO: Global SNR checks passed. Integrated SNR: 60358322015.940735, Amplitude SNR: 576780.923206
-    [2022-03-02 15:08:38] - pyflex - INFO: Rejection based on minimum window length retained 9 windows.
-    [2022-03-02 15:08:38] - pyflex - INFO: Water level rejection retained 3 windows
-    [2022-03-02 15:08:38] - pyflex - INFO: Single phase group rejection retained 3 windows
-    [2022-03-02 15:08:38] - pyflex - INFO: Removing duplicates retains 2 windows.
-    [2022-03-02 15:08:38] - pyflex - INFO: Rejection based on minimum window length retained 2 windows.
-    [2022-03-02 15:08:38] - pyflex - INFO: SN amplitude ratio window rejection retained 2 windows
-    [2022-03-02 15:08:38] - pyflex - DEBUG: Window rejected due to amplitude fit: 3.871042
-    [2022-03-02 15:08:38] - pyflex - DEBUG: Window rejected due to amplitude fit: 3.793857
-    [2022-03-02 15:08:38] - pyflex - INFO: Rejection based on data fit criteria retained 0 windows.
-    [2022-03-02 15:08:38] - pyflex - INFO: Weighted interval schedule optimization retained 0 windows.
-    [2022-03-02 15:08:38] - pyatoa - INFO: 0 window(s) selected for comp N
-    [2022-03-02 15:08:39] - pyflex - INFO: Calculated travel times.
-    [2022-03-02 15:08:39] - pyflex - INFO: Calculating envelope of synthetics.
-    [2022-03-02 15:08:39] - pyflex - INFO: Calculating STA/LTA.
-    [2022-03-02 15:08:39] - pyflex - INFO: Initial window selection yielded 10 possible windows.
-    [2022-03-02 15:08:39] - pyflex - INFO: Rejection based on travel times retained 10 windows.
-    [2022-03-02 15:08:39] - pyflex - INFO: Global SNR checks passed. Integrated SNR: 4763134899.314076, Amplitude SNR: 166126.234705
-    [2022-03-02 15:08:39] - pyflex - INFO: Rejection based on minimum window length retained 9 windows.
-    [2022-03-02 15:08:39] - pyflex - INFO: Water level rejection retained 3 windows
-    [2022-03-02 15:08:39] - pyflex - INFO: Single phase group rejection retained 3 windows
-    [2022-03-02 15:08:39] - pyflex - INFO: Removing duplicates retains 2 windows.
-    [2022-03-02 15:08:39] - pyflex - INFO: Rejection based on minimum window length retained 2 windows.
-    [2022-03-02 15:08:39] - pyflex - INFO: SN amplitude ratio window rejection retained 2 windows
-    [2022-03-02 15:08:39] - pyflex - INFO: Rejection based on data fit criteria retained 2 windows.
-    [2022-03-02 15:08:39] - pyflex - INFO: Weighted interval schedule optimization retained 1 windows.
-    [2022-03-02 15:08:39] - pyatoa - INFO: 1 window(s) selected for comp Z
-    [2022-03-02 15:08:39] - pyatoa - DEBUG: saving misfit windows to ASDFDataSet
-    [2022-03-02 15:08:39] - pyatoa - INFO: 2 window(s) total found
-    [2022-03-02 15:08:39] - pyatoa - DEBUG: running Pyadjoint w/ type: cc_traveltime_misfit
-    [2022-03-02 15:08:39] - pyatoa - INFO: 1.037 misfit for comp E
-    [2022-03-02 15:08:39] - pyatoa - INFO: 0.293 misfit for comp Z
-    [2022-03-02 15:08:39] - pyatoa - DEBUG: saving adjoint sources to ASDFDataSet
-    [2022-03-02 15:08:39] - pyatoa - INFO: total misfit 1.329
-    [2022-03-02 15:08:39] - pyatoa - INFO: 
+    [2022-03-03 11:02:07] - pyatoa - INFO: matching synthetic waveforms found
+    [2022-03-03 11:02:07] - pyatoa - INFO: saved to ASDFDataSet with tag 'synthetic_i01s00'
+    [2022-03-03 11:02:07] - pyatoa - INFO: standardizing streams
+    [2022-03-03 11:02:07] - pyatoa - DEBUG: shifting NZ.WAZ.10.HHE starttime by 0.001607s
+    [2022-03-03 11:02:07] - pyatoa - DEBUG: shifting NZ.WAZ.10.HHN starttime by 0.001607s
+    [2022-03-03 11:02:07] - pyatoa - DEBUG: shifting NZ.WAZ.10.HHZ starttime by 0.001607s
+    [2022-03-03 11:02:07] - pyatoa - DEBUG: time offset is -20.0s
+    [2022-03-03 11:02:07] - pyatoa - INFO: preprocessing observation data
+    [2022-03-03 11:02:07] - pyatoa - INFO: adjusting taper to cover time offset -20.0
+    [2022-03-03 11:02:07] - pyatoa - DEBUG: removing response, units to DISP
+    [2022-03-03 11:02:08] - pyatoa - DEBUG: rotating from generic coordinate system to ZNE
+    [2022-03-03 11:02:08] - pyatoa - DEBUG: bandpass filter: 10.0 - 30.0s w/ 2.0 corners
+    [2022-03-03 11:02:08] - pyatoa - INFO: preprocessing synthetic data
+    [2022-03-03 11:02:08] - pyatoa - INFO: adjusting taper to cover time offset -20.0
+    [2022-03-03 11:02:08] - pyatoa - DEBUG: no response removal, synthetic data or requested not to
+    [2022-03-03 11:02:08] - pyatoa - DEBUG: bandpass filter: 10.0 - 30.0s w/ 2.0 corners
+    [2022-03-03 11:02:08] - pyatoa - DEBUG: convolving data w/ Gaussian (t/2=0.70s)
+    [2022-03-03 11:02:08] - pyatoa - INFO: running Pyflex w/ map: nznorth_10-30s
+    [2022-03-03 11:02:08] - pyflex - INFO: Calculated travel times.
+    [2022-03-03 11:02:08] - pyflex - INFO: Calculating envelope of synthetics.
+    [2022-03-03 11:02:08] - pyflex - INFO: Calculating STA/LTA.
+    [2022-03-03 11:02:08] - pyflex - INFO: Initial window selection yielded 22 possible windows.
+    [2022-03-03 11:02:08] - pyflex - INFO: Rejection based on travel times retained 22 windows.
+    [2022-03-03 11:02:08] - pyflex - INFO: Global SNR checks passed. Integrated SNR: 28382657308.948811, Amplitude SNR: 494242.727553
+    [2022-03-03 11:02:08] - pyflex - INFO: Rejection based on minimum window length retained 20 windows.
+    [2022-03-03 11:02:08] - pyflex - INFO: Water level rejection retained 8 windows
+    [2022-03-03 11:02:08] - pyflex - INFO: Single phase group rejection retained 8 windows
+    [2022-03-03 11:02:08] - pyflex - INFO: Removing duplicates retains 4 windows.
+    [2022-03-03 11:02:08] - pyflex - INFO: Rejection based on minimum window length retained 4 windows.
+    [2022-03-03 11:02:08] - pyflex - INFO: SN amplitude ratio window rejection retained 4 windows
+    [2022-03-03 11:02:08] - pyflex - INFO: Rejection based on data fit criteria retained 4 windows.
+    [2022-03-03 11:02:08] - pyflex - INFO: Weighted interval schedule optimization retained 1 windows.
+    [2022-03-03 11:02:08] - pyatoa - INFO: 1 window(s) selected for comp E
+    [2022-03-03 11:02:08] - pyflex - INFO: Calculated travel times.
+    [2022-03-03 11:02:08] - pyflex - INFO: Calculating envelope of synthetics.
+    [2022-03-03 11:02:08] - pyflex - INFO: Calculating STA/LTA.
+    [2022-03-03 11:02:08] - pyflex - INFO: Initial window selection yielded 10 possible windows.
+    [2022-03-03 11:02:08] - pyflex - INFO: Rejection based on travel times retained 10 windows.
+    [2022-03-03 11:02:08] - pyflex - INFO: Global SNR checks passed. Integrated SNR: 60358322016.534302, Amplitude SNR: 576780.923209
+    [2022-03-03 11:02:08] - pyflex - INFO: Rejection based on minimum window length retained 9 windows.
+    [2022-03-03 11:02:08] - pyflex - INFO: Water level rejection retained 3 windows
+    [2022-03-03 11:02:08] - pyflex - INFO: Single phase group rejection retained 3 windows
+    [2022-03-03 11:02:08] - pyflex - INFO: Removing duplicates retains 2 windows.
+    [2022-03-03 11:02:08] - pyflex - INFO: Rejection based on minimum window length retained 2 windows.
+    [2022-03-03 11:02:08] - pyflex - INFO: SN amplitude ratio window rejection retained 2 windows
+    [2022-03-03 11:02:08] - pyflex - DEBUG: Window rejected due to amplitude fit: 3.871042
+    [2022-03-03 11:02:08] - pyflex - DEBUG: Window rejected due to amplitude fit: 3.793857
+    [2022-03-03 11:02:08] - pyflex - INFO: Rejection based on data fit criteria retained 0 windows.
+    [2022-03-03 11:02:08] - pyflex - INFO: Weighted interval schedule optimization retained 0 windows.
+    [2022-03-03 11:02:08] - pyatoa - INFO: 0 window(s) selected for comp N
+    [2022-03-03 11:02:08] - pyflex - INFO: Calculated travel times.
+    [2022-03-03 11:02:08] - pyflex - INFO: Calculating envelope of synthetics.
+    [2022-03-03 11:02:08] - pyflex - INFO: Calculating STA/LTA.
+    [2022-03-03 11:02:08] - pyflex - INFO: Initial window selection yielded 10 possible windows.
+    [2022-03-03 11:02:08] - pyflex - INFO: Rejection based on travel times retained 10 windows.
+    [2022-03-03 11:02:08] - pyflex - INFO: Global SNR checks passed. Integrated SNR: 4763134899.306085, Amplitude SNR: 166126.234705
+    [2022-03-03 11:02:08] - pyflex - INFO: Rejection based on minimum window length retained 9 windows.
+    [2022-03-03 11:02:08] - pyflex - INFO: Water level rejection retained 3 windows
+    [2022-03-03 11:02:08] - pyflex - INFO: Single phase group rejection retained 3 windows
+    [2022-03-03 11:02:08] - pyflex - INFO: Removing duplicates retains 2 windows.
+    [2022-03-03 11:02:08] - pyflex - INFO: Rejection based on minimum window length retained 2 windows.
+    [2022-03-03 11:02:08] - pyflex - INFO: SN amplitude ratio window rejection retained 2 windows
+    [2022-03-03 11:02:08] - pyflex - INFO: Rejection based on data fit criteria retained 2 windows.
+    [2022-03-03 11:02:08] - pyflex - INFO: Weighted interval schedule optimization retained 1 windows.
+    [2022-03-03 11:02:08] - pyatoa - INFO: 1 window(s) selected for comp Z
+    [2022-03-03 11:02:08] - pyatoa - DEBUG: saving misfit windows to ASDFDataSet
+    [2022-03-03 11:02:08] - pyatoa - INFO: 2 window(s) total found
+    [2022-03-03 11:02:08] - pyatoa - DEBUG: running Pyadjoint w/ type: cc_traveltime_misfit
+    [2022-03-03 11:02:08] - pyatoa - INFO: 1.037 misfit for comp E
+    [2022-03-03 11:02:08] - pyatoa - INFO: 0.293 misfit for comp Z
+    [2022-03-03 11:02:08] - pyatoa - DEBUG: saving adjoint sources to ASDFDataSet
+    [2022-03-03 11:02:08] - pyatoa - INFO: total misfit 1.329
+    [2022-03-03 11:02:08] - pyatoa - INFO: 
     
     	OBS WAVS:  3
     	SYN WAVS:  3
     	WINDOWS:   2
     	MISFIT:    1.33
     
-    [2022-03-02 15:08:39] - pyatoa - INFO: saving figure to: /home/bchow/REPOSITORIES/pyatoa/pyatoa/tests/test_data/docs_data/pyaflowa_doc/figures/2018p130600/i01_s00_NZ_WAZ.pdf
-    [2022-03-02 15:08:39] - pyatoa - INFO: 
+    [2022-03-03 11:02:08] - pyatoa - INFO: saving figure to: /home/bchow/REPOSITORIES/pyatoa/pyatoa/tests/test_data/docs_data/pyaflowa_doc/figures/2018p130600/i01_s00_NZ_WAZ.pdf
+    [2022-03-03 11:02:09] - pyatoa - INFO: 
     ================================================================================
     
     FINALIZE
     
     ================================================================================
-    [2022-03-02 15:08:39] - pyatoa - INFO: creating single .pdf file of all output figures
-    [2022-03-02 15:08:39] - pyatoa - INFO: generating STATIONS_ADJOINT file for SPECFEM
-    [2022-03-02 15:08:39] - pyatoa - INFO: 
+    [2022-03-03 11:02:09] - pyatoa - INFO: creating single .pdf file of all output figures
+    [2022-03-03 11:02:09] - pyatoa - INFO: generating STATIONS_ADJOINT file for SPECFEM
+    [2022-03-03 11:02:09] - pyatoa - INFO: 
     ================================================================================
     
     SUMMARY
