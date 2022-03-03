@@ -23,8 +23,8 @@ def convert_nb(nbname):
 
     # Run nbconvert to execute a notebook, allowing errors through and saving
     # the new, executed notebook in place
-    os.system(f"jupyter nbconvert --to notebook "# --allow-errors "  # --no-prompt "
-              f"--execute {filename} --output {filename}")
+    os.system(f"jupyter nbconvert --to notebook "
+              f"--execute {filename} --inplace")
     os.system("rm -rf ./index_files")
 
     # Run nbconvert to convert executed notebook to RST format for docs page
@@ -32,9 +32,11 @@ def convert_nb(nbname):
 
 
 if __name__ == "__main__":
+    notebook_dir = "./notebooks"
+
     if sys.argv[1:]:
         for nbname in sys.argv[1:]:
             convert_nb(nbname)
     else:
-        for nbname in glob.glob("./*ipynb"):
+        for nbname in glob.glob(os.path.join(notebook_dir, "*ipynb")):
             convert_nb(nbname)
