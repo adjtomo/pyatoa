@@ -132,7 +132,7 @@ class ExternalGetter:
         """
         Call for ObsPy FDSN webservice client to download waveform data.
 
-        .. Note:
+        .. Note::
             ObsPy sometimes returns traces with varying sample lengths,
             so we use a 10 second cushion on start and end time and trim after
             retrieval to make sure traces are the same length.

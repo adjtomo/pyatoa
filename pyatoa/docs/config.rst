@@ -1,7 +1,7 @@
 Config
 ======
 
-The :doc:`Config </autoapi/pyatoa/core/config/index.html>` class controls the internal workflow and structure of Pyatoa, and is accessed by almost all of the core classes. Configuration parameters are used to determine how waveforms are gathered, processed, windowed and measured. 
+The :doc:`Config </autoapi/pyatoa/core/config>` class controls the internal workflow and structure of Pyatoa, and is accessed by almost all of the core classes. Configuration parameters are used to determine how waveforms are gathered, processed, windowed and measured. 
 
 There are additional bookkeeping parameters to ensure that all data is
 maintained to the same standard throughout an inversion. Configs can be
@@ -54,18 +54,17 @@ An empty :doc:`Config </autoapi/pyatoa/core/config/index.html>` class comes with
     EXTERNAL
         pyflex_preset:           default
         adj_src_type:            cc_traveltime_misfit
-        pyflex_config:           <pyflex.config.Config object at 0x7f2a145d44d0>
-        pyadjoint_config:        <pyadjoint.config.Config object at 0x7f2a145e4d90>
+        pyflex_config:           <pyflex.config.Config object at 0x7fb6a8336890>
+        pyadjoint_config:        <pyadjoint.config.Config object at 0x7fb6a833c190>
 
 
 
 File naming convention
 ~~~~~~~~~~~~~~~~~~~~~~
 
-As stated in the :doc:``Standards </standards>`` page, the ``iteration``
-and ``step_count`` parameters are used for internal naming. They can be
-set using integer values or strings. Formatted tags can be accessed
-using the ``iter_tag`` and ``step_tag`` parameters.
+The ``iteration`` and ``step_count`` parameters are used for internal
+naming. They can be set using integer values or strings. Formatted tags
+can be accessed using the ``iter_tag`` and ``step_tag`` parameters.
 
    **NOTE**: The formatted convetion for iterations is *i??*. For step
    counts it is *s??*. (``?`` takes the place of a single integer from
@@ -74,6 +73,8 @@ using the ``iter_tag`` and ``step_tag`` parameters.
 The parameter ``synthetic_tag``, used to save synthetic waveforms,
 automatically reflects changes to the ``iteration`` and ``step_count``
 variables.
+
+See the :doc:`Standards </standards>` page for more information on iteration and step_count parameters.
 
 .. code:: ipython3
 
@@ -122,9 +123,7 @@ into a set of parameters. Alternatively Pyflex Config and Pyadjoint
 Config keyword arguments can be passed directly to the ``Pyatoa.Config``
 class.
 
-For specific arguments of the Pyflex and Pyadjoint Config parameters,
-see their respective documentation pages. For available choices of
-``pyflex_preset`` and ``adj_src_type``, see the following API.
+For specific arguments of the Pyflex and Pyadjoint Config parameters, see their respective documentation pages. For available choices of pyflex_preset, see the following :doc:`module code </_modules/pyatoa/plugins/pyflex_presets.html>`
 
 .. code:: ipython3
 

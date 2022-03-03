@@ -65,7 +65,7 @@ Some question that you might have regarding Pyatoa are:
 - Is Pyatoa necessary to run seismic inversions? 
 
 Well, SeisFlows3 was originally written (as SeisFlows) as an automated workflow 
-tool for full waveform inversion, allowing for generalizerd interfacing with a 
+tool for full waveform inversion, allowing for generalized interfacing with a 
 number of numerical solvers and compute interfaces. 
 
 However, within the original SeisFlows, we identified some key features that are
@@ -75,13 +75,13 @@ flexible adjoint source creation, inversion assessment, and figure generation.
 
 Now, these tasks can of course be performed manually with existing tools, e.g.,
 one can preprocess with ObsPy, window with Flexwin, create adjoint sources 
-with numpy, assess an inversion with Pandas and generate figures with 
-matplotlib, Matlab, GMT etc., however the name of the game here is automation
+with NumPy, assess an inversion with Pandas and generate figures with 
+Matplotlib, Matlab, GMT etc., however the name of the game here is automation
 and reproducibility. 
 
 If everyone has their own individual codes to perform these tasks, then each 
 researcher must effectively re-invent the wheel. Consequently, Pyatoa was 
-developed to provide a high-level interface for users (and by extensino 
+developed to provide a high-level interface for users (and by extension 
 SeisFlows3) to automate the above-named tasks as well as provide a platform for 
 the tomography community to improve upon collectively.
 
