@@ -73,13 +73,15 @@ Long-Term Goals [> 6 months]
   prepare_meshfem.py>`__ into pyatoa.core 
 - Integrate event declustering scripts into utilities 
   (see Amanda McPherson, Carl Tape)
-- Enhance Pyatoa's simulation domain recognition abilities 
-  (e.g., defining domain border based on longest wavelength, station distance)
-- Improved parallel capacity for waveform processing (with concurrent.futures)
-- Improved integration with 
+- Standalone SPECFEM2D kernel creation examples with adjoint source and 
+  auxiliary file generation handled by Pyatoa. 
+- Improved workflow integration with 
   `SeisFlows3 <https://github.com/bch0w/seisflows3>`__
   (e.g., passing objects in memory and not on disk, actual parallel 
   implementation as opposed to embarrasingly parallel)
+- Enhance Pyatoa's simulation domain recognition abilities 
+  (e.g., defining domain border based on longest wavelength, station distance)
+- Improved parallel capacity for waveform processing (with concurrent.futures)
 - Reduce filesize overhead during inversions (e.g., stop storing redundant 
   Station metadata in ASDFDataSets, utilize HDF5 file compression)
 - Checkpointing or failsafes to safeguard against HDF5 file corruption
