@@ -1,9 +1,21 @@
 Overview
 ==============
 
+.. figure:: images/sps_workflow_wtext.png
+    :alt: An inversion workflow showing Pyatoa's place in the workflow.
+
+    An annotated diagram showing how Pyatoa fits into the full waveform 
+    inversion / adjoint tomography workflow alongside numerical solvers like
+    `SPECFEM3D <https://geodynamics.org/cig/software/specfem3d/>`__ and the 
+    workflow automation tool 
+    `SeisFlows3 <https://github.com/bch0w/seisflows3>`__.
+
+
+
 What is Pyatoa?
 ~~~~~~~~~~~~~~~
-At its core, Pyatoa is a waveform assessment package. The short version: it's
+
+Pyatoa is a waveform assessment package. Put simply, it's
 designed to compare one set of wiggles to another set of (similar) wiggles. The
 objects within this package are meant to facilitate, augment, or complement
 this core functionality. These include:
@@ -41,8 +53,8 @@ What isn't Pyatoa?
 Pyatoa is not a standalone adjoint tomography workflow tool, it does not have
 the capability to generate sythetic waveforms, submit jobs on HPC systems,
 interface with numerical models, etc. Rather, it was built to augment the
-capabilities of external numerical solvers (e.g. SPECFEM3D) and workflow tools
-(e.g. SeisFlows3).
+capabilities of external numerical solvers like SPECFEM2D/3D/3D_GLOBE and 
+workflow tools like SeisFlows3.
 
 Pyatoa is not smart. Although it provides quality checks along the way, it
 cannot do your science for you. Careful attention must be paid in
@@ -58,40 +70,47 @@ going on under the hood.
 Why is Pyatoa (necessary)?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Some question that you might have regarding Pyatoa are: 
+Some question you might have regarding Pyatoa are: 
 
 - Why is Pyatoa necessary? 
 - If workflow tools like SeisFlows3 exist, what role does Pyatoa play?
 - Is Pyatoa necessary to run seismic inversions? 
 
-Well, SeisFlows3 was originally written (as SeisFlows) as an automated workflow 
+SeisFlows3 was written (originally as SeisFlows) to be an automated workflow 
 tool for full waveform inversion, allowing for generalized interfacing with a 
 number of numerical solvers and compute interfaces. 
 
-However, within the original SeisFlows, we identified some key features that are
-missing from the package but necessary for earthquake-based tomography, namely: 
-data gathering, waveform preprocessing, windowing, 
-flexible adjoint source creation, inversion assessment, and figure generation.
+Within the original SeisFlows package, we identified missing features necessary 
+for earthquake-based full waveform tomography, namely: data gathering, 
+waveform preprocessing, windowing, flexible adjoint source creation, 
+inversion assessment, and figure generation.
 
-Now, these tasks can of course be performed manually with existing tools, e.g.,
-one can preprocess with ObsPy, window with Flexwin, create adjoint sources 
-with NumPy, assess an inversion with Pandas and generate figures with 
-Matplotlib, Matlab, GMT etc., however the name of the game here is automation
-and reproducibility. 
+Although these tasks could be performed manually (e.g., preprocess with ObsPy, 
+window with Flexwin, create adjoint sources with NumPy, assess an inversion with 
+Pandas, generate figures with Matlab and GMT), we sought to codify these 
+routines in the name of automation, community, and reproducibility. 
 
-If everyone has their own individual codes to perform these tasks, then each 
-researcher must effectively re-invent the wheel. Consequently, Pyatoa was 
-developed to provide a high-level interface for users (and by extension 
-SeisFlows3) to automate the above-named tasks as well as provide a platform for 
-the tomography community to improve upon collectively.
+For very simple workflows, e.g., a 2D synthetic inversion comparing whole 
+waveforms, Pyatoa is not necessary. For pure data-synthetic waveform
+comparisons, Pyatoa can be used standalone. To automate, assess and visualize an 
+entire seismic inversion, a combination of Pyatoa and SeisFlows3 is required 
+(see :doc:`Pyaflowa </pyaflowa>` documentation and the following flowchart).
 
-If a user does not need the above capabilities, e.g., while running very simple
-2D synthetic inversions where data-synthetic misfits can be computed along the
-entire waveform, then Pyatoa is not necessary. If a user only needs to make 
-data-synthetic comparisons on a set of similar waveforms, then only Pyatoa is 
-needed. And if a user wants to automate an entire seismic inversion involving
-real data, then we recommend using a combination of Pyatoa and SeisFlows3 (see
-:doc:`Pyaflowa </pyaflowa>` documentation).
+.. figure:: images/inversion_flowchart.png
+    :alt: An inversion flowchart showing Pyatoa's place in the workflow.
+
+    A detailed flowchart representing the inversion workflow. Dashed lines show 
+    interactions between Seisflows and Pyatoa via data stored to disk. 
+    (A) A one-time manual preparation is required to generate the velocity model, 
+    define a single parameter file shared by SeisFlows3 and Pyatoa, and create 
+    source and station files. 
+    (B) A simplified SeisFlows3 inversion workflow. SeisFlows3 calls Pyatoa as a 
+    subroutine to organize data, calculate misfit and generate adjoint sources. 
+    (C) A Pyatoa misfit quantification instance where data are gathered, 
+    processed, and compared. Input files necessary for adjoint simulations are
+    returned to SeisFlow3.
+    (D) Legend describing the flowchart shapes.
+
 
 
 How do (I use) Pyatoa?
@@ -103,10 +122,9 @@ GUI based program.
 Pyatoa can be invoked through scripting, or in interactive Python
 environments such as the Python interpreter, IPython, Jupyter Notebooks, etc.
 
-The notebooks found in the introduction section should provide a quick overview
+This documentation page contains code snippets that provide an overview
 of how Pyatoa and its underlying functionalities should be used. They are meant
-to provide a jumping off point to communicate how one might leverage Pyatoa 
-during a tomographic inversion, however they are by no means all encompassing.
-The later tutorials and API pages provide more detailed views of the package.
+to provide a jumping off point to communicate how one might leverage Pyatoa,
+however they are by no means all encompassing.
 
     
