@@ -3,10 +3,11 @@ channels:
     - conda-forge
 dependencies:
     - sphinx>=1.4
-    - sphinx_rtd_theme
+    - sphinx_rtd_theme=0.4.3
     - ipykernel=5.3.4
     - nbsphinx=0.7.1
     - python=3.7
     - pip
     - pip:
       - sphinx-autoapi
+      - sphinx_rtd_theme

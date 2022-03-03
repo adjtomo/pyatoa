@@ -57,7 +57,7 @@ extensions = [
     'sphinx.ext.coverage',
     'sphinx.ext.viewcode',
     'sphinx.ext.napoleon',
-    'sphinx.ext.autosummary',
+    # 'sphinx.ext.autosummary',
     'sphinx_rtd_theme',
     'autoapi.extension',
     'nbsphinx'
