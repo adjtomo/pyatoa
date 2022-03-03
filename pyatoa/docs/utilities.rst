@@ -53,33 +53,14 @@ deferred to other packages like
 .. code:: ipython3
 
     # Allow mayavi visualizations to appear in notebook
-    from mayavi import mlab
-    mlab.init_notebook()
+    # from mayavi import mlab
+    # mlab.init_notebook()
     
-    from pyatoa.visuals.vtk_modeler import VTKModeler
+    # from pyatoa.visuals.vtk_modeler import VTKModeler
     
-    vm = VTKModeler()
-    vm.load(fid="../tests/test_data/big_test_data/test_vs_model.vtk")
-    vm.depth_slice(depth_km=5, show=True)
-
-
-::
-
-
-    ---------------------------------------------------------------------------
-
-    ModuleNotFoundError                       Traceback (most recent call last)
-
-    /tmp/ipykernel_78906/1554201936.py in <module>
-          1 # Allow mayavi visualizations to appear in notebook
-    ----> 2 from mayavi import mlab
-          3 mlab.init_notebook()
-          4 
-          5 from pyatoa.visuals.vtk_modeler import VTKModeler
-
-
-    ModuleNotFoundError: No module named 'mayavi'
-
+    # vm = VTKModeler()
+    # vm.load(fid="../tests/test_data/big_test_data/test_vs_model.vtk")
+    # vm.depth_slice(depth_km=5, show=True)
 
 --------------
 

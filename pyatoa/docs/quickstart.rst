@@ -54,72 +54,72 @@ waveform misfit.
 
 .. parsed-literal::
 
-    [2022-03-02 14:09:12] - pyatoa - DEBUG: Component list set to E/N/Z
-    [2022-03-02 14:09:12] - pyatoa - INFO: gathering data for NZ.BFZ.*.*
-    [2022-03-02 14:09:12] - pyatoa - INFO: gathering observed waveforms
-    [2022-03-02 14:09:12] - pyatoa - INFO: searching local filesystem for observations
-    [2022-03-02 14:09:12] - pyatoa - DEBUG: searching for observations: ../tests/test_data/test_mseeds/2018/NZ/BFZ/*/NZ.BFZ.*.*.2018.049
-    [2022-03-02 14:09:12] - pyatoa - INFO: retrieved observations locally:
+    [2022-03-02 15:08:44] - pyatoa - DEBUG: Component list set to E/N/Z
+    [2022-03-02 15:08:44] - pyatoa - INFO: gathering data for NZ.BFZ.*.*
+    [2022-03-02 15:08:44] - pyatoa - INFO: gathering observed waveforms
+    [2022-03-02 15:08:44] - pyatoa - INFO: searching local filesystem for observations
+    [2022-03-02 15:08:44] - pyatoa - DEBUG: searching for observations: ../tests/test_data/test_mseeds/2018/NZ/BFZ/*/NZ.BFZ.*.*.2018.049
+    [2022-03-02 15:08:44] - pyatoa - INFO: retrieved observations locally:
     ../tests/test_data/test_mseeds/2018/NZ/BFZ/HHE/NZ.BFZ.10.HHE.D.2018.049
-    [2022-03-02 14:09:12] - pyatoa - INFO: retrieved observations locally:
+    [2022-03-02 15:08:44] - pyatoa - INFO: retrieved observations locally:
     ../tests/test_data/test_mseeds/2018/NZ/BFZ/HHN/NZ.BFZ.10.HHN.D.2018.049
-    [2022-03-02 14:09:12] - pyatoa - INFO: retrieved observations locally:
+    [2022-03-02 15:08:44] - pyatoa - INFO: retrieved observations locally:
     ../tests/test_data/test_mseeds/2018/NZ/BFZ/HHZ/NZ.BFZ.10.HHZ.D.2018.049
-    [2022-03-02 14:09:12] - pyatoa - INFO: matching observed waveforms found
-    [2022-03-02 14:09:12] - pyatoa - INFO: gathering StationXML
-    [2022-03-02 14:09:12] - pyatoa - INFO: searching local filesystem for station info
-    [2022-03-02 14:09:12] - pyatoa - DEBUG: searching for responses: ../tests/test_data/test_seed/BFZ.NZ/RESP.NZ.BFZ.*.*
-    [2022-03-02 14:09:12] - pyatoa - INFO: retrieved response locally:
+    [2022-03-02 15:08:44] - pyatoa - INFO: matching observed waveforms found
+    [2022-03-02 15:08:44] - pyatoa - INFO: gathering StationXML
+    [2022-03-02 15:08:44] - pyatoa - INFO: searching local filesystem for station info
+    [2022-03-02 15:08:44] - pyatoa - DEBUG: searching for responses: ../tests/test_data/test_seed/BFZ.NZ/RESP.NZ.BFZ.*.*
+    [2022-03-02 15:08:44] - pyatoa - INFO: retrieved response locally:
     ../tests/test_data/test_seed/BFZ.NZ/RESP.NZ.BFZ.10.HHE
-    [2022-03-02 14:09:12] - pyatoa - INFO: retrieved response locally:
+    [2022-03-02 15:08:44] - pyatoa - INFO: retrieved response locally:
     ../tests/test_data/test_seed/BFZ.NZ/RESP.NZ.BFZ.10.HHN
-    [2022-03-02 14:09:12] - pyatoa - INFO: retrieved response locally:
+    [2022-03-02 15:08:44] - pyatoa - INFO: retrieved response locally:
     ../tests/test_data/test_seed/BFZ.NZ/RESP.NZ.BFZ.10.HHZ
-    [2022-03-02 14:09:12] - pyatoa - INFO: matching StationXML found
-    [2022-03-02 14:09:12] - pyatoa - INFO: gathering synthetic waveforms
-    [2022-03-02 14:09:12] - pyatoa - INFO: searching local filesystem for synthetics
-    [2022-03-02 14:09:12] - pyatoa - DEBUG: searching for synthetics: ../tests/test_data/synthetics/{net}.{sta}.*{cmp}.sem{dva}
-    [2022-03-02 14:09:12] - pyatoa - INFO: retrieved synthetics locally:
+    [2022-03-02 15:08:44] - pyatoa - INFO: matching StationXML found
+    [2022-03-02 15:08:44] - pyatoa - INFO: gathering synthetic waveforms
+    [2022-03-02 15:08:44] - pyatoa - INFO: searching local filesystem for synthetics
+    [2022-03-02 15:08:44] - pyatoa - DEBUG: searching for synthetics: ../tests/test_data/synthetics/{net}.{sta}.*{cmp}.sem{dva}
+    [2022-03-02 15:08:44] - pyatoa - INFO: retrieved synthetics locally:
     ../tests/test_data/synthetics/NZ.BFZ.BXE.semd
-    [2022-03-02 14:09:12] - pyatoa - INFO: retrieved synthetics locally:
+    [2022-03-02 15:08:44] - pyatoa - INFO: retrieved synthetics locally:
     ../tests/test_data/synthetics/NZ.BFZ.BXN.semd
-    [2022-03-02 14:09:12] - pyatoa - INFO: retrieved synthetics locally:
+    [2022-03-02 15:08:44] - pyatoa - INFO: retrieved synthetics locally:
     ../tests/test_data/synthetics/NZ.BFZ.BXZ.semd
-    [2022-03-02 14:09:12] - pyatoa - INFO: matching synthetic waveforms found
-    [2022-03-02 14:09:12] - pyatoa - INFO: standardizing streams
-    [2022-03-02 14:09:12] - pyatoa - DEBUG: zero pad NZ.BFZ.10.HHE (0, 0) samples
-    [2022-03-02 14:09:12] - pyatoa - DEBUG: new starttime NZ.BFZ.10.HHE: 2018-02-18T07:43:28.127644Z
-    [2022-03-02 14:09:12] - pyatoa - DEBUG: zero pad NZ.BFZ.10.HHN (0, 0) samples
-    [2022-03-02 14:09:12] - pyatoa - DEBUG: new starttime NZ.BFZ.10.HHN: 2018-02-18T07:43:28.127644Z
-    [2022-03-02 14:09:12] - pyatoa - DEBUG: zero pad NZ.BFZ.10.HHZ (0, 0) samples
-    [2022-03-02 14:09:12] - pyatoa - DEBUG: new starttime NZ.BFZ.10.HHZ: 2018-02-18T07:43:28.127644Z
-    [2022-03-02 14:09:12] - pyatoa - DEBUG: start and endtimes already match to 0.001
-    [2022-03-02 14:09:12] - pyatoa - DEBUG: appending 1 zeros to NZ.BFZ.10.HHE
-    [2022-03-02 14:09:12] - pyatoa - DEBUG: appending 1 zeros to NZ.BFZ.10.HHN
-    [2022-03-02 14:09:12] - pyatoa - DEBUG: appending 1 zeros to NZ.BFZ.10.HHZ
-    [2022-03-02 14:09:12] - pyatoa - DEBUG: time offset is -20.0s
-    [2022-03-02 14:09:12] - pyatoa - INFO: preprocessing observation data
-    [2022-03-02 14:09:12] - pyatoa - INFO: adjusting taper to cover time offset -20.0
-    [2022-03-02 14:09:12] - pyatoa - DEBUG: removing response, units to DISP
-    [2022-03-02 14:09:12] - pyatoa - DEBUG: rotating from generic coordinate system to ZNE
-    [2022-03-02 14:09:12] - pyatoa - DEBUG: bandpass filter: 4.0 - 30.0s w/ 2.0 corners
-    [2022-03-02 14:09:12] - pyatoa - INFO: preprocessing synthetic data
-    [2022-03-02 14:09:12] - pyatoa - INFO: adjusting taper to cover time offset -20.0
-    [2022-03-02 14:09:12] - pyatoa - DEBUG: no response removal, synthetic data or requested not to
-    [2022-03-02 14:09:12] - pyatoa - DEBUG: bandpass filter: 4.0 - 30.0s w/ 2.0 corners
-    [2022-03-02 14:09:12] - pyatoa - DEBUG: convolving data w/ Gaussian (t/2=0.70s)
-    [2022-03-02 14:09:12] - pyatoa - INFO: running Pyflex w/ map: default
-    [2022-03-02 14:09:12] - pyatoa - INFO: 1 window(s) selected for comp E
-    [2022-03-02 14:09:12] - pyatoa - INFO: 1 window(s) selected for comp N
-    [2022-03-02 14:09:12] - pyatoa - INFO: 1 window(s) selected for comp Z
-    [2022-03-02 14:09:12] - pyatoa - WARNING: Manager has no ASDFDataSet, cannot save windows
-    [2022-03-02 14:09:12] - pyatoa - INFO: 3 window(s) total found
-    [2022-03-02 14:09:12] - pyatoa - DEBUG: running Pyadjoint w/ type: cc_traveltime_misfit
-    [2022-03-02 14:09:12] - pyatoa - INFO: 0.007 misfit for comp E
-    [2022-03-02 14:09:12] - pyatoa - INFO: 1.688 misfit for comp N
-    [2022-03-02 14:09:12] - pyatoa - INFO: 0.029 misfit for comp Z
-    [2022-03-02 14:09:12] - pyatoa - WARNING: Manager has no ASDFDataSet, cannot save adjoint sources
-    [2022-03-02 14:09:12] - pyatoa - INFO: total misfit 1.724
+    [2022-03-02 15:08:44] - pyatoa - INFO: matching synthetic waveforms found
+    [2022-03-02 15:08:44] - pyatoa - INFO: standardizing streams
+    [2022-03-02 15:08:44] - pyatoa - DEBUG: zero pad NZ.BFZ.10.HHE (0, 0) samples
+    [2022-03-02 15:08:44] - pyatoa - DEBUG: new starttime NZ.BFZ.10.HHE: 2018-02-18T07:43:28.127644Z
+    [2022-03-02 15:08:44] - pyatoa - DEBUG: zero pad NZ.BFZ.10.HHN (0, 0) samples
+    [2022-03-02 15:08:44] - pyatoa - DEBUG: new starttime NZ.BFZ.10.HHN: 2018-02-18T07:43:28.127644Z
+    [2022-03-02 15:08:44] - pyatoa - DEBUG: zero pad NZ.BFZ.10.HHZ (0, 0) samples
+    [2022-03-02 15:08:44] - pyatoa - DEBUG: new starttime NZ.BFZ.10.HHZ: 2018-02-18T07:43:28.127644Z
+    [2022-03-02 15:08:44] - pyatoa - DEBUG: start and endtimes already match to 0.001
+    [2022-03-02 15:08:44] - pyatoa - DEBUG: appending 1 zeros to NZ.BFZ.10.HHE
+    [2022-03-02 15:08:44] - pyatoa - DEBUG: appending 1 zeros to NZ.BFZ.10.HHN
+    [2022-03-02 15:08:44] - pyatoa - DEBUG: appending 1 zeros to NZ.BFZ.10.HHZ
+    [2022-03-02 15:08:44] - pyatoa - DEBUG: time offset is -20.0s
+    [2022-03-02 15:08:44] - pyatoa - INFO: preprocessing observation data
+    [2022-03-02 15:08:44] - pyatoa - INFO: adjusting taper to cover time offset -20.0
+    [2022-03-02 15:08:44] - pyatoa - DEBUG: removing response, units to DISP
+    [2022-03-02 15:08:44] - pyatoa - DEBUG: rotating from generic coordinate system to ZNE
+    [2022-03-02 15:08:44] - pyatoa - DEBUG: bandpass filter: 4.0 - 30.0s w/ 2.0 corners
+    [2022-03-02 15:08:44] - pyatoa - INFO: preprocessing synthetic data
+    [2022-03-02 15:08:44] - pyatoa - INFO: adjusting taper to cover time offset -20.0
+    [2022-03-02 15:08:44] - pyatoa - DEBUG: no response removal, synthetic data or requested not to
+    [2022-03-02 15:08:44] - pyatoa - DEBUG: bandpass filter: 4.0 - 30.0s w/ 2.0 corners
+    [2022-03-02 15:08:44] - pyatoa - DEBUG: convolving data w/ Gaussian (t/2=0.70s)
+    [2022-03-02 15:08:44] - pyatoa - INFO: running Pyflex w/ map: default
+    [2022-03-02 15:08:44] - pyatoa - INFO: 1 window(s) selected for comp E
+    [2022-03-02 15:08:44] - pyatoa - INFO: 1 window(s) selected for comp N
+    [2022-03-02 15:08:44] - pyatoa - INFO: 1 window(s) selected for comp Z
+    [2022-03-02 15:08:44] - pyatoa - WARNING: Manager has no ASDFDataSet, cannot save windows
+    [2022-03-02 15:08:44] - pyatoa - INFO: 3 window(s) total found
+    [2022-03-02 15:08:44] - pyatoa - DEBUG: running Pyadjoint w/ type: cc_traveltime_misfit
+    [2022-03-02 15:08:44] - pyatoa - INFO: 0.007 misfit for comp E
+    [2022-03-02 15:08:44] - pyatoa - INFO: 1.688 misfit for comp N
+    [2022-03-02 15:08:44] - pyatoa - INFO: 0.029 misfit for comp Z
+    [2022-03-02 15:08:44] - pyatoa - WARNING: Manager has no ASDFDataSet, cannot save adjoint sources
+    [2022-03-02 15:08:44] - pyatoa - INFO: total misfit 1.724
 
 
 

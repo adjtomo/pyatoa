@@ -36,11 +36,11 @@ Zealand <http://ds.iris.edu/ds/nodes/dmc/tools/event/5197722>`__.
 
 .. parsed-literal::
 
-    [2022-03-02 14:07:54] - pyatoa - DEBUG: Component list set to E/N/Z
-    [2022-03-02 14:07:54] - pyatoa - DEBUG: gathering event
-    [2022-03-02 14:07:54] - pyatoa - INFO: searching local filesystem for event info
-    [2022-03-02 14:07:54] - pyatoa - INFO: no local event file found
-    [2022-03-02 14:07:54] - pyatoa - DEBUG: event ID: 5197722, querying client IRIS
+    [2022-03-02 15:07:29] - pyatoa - DEBUG: Component list set to E/N/Z
+    [2022-03-02 15:07:30] - pyatoa - DEBUG: gathering event
+    [2022-03-02 15:07:30] - pyatoa - INFO: searching local filesystem for event info
+    [2022-03-02 15:07:30] - pyatoa - INFO: no local event file found
+    [2022-03-02 15:07:30] - pyatoa - DEBUG: event ID: 5197722, querying client IRIS
 
 
 
@@ -78,12 +78,12 @@ magnitude.
 
 .. parsed-literal::
 
-    [2022-03-02 14:07:54] - pyatoa - DEBUG: gathering event
-    [2022-03-02 14:07:54] - pyatoa - INFO: searching local filesystem for event info
-    [2022-03-02 14:07:54] - pyatoa - INFO: no local event file found
-    [2022-03-02 14:07:54] - pyatoa - DEBUG: event ID: 5197722, querying client IRIS
-    [2022-03-02 14:07:54] - pyatoa - INFO: querying GCMT database for moment tensor
-    [2022-03-02 14:07:55] - pyatoa - INFO: GCMT event found matching criteria
+    [2022-03-02 15:07:30] - pyatoa - DEBUG: gathering event
+    [2022-03-02 15:07:30] - pyatoa - INFO: searching local filesystem for event info
+    [2022-03-02 15:07:30] - pyatoa - INFO: no local event file found
+    [2022-03-02 15:07:30] - pyatoa - DEBUG: event ID: 5197722, querying client IRIS
+    [2022-03-02 15:07:30] - pyatoa - INFO: querying GCMT database for moment tensor
+    [2022-03-02 15:07:31] - pyatoa - INFO: GCMT event found matching criteria
 
 
 
@@ -197,14 +197,14 @@ its unique GeoNet identifier.
 
 .. parsed-literal::
 
-    [2022-03-02 14:07:58] - pyatoa - DEBUG: Component list set to E/N/Z
-    [2022-03-02 14:07:58] - pyatoa - DEBUG: gathering event
-    [2022-03-02 14:07:58] - pyatoa - INFO: searching local filesystem for event info
-    [2022-03-02 14:07:58] - pyatoa - INFO: no local event file found
-    [2022-03-02 14:07:58] - pyatoa - DEBUG: event ID: 2016p858000, querying client GEONET
-    [2022-03-02 14:07:59] - pyatoa - INFO: geonet moment tensor found for: 2016p858000
-    [2022-03-02 14:07:59] - pyatoa - DEBUG: GeoNet moment tensor is in units of Newton*meters
-    [2022-03-02 14:07:59] - pyatoa - INFO: GeoNet moment tensor appended to Event
+    [2022-03-02 15:07:34] - pyatoa - DEBUG: Component list set to E/N/Z
+    [2022-03-02 15:07:34] - pyatoa - DEBUG: gathering event
+    [2022-03-02 15:07:34] - pyatoa - INFO: searching local filesystem for event info
+    [2022-03-02 15:07:34] - pyatoa - INFO: no local event file found
+    [2022-03-02 15:07:34] - pyatoa - DEBUG: event ID: 2016p858000, querying client GEONET
+    [2022-03-02 15:07:35] - pyatoa - INFO: geonet moment tensor found for: 2016p858000
+    [2022-03-02 15:07:35] - pyatoa - DEBUG: GeoNet moment tensor is in units of Newton*meters
+    [2022-03-02 15:07:35] - pyatoa - INFO: GeoNet moment tensor appended to Event
 
 
 
@@ -244,7 +244,7 @@ its unique GeoNet identifier.
     	                creation_info: CreationInfo(agency_id='WEL(GNS_Primary)', author='scevent@akeqp01.geonet.org.nz', creation_time=UTCDateTime(2016, 11, 13, 11, 3, 27, 886738))
     	          preferred_origin_id: ResourceIdentifier(id="smi:nz.org.geonet/Origin#20161116052725.210418.52361")
     	       preferred_magnitude_id: ResourceIdentifier(id="smi:nz.org.geonet/Magnitude#20161116052734.469407.55057")
-    	 preferred_focal_mechanism_id: ResourceIdentifier(id="smi:local/5eaff7aa-8584-4fa4-b002-8f40aeadb1c6")
+    	 preferred_focal_mechanism_id: ResourceIdentifier(id="smi:local/995f6187-eac9-43e1-a645-79e05a25caaa")
     	                         ---------
     	           event_descriptions: 1 Elements
     	                     comments: 1 Elements
@@ -267,7 +267,7 @@ its unique GeoNet identifier.
 .. parsed-literal::
 
     MomentTensor
-    	          resource_id: ResourceIdentifier(id="smi:local/b658d9cf-1a99-4748-935c-5df39623892b")
+    	          resource_id: ResourceIdentifier(id="smi:local/d057a11d-49b3-4b90-b0df-65abca382624")
     	        scalar_moment: 7.04e+20
     	               tensor: Tensor(m_rr=4.8e+20, m_tt=1.73e+20, m_pp=-6.53e+20, m_rt=-9.32e+19, m_rp=2.95e+20, m_tp=-2.39e+20)
     	   variance_reduction: -1.0
@@ -331,18 +331,18 @@ An example directory for station NZ.BFZ:
 
 .. parsed-literal::
 
-    [2022-03-02 14:08:02] - pyatoa - DEBUG: Component list set to E/N/Z
-    [2022-03-02 14:08:02] - pyatoa - INFO: gathering data for NZ.BFZ.??.HH?
-    [2022-03-02 14:08:02] - pyatoa - INFO: gathering StationXML
-    [2022-03-02 14:08:02] - pyatoa - INFO: searching local filesystem for station info
-    [2022-03-02 14:08:02] - pyatoa - DEBUG: searching for responses: ../tests/test_data/test_seed/BFZ.NZ/RESP.NZ.BFZ.??.HH?
-    [2022-03-02 14:08:02] - pyatoa - INFO: retrieved response locally:
+    [2022-03-02 15:07:38] - pyatoa - DEBUG: Component list set to E/N/Z
+    [2022-03-02 15:07:38] - pyatoa - INFO: gathering data for NZ.BFZ.??.HH?
+    [2022-03-02 15:07:38] - pyatoa - INFO: gathering StationXML
+    [2022-03-02 15:07:38] - pyatoa - INFO: searching local filesystem for station info
+    [2022-03-02 15:07:38] - pyatoa - DEBUG: searching for responses: ../tests/test_data/test_seed/BFZ.NZ/RESP.NZ.BFZ.??.HH?
+    [2022-03-02 15:07:38] - pyatoa - INFO: retrieved response locally:
     ../tests/test_data/test_seed/BFZ.NZ/RESP.NZ.BFZ.10.HHE
-    [2022-03-02 14:08:02] - pyatoa - INFO: retrieved response locally:
+    [2022-03-02 15:07:38] - pyatoa - INFO: retrieved response locally:
     ../tests/test_data/test_seed/BFZ.NZ/RESP.NZ.BFZ.10.HHN
-    [2022-03-02 14:08:02] - pyatoa - INFO: retrieved response locally:
+    [2022-03-02 15:07:38] - pyatoa - INFO: retrieved response locally:
     ../tests/test_data/test_seed/BFZ.NZ/RESP.NZ.BFZ.10.HHZ
-    [2022-03-02 14:08:02] - pyatoa - INFO: matching StationXML found
+    [2022-03-02 15:07:38] - pyatoa - INFO: matching StationXML found
 
 
 --------------
@@ -399,7 +399,7 @@ of the waveforms found, which matches the example path shown above.
 
 .. parsed-literal::
 
-    [2022-03-02 14:08:02] - pyatoa - DEBUG: Component list set to E/N/Z
+    [2022-03-02 15:07:38] - pyatoa - DEBUG: Component list set to E/N/Z
 
 
 
@@ -421,19 +421,19 @@ of the waveforms found, which matches the example path shown above.
 
 .. parsed-literal::
 
-    [2022-03-02 14:08:02] - pyatoa - DEBUG: gathering event
-    [2022-03-02 14:08:02] - pyatoa - INFO: searching local filesystem for event info
-    [2022-03-02 14:08:02] - pyatoa - INFO: no local event file found
-    [2022-03-02 14:08:02] - pyatoa - DEBUG: event ID: 2018p130600, querying client GEONET
-    [2022-03-02 14:08:03] - pyatoa - INFO: geonet moment tensor found for: 2018p130600
-    [2022-03-02 14:08:03] - pyatoa - DEBUG: GeoNet moment tensor is in units of Newton*meters
-    [2022-03-02 14:08:03] - pyatoa - INFO: GeoNet moment tensor appended to Event
-    [2022-03-02 14:08:03] - pyatoa - INFO: gathering data for NZ.BFZ.??.HH?
-    [2022-03-02 14:08:03] - pyatoa - INFO: gathering observed waveforms
-    [2022-03-02 14:08:03] - pyatoa - INFO: searching local filesystem for observations
-    [2022-03-02 14:08:03] - pyatoa - DEBUG: searching for observations: ../tests/test_data/test_mseeds/2018/NZ/BFZ/HH?/NZ.BFZ.??.HH?.2018.049
-    [2022-03-02 14:08:03] - pyatoa - DEBUG: querying client GEONET
-    [2022-03-02 14:08:05] - pyatoa - INFO: matching observed waveforms found
+    [2022-03-02 15:07:38] - pyatoa - DEBUG: gathering event
+    [2022-03-02 15:07:38] - pyatoa - INFO: searching local filesystem for event info
+    [2022-03-02 15:07:38] - pyatoa - INFO: no local event file found
+    [2022-03-02 15:07:38] - pyatoa - DEBUG: event ID: 2018p130600, querying client GEONET
+    [2022-03-02 15:07:39] - pyatoa - INFO: geonet moment tensor found for: 2018p130600
+    [2022-03-02 15:07:39] - pyatoa - DEBUG: GeoNet moment tensor is in units of Newton*meters
+    [2022-03-02 15:07:39] - pyatoa - INFO: GeoNet moment tensor appended to Event
+    [2022-03-02 15:07:39] - pyatoa - INFO: gathering data for NZ.BFZ.??.HH?
+    [2022-03-02 15:07:39] - pyatoa - INFO: gathering observed waveforms
+    [2022-03-02 15:07:39] - pyatoa - INFO: searching local filesystem for observations
+    [2022-03-02 15:07:39] - pyatoa - DEBUG: searching for observations: ../tests/test_data/test_mseeds/2018/NZ/BFZ/HH?/NZ.BFZ.??.HH?.2018.049
+    [2022-03-02 15:07:39] - pyatoa - DEBUG: querying client GEONET
+    [2022-03-02 15:07:41] - pyatoa - INFO: matching observed waveforms found
 
 
 --------------
@@ -458,25 +458,25 @@ same waveform data from the Eketahuna example.
 
 .. parsed-literal::
 
-    [2022-03-02 14:08:05] - pyatoa - DEBUG: Component list set to E/N/Z
-    [2022-03-02 14:08:05] - pyatoa - DEBUG: gathering event
-    [2022-03-02 14:08:05] - pyatoa - INFO: searching local filesystem for event info
-    [2022-03-02 14:08:05] - pyatoa - INFO: no local event file found
-    [2022-03-02 14:08:05] - pyatoa - DEBUG: event ID: 2018p130600, querying client GEONET
-    [2022-03-02 14:08:06] - pyatoa - INFO: geonet moment tensor found for: 2018p130600
-    [2022-03-02 14:08:06] - pyatoa - DEBUG: GeoNet moment tensor is in units of Newton*meters
-    [2022-03-02 14:08:06] - pyatoa - INFO: GeoNet moment tensor appended to Event
-    [2022-03-02 14:08:06] - pyatoa - INFO: gathering data for NZ.BFZ.??.HH?
-    [2022-03-02 14:08:06] - pyatoa - INFO: gathering observed waveforms
-    [2022-03-02 14:08:06] - pyatoa - INFO: searching local filesystem for observations
-    [2022-03-02 14:08:06] - pyatoa - DEBUG: querying client GEONET
-    [2022-03-02 14:08:06] - pyatoa - INFO: matching observed waveforms found
-    [2022-03-02 14:08:06] - pyatoa - INFO: gathering StationXML
-    [2022-03-02 14:08:06] - pyatoa - INFO: searching local filesystem for station info
-    [2022-03-02 14:08:06] - pyatoa - DEBUG: querying client GEONET
+    [2022-03-02 15:07:41] - pyatoa - DEBUG: Component list set to E/N/Z
+    [2022-03-02 15:07:41] - pyatoa - DEBUG: gathering event
+    [2022-03-02 15:07:41] - pyatoa - INFO: searching local filesystem for event info
+    [2022-03-02 15:07:41] - pyatoa - INFO: no local event file found
+    [2022-03-02 15:07:41] - pyatoa - DEBUG: event ID: 2018p130600, querying client GEONET
+    [2022-03-02 15:07:42] - pyatoa - INFO: geonet moment tensor found for: 2018p130600
+    [2022-03-02 15:07:42] - pyatoa - DEBUG: GeoNet moment tensor is in units of Newton*meters
+    [2022-03-02 15:07:42] - pyatoa - INFO: GeoNet moment tensor appended to Event
+    [2022-03-02 15:07:42] - pyatoa - INFO: gathering data for NZ.BFZ.??.HH?
+    [2022-03-02 15:07:42] - pyatoa - INFO: gathering observed waveforms
+    [2022-03-02 15:07:42] - pyatoa - INFO: searching local filesystem for observations
+    [2022-03-02 15:07:42] - pyatoa - DEBUG: querying client GEONET
+    [2022-03-02 15:07:42] - pyatoa - INFO: matching observed waveforms found
+    [2022-03-02 15:07:42] - pyatoa - INFO: gathering StationXML
+    [2022-03-02 15:07:42] - pyatoa - INFO: searching local filesystem for station info
+    [2022-03-02 15:07:42] - pyatoa - DEBUG: querying client GEONET
     /home/bchow/miniconda3/envs/docs/lib/python3.7/site-packages/obspy/io/stationxml/core.py:98: UserWarning: The StationXML file has version 1, ObsPy can read versions (1.0, 1.1). Proceed with caution.
       version, ", ".join(READABLE_VERSIONS)))
-    [2022-03-02 14:08:06] - pyatoa - INFO: matching StationXML found
+    [2022-03-02 15:07:42] - pyatoa - INFO: matching StationXML found
 
 
 --------------
@@ -521,17 +521,17 @@ An example directory for station NZ.BFZ, for the day 2018-02-18:
 
 .. parsed-literal::
 
-    [2022-03-02 14:08:06] - pyatoa - INFO: gathering data for NZ.BFZ.??.BX?
-    [2022-03-02 14:08:06] - pyatoa - INFO: gathering synthetic waveforms
-    [2022-03-02 14:08:06] - pyatoa - INFO: searching local filesystem for synthetics
-    [2022-03-02 14:08:06] - pyatoa - DEBUG: searching for synthetics: ../tests/test_data/synthetics/{net}.{sta}.*{cmp}.sem{dva}
-    [2022-03-02 14:08:06] - pyatoa - INFO: retrieved synthetics locally:
+    [2022-03-02 15:07:42] - pyatoa - INFO: gathering data for NZ.BFZ.??.BX?
+    [2022-03-02 15:07:42] - pyatoa - INFO: gathering synthetic waveforms
+    [2022-03-02 15:07:42] - pyatoa - INFO: searching local filesystem for synthetics
+    [2022-03-02 15:07:42] - pyatoa - DEBUG: searching for synthetics: ../tests/test_data/synthetics/{net}.{sta}.*{cmp}.sem{dva}
+    [2022-03-02 15:07:42] - pyatoa - INFO: retrieved synthetics locally:
     ../tests/test_data/synthetics/NZ.BFZ.BXE.semd
-    [2022-03-02 14:08:06] - pyatoa - INFO: retrieved synthetics locally:
+    [2022-03-02 15:07:42] - pyatoa - INFO: retrieved synthetics locally:
     ../tests/test_data/synthetics/NZ.BFZ.BXN.semd
-    [2022-03-02 14:08:06] - pyatoa - INFO: retrieved synthetics locally:
+    [2022-03-02 15:07:42] - pyatoa - INFO: retrieved synthetics locally:
     ../tests/test_data/synthetics/NZ.BFZ.BXZ.semd
-    [2022-03-02 14:08:06] - pyatoa - INFO: matching synthetic waveforms found
+    [2022-03-02 15:07:42] - pyatoa - INFO: matching synthetic waveforms found
 
 
 
@@ -583,10 +583,10 @@ ASDFDataSet \* Station codes for desired data
 
 .. parsed-literal::
 
-    [2022-03-02 14:08:06] - pyatoa - DEBUG: Component list set to E/N/Z
-    [2022-03-02 14:08:06] - pyatoa - DEBUG: gathering event
-    [2022-03-02 14:08:06] - pyatoa - INFO: searching ASDFDataSet for event info
-    [2022-03-02 14:08:07] - pyatoa - DEBUG: matching event found: 2016p858000
+    [2022-03-02 15:07:42] - pyatoa - DEBUG: Component list set to E/N/Z
+    [2022-03-02 15:07:42] - pyatoa - DEBUG: gathering event
+    [2022-03-02 15:07:42] - pyatoa - INFO: searching ASDFDataSet for event info
+    [2022-03-02 15:07:43] - pyatoa - DEBUG: matching event found: 2016p858000
 
 
 
@@ -632,7 +632,7 @@ waveforms, 1 per component.
 
 .. parsed-literal::
 
-    [2022-03-02 14:08:07] - pyatoa - INFO: mass gathering observation data
+    [2022-03-02 15:07:43] - pyatoa - INFO: mass gathering observation data
 
 
 .. parsed-literal::

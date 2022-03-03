@@ -17,6 +17,7 @@ decade in a box bounding Anchorage and Fairbanks.
 
 .. code:: ipython3
 
+    import os
     from obspy import UTCDateTime, Catalog
     from obspy.clients.fdsn import Client
 
@@ -171,7 +172,7 @@ The SEED standard for broadband instruments is “B” or “H”
 
 .. parsed-literal::
 
-    Inventory created at 2022-03-02T23:08:39.770000Z
+    Inventory created at 2022-03-03T00:08:16.425000Z
     	Created by: IRIS WEB SERVICE: fdsnws-station | version: 1.1.48
     		    http://service.iris.edu/fdsnws/station/1/query?starttime=2010-01-01...
     	Sending institution: IRIS-DMC (IRIS-DMC)
@@ -391,22 +392,84 @@ single event, and trying to fill it with all available data.
         gthr.gather_obs_multithread(codes=station_codes, return_count=4, print_exception=True)
 
 
-::
+.. parsed-literal::
 
-
-    ---------------------------------------------------------------------------
-
-    NameError                                 Traceback (most recent call last)
-
-    /tmp/ipykernel_77870/1443690712.py in <module>
-          5 # First make sure were writing to an empty dataset
-          6 ds_fid = f"../tests/test_data/docs_data/{event_id}.h5"
-    ----> 7 if os.path.exists(ds_fid):
-          8     os.remove(ds_fid)
-          9 
-
-
-    NameError: name 'os' is not defined
+    AK.SCM.*.BH? data count: 0
+    AK.I23K.*.BH? data count: 0
+    AK.KLU.*.BH? data count: 0
+    AK.M20K.*.BH? data count: 0
+    AK.L20K.*.BH? data count: 0
+    AK.TRF.*.BH? data count: 0
+    AK.SWD.*.BH? data count: 0
+    AK.I21K.*.BH? data count: 0
+    AK.SGA.*.BH? data count: 0
+    AK.HDA.*.BH? data count: 0
+    AK.J20K.*.BH? data count: 0
+    AK.NKA.*.BH? data count: 0
+    AK.SSN.*.BH? data count: 0
+    AK.WAT3.*.BH? data count: 0
+    AK.PPLA.*.BH? data count: 0
+    AK.DDM.*.BH? data count: 0
+    AK.NEA.*.BH? data count: 0
+    AK.BRLK.*.BH? data count: 1
+    AK.O19K.*.BH? data count: 0
+    AK.PWL.*.BH? data count: 0
+    AK.GHO.*.BH? data count: 0
+    AK.CAST.*.BH? data count: 1
+    AK.WAT1.*.BH? data count: 0
+    AK.CAPN.*.BH? data count: 0
+    AK.NICH.*.BH? data count: 0
+    AK.MDM.*.BH? data count: 0
+    AK.WAT2.*.BH? data count: 0
+    AK.MCK.*.BH? data count: 1
+    AK.M19K.*.BH? data count: 0
+    AK.DOT.*.BH? data count: 0
+    AK.P23K.*.BH? data count: 0
+    AK.MLY.*.BH? data count: 0
+    AK.GLI.*.BH? data count: 1
+    AK.L22K.*.BH? data count: 0
+    AK.K24K.*.BH? data count: 0
+    AK.SAW.*.BH? data count: 1
+    AK.EYAK.*.BH? data count: 0
+    AK.WAT4.*.BH? data count: 0
+    AK.WAT7.*.BH? data count: 0
+    AK.CCB.*.BH? data count: 0
+    AK.BWN.*.BH? data count: 1
+    AK.O20K.*.BH? data count: 0
+    AK.PAX.*.BH? data count: 0
+    AK.WAT6.*.BH? data count: 1
+    AK.HDA.*.BH? data count: 1
+    AK.K20K.*.BH? data count: 0
+    AK.WAT5.*.BH? data count: 0
+    AK.SLK.*.BH? data count: 1
+    AK.KAI.*.BH? data count: 1
+    AK.DIV.*.BH? data count: 1
+    AK.BMR.*.BH? data count: 1
+    AK.FIB.*.BH? data count: 0
+    AK.J25K.*.BH? data count: 0
+    AK.N19K.*.BH? data count: 0
+    AK.GLM.*.BH? data count: 0
+    AK.RIDG.*.BH? data count: 1
+    AK.GLB.*.BH? data count: 1
+    AK.TRF.*.BH? data count: 1
+    AK.GOAT.*.BH? data count: 1
+    AK.BPAW.*.BH? data count: 1
+    AK.NEA2.*.BH? data count: 1
+    AK.SKN.*.BH? data count: 1
+    AK.CHUM.*.BH? data count: 1
+    AK.RC01.*.BH? data count: 1
+    AK.HIN.*.BH? data count: 1
+    AK.FIRE.*.BH? data count: 1
+    AK.KNK.*.BH? data count: 1
+    AK.SCRK.*.BH? data count: 1
+    AK.FID.*.BH? data count: 1
+    AK.DHY.*.BH? data count: 1
+    AK.KTH.*.BH? data count: 1
+    AK.RAG.*.BH? data count: 1
+    AK.RND.*.BH? data count: 1
+    AK.HMT.*.BH? data count: 1
+    AK.CUT.*.BH? data count: 1
+    AK.WRH.*.BH? data count: 1
 
 
 .. code:: ipython3
@@ -418,9 +481,9 @@ single event, and trying to fill it with all available data.
 
 .. parsed-literal::
 
-    ['AK.BMR', 'AK.BPAW', 'AK.BRLK', 'AK.BWN', 'AK.CAPN', 'AK.CAST', 'AK.CCB', 'AK.CHUM', 'AK.CUT', 'AK.DIV', 'AK.DOT', 'AK.EYAK', 'AK.FIRE', 'AK.GHO', 'AK.GLB', 'AK.GOAT', 'AK.HDA', 'AK.HIN', 'AK.HMT', 'AK.KAI', 'AK.KLU', 'AK.KNK', 'AK.KTH', 'AK.MCK', 'AK.NEA2', 'AK.NICH', 'AK.PAX', 'AK.PPLA', 'AK.PWL', 'AK.RAG', 'AK.RC01', 'AK.RIDG', 'AK.RND', 'AK.SAW', 'AK.SCM', 'AK.SCRK', 'AK.SKN', 'AK.SLK', 'AK.SWD', 'AK.TRF', 'AK.WRH']
+    []
     
-    41 stations collected
+    0 stations collected
 
 
 Great! Looks like we’ve got data for 41 stations just for this one

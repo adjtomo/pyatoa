@@ -52,8 +52,8 @@ but provide a template starting point for future adjustments.
     EXTERNAL
         pyflex_preset:           default
         adj_src_type:            cc_traveltime_misfit
-        pyflex_config:           <pyflex.config.Config object at 0x7f1ab423f650>
-        pyadjoint_config:        <pyadjoint.config.Config object at 0x7f1ab422f490>
+        pyflex_config:           <pyflex.config.Config object at 0x7f5f74560550>
+        pyadjoint_config:        <pyadjoint.config.Config object at 0x7f5f114406d0>
 
 
 

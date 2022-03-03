@@ -54,7 +54,10 @@ short example, we will manually fill a dataset to illustrate the
     
     # The Manager class can fill up a dataset with the write() function. Processing results
     # accumulated during the flow() function automatically write to the dataset.
-    ds_fid = "../tests/test_data/docs_data/inspector_doc/docs_ASDFDataSet.h5"
+    workdir = "../tests/test_data/docs_data/inspector_doc/"
+    if not os.path.exists(workdir):
+        os.mkdir(workdir)
+    ds_fid = os.path.join(workdir, "docs_ASDFDataSet.h5")
     
     if os.path.exists(ds_fid):
         os.remove(ds_fid)
@@ -66,78 +69,22 @@ short example, we will manually fill a dataset to illustrate the
         mgmt.flow()
 
 
-::
+.. parsed-literal::
 
-
-    ---------------------------------------------------------------------------
-
-    FileNotFoundError                         Traceback (most recent call last)
-
-    ~/miniconda3/envs/docs/lib/python3.7/site-packages/h5py/_hl/files.py in make_fid(name, mode, userblock_size, fapl, fcpl, swmr)
-        231         try:
-    --> 232             fid = h5f.open(name, h5f.ACC_RDWR, fapl=fapl)
-        233         # Not all drivers raise FileNotFoundError (commented those that do not)
-
-
-    h5py/_objects.pyx in h5py._objects.with_phil.wrapper()
-
-
-    h5py/_objects.pyx in h5py._objects.with_phil.wrapper()
-
-
-    h5py/h5f.pyx in h5py.h5f.open()
-
-
-    FileNotFoundError: [Errno 2] Unable to open file (unable to open file: name = '../tests/test_data/docs_data/inspector_doc/docs_ASDFDataSet.h5', errno = 2, error message = 'No such file or directory', flags = 1, o_flags = 2)
-
-    
-    During handling of the above exception, another exception occurred:
-
-
-    FileNotFoundError                         Traceback (most recent call last)
-
-    /tmp/ipykernel_77690/280123024.py in <module>
-         14     os.remove(ds_fid)
-         15 
-    ---> 16 with ASDFDataSet(ds_fid) as ds:
-         17     cfg = Config(iteration=1, step_count=0)
-         18     mgmt = Manager(ds=ds, config=cfg, inv=inv, event=event, st_obs=st_obs, st_syn=st_syn)
-
-
-    ~/miniconda3/envs/docs/lib/python3.7/site-packages/pyasdf/asdf_data_set.py in __init__(self, filename, compression, shuffle, debug, mpi, mode, single_item_read_limit_in_mb, format_version)
-        205         # Open file or take an already open HDF5 file object.
-        206         if not self.mpi:
-    --> 207             self.__file = h5py.File(filename, mode=mode)
-        208         else:
-        209             self.__file = h5py.File(
-
-
-    ~/miniconda3/envs/docs/lib/python3.7/site-packages/h5py/_hl/files.py in __init__(self, name, mode, driver, libver, userblock_size, swmr, rdcc_nslots, rdcc_nbytes, rdcc_w0, track_order, fs_strategy, fs_persist, fs_threshold, fs_page_size, page_buf_size, min_meta_keep, min_raw_keep, locking, **kwds)
-        505                                  fs_persist=fs_persist, fs_threshold=fs_threshold,
-        506                                  fs_page_size=fs_page_size)
-    --> 507                 fid = make_fid(name, mode, userblock_size, fapl, fcpl, swmr=swmr)
-        508 
-        509             if isinstance(libver, tuple):
-
-
-    ~/miniconda3/envs/docs/lib/python3.7/site-packages/h5py/_hl/files.py in make_fid(name, mode, userblock_size, fapl, fcpl, swmr)
-        243             h5fd.ROS3D if ros3 else -1,
-        244         ) else OSError:
-    --> 245             fid = h5f.create(name, h5f.ACC_EXCL, fapl=fapl, fcpl=fcpl)
-        246     else:
-        247         raise ValueError("Invalid mode; must be one of r, r+, w, w-, x, a")
-
-
-    h5py/_objects.pyx in h5py._objects.with_phil.wrapper()
-
-
-    h5py/_objects.pyx in h5py._objects.with_phil.wrapper()
-
-
-    h5py/h5f.pyx in h5py.h5f.create()
-
-
-    FileNotFoundError: [Errno 2] Unable to create file (unable to open file: name = '../tests/test_data/docs_data/inspector_doc/docs_ASDFDataSet.h5', errno = 2, error message = 'No such file or directory', flags = 15, o_flags = c2)
+    [2022-03-02 15:07:50] - pyatoa - INFO: standardizing streams
+    [2022-03-02 15:07:50] - pyatoa - INFO: preprocessing observation data
+    [2022-03-02 15:07:50] - pyatoa - INFO: adjusting taper to cover time offset -20.0
+    [2022-03-02 15:07:50] - pyatoa - INFO: preprocessing synthetic data
+    [2022-03-02 15:07:50] - pyatoa - INFO: adjusting taper to cover time offset -20.0
+    [2022-03-02 15:07:50] - pyatoa - INFO: running Pyflex w/ map: default
+    [2022-03-02 15:07:50] - pyatoa - INFO: 1 window(s) selected for comp E
+    [2022-03-02 15:07:50] - pyatoa - INFO: 1 window(s) selected for comp N
+    [2022-03-02 15:07:51] - pyatoa - INFO: 1 window(s) selected for comp Z
+    [2022-03-02 15:07:51] - pyatoa - INFO: 3 window(s) total found
+    [2022-03-02 15:07:51] - pyatoa - INFO: 0.365 misfit for comp E
+    [2022-03-02 15:07:51] - pyatoa - INFO: 1.620 misfit for comp N
+    [2022-03-02 15:07:51] - pyatoa - INFO: 0.004 misfit for comp Z
+    [2022-03-02 15:07:51] - pyatoa - INFO: total misfit 1.989
 
 
 --------------
@@ -168,21 +115,13 @@ they are easily accessible.
     print(insp)
 
 
-::
+.. parsed-literal::
 
-
-    ---------------------------------------------------------------------------
-
-    FileNotFoundError                         Traceback (most recent call last)
-
-    /tmp/ipykernel_77690/2482726052.py in <module>
-          3 insp.discover(path="../tests/test_data/docs_data/inspector_doc")
-          4 # Remove dataset from test data to avoid large fileset in the repo
-    ----> 5 os.remove(ds_fid)
-          6 print(insp)
-
-
-    FileNotFoundError: [Errno 2] No such file or directory: '../tests/test_data/docs_data/inspector_doc/docs_ASDFDataSet.h5'
+    docs_ASDFDataSet.h5       001/001...done
+    1    event(s)
+    1    station(s)
+    1    iteration(s)
+    1    evaluation(s)
 
 
 Accessing data within the Inspector
@@ -210,7 +149,7 @@ source-receiver pair.
 
 .. parsed-literal::
 
-    []
+    ['2018p130600']
 
 
 .. code:: ipython3
@@ -221,7 +160,7 @@ source-receiver pair.
 
 .. parsed-literal::
 
-    []
+    ['BFZ']
 
 
 .. code:: ipython3
@@ -232,9 +171,9 @@ source-receiver pair.
 
 .. parsed-literal::
 
-    Empty DataFrame
-    Columns: []
-    Index: []
+                                        time  magnitude   depth_km   latitude   longitude
+    event_id                                                                             
+    2018p130600  2018-02-18T07:43:48.127644Z   5.156706  20.594599 -39.948975  176.299515
 
 
 .. code:: ipython3
@@ -245,9 +184,9 @@ source-receiver pair.
 
 .. parsed-literal::
 
-    Empty DataFrame
-    Columns: []
-    Index: []
+                      latitude   longitude
+    network station                       
+    NZ      BFZ     -40.679647  176.246245
 
 
 .. code:: ipython3
@@ -259,7 +198,8 @@ source-receiver pair.
 
 .. parsed-literal::
 
-    None
+             event network station  distance_km  backazimuth
+    0  2018p130600      NZ     BFZ    81.260637     3.211526
 
 
 --------------
@@ -285,9 +225,10 @@ all standard Pandas operations can be used to access data.
 
 .. parsed-literal::
 
-    Empty DataFrame
-    Columns: []
-    Index: []
+             event iteration step network station channel component    misfit  length_s      dlnA  window_weight  max_cc_value  relative_endtime  relative_starttime  cc_shift_in_seconds           absolute_starttime             absolute_endtime
+    0  2018p130600       i01  s00      NZ     BFZ     HHE         E  0.365397     62.76 -0.709653       5.469764      0.871537             77.07               14.31                 1.08  2018-02-18T07:43:42.437644Z  2018-02-18T07:44:45.197644Z
+    1  2018p130600       i01  s00      NZ     BFZ     HHN         N  1.620000     39.15 -0.828518       3.882748      0.991762             77.07               37.92                 1.89  2018-02-18T07:44:06.047644Z  2018-02-18T07:44:45.197644Z
+    2  2018p130600       i01  s00      NZ     BFZ     HHZ         Z  0.004050     21.21 -0.903363       2.101535      0.990823             41.46               20.25                 0.00  2018-02-18T07:43:48.377644Z  2018-02-18T07:44:09.587644Z
 
 
 .. code:: ipython3
@@ -296,43 +237,29 @@ all standard Pandas operations can be used to access data.
     insp.windows.iloc[0]
 
 
-::
 
 
-    ---------------------------------------------------------------------------
+.. parsed-literal::
 
-    IndexError                                Traceback (most recent call last)
+    event                                  2018p130600
+    iteration                                      i01
+    step                                           s00
+    network                                         NZ
+    station                                        BFZ
+    channel                                        HHE
+    component                                        E
+    misfit                                    0.365397
+    length_s                                     62.76
+    dlnA                                     -0.709653
+    window_weight                             5.469764
+    max_cc_value                              0.871537
+    relative_endtime                             77.07
+    relative_starttime                           14.31
+    cc_shift_in_seconds                           1.08
+    absolute_starttime     2018-02-18T07:43:42.437644Z
+    absolute_endtime       2018-02-18T07:44:45.197644Z
+    Name: 0, dtype: object
 
-    /tmp/ipykernel_77690/3079271589.py in <module>
-          1 # Rows in the `windows` dataframe are accessible via array indexing
-    ----> 2 insp.windows.iloc[0]
-    
-
-    ~/miniconda3/envs/docs/lib/python3.7/site-packages/pandas/core/indexing.py in __getitem__(self, key)
-        929 
-        930             maybe_callable = com.apply_if_callable(key, self.obj)
-    --> 931             return self._getitem_axis(maybe_callable, axis=axis)
-        932 
-        933     def _is_scalar_access(self, key: tuple):
-
-
-    ~/miniconda3/envs/docs/lib/python3.7/site-packages/pandas/core/indexing.py in _getitem_axis(self, key, axis)
-       1564 
-       1565             # validate the location
-    -> 1566             self._validate_integer(key, axis)
-       1567 
-       1568             return self.obj._ixs(key, axis=axis)
-
-
-    ~/miniconda3/envs/docs/lib/python3.7/site-packages/pandas/core/indexing.py in _validate_integer(self, key, axis)
-       1498         len_axis = len(self.obj._get_axis(axis))
-       1499         if key >= len_axis or key < -len_axis:
-    -> 1500             raise IndexError("single positional indexer is out-of-bounds")
-       1501 
-       1502     # -------------------------------------------------------------------
-
-
-    IndexError: single positional indexer is out-of-bounds
 
 
 .. code:: ipython3
@@ -341,43 +268,12 @@ all standard Pandas operations can be used to access data.
     insp.windows.iloc[0].absolute_starttime
 
 
-::
 
 
-    ---------------------------------------------------------------------------
+.. parsed-literal::
 
-    IndexError                                Traceback (most recent call last)
+    '2018-02-18T07:43:42.437644Z'
 
-    /tmp/ipykernel_77690/2589852639.py in <module>
-          1 # Each of these series can in turn be queried for specific attributes
-    ----> 2 insp.windows.iloc[0].absolute_starttime
-    
-
-    ~/miniconda3/envs/docs/lib/python3.7/site-packages/pandas/core/indexing.py in __getitem__(self, key)
-        929 
-        930             maybe_callable = com.apply_if_callable(key, self.obj)
-    --> 931             return self._getitem_axis(maybe_callable, axis=axis)
-        932 
-        933     def _is_scalar_access(self, key: tuple):
-
-
-    ~/miniconda3/envs/docs/lib/python3.7/site-packages/pandas/core/indexing.py in _getitem_axis(self, key, axis)
-       1564 
-       1565             # validate the location
-    -> 1566             self._validate_integer(key, axis)
-       1567 
-       1568             return self.obj._ixs(key, axis=axis)
-
-
-    ~/miniconda3/envs/docs/lib/python3.7/site-packages/pandas/core/indexing.py in _validate_integer(self, key, axis)
-       1498         len_axis = len(self.obj._get_axis(axis))
-       1499         if key >= len_axis or key < -len_axis:
-    -> 1500             raise IndexError("single positional indexer is out-of-bounds")
-       1501 
-       1502     # -------------------------------------------------------------------
-
-
-    IndexError: single positional indexer is out-of-bounds
 
 
 .. code:: ipython3
@@ -386,61 +282,15 @@ all standard Pandas operations can be used to access data.
     insp.windows["max_cc_value"]
 
 
-::
 
 
-    ---------------------------------------------------------------------------
+.. parsed-literal::
 
-    KeyError                                  Traceback (most recent call last)
+    0    0.871537
+    1    0.991762
+    2    0.990823
+    Name: max_cc_value, dtype: float64
 
-    ~/miniconda3/envs/docs/lib/python3.7/site-packages/pandas/core/indexes/base.py in get_loc(self, key, method, tolerance)
-       3360             try:
-    -> 3361                 return self._engine.get_loc(casted_key)
-       3362             except KeyError as err:
-
-
-    ~/miniconda3/envs/docs/lib/python3.7/site-packages/pandas/_libs/index.pyx in pandas._libs.index.IndexEngine.get_loc()
-
-
-    ~/miniconda3/envs/docs/lib/python3.7/site-packages/pandas/_libs/index.pyx in pandas._libs.index.IndexEngine.get_loc()
-
-
-    pandas/_libs/hashtable_class_helper.pxi in pandas._libs.hashtable.PyObjectHashTable.get_item()
-
-
-    pandas/_libs/hashtable_class_helper.pxi in pandas._libs.hashtable.PyObjectHashTable.get_item()
-
-
-    KeyError: 'max_cc_value'
-
-    
-    The above exception was the direct cause of the following exception:
-
-
-    KeyError                                  Traceback (most recent call last)
-
-    /tmp/ipykernel_77690/2922241543.py in <module>
-          1 # The User can query a single column, e.g., to get all cc values in a list. Pandas is great:)
-    ----> 2 insp.windows["max_cc_value"]
-    
-
-    ~/miniconda3/envs/docs/lib/python3.7/site-packages/pandas/core/frame.py in __getitem__(self, key)
-       3456             if self.columns.nlevels > 1:
-       3457                 return self._getitem_multilevel(key)
-    -> 3458             indexer = self.columns.get_loc(key)
-       3459             if is_integer(indexer):
-       3460                 indexer = [indexer]
-
-
-    ~/miniconda3/envs/docs/lib/python3.7/site-packages/pandas/core/indexes/base.py in get_loc(self, key, method, tolerance)
-       3361                 return self._engine.get_loc(casted_key)
-       3362             except KeyError as err:
-    -> 3363                 raise KeyError(key) from err
-       3364 
-       3365         if is_scalar(key) and isna(key) and not self.hasnans:
-
-
-    KeyError: 'max_cc_value'
 
 
 .. code:: ipython3
@@ -449,61 +299,12 @@ all standard Pandas operations can be used to access data.
     insp.windows["max_cc_value"].mean()
 
 
-::
 
 
-    ---------------------------------------------------------------------------
+.. parsed-literal::
 
-    KeyError                                  Traceback (most recent call last)
+    0.95137376274537122
 
-    ~/miniconda3/envs/docs/lib/python3.7/site-packages/pandas/core/indexes/base.py in get_loc(self, key, method, tolerance)
-       3360             try:
-    -> 3361                 return self._engine.get_loc(casted_key)
-       3362             except KeyError as err:
-
-
-    ~/miniconda3/envs/docs/lib/python3.7/site-packages/pandas/_libs/index.pyx in pandas._libs.index.IndexEngine.get_loc()
-
-
-    ~/miniconda3/envs/docs/lib/python3.7/site-packages/pandas/_libs/index.pyx in pandas._libs.index.IndexEngine.get_loc()
-
-
-    pandas/_libs/hashtable_class_helper.pxi in pandas._libs.hashtable.PyObjectHashTable.get_item()
-
-
-    pandas/_libs/hashtable_class_helper.pxi in pandas._libs.hashtable.PyObjectHashTable.get_item()
-
-
-    KeyError: 'max_cc_value'
-
-    
-    The above exception was the direct cause of the following exception:
-
-
-    KeyError                                  Traceback (most recent call last)
-
-    /tmp/ipykernel_77690/3044376728.py in <module>
-          1 # Which in turn can be operated on like numpy arrays (or Pandas series)
-    ----> 2 insp.windows["max_cc_value"].mean()
-    
-
-    ~/miniconda3/envs/docs/lib/python3.7/site-packages/pandas/core/frame.py in __getitem__(self, key)
-       3456             if self.columns.nlevels > 1:
-       3457                 return self._getitem_multilevel(key)
-    -> 3458             indexer = self.columns.get_loc(key)
-       3459             if is_integer(indexer):
-       3460                 indexer = [indexer]
-
-
-    ~/miniconda3/envs/docs/lib/python3.7/site-packages/pandas/core/indexes/base.py in get_loc(self, key, method, tolerance)
-       3361                 return self._engine.get_loc(casted_key)
-       3362             except KeyError as err:
-    -> 3363                 raise KeyError(key) from err
-       3364 
-       3365         if is_scalar(key) and isna(key) and not self.hasnans:
-
-
-    KeyError: 'max_cc_value'
 
 
 --------------
@@ -536,84 +337,11 @@ line search step within an iteration.
     disp(insp.misfit())
 
 
-::
+.. parsed-literal::
 
-
-    ---------------------------------------------------------------------------
-
-    KeyError                                  Traceback (most recent call last)
-
-    /tmp/ipykernel_77690/1340495598.py in <module>
-          1 # Note: The summed_misfit and misfit are the same here because we only have 1 event
-          2 # misfit = summed_misfit / n_event
-    ----> 3 disp(insp.misfit())
-    
-
-    ~/REPOSITORIES/pyatoa/pyatoa/core/inspector.py in misfit(self, level, reset)
-        739         group_list = ["iteration", "step", "event", "station", "component", 
-        740                       "misfit"]
-    --> 741         misfits = self.windows.loc[:, tuple(group_list)]
-        742 
-        743         # Count the number of windows on a per station basis
-
-
-    ~/miniconda3/envs/docs/lib/python3.7/site-packages/pandas/core/indexing.py in __getitem__(self, key)
-        923                 with suppress(KeyError, IndexError):
-        924                     return self.obj._get_value(*key, takeable=self._takeable)
-    --> 925             return self._getitem_tuple(key)
-        926         else:
-        927             # we by definition only have the 0th axis
-
-
-    ~/miniconda3/envs/docs/lib/python3.7/site-packages/pandas/core/indexing.py in _getitem_tuple(self, tup)
-       1107             return self._multi_take(tup)
-       1108 
-    -> 1109         return self._getitem_tuple_same_dim(tup)
-       1110 
-       1111     def _get_label(self, label, axis: int):
-
-
-    ~/miniconda3/envs/docs/lib/python3.7/site-packages/pandas/core/indexing.py in _getitem_tuple_same_dim(self, tup)
-        804                 continue
-        805 
-    --> 806             retval = getattr(retval, self.name)._getitem_axis(key, axis=i)
-        807             # We should never have retval.ndim < self.ndim, as that should
-        808             #  be handled by the _getitem_lowerdim call above.
-
-
-    ~/miniconda3/envs/docs/lib/python3.7/site-packages/pandas/core/indexing.py in _getitem_axis(self, key, axis)
-       1151                     raise ValueError("Cannot index with multidimensional key")
-       1152 
-    -> 1153                 return self._getitem_iterable(key, axis=axis)
-       1154 
-       1155             # nested tuple slicing
-
-
-    ~/miniconda3/envs/docs/lib/python3.7/site-packages/pandas/core/indexing.py in _getitem_iterable(self, key, axis)
-       1091 
-       1092         # A collection of keys
-    -> 1093         keyarr, indexer = self._get_listlike_indexer(key, axis)
-       1094         return self.obj._reindex_with_indexers(
-       1095             {axis: [keyarr, indexer]}, copy=True, allow_dups=True
-
-
-    ~/miniconda3/envs/docs/lib/python3.7/site-packages/pandas/core/indexing.py in _get_listlike_indexer(self, key, axis)
-       1312             keyarr, indexer, new_indexer = ax._reindex_non_unique(keyarr)
-       1313 
-    -> 1314         self._validate_read_indexer(keyarr, indexer, axis)
-       1315 
-       1316         if needs_i8_conversion(ax.dtype) or isinstance(
-
-
-    ~/miniconda3/envs/docs/lib/python3.7/site-packages/pandas/core/indexing.py in _validate_read_indexer(self, key, indexer, axis)
-       1372                 if use_interval_msg:
-       1373                     key = list(key)
-    -> 1374                 raise KeyError(f"None of [{key}] are in the [{axis_name}]")
-       1375 
-       1376             not_found = list(ensure_index(key)[missing_mask.nonzero()[0]].unique())
-
-
-    KeyError: "None of [Index(['iteration', 'step', 'event', 'station', 'component', 'misfit'], dtype='object')] are in the [columns]"
+                    n_event  summed_misfit    misfit
+    iteration step                                  
+    i01       s00         1       0.331575  0.331575
 
 
 .. code:: ipython3
@@ -622,83 +350,11 @@ line search step within an iteration.
     disp(insp.misfit(level="event"))
 
 
-::
+.. parsed-literal::
 
-
-    ---------------------------------------------------------------------------
-
-    KeyError                                  Traceback (most recent call last)
-
-    /tmp/ipykernel_77690/2649888482.py in <module>
-          1 # We can change the level to look at a per-event misfit. Misfit is scaled by the number of windows per event
-    ----> 2 disp(insp.misfit(level="event"))
-    
-
-    ~/REPOSITORIES/pyatoa/pyatoa/core/inspector.py in misfit(self, level, reset)
-        739         group_list = ["iteration", "step", "event", "station", "component", 
-        740                       "misfit"]
-    --> 741         misfits = self.windows.loc[:, tuple(group_list)]
-        742 
-        743         # Count the number of windows on a per station basis
-
-
-    ~/miniconda3/envs/docs/lib/python3.7/site-packages/pandas/core/indexing.py in __getitem__(self, key)
-        923                 with suppress(KeyError, IndexError):
-        924                     return self.obj._get_value(*key, takeable=self._takeable)
-    --> 925             return self._getitem_tuple(key)
-        926         else:
-        927             # we by definition only have the 0th axis
-
-
-    ~/miniconda3/envs/docs/lib/python3.7/site-packages/pandas/core/indexing.py in _getitem_tuple(self, tup)
-       1107             return self._multi_take(tup)
-       1108 
-    -> 1109         return self._getitem_tuple_same_dim(tup)
-       1110 
-       1111     def _get_label(self, label, axis: int):
-
-
-    ~/miniconda3/envs/docs/lib/python3.7/site-packages/pandas/core/indexing.py in _getitem_tuple_same_dim(self, tup)
-        804                 continue
-        805 
-    --> 806             retval = getattr(retval, self.name)._getitem_axis(key, axis=i)
-        807             # We should never have retval.ndim < self.ndim, as that should
-        808             #  be handled by the _getitem_lowerdim call above.
-
-
-    ~/miniconda3/envs/docs/lib/python3.7/site-packages/pandas/core/indexing.py in _getitem_axis(self, key, axis)
-       1151                     raise ValueError("Cannot index with multidimensional key")
-       1152 
-    -> 1153                 return self._getitem_iterable(key, axis=axis)
-       1154 
-       1155             # nested tuple slicing
-
-
-    ~/miniconda3/envs/docs/lib/python3.7/site-packages/pandas/core/indexing.py in _getitem_iterable(self, key, axis)
-       1091 
-       1092         # A collection of keys
-    -> 1093         keyarr, indexer = self._get_listlike_indexer(key, axis)
-       1094         return self.obj._reindex_with_indexers(
-       1095             {axis: [keyarr, indexer]}, copy=True, allow_dups=True
-
-
-    ~/miniconda3/envs/docs/lib/python3.7/site-packages/pandas/core/indexing.py in _get_listlike_indexer(self, key, axis)
-       1312             keyarr, indexer, new_indexer = ax._reindex_non_unique(keyarr)
-       1313 
-    -> 1314         self._validate_read_indexer(keyarr, indexer, axis)
-       1315 
-       1316         if needs_i8_conversion(ax.dtype) or isinstance(
-
-
-    ~/miniconda3/envs/docs/lib/python3.7/site-packages/pandas/core/indexing.py in _validate_read_indexer(self, key, indexer, axis)
-       1372                 if use_interval_msg:
-       1373                     key = list(key)
-    -> 1374                 raise KeyError(f"None of [{key}] are in the [{axis_name}]")
-       1375 
-       1376             not_found = list(ensure_index(key)[missing_mask.nonzero()[0]].unique())
-
-
-    KeyError: "None of [Index(['iteration', 'step', 'event', 'station', 'component', 'misfit'], dtype='object')] are in the [columns]"
+                                unscaled_misfit  nwin    misfit
+    iteration step event                                       
+    i01       s00  2018p130600         1.989447     3  0.331575
 
 
 .. code:: ipython3
@@ -707,83 +363,11 @@ line search step within an iteration.
     disp(insp.misfit(level="station"))
 
 
-::
+.. parsed-literal::
 
-
-    ---------------------------------------------------------------------------
-
-    KeyError                                  Traceback (most recent call last)
-
-    /tmp/ipykernel_77690/1726526338.py in <module>
-          1 # We can also look at a per-station misfit
-    ----> 2 disp(insp.misfit(level="station"))
-    
-
-    ~/REPOSITORIES/pyatoa/pyatoa/core/inspector.py in misfit(self, level, reset)
-        739         group_list = ["iteration", "step", "event", "station", "component", 
-        740                       "misfit"]
-    --> 741         misfits = self.windows.loc[:, tuple(group_list)]
-        742 
-        743         # Count the number of windows on a per station basis
-
-
-    ~/miniconda3/envs/docs/lib/python3.7/site-packages/pandas/core/indexing.py in __getitem__(self, key)
-        923                 with suppress(KeyError, IndexError):
-        924                     return self.obj._get_value(*key, takeable=self._takeable)
-    --> 925             return self._getitem_tuple(key)
-        926         else:
-        927             # we by definition only have the 0th axis
-
-
-    ~/miniconda3/envs/docs/lib/python3.7/site-packages/pandas/core/indexing.py in _getitem_tuple(self, tup)
-       1107             return self._multi_take(tup)
-       1108 
-    -> 1109         return self._getitem_tuple_same_dim(tup)
-       1110 
-       1111     def _get_label(self, label, axis: int):
-
-
-    ~/miniconda3/envs/docs/lib/python3.7/site-packages/pandas/core/indexing.py in _getitem_tuple_same_dim(self, tup)
-        804                 continue
-        805 
-    --> 806             retval = getattr(retval, self.name)._getitem_axis(key, axis=i)
-        807             # We should never have retval.ndim < self.ndim, as that should
-        808             #  be handled by the _getitem_lowerdim call above.
-
-
-    ~/miniconda3/envs/docs/lib/python3.7/site-packages/pandas/core/indexing.py in _getitem_axis(self, key, axis)
-       1151                     raise ValueError("Cannot index with multidimensional key")
-       1152 
-    -> 1153                 return self._getitem_iterable(key, axis=axis)
-       1154 
-       1155             # nested tuple slicing
-
-
-    ~/miniconda3/envs/docs/lib/python3.7/site-packages/pandas/core/indexing.py in _getitem_iterable(self, key, axis)
-       1091 
-       1092         # A collection of keys
-    -> 1093         keyarr, indexer = self._get_listlike_indexer(key, axis)
-       1094         return self.obj._reindex_with_indexers(
-       1095             {axis: [keyarr, indexer]}, copy=True, allow_dups=True
-
-
-    ~/miniconda3/envs/docs/lib/python3.7/site-packages/pandas/core/indexing.py in _get_listlike_indexer(self, key, axis)
-       1312             keyarr, indexer, new_indexer = ax._reindex_non_unique(keyarr)
-       1313 
-    -> 1314         self._validate_read_indexer(keyarr, indexer, axis)
-       1315 
-       1316         if needs_i8_conversion(ax.dtype) or isinstance(
-
-
-    ~/miniconda3/envs/docs/lib/python3.7/site-packages/pandas/core/indexing.py in _validate_read_indexer(self, key, indexer, axis)
-       1372                 if use_interval_msg:
-       1373                     key = list(key)
-    -> 1374                 raise KeyError(f"None of [{key}] are in the [{axis_name}]")
-       1375 
-       1376             not_found = list(ensure_index(key)[missing_mask.nonzero()[0]].unique())
-
-
-    KeyError: "None of [Index(['iteration', 'step', 'event', 'station', 'component', 'misfit'], dtype='object')] are in the [columns]"
+                                        unscaled_misfit  nwin    misfit
+    iteration step event       station                                 
+    i01       s00  2018p130600 BFZ             1.989447     3  0.663149
 
 
 --------------
@@ -812,83 +396,11 @@ that can be compared between iterations.
     disp(insp.nwin())
 
 
-::
+.. parsed-literal::
 
-
-    ---------------------------------------------------------------------------
-
-    KeyError                                  Traceback (most recent call last)
-
-    /tmp/ipykernel_77690/2514978415.py in <module>
-          1 # `nwin` will return both the number of windows, and the cumulative window length
-    ----> 2 disp(insp.nwin())
-    
-
-    ~/REPOSITORIES/pyatoa/pyatoa/core/inspector.py in nwin(self, level)
-        693                 "nwin() argument 'level' must be 'station', 'event', 'step'")
-        694 
-    --> 695         windows = self.windows.loc[:, tuple(group_list)]
-        696         windows.sort_values(group_list, inplace=True)
-        697 
-
-
-    ~/miniconda3/envs/docs/lib/python3.7/site-packages/pandas/core/indexing.py in __getitem__(self, key)
-        923                 with suppress(KeyError, IndexError):
-        924                     return self.obj._get_value(*key, takeable=self._takeable)
-    --> 925             return self._getitem_tuple(key)
-        926         else:
-        927             # we by definition only have the 0th axis
-
-
-    ~/miniconda3/envs/docs/lib/python3.7/site-packages/pandas/core/indexing.py in _getitem_tuple(self, tup)
-       1107             return self._multi_take(tup)
-       1108 
-    -> 1109         return self._getitem_tuple_same_dim(tup)
-       1110 
-       1111     def _get_label(self, label, axis: int):
-
-
-    ~/miniconda3/envs/docs/lib/python3.7/site-packages/pandas/core/indexing.py in _getitem_tuple_same_dim(self, tup)
-        804                 continue
-        805 
-    --> 806             retval = getattr(retval, self.name)._getitem_axis(key, axis=i)
-        807             # We should never have retval.ndim < self.ndim, as that should
-        808             #  be handled by the _getitem_lowerdim call above.
-
-
-    ~/miniconda3/envs/docs/lib/python3.7/site-packages/pandas/core/indexing.py in _getitem_axis(self, key, axis)
-       1151                     raise ValueError("Cannot index with multidimensional key")
-       1152 
-    -> 1153                 return self._getitem_iterable(key, axis=axis)
-       1154 
-       1155             # nested tuple slicing
-
-
-    ~/miniconda3/envs/docs/lib/python3.7/site-packages/pandas/core/indexing.py in _getitem_iterable(self, key, axis)
-       1091 
-       1092         # A collection of keys
-    -> 1093         keyarr, indexer = self._get_listlike_indexer(key, axis)
-       1094         return self.obj._reindex_with_indexers(
-       1095             {axis: [keyarr, indexer]}, copy=True, allow_dups=True
-
-
-    ~/miniconda3/envs/docs/lib/python3.7/site-packages/pandas/core/indexing.py in _get_listlike_indexer(self, key, axis)
-       1312             keyarr, indexer, new_indexer = ax._reindex_non_unique(keyarr)
-       1313 
-    -> 1314         self._validate_read_indexer(keyarr, indexer, axis)
-       1315 
-       1316         if needs_i8_conversion(ax.dtype) or isinstance(
-
-
-    ~/miniconda3/envs/docs/lib/python3.7/site-packages/pandas/core/indexing.py in _validate_read_indexer(self, key, indexer, axis)
-       1372                 if use_interval_msg:
-       1373                     key = list(key)
-    -> 1374                 raise KeyError(f"None of [{key}] are in the [{axis_name}]")
-       1375 
-       1376             not_found = list(ensure_index(key)[missing_mask.nonzero()[0]].unique())
-
-
-    KeyError: "None of [Index(['iteration', 'step', 'length_s'], dtype='object')] are in the [columns]"
+                    nwin  length_s
+    iteration step                
+    i01       s00      3    123.12
 
 
 .. code:: ipython3
@@ -897,83 +409,11 @@ that can be compared between iterations.
     disp(insp.nwin(level="event"))
 
 
-::
+.. parsed-literal::
 
-
-    ---------------------------------------------------------------------------
-
-    KeyError                                  Traceback (most recent call last)
-
-    /tmp/ipykernel_77690/470127526.py in <module>
-          1 # Again, we can make choices about the level at which we want this information
-    ----> 2 disp(insp.nwin(level="event"))
-    
-
-    ~/REPOSITORIES/pyatoa/pyatoa/core/inspector.py in nwin(self, level)
-        693                 "nwin() argument 'level' must be 'station', 'event', 'step'")
-        694 
-    --> 695         windows = self.windows.loc[:, tuple(group_list)]
-        696         windows.sort_values(group_list, inplace=True)
-        697 
-
-
-    ~/miniconda3/envs/docs/lib/python3.7/site-packages/pandas/core/indexing.py in __getitem__(self, key)
-        923                 with suppress(KeyError, IndexError):
-        924                     return self.obj._get_value(*key, takeable=self._takeable)
-    --> 925             return self._getitem_tuple(key)
-        926         else:
-        927             # we by definition only have the 0th axis
-
-
-    ~/miniconda3/envs/docs/lib/python3.7/site-packages/pandas/core/indexing.py in _getitem_tuple(self, tup)
-       1107             return self._multi_take(tup)
-       1108 
-    -> 1109         return self._getitem_tuple_same_dim(tup)
-       1110 
-       1111     def _get_label(self, label, axis: int):
-
-
-    ~/miniconda3/envs/docs/lib/python3.7/site-packages/pandas/core/indexing.py in _getitem_tuple_same_dim(self, tup)
-        804                 continue
-        805 
-    --> 806             retval = getattr(retval, self.name)._getitem_axis(key, axis=i)
-        807             # We should never have retval.ndim < self.ndim, as that should
-        808             #  be handled by the _getitem_lowerdim call above.
-
-
-    ~/miniconda3/envs/docs/lib/python3.7/site-packages/pandas/core/indexing.py in _getitem_axis(self, key, axis)
-       1151                     raise ValueError("Cannot index with multidimensional key")
-       1152 
-    -> 1153                 return self._getitem_iterable(key, axis=axis)
-       1154 
-       1155             # nested tuple slicing
-
-
-    ~/miniconda3/envs/docs/lib/python3.7/site-packages/pandas/core/indexing.py in _getitem_iterable(self, key, axis)
-       1091 
-       1092         # A collection of keys
-    -> 1093         keyarr, indexer = self._get_listlike_indexer(key, axis)
-       1094         return self.obj._reindex_with_indexers(
-       1095             {axis: [keyarr, indexer]}, copy=True, allow_dups=True
-
-
-    ~/miniconda3/envs/docs/lib/python3.7/site-packages/pandas/core/indexing.py in _get_listlike_indexer(self, key, axis)
-       1312             keyarr, indexer, new_indexer = ax._reindex_non_unique(keyarr)
-       1313 
-    -> 1314         self._validate_read_indexer(keyarr, indexer, axis)
-       1315 
-       1316         if needs_i8_conversion(ax.dtype) or isinstance(
-
-
-    ~/miniconda3/envs/docs/lib/python3.7/site-packages/pandas/core/indexing.py in _validate_read_indexer(self, key, indexer, axis)
-       1372                 if use_interval_msg:
-       1373                     key = list(key)
-    -> 1374                 raise KeyError(f"None of [{key}] are in the [{axis_name}]")
-       1375 
-       1376             not_found = list(ensure_index(key)[missing_mask.nonzero()[0]].unique())
-
-
-    KeyError: "None of [Index(['iteration', 'step', 'event', 'length_s'], dtype='object')] are in the [columns]"
+                                nwin  length_s
+    iteration step event                      
+    i01       s00  2018p130600     3    123.12
 
 
 .. code:: ipython3
@@ -982,83 +422,11 @@ that can be compared between iterations.
     disp(insp.nwin(level="station"))
 
 
-::
+.. parsed-literal::
 
-
-    ---------------------------------------------------------------------------
-
-    KeyError                                  Traceback (most recent call last)
-
-    /tmp/ipykernel_77690/3104979449.py in <module>
-          1 # These values are the same because we only have one source-receiver pair
-    ----> 2 disp(insp.nwin(level="station"))
-    
-
-    ~/REPOSITORIES/pyatoa/pyatoa/core/inspector.py in nwin(self, level)
-        693                 "nwin() argument 'level' must be 'station', 'event', 'step'")
-        694 
-    --> 695         windows = self.windows.loc[:, tuple(group_list)]
-        696         windows.sort_values(group_list, inplace=True)
-        697 
-
-
-    ~/miniconda3/envs/docs/lib/python3.7/site-packages/pandas/core/indexing.py in __getitem__(self, key)
-        923                 with suppress(KeyError, IndexError):
-        924                     return self.obj._get_value(*key, takeable=self._takeable)
-    --> 925             return self._getitem_tuple(key)
-        926         else:
-        927             # we by definition only have the 0th axis
-
-
-    ~/miniconda3/envs/docs/lib/python3.7/site-packages/pandas/core/indexing.py in _getitem_tuple(self, tup)
-       1107             return self._multi_take(tup)
-       1108 
-    -> 1109         return self._getitem_tuple_same_dim(tup)
-       1110 
-       1111     def _get_label(self, label, axis: int):
-
-
-    ~/miniconda3/envs/docs/lib/python3.7/site-packages/pandas/core/indexing.py in _getitem_tuple_same_dim(self, tup)
-        804                 continue
-        805 
-    --> 806             retval = getattr(retval, self.name)._getitem_axis(key, axis=i)
-        807             # We should never have retval.ndim < self.ndim, as that should
-        808             #  be handled by the _getitem_lowerdim call above.
-
-
-    ~/miniconda3/envs/docs/lib/python3.7/site-packages/pandas/core/indexing.py in _getitem_axis(self, key, axis)
-       1151                     raise ValueError("Cannot index with multidimensional key")
-       1152 
-    -> 1153                 return self._getitem_iterable(key, axis=axis)
-       1154 
-       1155             # nested tuple slicing
-
-
-    ~/miniconda3/envs/docs/lib/python3.7/site-packages/pandas/core/indexing.py in _getitem_iterable(self, key, axis)
-       1091 
-       1092         # A collection of keys
-    -> 1093         keyarr, indexer = self._get_listlike_indexer(key, axis)
-       1094         return self.obj._reindex_with_indexers(
-       1095             {axis: [keyarr, indexer]}, copy=True, allow_dups=True
-
-
-    ~/miniconda3/envs/docs/lib/python3.7/site-packages/pandas/core/indexing.py in _get_listlike_indexer(self, key, axis)
-       1312             keyarr, indexer, new_indexer = ax._reindex_non_unique(keyarr)
-       1313 
-    -> 1314         self._validate_read_indexer(keyarr, indexer, axis)
-       1315 
-       1316         if needs_i8_conversion(ax.dtype) or isinstance(
-
-
-    ~/miniconda3/envs/docs/lib/python3.7/site-packages/pandas/core/indexing.py in _validate_read_indexer(self, key, indexer, axis)
-       1372                 if use_interval_msg:
-       1373                     key = list(key)
-    -> 1374                 raise KeyError(f"None of [{key}] are in the [{axis_name}]")
-       1375 
-       1376             not_found = list(ensure_index(key)[missing_mask.nonzero()[0]].unique())
-
-
-    KeyError: "None of [Index(['iteration', 'step', 'station', 'length_s'], dtype='object')] are in the [columns]"
+                            nwin  length_s
+    iteration step station                
+    i01       s00  BFZ         3    123.12
 
 
 --------------
@@ -1451,30 +819,15 @@ for the same evaluation just to show how things work.
 .. code:: ipython3
 
     # Trying to compare windows for non-matching window numbers will throw an AssertionError
-    insp.compare_windows()
+    try:
+        insp.compare_windows()
+    except AssertionError as e:
+        print(e)
 
 
-::
+.. parsed-literal::
 
-
-    ---------------------------------------------------------------------------
-
-    AssertionError                            Traceback (most recent call last)
-
-    /tmp/ipykernel_77690/1122927245.py in <module>
-          1 # Trying to compare windows for non-matching window numbers will throw an AssertionError
-    ----> 2 insp.compare_windows()
-    
-
-    ~/REPOSITORIES/pyatoa/pyatoa/core/inspector.py in compare_windows(self, iteration_a, step_count_a, iteration_b, step_count_b)
-        962 
-        963         assert(len(windows_a) == len(windows_b)), \
-    --> 964                 ("the number of windows does not match between the two "
-        965                  "evaluations, windows cannot be compared")
-        966 
-
-
-    AssertionError: the number of windows does not match between the two evaluations, windows cannot be compared
+    the number of windows does not match between the two evaluations, windows cannot be compared
 
 
 .. code:: ipython3
@@ -1647,7 +1000,7 @@ source-receiver metadata
 .. parsed-literal::
 
     (<Figure size 432x288 with 1 Axes>,
-     <matplotlib.axes._subplots.AxesSubplot at 0x7f4d70b8bd50>)
+     <matplotlib.axes._subplots.AxesSubplot at 0x7f5afd5ca8d0>)
 
 
 
@@ -1662,7 +1015,7 @@ source-receiver metadata
 .. parsed-literal::
 
     (<Figure size 576x432 with 1 Axes>,
-     <matplotlib.axes._subplots.AxesSubplot at 0x7f4d707e1610>)
+     <matplotlib.axes._subplots.AxesSubplot at 0x7f5afd9a0910>)
 
 
 
@@ -1685,7 +1038,7 @@ source-receiver metadata
 .. parsed-literal::
 
     (<Figure size 576x576 with 1 Axes>,
-     <matplotlib.axes._subplots.AxesSubplot at 0x7f4d68eeb350>)
+     <matplotlib.axes._subplots.AxesSubplot at 0x7f5afd79f7d0>)
 
 
 
@@ -1722,7 +1075,7 @@ source-receiver metadata
 .. parsed-literal::
 
     (<Figure size 432x288 with 1 Axes>,
-     <matplotlib.axes._subplots.AxesSubplot at 0x7f4d68b7acd0>)
+     <matplotlib.axes._subplots.AxesSubplot at 0x7f5af5bb5cd0>)
 
 
 
@@ -1782,7 +1135,7 @@ inversion is progressing by comparing iterations against one another
 .. parsed-literal::
 
     (<Figure size 800x600 with 2 Axes>,
-     <matplotlib.axes._subplots.AxesSubplot at 0x7f4d68a7f090>)
+     <matplotlib.axes._subplots.AxesSubplot at 0x7f5af5c0c190>)
 
 
 
@@ -1817,7 +1170,7 @@ inversion is progressing by comparing iterations against one another
 .. parsed-literal::
 
     (<Figure size 576x432 with 1 Axes>,
-     <matplotlib.axes._subplots.AxesSubplot at 0x7f4d68c9f750>)
+     <matplotlib.axes._subplots.AxesSubplot at 0x7f5af46b6ad0>)
 
 
 
@@ -1855,7 +1208,7 @@ measurements, or comparisons against one another.
 .. parsed-literal::
 
     (<Figure size 576x432 with 1 Axes>,
-     <matplotlib.axes._subplots.AxesSubplot at 0x7f4d68c2ad10>)
+     <matplotlib.axes._subplots.AxesSubplot at 0x7f5af45114d0>)
 
 
 
@@ -1905,7 +1258,7 @@ measurements, or comparisons against one another.
 .. parsed-literal::
 
     (<Figure size 432x288 with 2 Axes>,
-     <matplotlib.axes._subplots.AxesSubplot at 0x7f4d66b18cd0>)
+     <matplotlib.axes._subplots.AxesSubplot at 0x7f5af437ab10>)
 
 
 
@@ -1931,7 +1284,7 @@ measurements, or comparisons against one another.
 .. parsed-literal::
 
     (<Figure size 432x288 with 2 Axes>,
-     <matplotlib.axes._subplots.AxesSubplot at 0x7f4d68b05f10>)
+     <matplotlib.axes._subplots.AxesSubplot at 0x7f5af4276050>)
 
 
 
@@ -1951,6 +1304,6 @@ measurements, or comparisons against one another.
 .. parsed-literal::
 
     (<Figure size 432x288 with 2 Axes>,
-     <matplotlib.axes._subplots.AxesSubplot at 0x7f4d66a57890>)
+     <matplotlib.axes._subplots.AxesSubplot at 0x7f5af41abc90>)
 
 

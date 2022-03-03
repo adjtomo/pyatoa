@@ -23,7 +23,7 @@ def convert_nb(nbname):
 
     # Run nbconvert to execute a notebook, allowing errors through and saving
     # the new, executed notebook in place
-    os.system(f"jupyter nbconvert --to notebook --allow-errors "  # --no-prompt "
+    os.system(f"jupyter nbconvert --to notebook "# --allow-errors "  # --no-prompt "
               f"--execute {filename} --output {filename}")
     os.system("rm -rf ./index_files")
 
