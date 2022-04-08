@@ -202,23 +202,27 @@ def read_station_codes(path_to_stations, loc="??", cha="*"):
 def read_specfem2d_source(path_to_source, default_time="2000-01-01T00:00:00"):
     """
     Create a barebones Pyatoa Source object from a SPECFEM2D Source file, which
-    mimics the behavior of the more complex ObsPy Event object
+    mimics the behavior of the more complex ObsPy Event object. We only need
+    few key pieces of information from the SOURCE file for things to work
     """
     with open(path_to_source, "r") as f:
         lines = f.readlines()
    
     # Place values from file into dict
     source_dict = {}
+
+    # First line expected to be e.g.,: '## Source 1'
+    source_dict["source_id"] = lines[0].strip().split()[-1]
+
     for line in lines:
         # Skip comments and newlines
-        if line[0] == "#" or line == "\n":
+        if line.startswith("#") or line == "\n":
             continue
-        key, _, val, *_ = line.split()
-        source_dict[key] = val
+        key, val, *_ = line.strip().split("=")
+        # Strip trailing comments from values
+        val = val.split("#")[0].strip()
+        source_dict[key.strip()] = val.strip()
 
-    # First line has the source name
-    source_dict["source_id"] = lines[0].strip().split()[-1]
-    
     event = Source(
             resource_id=f"pyatoa:source/{source_dict['source_id']}",
             origin_time=default_time, latitude=source_dict["xs"],
