@@ -22,8 +22,8 @@ class IO(dict):
     """
     Dictionary with accessible attributes, used to simplify access to dicts.
     """
-    def __init__(self, paths, logger, config, misfit=0, nwin=0, stations=0,
-                 processed=0, exceptions=0, plot_fids=None):
+    def __init__(self, paths, logger, config, misfit=None, nwin=None,
+                 stations=0, processed=0, exceptions=0, plot_fids=None):
         """
         Hard set required parameters here, that way the user knows what is
         expected of the IO class during the workflow.
@@ -388,8 +388,10 @@ class Pyaflowa:
             This variable allows the user to set channel searching manually,
             wildcards okay. Defaults to 'HH?' for high-gain, high-sampling rate
             broadband seismometers, but this is dependent on the available data.
-        :rtype: float
-        :return: the total scaled misfit collected during the processing chain
+        :rtype: float or None
+        :return: the total scaled misfit collected during the processing chain,
+            scaled_misfit will return None if no windows have been found or
+            no misfit was calculated
         """
         # Create the event specific configurations and attribute container (io)
         io = self.setup(source_name, **kwargs)
@@ -406,7 +408,17 @@ class Pyaflowa:
                 mgmt_out, io = self.process_station(mgmt=mgmt, code=code,
                                                     io=io, **kwargs)
 
-        scaled_misfit = self.finalize(io)
+        self.finalize(io)
+
+        # Scale the raw event misfit by the number of windows according to
+        # Tape et al. (2010).
+        try:
+            scaled_misfit = 0.5 * io.misfit / io.nwin
+        # Dealing with the cases where 1) nwin==0 (signifying either no windows
+        # found, or calc'ing misfit on whole trace) and 2) when misfit and nwin
+        # are None (no misfit found for event)
+        except (TypeError, ZeroDivisionError):
+            scaled_misfit = io.misfit
 
         return scaled_misfit
 
@@ -521,7 +533,7 @@ class Pyaflowa:
         # Dict-like object used to keep track of information for a single event
         # processing run, simplifies information passing between functions.
         io = IO(paths=paths, logger=event_logger, config=config,
-                misfit=0, nwin=0, stations=0, processed=0, exceptions=0,
+                misfit=None, nwin=None, stations=0, processed=0, exceptions=0,
                 plot_fids=[])
 
         return io
@@ -535,16 +547,21 @@ class Pyaflowa:
         :param io: dict-like container that contains processing information
         :rtype: float or None
         :param: the scaled event-misfit, i.e. total raw misfit divided by
-            number of windows. If no stations were processed, returns None 
+            number of windows. If no stations were processed, returns None
             because that means theres a problem. If 0 were returned that would
             give the false impression of 0 misfit which is wrong.
         """
+        # Finalization log statement for the user
+        io.logger.info(f"\n{'=' * 80}\n\nSUMMARY\n\n{'=' * 80}\n"
+                       f"SOURCE NAME: {io.config.event_id}\n"
+                       f"STATIONS: {io.processed} / {io.stations}\n"
+                       f"WINDOWS: {io.nwin}\n"
+                       f"RAW MISFIT: {io.misfit}\n"
+                       f"UNEXPECTED ERRORS: {io.exceptions}"
+                       )
+
         self._make_event_pdf_from_station_pdfs(io)
         self._write_specfem_stations_adjoint_to_disk(io)
-        self._output_final_log_summary(io)
-
-        return self._scale_raw_event_misfit(raw_misfit=io.misfit,
-                                            nwin=io.nwin)
 
     def process_station(self, mgmt, code, io, **kwargs):
         """
@@ -554,11 +571,6 @@ class Pyaflowa:
         won't kill the entire job. Needs to be called by process_event()
 
         Kwargs passed to pyatoa.core.manager.Manager.flow()
-
-        .. note::
-            Status used internally to track the processing success/failure rate
-            * status == 0: Failed processing
-            * status == 1: Successfully processed
 
         :type mgmt: pyatoa.core.manager.Manager
         :param mgmt: Manager object to be used for data gathering
@@ -587,7 +599,6 @@ class Pyaflowa:
         except pyatoa.ManagerError as e:
             io.logger.warning(e)
             return None, io
-        
 
         # Data processing chunk; if fail, continue to plotting
         try:
@@ -603,16 +614,16 @@ class Pyaflowa:
                            f"\n\tMISFIT:    {mgmt.stats.misfit:.2f}\n"
                            )
     
-            status = 1
+            status_ok = True
         except pyatoa.ManagerError as e:
             io.logger.warning(e)
-            status = 0
+            status_ok = False
             pass
         except Exception as e:
             # Uncontrolled exceptions should be noted in more detail
             io.logger.warning(e, exc_info=True)
             io.exceptions += 1
-            status = 0
+            status_ok = False
             pass
 
         # Plotting chunk; fid is e.g. path/i01s00_NZ_BFZ.pdf
@@ -628,7 +639,15 @@ class Pyaflowa:
             io.plot_fids.append(save)
 
         # Finalization chunk; only if processing is successful
-        if status == 1:
+        if status_ok:
+            # We allow misfit and nwin to be None to signify that no misfits
+            # have been calculated. But if we calculate something then we
+            # need to overwrite the None values
+            if io.misfit is None:
+                io.misfit = 0
+            if io.nwin is None:
+                io.nwin = 0
+
             io.logger.info(f"\n{'=' * 80}\n\nFINALIZE\n\n{'=' * 80}")
             # Keep track of outputs for the final log summary and misfit value
             io.misfit += mgmt.stats.misfit
@@ -642,25 +661,6 @@ class Pyaflowa:
             mgmt.write_adjsrcs(path=io.paths.adjsrcs, write_blanks=True)
 
         return mgmt, io
-
-    @staticmethod
-    def _scale_raw_event_misfit(raw_misfit, nwin):
-        """
-        Scale event misfit based on event misfit equation defined by
-        Tape et al. (2010)
-
-        :type raw_misfit: float
-        :param raw_misfit: the total summed misfit from a processing chain
-        :type nwin: int
-        param nwin: number of windows collected during processing
-        :rtype: float
-        :return: scaled event misfit
-        """
-        # Address the case where no windows are picked leading to division by
-        # zero error (e.g., if we are calculating misfit on the entire trace.)
-        if nwin == 0:
-            nwin += 1
-        return 0.5 * raw_misfit / nwin
 
     def _check_fix_windows(self, fix_windows=False, **kwargs):
         """
@@ -774,21 +774,6 @@ class Pyaflowa:
             for fid in io.plot_fids:
                 os.remove(fid)
 
-    def _output_final_log_summary(self, io):
-        """
-        Write summary information at the end of a workflow to the log file
-
-        :type io: pyatoa.core.pyaflowa.IO
-        :param io: dict-like container that contains processing information
-        """
-        io.logger.info(f"\n{'=' * 80}\n\nSUMMARY\n\n{'=' * 80}\n"
-                       f"SOURCE NAME: {io.config.event_id}\n"
-                       f"STATIONS: {io.processed} / {io.stations}\n"
-                       f"WINDOWS: {io.nwin}\n"
-                       f"RAW MISFIT: {io.misfit:.2f}\n"
-                       f"UNEXPECTED ERRORS: {io.exceptions}"
-                       )
-
     def _create_event_log_handler(self, fid):
         """
         Create a separate log file for each embarassingly parallel event.
@@ -816,7 +801,6 @@ class Pyaflowa:
             logger.addHandler(handler)
 
         return logger
-
 
     def _create_multiprocess_log_handler(self, fid):
         """
