@@ -602,8 +602,10 @@ class Pyaflowa:
 
         # Data processing chunk; if fail, continue to plotting
         try:
-            # Need to update fix window kwarg based on position in inversion
-            kwargs = self._check_fix_windows(**kwargs)
+            # Update fix window kwarg based on position in inversion
+            fix_windows = kwargs["fix_windows"]
+            kwargs["fix_windows"] = self._check_fix_windows(fix_windows)
+
             mgmt.flow(**kwargs)
 
             # Basic log statement, mostly useful for multiprocesses which dont
@@ -662,15 +664,15 @@ class Pyaflowa:
 
         return mgmt, io
 
-    def _check_fix_windows(self, fix_windows=False, **kwargs):
+    def _check_fix_windows(self, fix_windows):
         """
         Determine how to address fixed time windows based on the user parameter
         as well as the current iteration and step count in relation to the
         inversion location.
 
         :type fix_windows: bool or str
-        :param fix_windows: User-set parameter on whether to fix windows for this
-            iteration/step count.
+        :param fix_windows: User-set parameter on whether to fix windows for
+            this iteration/step count.
         Options:
             True: Always fix windows except for i01s00 because we don't have any
                   windows for the first function evaluation
@@ -681,8 +683,8 @@ class Pyaflowa:
             Once: Pick new windows on the first function evaluation and then fix
                   windows. Useful for when parameters have changed, e.g. filter
                   bounds
-        :rtype: dict
-        :return: kwargs updated with the fixed window criteria
+        :rtype: bool
+        :return: bool on whether to use windows from the previous step
         """
         # First function evaluation never fixes windows
         if self.config.iteration == 1 and self.config.step_count == 0:
@@ -709,10 +711,7 @@ class Pyaflowa:
             raise NotImplementedError(f"Unknown choice {fix_windows} passed to"
                                       f"'fix_windows' argument in Manager.flow")
 
-        # Update kwargs to simplify calls
-        kwargs["fix_windows"] = fix_windows_out
-
-        return kwargs
+        return fix_windows_out
 
     def _write_specfem_stations_adjoint_to_disk(self, io):
         """
