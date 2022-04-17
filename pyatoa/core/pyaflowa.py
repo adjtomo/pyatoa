@@ -22,18 +22,27 @@ class IO(dict):
     """
     Dictionary with accessible attributes, used to simplify access to dicts.
     """
-    def __init__(self, paths, logger, config, misfit=None, nwin=None,
-                 stations=0, processed=0, exceptions=0, plot_fids=None):
+    def __init__(self, event_id, iter_tag, step_tag, paths, logger, codes,
+                 misfit=None, nwin=None, stations=0, processed=0, exceptions=0, 
+                 plot_fids=None, fix_windows=False):
         """
         Hard set required parameters here, that way the user knows what is
         expected of the IO class during the workflow.
 
+        :type event_id: str
+        :param event_id: event identifier to be passed in from Config
+        :type iter_tag: str
+        :param iter_tag: iteration identifier to be passed in from Config, 
+            e.g., i00
         :type paths: pyatoa.core.pyaflowa.PathStructure
         :param paths: The specific path structure that Pyaflowa will use to
             navigate the filesystem, gather inputs and produce outputs.
         :type logger: logging.Logger
         :param logger: An individual event-specific log handler so that log
             statements can be made in parallel if required
+        :type codes: list
+        :param codes: a list of station codes that will be passed to the 
+            Manager when gathering waveform data
         :type cfg: pyatoa.core.config.Config
         :param cfg: The event specific Config object that will be used to
             control the processing during each pyaflowa workflow.
@@ -57,16 +66,23 @@ class IO(dict):
         :param plot_fids: output storage to keep track of the the output .pdf
             files created for each source-receiver pair. Used to merge all pdfs
             into a single output pdf at the end of the processing workflow.
+        :type fix_windows: bool
+        :param fix_windows: tells the processing function within the Manager
+            whether or not to re-use misfit windows from a previous evaluation.
         """
+        self.event_id = event_id
+        self.iter_tag = iter_tag
+        self.step_tag = step_tag
         self.paths = paths
+        self.codes = codes
         self.logger = logger
-        self.config = config
         self.misfit = misfit
         self.nwin = nwin
         self.stations = stations
         self.processed = processed
         self.exceptions = exceptions
         self.plot_fids = plot_fids or []
+        self.fix_windows = fix_windows
 
     def __setattr__(self, key, value):
         self[key] = value
@@ -339,15 +355,12 @@ class Pyaflowa:
             # set by the SeisFlows workflow. We need the BEGIN parameter to 
             # check status in window fixing.
             self.config = pyatoa.Config(seisflows_par=sfpar, **kwargs)
-            self.begin = sfpar.BEGIN
-            self.source_prefix = sfpar.SOURCE_PREFIX  # for event reading
 
             # Overwrite init parameters based on SeisFlows Par file
             plot = sfpar.PLOT
             log_level = sfpar.LOGGING 
         else:
             self.begin = -9999
-            self.source_prefix = source_prefix
             if config is None:
                 warnings.warn("No Config object passed, initiating empty "
                               "Config", UserWarning)
@@ -359,10 +372,17 @@ class Pyaflowa:
         self.map_corners = map_corners
         self.log_level = log_level
 
-    def process_event(self, source_name, codes=None, loc="*", cha="*",
-                      **kwargs):
+    def copy(self):
         """
-        The main processing function for Pyaflowa misfit quantification.
+        Convenience copy function to provide a deep copy of Pyaflowa for use 
+        when multiple instances of the same object are required
+        """
+        return deepcopy(self)
+
+    def process_event(self, io, config, station_code=None, **kwargs):
+        """
+        The main processing function for Pyaflowa misfit quantification. IO
+        and config should be passed in from setup()
 
         Processes waveform data for all stations related to a given event,
         produces waveform and map plots during the processing step, saves data
@@ -373,38 +393,22 @@ class Pyaflowa:
 
         :type source_name: str
         :param source_name: event id to be used for data gathering, processing
-        :type codes: list of str
-        :param codes: list of station codes to be used for processing. If None,
-            will read station codes from the provided STATIONS file
-        :type loc: str
-        :param loc: if codes is None, Pyatoa will generate station codes based 
-            on the SPECFEM STATIONS file, which does not contain location info.
-            This allows user to set the location values manually when building
-            the list of station codes. Defaults to wildcard '??', which is 
-            usually acceptable
-        :type cha: str
-        :param cha: if codes is None, Pyatoa will generate station codes based
-            on the SPECFEM STATIONS file, which does not contain channel info. 
-            This variable allows the user to set channel searching manually,
-            wildcards okay. Defaults to 'HH?' for high-gain, high-sampling rate
-            broadband seismometers, but this is dependent on the available data.
+        :type station_code: str
+        :param station_code: used to limit processing to a single station,
+            used mostly for debug purposes. Must match part of one of the codes
+            defined by 'io.codes'. e.g., 'BFZ' to match 'NZ.BFZ.*.*'
         :rtype: float or None
         :return: the total scaled misfit collected during the processing chain,
             scaled_misfit will return None if no windows have been found or
             no misfit was calculated
         """
-        # Create the event specific configurations and attribute container (io)
-        io = self.setup(source_name, **kwargs)
-       
-        # Allow user to provide a list of codes, else read from station file 
-        if codes is None:
-            codes = read_station_codes(io.paths.stations_file, 
-                                       loc=loc, cha=cha)
-
         # Open the dataset as a context manager and process all events in serial
         with ASDFDataSet(io.paths.ds_file) as ds:
-            mgmt = pyatoa.Manager(ds=ds, config=io.config)
-            for code in codes:
+            mgmt = pyatoa.Manager(ds=ds, config=config)
+            for code in io.codes:
+                # Allow user to process a single station, used for debugging
+                if station_code and station_code not in code:
+                    continue
                 mgmt_out, io = self.process_station(mgmt=mgmt, code=code,
                                                     io=io, **kwargs)
 
@@ -422,47 +426,15 @@ class Pyaflowa:
 
         return scaled_misfit
 
-    def _process_event_multiprocess_true(self, *args, **kwargs):
+    def setup(self, source_name, iteration=None, step_count=None, 
+              source_prefix="CMTSOLUTION", loc="*", cha="*", fix_windows=False, 
+              multiprocess=False):
         """
-        A hacky way to get around problem in passing additional kwargs through
-        ProcessPoolExecutor. Simply define a new process_event function that 
-        hardcodes the 'multiprocess' parameter controlling logging. To be called
-        by multi_event_process() only.
-        """
-        return self.process_event(*args, **kwargs, multiprocess=True)
-        
-    def multi_event_process(self, source_names, max_workers=None, **kwargs):
-        """
-        Use concurrent futures to run the process() function in parallel.
-        This is a multiprocessing function, meaning multiple instances of Python
-        will be instantiated in parallel.
+        Generate a config object for a specific event id / source name
+        Set the correct paths and adjust a few parameters based on the 
+        location in the inversion
 
-        :type source_names: list of str
-        :param solver_dir: a list of all the source names to process. each will
-            be passed to process()
-        :type max_workers: int
-        :param max_workers: maximum number of parallel processes to use. If
-            None, automatically determined by system number of processors.
-        """
-        misfits = {}
-
-        print(f"Beginning parallel processing of {len(source_names)} events...")
-    
-        with ProcessPoolExecutor(max_workers=max_workers) as executor:
-            for source_name, misfit in zip(
-                    source_names, 
-                    executor.map(self._process_event_multiprocess_true,
-                                 source_names)
-                    ):
-                misfits[os.path.basename(source_name)] = misfit
-        return misfits
-
-    def setup(self, source_name, multiprocess=False, **kwargs):
-        """
-        One-time basic setup to be run before each event processing step.
-        Works by creating Config, logger and  establishing the necessary file 
-        structure. Preps the ASDFDataSet before  processing writes to it, and 
-        sets up the IO attribute dictionary to be carried around through the 
+        Sets up the IO attribute dictionary to be carried around through the 
         processing procedure.
 
         .. note::
@@ -475,20 +447,33 @@ class Pyaflowa:
         :type multiprocess: bool
         :param multiprocess: flag to turn on parallel processing for a given 
             event --- uses concurrent futures to perform multiprocessing
-        :type event_id_prefix: str
-        :param event_id_prefix: tells the gatherer what the prefix for events
-            will be. If doing earthquakes, usually 'CMTSOLUTION', but can also
-            be 'FORCESOLUTION' or 'SOURCE' (specfem2d)
+        :type multiprocess: bool
+        :param multiprocess: If intending to use concurrent futures to 
+            multiprocess an event, setup needs to know as this affects how the
+            logger is setup
+        :type loc: str
+        :param loc: if codes is None, Pyatoa will generate station codes based 
+            on the SPECFEM STATIONS file, which does not contain location info.
+            This allows user to set the location values manually when building
+            the list of station codes. Defaults to wildcard '??', which is 
+            usually acceptable
+        :type cha: str
+        :param cha: if codes is None, Pyatoa will generate station codes based
+            on the SPECFEM STATIONS file, which does not contain channel info. 
+            This variable allows the user to set channel searching manually,
+            wildcards okay. Defaults to 'HH?' for high-gain, high-sampling rate
+            broadband seismometers, but this is dependent on the available data.
         :rtype: pyatoa.core.pyaflowa.IO
         :return: dictionary like object that contains all the necessary
             information to perform processing for a single event
         """
         paths = self.path_structure.format(source_name=source_name)
 
-        # Copy in the Config to avoid overwriting the template internal attr.
+        # Create a new instance of the internal config which keeps track of
+        # our current location in the workflow
         config = deepcopy(self.config)
-
-        # Set event-specific information so Pyatoa knows where to look for data
+        config.iteration = iteration
+        config.step_count = step_count
         config.event_id = source_name
         config.paths = {"responses": paths.responses,
                         "waveforms": paths.waveforms,
@@ -496,47 +481,45 @@ class Pyaflowa:
                         "events": paths.data,
                         }
 
-        # Only query FDSN at the very first function evaluation, assuming no new
-        # data will pop up during the inversion
+        # Only query FDSN at the very first function evaluation
         if config.iteration != 1 and config.step_count != 0:
             config.client = None
 
-        # Enure the ASDFDataSet has no previous data that may override current
+        # Clean out any existing dataset for the current evaluation
         with ASDFDataSet(paths.ds_file) as ds:
+            # Enure the ASDFDataSet has no previous data 
             clean_dataset(ds, iteration=config.iteration, 
                           step_count=config.step_count) 
             config.write(write_to=ds)
-
-            # Write event information to the dataset, stop the workflow if 
-            # event information cant be found as this will lead to failure later
+            
+            # Initiate the manager and gather event, searching for source prefix
+            # only, e.g., CMTSOLUTION or FORCESOLUTION
             mgmt = pyatoa.Manager(ds=ds, config=config)
-            # !!! Empty event name because SeisFlows has already copied the
-            # !!! the source to the DATA directory and named it generically 
-            # !!! after the prefix so we don't need to search specifically
-            mgmt.gather(choice="event", event_id="", prefix=self.source_prefix)
+            mgmt.gather(choice="event", event_id="", prefix=source_prefix)
 
         # Event-specific log files to track processing workflow. If no iteration
         # given, dont tag with iter/step, likely not an inversion scenario
-        if config.iter_tag:
-            log_fid = \
-                     f"{config.iter_tag}{config.step_tag}_{config.event_id}.log"
-        else:
-            log_fid = f"{config.event_id}.log"
+        log_fid = f"{config.event_id}.log"
+        if config.iter_tag is not None:
+            log_fid = f"{config.eval_tag}_{log_fid}"
         log_fid = os.path.join(paths.logs, log_fid)
+
         if not multiprocess:
             event_logger = self._create_event_log_handler(fid=log_fid)
         else:
-            # Multiprocess logging is less verbose due to difficulty of 
-            # parallelizing the logging module.
+            # Multiprocess logging is less verbose 
             event_logger = self._create_multiprocess_log_handler(fid=log_fid)
+
+        codes = read_station_codes(paths.stations_file, loc=loc, cha=cha)
 
         # Dict-like object used to keep track of information for a single event
         # processing run, simplifies information passing between functions.
-        io = IO(paths=paths, logger=event_logger, config=config,
+        io = IO(event_id=config.event_id, iter_tag=config.iter_tag, codes=codes,
+                step_tag=config.step_tag, paths=paths, logger=event_logger,
                 misfit=None, nwin=None, stations=0, processed=0, exceptions=0,
-                plot_fids=[])
+                plot_fids=[], fix_windows=fix_windows)
 
-        return io
+        return io, config
 
     def finalize(self, io):
         """
@@ -553,7 +536,7 @@ class Pyaflowa:
         """
         # Finalization log statement for the user
         io.logger.info(f"\n{'=' * 80}\n\nSUMMARY\n\n{'=' * 80}\n"
-                       f"SOURCE NAME: {io.config.event_id}\n"
+                       f"SOURCE NAME: {io.event_id}\n"
                        f"STATIONS: {io.processed} / {io.stations}\n"
                        f"WINDOWS: {io.nwin}\n"
                        f"RAW MISFIT: {io.misfit}\n"
@@ -602,11 +585,7 @@ class Pyaflowa:
 
         # Data processing chunk; if fail, continue to plotting
         try:
-            # Update fix window kwarg based on position in inversion
-            fix_windows = kwargs["fix_windows"]
-            kwargs["fix_windows"] = self._check_fix_windows(fix_windows)
-
-            mgmt.flow(**kwargs)
+            mgmt.flow(fix_windows=io.fix_windows)
 
             # Basic log statement, mostly useful for multiprocesses which dont
             # have access to the more detailed log statements
@@ -650,7 +629,6 @@ class Pyaflowa:
             if io.nwin is None:
                 io.nwin = 0
 
-            io.logger.info(f"\n{'=' * 80}\n\nFINALIZE\n\n{'=' * 80}")
             # Keep track of outputs for the final log summary and misfit value
             io.misfit += mgmt.stats.misfit
             # The deal with the case where window selection is skipped and 
@@ -664,54 +642,40 @@ class Pyaflowa:
 
         return mgmt, io
 
-    def _check_fix_windows(self, fix_windows):
+    def _process_event_multiprocess_true(self, *args, **kwargs):
         """
-        Determine how to address fixed time windows based on the user parameter
-        as well as the current iteration and step count in relation to the
-        inversion location.
-
-        :type fix_windows: bool or str
-        :param fix_windows: User-set parameter on whether to fix windows for
-            this iteration/step count.
-        Options:
-            True: Always fix windows except for i01s00 because we don't have any
-                  windows for the first function evaluation
-            False: Don't fix windows, always choose a new set of windows
-            Iter: Pick windows only on the initial step count (0th) for each
-                  iteration. WARNING - does not work well with Thrifty Inversion
-                  because the 0th step count is usually skipped
-            Once: Pick new windows on the first function evaluation and then fix
-                  windows. Useful for when parameters have changed, e.g. filter
-                  bounds
-        :rtype: bool
-        :return: bool on whether to use windows from the previous step
+        A hacky way to get around problem in passing additional kwargs through
+        ProcessPoolExecutor. Simply define a new process_event function that 
+        hardcodes the 'multiprocess' parameter controlling logging. To be called
+        by multi_event_process() only.
         """
-        # First function evaluation never fixes windows
-        if self.config.iteration == 1 and self.config.step_count == 0:
-            fix_windows_out = False
-        elif isinstance(fix_windows, str):
-            # By 'iter'ation only pick new windows on the first step count
-            if fix_windows.upper() == "ITER":
-                if self.config.step_count == 0:
-                    fix_windows_out = False
-                else:
-                    fix_windows_out = True
-            # 'Once' picks windows only for the first function evaluation of 
-            # the current set of iterations.
-            elif fix_windows.upper() == "ONCE":
-                if self.config.iteration == self.begin and \
-                        self.config.step_count == 0:
-                    fix_windows_out = False
-                else:
-                    fix_windows_out = True
-        # Bool fix windows simply sets the parameter
-        elif isinstance(fix_windows, bool):
-            fix_windows_out = fix_windows
-        else:
-            raise NotImplementedError(f"Unknown choice {fix_windows} passed to"
-                                      f"'fix_windows' argument in Manager.flow")
+        return self.process_event(*args, **kwargs, multiprocess=True)
+        
+    def multi_event_process(self, source_names, max_workers=None, **kwargs):
+        """
+        Use concurrent futures to run the process() function in parallel.
+        This is a multiprocessing function, meaning multiple instances of Python
+        will be instantiated in parallel.
 
-        return fix_windows_out
+        :type source_names: list of str
+        :param solver_dir: a list of all the source names to process. each will
+            be passed to process()
+        :type max_workers: int
+        :param max_workers: maximum number of parallel processes to use. If
+            None, automatically determined by system number of processors.
+        """
+        misfits = {}
+
+        print(f"Beginning parallel processing of {len(source_names)} events...")
+    
+        with ProcessPoolExecutor(max_workers=max_workers) as executor:
+            for source_name, misfit in zip(
+                    source_names, 
+                    executor.map(self._process_event_multiprocess_true,
+                                 source_names)
+                    ):
+                misfits[os.path.basename(source_name)] = misfit
+        return misfits
 
     def _write_specfem_stations_adjoint_to_disk(self, io):
         """
@@ -763,8 +727,7 @@ class Pyaflowa:
         if io.plot_fids:
             io.logger.info("creating single .pdf file of all output figures")
             # e.g. i01s00_2018p130600.pdf
-            iterstep = f"{io.config.iter_tag}{io.config.step_tag}"
-            output_fid = f"{iterstep}_{io.config.event_id}.pdf"
+            output_fid = f"{io.iter_tag}{io.step_tag}_{io.event_id}.pdf"
 
             # Merge all output pdfs into a single pdf, delete originals
             save = os.path.join(io.paths.event_figures, output_fid)
