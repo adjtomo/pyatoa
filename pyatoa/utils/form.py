@@ -137,3 +137,32 @@ def channel_code(dt):
         print("Channel code does not exist for this value of 'dt'")
         return None
 
+def convert_stations_to_seed(stations_file="./STATIONS",
+                             path_to_save_seed="./seed", **kwargs):
+    """
+    A convenience function to format a SPECFEM file into SeisFlows3 ready files.
+    Convert a SPECFEM STATIONS file into a directory of SEED formatted
+    StationXML files which are REQUIRED by a Pyatoa + SeisFlows3 workflow.\
+
+    Kwargs are passed to pyatoa.utils.write.write_inv_seed()
+    See above function for available options on writing SEED StationXML files
+
+    :type stations_file: str
+    :param stations_file: path to the STATIONS file defined in SPECFEM format
+    :type path_to_save_seed: str
+    :param path_to_save_seed: path to save the output SEED formatted
+        StationXML files
+    """
+    # Late imports to avoid circular ImportErrors
+    from pyatoa.utils.read import read_stations
+    from pyatoa.utils.write import write_inv_seed
+
+    if not os.path.exists(path_to_save_seed):
+        os.mkdir(path_to_save_seed)
+
+    # Read SPECFEM Stations file
+    inv = read_stations(stations_file)
+
+    # Write inventory as a collection of StationXML files
+    write_inv_seed(inv=inv, path=path_to_save_seed, **kwargs)
+

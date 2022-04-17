@@ -1,6 +1,8 @@
 """
 Short utility script to convert a SPECFEM STATIONS file to a collection of 
 per-channel StationXML files required by the Pyatoa automatic data gatherer.
+
+See also pyatoa.utils.form.convert_stations_to_seed()
 """
 import os
 from pyatoa.utils.read import read_stations

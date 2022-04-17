@@ -550,6 +550,7 @@ class Manager:
         except GathererNoDataException as e:
             # Catch the Gatherer exception and redirect as ManagerError 
             # so that it can be caught by flow()
+            logger.warning(e, exc_info=False)
             raise ManagerError("Data Gatherer could not find some data") from e
         except Exception as e:
             # Gathering should be robust, but if something slips through, dont
@@ -654,8 +655,6 @@ class Manager:
                 Convolve synthetic data with a Gaussian source time function if
                 a half duration is provided.
         """
-        if not self.inv and not self.config.synthetics_only:
-            raise ManagerError("cannot preprocess, no inventory")
         if overwrite:
             assert(hasattr(overwrite, '__call__')), "overwrite must be function"
             preproc_fx = overwrite

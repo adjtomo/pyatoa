@@ -67,21 +67,29 @@ def default_process(mgmt, choice, **kwargs):
     st = taper_time_offset(st, taper_percentage, mgmt.stats.time_offset_sec)
 
     # Observed specific data preprocessing includes response and rotating to ZNE
-    if remove_response and not is_synthetic_data:
-        logger.debug(f"removing response, units to {mgmt.config.unit_output}")
+    # No response data (inventory) also means don't try to remove response
+    if mgmt.inv[0][0][0].response is None:
+        remove_response = False
+        logger.info("inventory has no response attribute, will not "
+                    "remove response")
+    elif is_synthetic_data == False:
+        remove_response = False
+        logger.info("data marked as type 'synthetic' will not "
+                       "remove response")
+
+    if remove_response:
+        logger.info(f"removing response, units to {mgmt.config.unit_output}")
         st.remove_response(inventory=mgmt.inv, output=mgmt.config.unit_output,
                            water_level=water_level, plot=False)
 
         # Rotate streams if not in ZNE, e.g. Z12. Only necessary for observed
-        logger.debug("rotating from generic coordinate system to ZNE")
+        logger.info("rotating from generic coordinate system to ZNE")
         st.rotate(method="->ZNE", inventory=mgmt.inv)
         st.detrend("simple").detrend("demean").taper(taper_percentage)
-    else:
-        logger.debug("no response removal, synthetic data or requested not to")
 
     # Rotate the given stream from standard NEZ to RTZ if BAz given
     if mgmt.baz:
-        logger.debug(f"rotating NE->RT by {mgmt.baz} degrees")
+        logger.info(f"rotating NE->RT by {mgmt.baz} degrees")
         st.rotate(method="NE->RT", back_azimuth=mgmt.baz)
 
     # Filter data based on the given period bounds
@@ -93,7 +101,7 @@ def default_process(mgmt, choice, **kwargs):
                      )
         st.detrend("simple").detrend("demean").taper(taper_percentage)
     else:
-        logger.debug(f"no filter applied to data")
+        logger.info(f"no filter applied to data")
 
     # Convolve synthetic data with a Gaussian source time function
     if convolve_with_stf and is_synthetic_data and mgmt.stats.half_dur:
@@ -224,11 +232,11 @@ def zero_pad(st, pad_length_in_seconds, before=True, after=True):
             pad_before = pad_width
         if after:
             pad_after = pad_width
-        logger.debug(f"zero pad {tr.id} ({pad_before}, {pad_after}) samples")
+        logger.info(f"zero pad {tr.id} ({pad_before}, {pad_after}) samples")
         # Constant value is default 0
         tr.data = np.pad(array, (pad_before, pad_after), mode='constant')
         tr.stats.starttime -= pad_length_in_seconds
-        logger.debug(f"new starttime {tr.id}: {tr.stats.starttime}")
+        logger.info(f"new starttime {tr.id}: {tr.stats.starttime}")
 
     return st_pad
 
@@ -293,7 +301,7 @@ def trim_streams(st_a, st_b, precision=1E-3, force=None):
         for tr in st:
             dt = start_set - tr.stats.starttime
             if 0 < dt < tr.stats.sampling_rate:
-                logger.debug(f"shifting {tr.id} starttime by {dt}s")
+                logger.info(f"shifting {tr.id} starttime by {dt}s")
                 tr.stats.starttime = start_set
             elif dt >= tr.stats.delta:
                 logger.warning(f"{tr.id} starttime is {dt}s greater than delta")
@@ -336,7 +344,7 @@ def match_npts(st_a, st_b, force=None):
     for tr in st_change:
         diff = abs(tr.stats.npts - npts)
         if diff:
-            logger.debug(f"appending {diff} zeros to {tr.get_id()}")
+            logger.info(f"appending {diff} zeros to {tr.get_id()}")
             tr.data = np.append(tr.data, np.zeros(diff))
 
     # Ensure streams are returned in the correct order
@@ -407,7 +415,7 @@ def stf_convolve(st, half_duration, source_decay=4., time_shift=None,
     :rtype: obspy.stream.Stream
     :return: stream object which has been convolved with a source time function
     """
-    logger.debug(f"convolving data w/ Gaussian (t/2={half_duration:.2f}s)")
+    logger.info(f"convolving data w/ Gaussian (t/2={half_duration:.2f}s)")
 
     sampling_rate = st[0].stats.sampling_rate
     half_duration_in_samples = round(half_duration * sampling_rate)
