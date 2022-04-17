@@ -8,7 +8,6 @@ or to query data from FDSN webservices via ObsPy.
     * Get: used to denote querying FDSN webservices via ObsPy (external), naming
       convention from the obspy.fdsn.client.Client function names
 
-
 Gatherer directly called by the Manager class and shouldn't need to be called
 by the User unless for bespoke data gathering functionality.
 """
