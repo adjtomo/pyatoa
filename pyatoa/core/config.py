@@ -224,6 +224,11 @@ class Config:
             return None
 
     @property
+    def eval_tag(self):
+        """string formatted version of iter and step, e.g. 'i01s00'"""
+        return f"{self.iter_tag}{self.step_tag}"
+
+    @property
     def synthetic_tag(self):
         """tag to be used for synthetic data, uses iteration and step count"""
         if self._synthetic_tag is not None:
