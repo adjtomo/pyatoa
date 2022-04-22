@@ -2,7 +2,7 @@ obspy==1.2.2
 matplotlib==3.0.3
 pyasdf==0.7.2
 pandas==1.1.0
-pypdf2==1.26.0
+pypdf2==1.27.5
 pyyaml==5.4
 basemap==1.3.0
 https://github.com/bch0w/pyflex/tarball/master
