@@ -60,6 +60,8 @@ def default_process(mgmt, choice, **kwargs):
         is_synthetic_data = mgmt.config.synthetics_only
 
     if is_preprocessed(st):
+        logger.info("stream has already been preprocessed, skipping "
+                    "processing step")
         return st
 
     # Get rid of any long period trends that may affect that data
@@ -72,7 +74,7 @@ def default_process(mgmt, choice, **kwargs):
         remove_response = False
         logger.info("inventory has no response attribute, will not "
                     "remove response")
-    elif is_synthetic_data == False:
+    elif is_synthetic_data == True:
         remove_response = False
         logger.info("data marked as type 'synthetic' will not "
                        "remove response")
