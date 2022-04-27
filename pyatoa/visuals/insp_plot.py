@@ -354,8 +354,8 @@ class InspectorPlotter:
 
         return f, ax
 
-    def raypaths(self, iteration, step_count, color_by=None, show=True, 
-                 save=False, vmin=None, vmax=None, **kwargs):
+    def raypaths(self, iteration=None, step_count=None, color_by=None,
+                 show=True, save=False, vmin=None, vmax=None, **kwargs):
         """
         Plot rays connecting sources and receivers based on the availability
         of measurements. Useful for getting an approximation of resolution.
@@ -383,6 +383,8 @@ class InspectorPlotter:
         markersize = kwargs.get("markersize", 25)
 
         f, ax = plt.subplots(figsize=figsize)
+
+        iteration, step_count = self._parse_nonetype_eval(iteration, step_count)
 
         df = self.misfit(level="station").loc[iteration, step_count]
 
@@ -449,8 +451,9 @@ class InspectorPlotter:
 
         return f, ax
 
-    def raypath_density(self, iteration, step_count, point_spacing_km=.5,
-                        bin_spacing_km=8, cmap="viridis", show=True, save=False, 
+    def raypath_density(self, iteration=None, step_count=None,
+                        point_spacing_km=.5, bin_spacing_km=8, cmap="viridis",
+                        show=True, save=False,
                         **kwargs):
         """
         Create a raypath density plot to provide a more deatiled illustration of 
@@ -474,6 +477,8 @@ class InspectorPlotter:
         event_color = kwargs.get("event_color", "orange")
         station_color = kwargs.get("station_color", "cyan")
         markersize = kwargs.get("markersize", 26)
+
+        iteration, step_count = self._parse_nonetype_eval(iteration, step_count)
 
         f, ax = plt.subplots(figsize=figsize)
         df = self.misfit(level="station").loc[iteration, step_count]
@@ -530,7 +535,8 @@ class InspectorPlotter:
                    zorder=5)
         cbar = plt.colorbar(label="counts", shrink=0.9, pad=0.025)
 
-        plt.title(f"Raypath Density (N={len(df)} src-rcv pairs)")
+        plt.title(f"Raypath Density {iteration}{step_count} "
+                  f"(N={len(df)} src-rcv pairs)")
         plt.xlabel("Longitude")
         plt.ylabel("Latitude")
 
@@ -579,9 +585,8 @@ class InspectorPlotter:
 
         return f, ax
 
-
-    def measurement_hist(self, iteration, step_count, choice="event", show=True,
-                         save=False):
+    def measurement_hist(self, iteration=None, step_count=None, choice="event",
+                         show=True, save=False):
         """
         Make histograms of measurements for stations or events to show the 
         distribution of measurements. 
@@ -597,6 +602,8 @@ class InspectorPlotter:
         :type save: str
         :param save: fid to save the given figure
         """
+        iteration, step_count = self._parse_nonetype_eval(iteration, step_count)
+
         arr = self.nwin(
             level=choice).loc[iteration, step_count].nwin.to_numpy()
 
@@ -1025,7 +1032,7 @@ class InspectorPlotter:
 
         return f, ax
 
-    def plot_windows(self, iteration, step_count, iteration_comp=None,
+    def plot_windows(self, iteration=None, step_count=None, iteration_comp=None,
                      step_count_comp=None, choice="cc_shift_in_seconds",
                      event=None, network=None, station=None, component=None,
                      no_overlap=True, distances=False, annotate=False,
@@ -1105,9 +1112,11 @@ class InspectorPlotter:
         rectangle_height = kwargs.get("rectangle_height", 1.0)
         anno_shift = kwargs.get("anno_shift", 50)
 
+        iteration, step_count = self._parse_nonetype_eval(iteration, step_count)
+
         assert(iteration in self.iterations and
                step_count in self.steps[iteration]), \
-            f"{iteration}{step} does not exist in Inspector"
+            f"{iteration}{step_count} does not exist in Inspector"
 
         assert(choice in self.windows.keys()), (f"Color by choice {choice} not "
                                                 f"in list of available keys")
