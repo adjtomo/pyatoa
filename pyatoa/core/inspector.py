@@ -399,6 +399,35 @@ class Inspector(InspectorPlotter):
             window.update(winfo)
             self.windows = pd.concat([self.windows, pd.DataFrame(window)],
                                      ignore_index=True)
+
+    def _parse_nonetype_eval(self, iteration, step_count):
+        """
+        Whenever a user does not choose an iteration or step count, e.g., in
+        plotting functions, this function defines default values based on the
+        initial model (if neither given), or the last step count for a given
+        iteration (if only iteration is given). Only step count is not allowed
+
+        :type iteration: str
+        :param iteration: chosen iteration, formatted as e.g., 'i01'
+        :type step_count: str
+        :param step_count: chosen step count, formatted as e.g., 's00'
+        :rtype: tuple of str
+        :return: (iteration, step_count) default values for the iteration
+            and step_count
+        """
+        # Default iteration and step count if None are given
+        if iteration is None and step_count is None:
+            iteration, step_count = self.initial_model
+            print(f"No iteration or step count given, defaulting to initial "
+                  f"model: {iteration}{step_count}")
+        elif iteration is None and step_count is not None:
+            step_count = self.steps[iteration][-1]
+            print(f"No step count given, defaulting to final step count within"
+                  f"given iteration: {iteration}{step_count}")
+        elif iteration and (step_count is not None):
+            raise ValueError("'step_count' cannot be provided by itself, you "
+                             "must also set the variable: 'iteration'")
+        return iteration, step_count
     
     def discover(self, path="./", ignore_symlinks=True):
         """
