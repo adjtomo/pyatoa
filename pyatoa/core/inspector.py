@@ -326,55 +326,73 @@ class Inspector(InspectorPlotter):
         misfit_windows = ds.auxiliary_data.MisfitWindows
         adjoint_sources = ds.auxiliary_data.AdjointSources
 
+        # Initiation loop to get iteration and step count, allows for the case
+        # where no step count is given (e.g., iteration == 'default')
+        iters, steps = [], []
         for iter_ in misfit_windows.list():
+            iters.append(iter_)
             for step in misfit_windows[iter_].list():
-                # If any entries exist for a given event/model/step
-                # ignore appending them to the internal structure as they've
-                # already been collected
-                if not self.windows.empty and \
-                        not self.isolate(iter_, step, eid).empty:
-                    continue
+                # Ensure that step counts are formatted like: 's00'
+                # if not then we DONT have step counts in the dataset
+                if not step.startswith("s") and not len(step) == 3:
+                    step = ""
+                steps.append(step)
 
-                for win in misfit_windows[iter_][step]:
-                    # pick apart information from this window
-                    cha_id = win.parameters["channel_id"]
-                    net, sta, loc, cha = cha_id.split(".")
-                    component = cha[-1]
+        # Pulling out important information from the windows and adj src.
+        for iter_, step in zip(iters, steps):
+            # If any entries exist for a given event/model/step
+            # ignore appending them to the internal structure as they've
+            # already been collected
+            if not self.windows.empty and \
+                    not self.isolate(iter_, step, eid).empty:
+                continue
 
-                    try:
+            # Explicitely allow for case with no step count in dataset
+            misfit_window_eval = misfit_windows[iter_]
+            adjoint_source_eval = adjoint_sources[iter_]
+            if step:
+                misfit_window_eval = misfit_window_eval[step]
+                adjoint_source_eval = adjoint_source_eval[step]
 
-                        # Workaround for potential mismatch between channel
-                        # names of windows and adjsrcs, search for w/ wildcard
-                        adj_tag = fnf(adjoint_sources[iter_][step].list(),
-                                      f"{net}_{sta}_*{component}"
-                                      )[0]
+            for win in misfit_window_eval:
+                # pick apart information from this window
+                cha_id = win.parameters["channel_id"]
+                net, sta, loc, cha = cha_id.split(".")
+                component = cha[-1]
 
-                        # This misfit value will be the same for mult windows
-                        window["misfit"].append(adjoint_sources[iter_][step][
-                            adj_tag].parameters["misfit"])
-                    except IndexError:
-                        if self.verbose:
-                            print(f"No matching adjoint source for {cha_id}")
-                        window["misfit"].append(np.nan)
+                try:
+                    # Workaround for potential mismatch between channel
+                    # names of windows and adjsrcs, search for w/ wildcard
+                    adj_tag = fnf(adjoint_source_eval.list(),
+                                  f"{net}_{sta}_*{component}"
+                                  )[0]
 
-                    # winfo keys match the keys of the Pyflex Window objects
-                    for par in winfo:
-                        winfo[par].append(win.parameters[par])
+                    # This misfit value will be the same for mult windows
+                    window["misfit"].append(adjoint_source_eval[
+                                                adj_tag].parameters["misfit"])
+                except IndexError:
+                    if self.verbose:
+                        print(f"No matching adjoint source for {cha_id}")
+                    window["misfit"].append(np.nan)
 
-                    # get identifying information for this window
-                    window["event"].append(eid)
-                    window["network"].append(net)
-                    window["station"].append(sta)
-                    window["channel"].append(cha)
-                    window["component"].append(component)
-                    window["iteration"].append(iter_)
-                    window["step"].append(step)
+                # winfo keys match the keys of the Pyflex Window objects
+                for par in winfo:
+                    winfo[par].append(win.parameters[par])
 
-                    # useful to get window length information
-                    window["length_s"].append(
-                        win.parameters["relative_endtime"] -
-                        win.parameters["relative_starttime"]
-                    )
+                # get identifying information for this window
+                window["event"].append(eid)
+                window["network"].append(net)
+                window["station"].append(sta)
+                window["channel"].append(cha)
+                window["component"].append(component)
+                window["iteration"].append(iter_)
+                window["step"].append(step)
+
+                # useful to get window length information
+                window["length_s"].append(
+                    win.parameters["relative_endtime"] -
+                    win.parameters["relative_starttime"]
+                )
 
         # Only add to internal structure if something was collected
         if window["event"]:
