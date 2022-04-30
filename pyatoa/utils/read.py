@@ -8,7 +8,7 @@ import numpy as np
 from obspy import Stream, Trace, UTCDateTime, Inventory
 from obspy.core.inventory.network import Network
 from obspy.core.inventory.station import Station
-from obspy.core.event import Event
+from obspy.core.event import Event, Origin, Magnitude
 from pyatoa.utils.srcrcv import Source
 
 
@@ -199,21 +199,27 @@ def read_station_codes(path_to_stations, loc="??", cha="*"):
     return codes
 
 
-def read_specfem2d_source(path_to_source, default_time="2000-01-01T00:00:00"):
+def read_specfem2d_source(path_to_source, origin_time="2000-01-01T00:00:00"):
     """
-    Create a barebones Pyatoa Source object from a SPECFEM2D Source file, which
-    mimics the behavior of the more complex ObsPy Event object. We only need
-    few key pieces of information from the SOURCE file for things to work
+    Create a barebones ObsPy Event object from a SPECFEM2D Source file, which
+    only contains information required by Pyatoa, which only accesses 
+    event.preferred_origin(), event.preferred_magnitude() and 
+    event.preferred_moment_tensor(). Moment tensor is wrapped in try-except
+    so we only need origin and magnitude.
+
+    https://docs.obspy.org/master/_modules/obspy/io/cmtsolution/
+                                            core.html#_internal_read_cmtsolution
+
+    .. note::
+        Source files do not provide origin times so we just provide an 
+        arbitrary value but allow user to set time
     """
     with open(path_to_source, "r") as f:
         lines = f.readlines()
    
-    # Place values from file into dict
-    source_dict = {}
-
     # First line expected to be e.g.,: '## Source 1'
-    source_dict["source_id"] = lines[0].strip().split()[-1]
-
+    source_name = lines[0].strip().split()[-1]
+    source_dict = {}
     for line in lines:
         # Skip comments and newlines
         if line.startswith("#") or line == "\n":
@@ -223,13 +229,31 @@ def read_specfem2d_source(path_to_source, default_time="2000-01-01T00:00:00"):
         val = val.split("#")[0].strip()
         source_dict[key.strip()] = val.strip()
 
-    event = Source(
-            resource_id=f"pyatoa:source/{source_dict['source_id']}",
-            origin_time=default_time, latitude=source_dict["xs"],
-            longitude=source_dict["xs"], depth=source_dict["zs"]
-            )
+    origin = Origin(
+        resource_id=_get_resource_id(source_name, "origin", tag="source"),
+        time=origin_time, longitude=source_dict["xs"], 
+        latitude=source_dict["xs"], depth=source_dict["zs"]
+    ) 
+    
+    # TO DO: Create the moment tensor attribute from Mxx Mzz Mxz components here
+    # TO DO: Create the magnitude attribute here
+
+    event = Event(resource_id=_get_resource_id(name=source_name, 
+                                               res_type="event"))
+    event.origins.append(origin)
+    event.preferred_origin_id = origin.resource_id.id
 
     return event
+
+
+def _get_resource_id(name, res_type, tag=None):
+    """
+    Helper function to create consistent resource ids. From ObsPy
+    """
+    res_id = f"smi:local/source/{name:s}/{res_type:s}"
+    if tag is not None:
+        res_id += "#" + tag
+    return res_id
 
 
 def read_forcesolution(path_to_source, default_time="2000-01-01T00:00:00"):

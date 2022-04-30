@@ -481,6 +481,19 @@ class Pyaflowa:
                         "events": paths.data,
                         }
 
+        # Event-specific log files to track processing workflow. If no iteration
+        # given, dont tag with iter/step, likely not an inversion scenario
+        log_fid = f"{config.event_id}.log"
+        if config.iter_tag is not None:
+            log_fid = f"{config.eval_tag}_{log_fid}"
+        log_fid = os.path.join(paths.logs, log_fid)
+
+        if not multiprocess:
+            event_logger = self._create_event_log_handler(fid=log_fid)
+        else:
+            # Multiprocess logging is less verbose 
+            event_logger = self._create_multiprocess_log_handler(fid=log_fid)
+
         # Only query FDSN at the very first function evaluation
         if config.iteration != 1 and config.step_count != 0:
             config.client = None
@@ -496,19 +509,6 @@ class Pyaflowa:
             # only, e.g., CMTSOLUTION or FORCESOLUTION
             mgmt = pyatoa.Manager(ds=ds, config=config)
             mgmt.gather(choice="event", event_id="", prefix=source_prefix)
-
-        # Event-specific log files to track processing workflow. If no iteration
-        # given, dont tag with iter/step, likely not an inversion scenario
-        log_fid = f"{config.event_id}.log"
-        if config.iter_tag is not None:
-            log_fid = f"{config.eval_tag}_{log_fid}"
-        log_fid = os.path.join(paths.logs, log_fid)
-
-        if not multiprocess:
-            event_logger = self._create_event_log_handler(fid=log_fid)
-        else:
-            # Multiprocess logging is less verbose 
-            event_logger = self._create_multiprocess_log_handler(fid=log_fid)
 
         codes = read_station_codes(paths.stations_file, loc=loc, cha=cha)
 
@@ -747,6 +747,8 @@ class Pyaflowa:
         :rtype: logging.Logger
         :return: an individualized logging handler
         """
+        logger = pyatoa.logger
+
         # Propogate logging to individual log files, always overwrite
         handler = logging.FileHandler(fid, mode="w")
 
@@ -759,6 +761,11 @@ class Pyaflowa:
         for log in ["pyflex", "pyadjoint", "pyatoa"]:
             # Set the overall log level
             logger = logging.getLogger(log)
+            # Turn off any existing handlers (stream and file) so that we can 
+            # direct all logging to a single file
+            while logger.hasHandlers():
+                logger.removeHandler(logger.handlers[0])
+
             logger.setLevel(self.log_level.upper())
             logger.addHandler(handler)
 
@@ -783,8 +790,12 @@ class Pyaflowa:
         :rtype: logging.Logger
         :return: an individualized logging handler
         """
-        # Turn off the package-wide logger by setting to strictest mode
-        logging.getLogger("pyatoa").setLevel("CRITICAL")
+        # Turn off the package-wide logger by setting to strictest mode and
+        # removing all existing handlers
+        logger = pyatoa.logger
+        while logger.hasHandlers():
+            logger.removeHandler(logger.handlers[0])
+        logger.setLevel("CRITICAL")
 
         # Create a new file-specific logger
         logger = logging.getLogger(f"pyaflowa")

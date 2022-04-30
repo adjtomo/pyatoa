@@ -779,7 +779,8 @@ class Gatherer(InternalFetcher, ExternalGetter):
                 self.ds.add_quakeml(event)
                 logger.debug(f"event QuakeML added to ASDFDataSet")
             # Trying to re-add an event to the ASDFDataSet throws ValueError
-            except ValueError:
+            except ValueError as e:
+                logger.debug(f"event QuakeML was not added to ASDFDataSet\n{e}")
                 pass
         return event
 
