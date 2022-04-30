@@ -33,7 +33,7 @@ def default_process(mgmt, choice, **kwargs):
         bool remove_response:
             remove instrument response using the Manager's inventory object.
             Defaults to True
-        bool apply_filter:
+        bool :
             filter the waveforms using the Config's min_period and max_period
             parameters. Defaults to True
         bool convolve_with_stf:
@@ -170,6 +170,8 @@ def filters(st, min_period=None, max_period=None, min_freq=None, max_freq=None,
         st.filter("lowpass", freq=min_freq, corners=corners, zerophase=True,
                   **kwargs)
         logger.debug(f"lowpass filter: {max_period}s w/ {corners} corners")
+    else:
+        logger.info(f"no filter bounds given, no filtering will be applied")
 
     return st
 
