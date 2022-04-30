@@ -260,8 +260,9 @@ class Config:
             assert(self.step_count >= 0), "Step count must start from 0"
 
         # Check period range is acceptable
-        assert(self.min_period < self.max_period), \
-            "min_period must be less than max_period"
+        if self.min_period and self.max_period:
+            assert(self.min_period < self.max_period), \
+                "min_period must be less than max_period"
 
         # Check if unit output properly set, dictated by ObsPy units
         acceptable_units = ['DISP', 'VEL', 'ACC']
