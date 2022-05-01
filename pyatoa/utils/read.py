@@ -9,7 +9,7 @@ from obspy import Stream, Trace, UTCDateTime, Inventory
 from obspy.core.inventory.network import Network
 from obspy.core.inventory.station import Station
 from obspy.core.event import Event, Origin, Magnitude
-from pyatoa.utils.srcrcv import Source
+from pyatoa.utils.srcrcv import Source, seismic_moment, moment_magnitude
 from pyatoa import logger
 
 
@@ -240,14 +240,26 @@ def read_specfem2d_source(path_to_source, origin_time=None):
         time=origin_time, longitude=source_dict["xs"], 
         latitude=source_dict["xs"], depth=source_dict["zs"]
     ) 
-    
-    # TO DO: Create the moment tensor attribute from Mxx Mzz Mxz components here
-    # TO DO: Create the magnitude attribute here
+
+    # Calculate the moment magnitude from the moment tensor components
+    moment = seismic_moment(mt=[float(source_dict["Mxx"]), 
+                                float(source_dict["Mzz"]),
+                                float(source_dict["Mxz"])
+                                ])
+    moment_mag = moment_magnitude(moment=moment)
+
+    magnitude = Magnitude(
+        resource_id=_get_resource_id(source_name, "magnitude"),
+        mag=moment_mag, magnitude_type="Mw", origin_id=origin.resource_id.id
+    )
 
     event = Event(resource_id=_get_resource_id(name=source_name, 
                                                res_type="event"))
     event.origins.append(origin)
+    event.magnitudes.append(magnitude)
+
     event.preferred_origin_id = origin.resource_id.id
+    event.preferred_magnitude_id = magnitude.resource_id.id
 
     return event
 
