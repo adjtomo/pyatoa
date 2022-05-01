@@ -106,15 +106,14 @@ def add_adjoint_sources(adjsrcs, ds, path, time_offset):
                           "misfit": adj_src.misfit,
                           "dt": adj_src.dt,
                           "component": adj_src.component,
-                          "min_period": adj_src.min_period,
-                          "max_period": adj_src.max_period,
+                          "min_period": adj_src.min_period or "None",
+                          "max_period": adj_src.max_period or "None",
                           "network": adj_src.network,
                           "station": adj_src.station,
                           "location": adj_src.location,
                           "starttime": str(adj_src.starttime)
                           }
-
-            ds.add_auxiliary_data(data=specfem_adj_source,
+            ds.add_auxiliary_data(data=specfem_adj_source.astype(np.float64),
                                   data_type="AdjointSources",
                                   path=f"{path}/{adj_src_tag}",
                                   parameters=parameters
