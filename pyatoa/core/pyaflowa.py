@@ -12,7 +12,7 @@ in ASDFDataSets, and generate figures.
 To call Pyaflowa from inside an active SeisFlows3 working environment:
 .. rubric::
     from pyatoa import Pyaflowa
-    pyaflowa = Pyaflowa(sfpar=PAR, sfpath=PATH)
+    pyaflowa = Pyaflowa(sfpar=PAR, sfpath=PATH)  # PAR and PATH defined by SF3
     pyaflowa.setup(source_name=solver.source_name[0],
                    iteration=optimize.iter,
                    step_count=optimize.line_search.step_count,
@@ -33,12 +33,21 @@ from pyatoa.utils.asdf.clean import clean_dataset
 class Paths(dict):
     """Dictionary that prints keys like attributes for cleaner calls and allows
     on the fly formatting of all values within the dict. Assumes that all
-    values are strings."""
+    values are strings.
+       
+    .. note::
+        Had some trouble pickling this class, fixed see: 
+        https://stackoverflow.com/questions/42272335/
+                         how-to-make-a-class-which-has-getattr-properly-pickable
+    """
     def __setattr__(self, key, value):
         self[key] = value
 
     def __getattr__(self, key):
-        return self[key]
+        try:
+            return self[key]
+        except KeyError:
+            raise AttributeError(key)
 
     @staticmethod
     def _make_nonexistent_dir(key, val):
@@ -105,10 +114,8 @@ class Pyaflowa:
         self.sfpar = sfpar
         self.sfpath = sfpath
 
-        # Establish the internal workflow directories based on chosen structure
-        self.paths = self.define_path_structure(sfpath)
-
         # Attributes to be created and formatted by setup()
+        self.paths = None
         self.config = None
         self.logger = None
         self.codes = None
@@ -236,9 +243,14 @@ class Pyaflowa:
             fetching. Since SPECFEM STATIONS files do not specify channel,
             we must do it ourselves. Defaults to a wildcard '*'.
         """
+        unformatted_paths = self.define_path_structure(self.sfpath)
+        self.paths = unformatted_paths.format(source_name=source_name)
+
         self.config = self.generate_config(source_name, iteration, step_count)
+
         log_name = self._create_logger_name(self.config)
         self.logger = self.generate_logger(log_name)
+
         self.codes = read_station_codes(self.paths.stations_file, loc=loc,
                                         cha=cha)
         self.fix_windows = self.check_fix_windows(iteration, step_count)
@@ -249,7 +261,7 @@ class Pyaflowa:
             # Gather event from DATA directory and save the ASDFDataSet
             mgmt = pyatoa.Manager(ds=ds, config=self.config)
             mgmt.gather(choice=["event"], event_id="",
-                        prefix=self.sfpar.source_prefix)
+                        prefix=self.sfpar.SOURCE_PREFIX)
 
     def generate_config(self, source_name, iteration, step_count):
         """
@@ -294,9 +306,9 @@ class Pyaflowa:
         """
         # If we have iteration or step_count set, use to tag the log file
         if config.eval_tag is not None:
-            log_fid = f"{config.eval_tag}_{config.event_id}"
+            log_fid = f"{config.eval_tag}_{config.event_id}.txt"
         else:
-            log_fid = f"{config.event_id}"
+            log_fid = f"{config.event_id}.txt"
         log_path = os.path.join(self.paths.logs, log_fid)
         return log_path
 
@@ -319,7 +331,7 @@ class Pyaflowa:
         logfmt = "[%(asctime)s] - %(name)s - %(levelname)s: %(message)s"
         formatter = logging.Formatter(logfmt, datefmt="%Y-%m-%d %H:%M:%S")
         handler.setFormatter(formatter)
-        handler.setLevel(self.sfpar.log_level.upper())
+        handler.setLevel(self.sfpar.LOG_LEVEL.upper())
 
         for log in ["pyflex", "pyadjoint", "pyatoa"]:
             # Set the overall log level
@@ -328,7 +340,7 @@ class Pyaflowa:
             while logger.hasHandlers():
                 logger.removeHandler(logger.handlers[0])
 
-            logger.setLevel(self.sfpar.log_level.upper())
+            logger.setLevel(self.sfpar.LOG_LEVEL.upper())
             logger.addHandler(handler)
 
         return logger
@@ -450,14 +462,12 @@ class Pyaflowa:
             self.mgmt.write_adjsrcs(path=self.paths.adjsrcs,
                                     write_blanks=True)
 
-    def _manager_flow(self, code):
+    def _manager_flow(self):
         """
         Attempt to process data for the given Pyaflowa state. Allow unctronlled
         exceptions through so as to not break the workflow. Return a status
         to let the main function know if things should proceed.
 
-        :type code: str
-        :param code: Pyatoa station code, NN.SSS.LL.CCC
         :rtype: bool
         :return: The status of the processing step. True means processing
             completed nominally (without error), False means processing failed.
@@ -497,7 +507,7 @@ class Pyaflowa:
         # Mapping may fail if no Inventory or Event object is attached
         # Waveform figures are expected to work if we have gotten this far
         try:
-            self.mgmt.plot(corners=self.map_corners, show=False, save=save)
+            self.mgmt.plot(choice="both", show=False, save=save)
         except pyatoa.ManagerError as e:
             self.logger.warning("cannot plot map, plotting waveform only")
             self.mgmt.plot(choice="wav", show=False, save=save)
