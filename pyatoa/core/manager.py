@@ -238,6 +238,25 @@ class Manager:
                 logger.warning("More synthetic traces than listed components, "
                                "this may need to be reviewed manually")
 
+        # Check that component list matches components in streams, else some
+        # functions that rely on Stream.select() will fail to execute
+        if self.st_obs is not None:
+            st_obs_comps = [tr.stats.component for tr in self.st_obs]
+            if not set(st_obs_comps).issubset(set(self.config.component_list)):
+                logger.warning(f"observed components {st_obs_comps} don't "
+                               f"match given Config component list "
+                               f"{self.config.component_list}, which may cause "
+                               f"unexpected behavior during workflow")
+
+
+        if self.st_syn is not None:
+            st_syn_comps = [tr.stats.component for tr in self.st_syn]
+            if not set(st_syn_comps).issubset(set(self.config.component_list)):
+                logger.warning(f"synthetic components {st_syn_comps} don't "
+                               f"match given Config component list "
+                               f"{self.config.component_list}, which may cause "
+                               f"unexpected behavior during workflow")
+
         # Check standardization by comparing waveforms against the first
         if not self.stats.standardized and self.st_obs and self.st_syn:
             for tr in self.st[1:]:
