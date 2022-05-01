@@ -7,6 +7,7 @@ import obspy
 import pyflex
 import warnings
 import pyadjoint
+from copy import deepcopy
 from obspy.signal.filter import envelope
 from pyatoa import logger
 from pyatoa.core.config import Config
@@ -19,6 +20,7 @@ from pyatoa.utils.srcrcv import gcd_and_baz
 from pyatoa.utils.asdf.add import add_misfit_windows, add_adjoint_sources
 from pyatoa.utils.process import (default_process, trim_streams, zero_pad,
                                   match_npts)
+from pyatoa.scripts.load_example_data import load_example_data
 
 from pyatoa.visuals.mgmt_plot import ManagerPlotter
 
@@ -331,8 +333,6 @@ class Manager:
             with no adjoint sources to meet the requirements of SPECFEM3D.
             defaults to True
         """
-        from copy import deepcopy
-
         assert(self.adjsrcs is not None), f"No adjoint sources to write"
 
         for adj in self.adjsrcs.values():
@@ -360,13 +360,16 @@ class Manager:
                                     time_offset=self.stats.time_offset_sec
                                     )
 
-    def load(self, code, path=None, ds=None, synthetic_tag=None,
+    def load(self, code=None, path=None, ds=None, synthetic_tag=None,
              observed_tag=None, config=True, windows=False,
              adjsrcs=False):
         """
         Populate the manager using a previously populated ASDFDataSet.
         Useful for re-instantiating an existing workflow that has already 
         gathered data and saved it to an ASDFDataSet.
+
+        .. note::
+            mgmt.load() will return example data with no dataset
 
         .. warning::
             Loading any floating point values may result in rounding errors.
@@ -395,44 +398,50 @@ class Manager:
         :type adjsrcs: bool
         :param adjsrcs: load adjoint sources from the dataset, defaults to False
         """
-        # Allows a ds to be provided outside the attribute
-        if self.ds and ds is None:
-            ds = self.ds
-        else:
-            raise TypeError("load requires a Dataset")
+        if code is None:
+            logger.debug("no arguments given, returning example data")
+            self.cfg, self.st_obs, self.st_syn, self.event, self.inv = \
+                                                            load_example_data() 
+        else: 
+            # Allows a ds to be provided outside the attribute
+            if self.ds and ds is None:
+                ds = self.ds
+            else:
+                raise TypeError("load requires a Dataset")
 
-        # If no Config object in Manager, try to load from dataset
-        if config:
-            if path is None:
-                raise TypeError("load requires valid 'path' argument")
-            logger.info(f"loading config from dataset {path}")
-            try:
-                self.config = Config(ds=ds, path=path)
-            except AttributeError:
-                logger.warning(f"No Config object in dataset for path {path}")
+            # If no Config object in Manager, try to load from dataset
+            if config:
+                if path is None:
+                    raise TypeError("load requires valid 'path' argument")
+                logger.info(f"loading config from dataset {path}")
+                try:
+                    self.config = Config(ds=ds, path=path)
+                except AttributeError:
+                    logger.warning(f"no Config object in dataset path: {path}")
 
-        assert(self.config is not None), "Config object required for load"
-        assert len(code.split('.')) == 2, "'code' must be in form 'NN.SSS'"
-        if windows or adjsrcs:
-            assert(path is not None), "'path' required to load auxiliary data"
-            iter_, step = path.split("/")
+            assert(self.config is not None), "Config object required for load"
+            assert len(code.split('.')) == 2, "'code' must be in form 'NN.SSS'"
+            if windows or adjsrcs:
+                assert(path is not None), "path required to load auxiliary data"
+                iter_, step = path.split("/")
 
-        # Reset and populate using the dataset
-        self.__init__(config=self.config, ds=ds, event=ds.events[0])
-        net, sta = code.split('.')
-        sta_tag = f"{net}.{sta}"
-        if sta_tag in ds.waveforms.list():
-            self.inv = ds.waveforms[sta_tag].StationXML
-            self.st_syn = ds.waveforms[sta_tag][synthetic_tag or
-                                                self.config.synthetic_tag]
-            self.st_obs = ds.waveforms[sta_tag][observed_tag or
-                                                self.config.observed_tag]
-            if windows:
-                self.windows = load_windows(ds, net, sta, iter_, step, False)
-            if adjsrcs:
-                self.adjsrcs = load_adjsrcs(ds, net, sta, iter_, step)
-        else:
-            logger.warning(f"no data for {sta_tag} found in dataset")
+            # Reset and populate using the dataset
+            self.__init__(config=self.config, ds=ds, event=ds.events[0])
+            net, sta = code.split('.')
+            sta_tag = f"{net}.{sta}"
+            if sta_tag in ds.waveforms.list():
+                self.inv = ds.waveforms[sta_tag].StationXML
+                self.st_syn = ds.waveforms[sta_tag][synthetic_tag or
+                                                    self.config.synthetic_tag]
+                self.st_obs = ds.waveforms[sta_tag][observed_tag or
+                                                    self.config.observed_tag]
+                if windows:
+                    self.windows = load_windows(ds, net, sta, iter_, step, 
+                                                return_previous=False)
+                if adjsrcs:
+                    self.adjsrcs = load_adjsrcs(ds, net, sta, iter_, step)
+            else:
+                logger.warning(f"no data for {sta_tag} found in dataset")
 
         self.check()
         return self
