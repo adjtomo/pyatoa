@@ -322,8 +322,7 @@ class Pyaflowa:
     at once.
     """
     def __init__(self, structure="standalone", config=None, plot=True, 
-                 map_corners=None, log_level="DEBUG", 
-                 source_prefix="CMTSOLUTION", **kwargs):
+                 map_corners=None, log_level="DEBUG",  **kwargs):
         """
         Initialize the flow. Feel the flow.
         
@@ -333,44 +332,19 @@ class Pyaflowa:
             figures, and logs
         :type par: seisflows.config.Dict
         :param par: Parameter list tracked internally by SeisFlows
-        :type source_prefix: str
-        :param source_prefix: How source files will be prefixed, e.g.,
-            CMTSOLUTION_???????? or FORCESOLUTION_??????
         """
         # Establish the internal workflow directories based on chosen structure
         self.structure = structure.lower()
-        self.path_structure = PathStructure(self.structure, **kwargs)
-
-        # Pyaflowa and Seisflows working together requires data exchange
-        # of path and parameter information.
-        if self.structure == "seisflows":
-            sfpaths = kwargs.get("sfpaths")
-            sfpar = kwargs.get("sfpar")
-
-            assert(sfpaths is not None and sfpar is not None), \
-                ("Pyaflowa + SeisFlows requires SeisFlows 'PAR' and 'PATH' "
-                 "Dict objects to be passed to Pyaflowa upon initialization")
-
-            # Pyatoa's Config object will initialize using the parameter already
-            # set by the SeisFlows workflow. We need the BEGIN parameter to 
-            # check status in window fixing.
-            self.config = pyatoa.Config(seisflows_par=sfpar, **kwargs)
-
-            # Overwrite init parameters based on SeisFlows Par file
-            plot = sfpar.PLOT
-            log_level = sfpar.LOGGING 
-        else:
-            self.begin = -9999
-            if config is None:
-                warnings.warn("No Config object passed, initiating empty "
-                              "Config", UserWarning)
-                self.config = pyatoa.Config(iteration=1, step_count=0)
-            else:
-                self.config = config
 
         self.plot = plot
         self.map_corners = map_corners
         self.log_level = log_level
+
+        # To be created by setup()
+        self.path_structure = None
+        self.io = None
+        self.config = None
+        self.mgmt = None
 
     def copy(self):
         """
@@ -379,56 +353,9 @@ class Pyaflowa:
         """
         return deepcopy(self)
 
-    def process_event(self, io, config, station_code=None, **kwargs):
-        """
-        The main processing function for Pyaflowa misfit quantification. IO
-        and config should be passed in from setup()
-
-        Processes waveform data for all stations related to a given event,
-        produces waveform and map plots during the processing step, saves data
-        to an ASDFDataSet and writes adjoint sources and STATIONS_ADJOINT file,
-        required by SPECFEM3D's adjoint simulations, to disk.
-
-        Kwargs passed to pyatoa.Manager.flow() function.
-
-        :type source_name: str
-        :param source_name: event id to be used for data gathering, processing
-        :type station_code: str
-        :param station_code: used to limit processing to a single station,
-            used mostly for debug purposes. Must match part of one of the codes
-            defined by 'io.codes'. e.g., 'BFZ' to match 'NZ.BFZ.*.*'
-        :rtype: float or None
-        :return: the total scaled misfit collected during the processing chain,
-            scaled_misfit will return None if no windows have been found or
-            no misfit was calculated
-        """
-        # Open the dataset as a context manager and process all events in serial
-        with ASDFDataSet(io.paths.ds_file) as ds:
-            mgmt = pyatoa.Manager(ds=ds, config=config)
-            for code in io.codes:
-                # Allow user to process a single station, used for debugging
-                if station_code and station_code not in code:
-                    continue
-                mgmt_out, io = self.process_station(mgmt=mgmt, code=code,
-                                                    io=io, **kwargs)
-
-        self.finalize(io)
-
-        # Scale the raw event misfit by the number of windows according to
-        # Tape et al. (2010).
-        try:
-            scaled_misfit = 0.5 * io.misfit / io.nwin
-        # Dealing with the cases where 1) nwin==0 (signifying either no windows
-        # found, or calc'ing misfit on whole trace) and 2) when misfit and nwin
-        # are None (no misfit found for event)
-        except (TypeError, ZeroDivisionError):
-            scaled_misfit = io.misfit
-
-        return scaled_misfit
-
-    def setup(self, source_name, iteration=None, step_count=None, 
+    def setup_seisflows(self, source_name, iteration=None, step_count=None, sfpar=None,
               source_prefix="CMTSOLUTION", loc="*", cha="*", fix_windows=False, 
-              multiprocess=False):
+              multiprocess=False, config=None):
         """
         Generate a config object for a specific event id / source name
         Set the correct paths and adjust a few parameters based on the 
@@ -463,19 +390,33 @@ class Pyaflowa:
             This variable allows the user to set channel searching manually,
             wildcards okay. Defaults to 'HH?' for high-gain, high-sampling rate
             broadband seismometers, but this is dependent on the available data.
+        :type source_prefix: str
+        :param source_prefix: How source files will be prefixed, e.g.,
+            CMTSOLUTION_???????? or FORCESOLUTION_??????
         :rtype: pyatoa.core.pyaflowa.IO
         :return: dictionary like object that contains all the necessary
             information to perform processing for a single event
         """
+        self.path_structure = PathStructure(self.structure, **kwargs)
         paths = self.path_structure.format(source_name=source_name)
 
         # Create a new instance of the internal config which keeps track of
-        # our current location in the workflow
-        config = deepcopy(self.config)
-        config.iteration = iteration
-        config.step_count = step_count
-        config.event_id = source_name
-        config.paths = {"responses": paths.responses,
+        # our current location in the workflow. Or if provided by the user, 
+        # create a new config based on SeisFlows3 parameter object
+        if sfpar is not None:
+            self.config = pyatoa.Config(seisflows_par=sfpar)
+        elif config is None:
+            warnings.warn("No Config object passed, initiating empty "
+                          "Config", UserWarning)
+            self.config = pyatoa.Config(iteration=1, step_count=0)
+        else:
+            self.config = config 
+
+        # Setup some specific values for this Pyaflowa run
+        self.config.iteration = iteration
+        self.config.step_count = step_count
+        self.config.event_id = source_name
+        self.config.paths = {"responses": paths.responses,
                         "waveforms": paths.waveforms,
                         "synthetics": paths.synthetics,
                         "events": paths.data,
@@ -518,10 +459,59 @@ class Pyaflowa:
                 step_tag=config.step_tag, paths=paths, logger=event_logger,
                 misfit=None, nwin=None, stations=0, processed=0, exceptions=0,
                 plot_fids=[], fix_windows=fix_windows)
+    
+        # Set internal attributes 
+        self.io = io
+        self.config = config
 
-        return io, config
+    def process_event(self, station_code=None, **kwargs):
+        """
+        The main processing function for Pyaflowa misfit quantification. IO
+        and config should be passed in from setup()
 
-    def finalize(self, io):
+        Processes waveform data for all stations related to a given event,
+        produces waveform and map plots during the processing step, saves data
+        to an ASDFDataSet and writes adjoint sources and STATIONS_ADJOINT file,
+        required by SPECFEM3D's adjoint simulations, to disk.
+
+        Kwargs passed to pyatoa.Manager.flow() function.
+
+        :type source_name: str
+        :param source_name: event id to be used for data gathering, processing
+        :type station_code: str
+        :param station_code: used to limit processing to a single station,
+            used mostly for debug purposes. Must match part of one of the codes
+            defined by 'io.codes'. e.g., 'BFZ' to match 'NZ.BFZ.*.*'
+        :rtype: float or None
+        :return: the total scaled misfit collected during the processing chain,
+            scaled_misfit will return None if no windows have been found or
+            no misfit was calculated
+        """
+        # Open the dataset as a context manager and process all events in serial
+        with ASDFDataSet(self.io.paths.ds_file) as ds:
+            self.mgmt = pyatoa.Manager(ds=ds, config=self.config)
+            for code in self.io.codes:
+                # Allow user to process a single station, used for debugging
+                if station_code and station_code not in code:
+                    continue
+                self.process_station(code=code, **kwargs)
+
+        self.finalize()
+
+        # Scale the raw event misfit by the number of windows according to
+        # Tape et al. (2010).
+        try:
+            scaled_misfit = 0.5 * self.io.misfit / self.io.nwin
+        # Dealing with the cases where 1) nwin==0 (signifying either no windows
+        # found, or calc'ing misfit on whole trace) and 2) when misfit and nwin
+        # are None (no misfit found for event)
+        except (TypeError, ZeroDivisionError):
+            scaled_misfit = self.io.misfit
+
+        return scaled_misfit
+
+
+    def finalize(self):
         """
         Wrapper for any finalization procedures after a single event workflow
         Returns total misfit calculated during process()
@@ -543,10 +533,10 @@ class Pyaflowa:
                        f"UNEXPECTED ERRORS: {io.exceptions}"
                        )
 
-        self._make_event_pdf_from_station_pdfs(io)
-        self._write_specfem_stations_adjoint_to_disk(io)
+        self._make_event_pdf_from_station_pdfs()
+        self._write_specfem_stations_adjoint_to_disk()
 
-    def process_station(self, mgmt, code, io, **kwargs):
+    def process_station(self, code, **kwargs):
         """
         Process a single seismic station for a given event. Return processed
         manager and status describing outcome of processing. Multiple error 
@@ -572,75 +562,73 @@ class Pyaflowa:
         """
         net, sta, loc, cha = code.split(".")
 
-        io.logger.info(f"\n{'=' * 80}\n\n{code}\n\n{'=' * 80}")
-        io.stations += 1
-        mgmt.reset()
+        self.io.logger.info(f"\n{'=' * 80}\n\n{code}\n\n{'=' * 80}")
+        self.io.stations += 1
+        self.mgmt.reset()
 
         # Data gathering chunk; if fail, do not continue
         try:
-            mgmt.gather(code=code)
+            self.mgmt.gather(code=code)
         except pyatoa.ManagerError as e:
-            io.logger.warning(e)
-            return None, io
+            self.io.logger.warning(e)
+            return None
 
         # Data processing chunk; if fail, continue to plotting
         try:
-            mgmt.flow(fix_windows=io.fix_windows)
-
-            # Basic log statement, mostly useful for multiprocesses which dont
-            # have access to the more detailed log statements
-            io.logger.info(f"\n\n\tOBS WAVS:  {mgmt.stats.len_obs}"
-                           f"\n\tSYN WAVS:  {mgmt.stats.len_syn}"
-                           f"\n\tWINDOWS:   {mgmt.stats.nwin}"
-                           f"\n\tMISFIT:    {mgmt.stats.misfit:.2f}\n"
-                           )
-    
+            self.mgmt.flow(fix_windows=self.io.fix_windows)
             status_ok = True
         except pyatoa.ManagerError as e:
-            io.logger.warning(e)
+            self.io.logger.warning(e)
             status_ok = False
             pass
         except Exception as e:
             # Uncontrolled exceptions should be noted in more detail
-            io.logger.warning(e, exc_info=True)
-            io.exceptions += 1
+            self.io.logger.warning(e, exc_info=True)
+            self.io.exceptions += 1
             status_ok = False
             pass
 
         # Plotting chunk; fid is e.g. path/i01s00_NZ_BFZ.pdf
         if self.plot:
-            plot_fid = "_".join([mgmt.config.iter_tag, mgmt.config.step_tag,
-                                 net, sta + ".pdf"]
-                                )
-            save = os.path.join(io.paths.event_figures, plot_fid)
-            io.logger.info(f"saving figure to: {save}")
-            mgmt.plot(corners=self.map_corners, show=False, save=save)
+            plot_fid = "_".join([self.mgmt.config.iter_tag,  # e.g., i01
+                                 self.mgmt.config.step_tag,  # e.g., s00
+                                 net,                        # e.g., NZ
+                                 sta + ".pdf"                # e.g., BFZ.pdf
+                                 ])
+            save = os.path.join(self.io.paths.event_figures, plot_fid)
+            self.io.logger.info(f"saving figure to: {save}")
+            # Mapping may fail if no Inventory or Event object is attached
+            # Waveform figures are expected to work if we have gotten this far
+            try:
+                self.mgmt.plot(corners=self.map_corners, show=False, save=save)
+            except pyatoa.ManagerError as e:
+                self.io.logger.warning("cannot plot map, plotting waveform only")
+                self.mgmt.plot(choice="wav", show=False, save=save)
 
             # If a plot is made, keep track so it can be merged later on
-            io.plot_fids.append(save)
+            self.io.plot_fids.append(save)
 
         # Finalization chunk; only if processing is successful
         if status_ok:
             # We allow misfit and nwin to be None to signify that no misfits
             # have been calculated. But if we calculate something then we
             # need to overwrite the None values
-            if io.misfit is None:
-                io.misfit = 0
-            if io.nwin is None:
-                io.nwin = 0
+            if self.io.misfit is None:
+                self.io.misfit = 0
+            if self.io.nwin is None:
+                self.io.nwin = 0
 
             # Keep track of outputs for the final log summary and misfit value
-            io.misfit += mgmt.stats.misfit
+            self.io.misfit += self.mgmt.stats.misfit
             # The deal with the case where window selection is skipped and 
             # mgmt.stats.nwin == None
-            num_new_win = mgmt.stats.nwin or 0
-            io.nwin += num_new_win
-            io.processed += 1
+            num_new_win = self.mgmt.stats.nwin or 0
+            self.io.nwin += num_new_win
+            self.io.processed += 1
             
             # SPECFEM wants adjsrcs for each comp, regardless if it has data
-            mgmt.write_adjsrcs(path=io.paths.adjsrcs, write_blanks=True)
-
-        return mgmt, io
+            self.mgmt.write_adjsrcs(path=self.io.paths.adjsrcs, 
+                                    write_blanks=True)
 
     def _process_event_multiprocess_true(self, *args, **kwargs):
         """
@@ -677,7 +665,7 @@ class Pyaflowa:
                 misfits[os.path.basename(source_name)] = misfit
         return misfits
 
-    def _write_specfem_stations_adjoint_to_disk(self, io):
+    def _write_specfem_stations_adjoint_to_disk(self):
         """
         Create the STATIONS_ADJOINT file required by SPECFEM to run an adjoint
         simulation. Should be run after all processing has occurred. Works by
@@ -688,13 +676,13 @@ class Pyaflowa:
         :param cwd: current SPECFEM run directory within the larger SeisFlows
             directory structure
         """
-        io.logger.info("generating STATIONS_ADJOINT file for SPECFEM")
+        self.io.logger.info("generating STATIONS_ADJOINT file for SPECFEM")
 
         # These paths follow the structure of SeisFlows and SPECFEM
-        adjoint_traces = glob(os.path.join(io.paths.adjsrcs, "*.adj"))
+        adjoint_traces = glob(os.path.join(self.io.paths.adjsrcs, "*.adj"))
 
         # Simply append to end of file name e.g. "path/to/STATIONS" + "_ADJOINT"
-        stations_adjoint = io.paths.stations_file  + "_ADJOINT"
+        stations_adjoint = self.io.paths.stations_file  + "_ADJOINT"
 
         # Determine the network and station names for each adjoint source
         # Note this will contain redundant values but thats okay because we're
@@ -703,7 +691,7 @@ class Pyaflowa:
                             adjoint_traces]
 
         # The STATION file is already formatted so leverage for STATIONS_ADJOINT
-        lines_in = open(io.paths.stations_file, "r").readlines()
+        lines_in = open(self.io.paths.stations_file, "r").readlines()
 
         with open(stations_adjoint, "w") as f_out:
             for line in lines_in:
@@ -713,7 +701,7 @@ class Pyaflowa:
                 if check in adjoint_stations:
                     f_out.write(line)
 
-    def _make_event_pdf_from_station_pdfs(self, io):
+    def _make_event_pdf_from_station_pdfs(self):
         """
         Combine a list of single source-receiver PDFS into a single PDF file
         for the given event.
@@ -724,16 +712,16 @@ class Pyaflowa:
         :param output_fid: name of the output pdf, will be joined to the figures
             path in this function
         """
-        if io.plot_fids:
-            io.logger.info("creating single .pdf file of all output figures")
+        if self.io.plot_fids:
+            self.io.logger.info("creating single .pdf for all output figures")
             # e.g. i01s00_2018p130600.pdf
             output_fid = f"{io.iter_tag}{io.step_tag}_{io.event_id}.pdf"
 
             # Merge all output pdfs into a single pdf, delete originals
-            save = os.path.join(io.paths.event_figures, output_fid)
-            merge_pdfs(fids=sorted(io.plot_fids), fid_out=save)
+            save = os.path.join(self.io.paths.event_figures, output_fid)
+            merge_pdfs(fids=sorted(self.io.plot_fids), fid_out=save)
 
-            for fid in io.plot_fids:
+            for fid in self.io.plot_fids:
                 os.remove(fid)
 
     def _create_event_log_handler(self, fid):

@@ -10,6 +10,7 @@ from obspy.core.inventory.network import Network
 from obspy.core.inventory.station import Station
 from obspy.core.event import Event, Origin, Magnitude
 from pyatoa.utils.srcrcv import Source
+from pyatoa import logger
 
 
 def read_fortran_binary(path):
@@ -199,7 +200,7 @@ def read_station_codes(path_to_stations, loc="??", cha="*"):
     return codes
 
 
-def read_specfem2d_source(path_to_source, origin_time="2000-01-01T00:00:00"):
+def read_specfem2d_source(path_to_source, origin_time=None):
     """
     Create a barebones ObsPy Event object from a SPECFEM2D Source file, which
     only contains information required by Pyatoa, which only accesses 
@@ -214,6 +215,11 @@ def read_specfem2d_source(path_to_source, origin_time="2000-01-01T00:00:00"):
         Source files do not provide origin times so we just provide an 
         arbitrary value but allow user to set time
     """
+    if origin_time is None:
+        origin_time = "2000-01-01T00:00:00"
+        logger.warning("no origin time set for SPECFEM2D source, setting "
+                       f"default value: {origin_time}")
+
     with open(path_to_source, "r") as f:
         lines = f.readlines()
    

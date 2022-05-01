@@ -541,10 +541,18 @@ class Manager:
                     # Ensure observed waveforms gathered before synthetics and
                     # metadata. If this fails, no point to gathering the rest
                     self.st_obs = self.gatherer.gather_observed(code, **kwargs)
-                if "inv" in choice:
-                    self.inv = self.gatherer.gather_station(code, **kwargs)
                 if "st_syn" in choice:
                     self.st_syn = self.gatherer.gather_synthetic(code, **kwargs)
+                # Allow StationXML gathering to fail, e.g., with synthetic data
+                # we will not have/need response informatino
+                if "inv" in choice:
+                    try:
+                        self.inv = self.gatherer.gather_station(code, **kwargs)
+                    except GathererNoDataException as e:
+                        logger.warning(f"Could not find matching StationXML "
+                                       f"for {code}, setting 'inv' attribute "
+                                       f"to None")
+                        self.inv = None
 
             return self
         except GathererNoDataException as e:
