@@ -40,20 +40,49 @@ class Paths(dict):
     def __getattr__(self, key):
         return self[key]
 
-    def format(self, **kwargs):
-        """Format any open string formatters with any available kwargs. Allow
-        for list-like values where all values in the list will be formatted"""
+    @staticmethod
+    def _make_nonexistent_dir(key, val):
+        """Checks if a path is a directory by whether it has a file ext, and
+        whether or not the dir actually exists"""
+        if "_file" in key:
+            make_dir = False
+        else:
+            if os.path.splitext(val)[1]:
+                make_dir = False
+            else:
+                if os.path.exists(val):
+                    make_dir = False
+                else:
+                    make_dir = True
+        if make_dir:
+            os.makedirs(val)
+
+    def format(self, mkdir=True, **kwargs):
+        """
+        Format any open string formatters with any available kwargs. Allow
+        for list-like values where all values in the list will be formatted. 
+        Also allow for making whatever looks like a directory (no file ext) 
+        to establish the path structure on disk
+
+        :type mkdir: bool
+        :param mkdir: make any directory-like value (no file ext) after 
+            formatting 
+        """
         path_out = self
         for key, val in self.items():
             try:
-                path_out[key] = val.format(**kwargs)
+                new_val = val.format(**kwargs)
+                path_out[key] = new_val
+                self._make_nonexistent_dir(key, new_val)
             # Lists will not format by themselves, need to go in and format
             # each entry separately.
             except AttributeError:
-                val_new = []
+                new_vals = []
                 for item in val:
-                    val_new.append(item.format(**kwargs))
-                path_out[key] = val_new
+                    new_val = item.format(**kwargs)
+                    self._make_nonexistent_dir(key, new_val)
+                    new_vals.append(new_val)
+                path_out[key] = new_vals
         return path_out
 
 
@@ -151,6 +180,12 @@ class Pyaflowa:
         :type sfpath: seisflows.config.Dict
         :param sfpath: Path definitions defined by variable `PATH` in SeisFlows3
         """
+        # DATA path may be None, e.g., during synthetic inversion
+        if sfpath.DATA is None:
+            path_data = os.path.join(sfpath.PREPROCESS, "data")
+        else:
+            path_data = sfpath.DATA
+
         paths = Paths(
             workdir=sfpath.WORKDIR,
             cwd=os.path.join(sfpath.SOLVER, "{source_name}"),
@@ -162,14 +197,14 @@ class Pyaflowa:
                                  "{source_name}.h5"),
             event_figures=os.path.join(sfpath.PREPROCESS, "figures",
                                        "{source_name}"),
-            responses=os.path.join(sfpath.DATA, "seed"),
-            stations_fils=os.path.join(sfpath.SOLVER, "{source_name}", "DATA",
+            responses=os.path.join(path_data, "seed"),
+            stations_file=os.path.join(sfpath.SOLVER, "{source_name}", "DATA",
                                        "STATIONS"),
             synthetics=os.path.join(sfpath.SOLVER, "{source_name}",
                                     "traces", "syn"),
             adjsrcs=os.path.join(sfpath.SOLVER, "{source_name}", "traces",
                                  "adj"),
-            waveforms=[os.path.join(sfpath.DATA, "mseed"),
+            waveforms=[os.path.join(path_data, "mseed"),
                        os.path.join(sfpath.SOLVER, "{source_name}", "traces",
                                     "obs")]
         )
@@ -262,7 +297,7 @@ class Pyaflowa:
             log_fid = f"{config.eval_tag}_{config.event_id}"
         else:
             log_fid = f"{config.event_id}"
-        log_path = os.path.join(self.path.logs, log_fid)
+        log_path = os.path.join(self.paths.logs, log_fid)
         return log_path
 
     def generate_logger(self, log_path):
