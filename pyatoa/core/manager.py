@@ -924,9 +924,6 @@ class Manager:
         # Check that data has been filtered and standardized
         if not self.stats.standardized and not force:
             raise ManagerError("cannot measure misfit, not standardized")
-        elif not (self.stats.obs_processed and self.stats.syn_processed) \
-                and not force:
-            raise ManagerError("cannot measure misfit, not filtered")
         elif self.stats.nwin == 0 and not force:
             raise ManagerError("cannot measure misfit, no windows recovered")
         logger.debug(f"running Pyadjoint w/ type: {self.config.adj_src_type}")
