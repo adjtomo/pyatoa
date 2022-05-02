@@ -1,4 +1,7 @@
 ## Python's Adjoint Tomography Operations Assitant  
+
+[![Join the chat at https://gitter.im/pyatoa/community](https://badges.gitter.im/pyatoa/community.svg)](https://gitter.im/pyatoa/community?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+
 ### Misfit assessment for the modern tomographer
 
 ---
