@@ -313,8 +313,8 @@ class Inspector(InspectorPlotter):
         # Initialize an empty dictionary that will be used to initalize
         # a Pandas DataFrame
         window = {"event": [], "iteration": [], "step": [], "network": [],
-                  "station": [], "channel": [], "component": [], "misfit": [],
-                  "length_s": [],
+                  "station": [], "location": [], "channel": [], "component": [],
+                  "misfit": [], "length_s": [],
                   }
         # These are direct parameter names of the MisfitWindow aux data objects
         winfo = {"dlnA": [], "window_weight": [], "max_cc_value": [],
@@ -383,6 +383,7 @@ class Inspector(InspectorPlotter):
                 window["event"].append(eid)
                 window["network"].append(net)
                 window["station"].append(sta)
+                window["location"].append(loc)
                 window["channel"].append(cha)
                 window["component"].append(component)
                 window["iteration"].append(iter_)
