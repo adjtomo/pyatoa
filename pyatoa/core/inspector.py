@@ -300,6 +300,9 @@ class Inspector(InspectorPlotter):
         Model and Step information should match between the two
         auxiliary data objects MisfitWindows and AdjointSources
 
+        TODO: break this into _get_windows_from_dataset and 
+              _get_adjsrcs_from_dataset?
+
         :type ds: pyasdf.ASDFDataSet
         :param ds: dataset to query for misfit:
         :rtype: pandas.DataFrame
