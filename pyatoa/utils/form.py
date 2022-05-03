@@ -100,9 +100,9 @@ def format_event_name(ds_or_event):
     # USGS ANSS ComCat: quakeml:us.anss.org/event/20005ysu
     elif "ANSS" in rid_up:
         return rid.split("event/")[-1]
-    # SOURCE pyatoa.read.read_specfem2d_source: pyatoa:source/
+    # SOURCE pyatoa.read.read_specfem2d_source: pyatoa:source/*/event
     elif "SOURCE" in rid_up:
-        return rid.split("source/")[-1]
+        return rid.split("/")[-2]
     # PYATOA pyatoa.read.read_force_solution: pyatoa:source/
     elif "PYATOA" in rid_up:
         return rid.split("source/")[-1]
