@@ -21,7 +21,7 @@
 **[PyASDF:](https://seismicdata.github.io/pyasdf/)** heirarchical, self-describing storage of seismic data  
 **[Pandas:](https://pandas.pydata.org/)** large-scale aggregation and manipulation of measurement information
 
-**Pyatoa** can be used in scripting, interactive Python environments, or written into larger workflow tools. Although applicable in a standalone maner, Pyatoa was designed as a tool to be used in conjunction with [SeisFlows](https://github.com/rmodrak/seisflows), an automated workflow for seismic inversions, and [SPECFEM3D Cartesian](https://geodynamics.org/cig/software/specfem3d/), a numerical solver for seismic wave propogation.
+**Pyatoa** can be used in scripting, interactive Python environments, or written into larger workflow tools. Although applicable in a standalone maner, Pyatoa was designed as a tool to be used in conjunction with [SeisFlows3](https://github.com/adjtomo/seisflows3), an automated workflow for seismic inversions, and [SPECFEM3D Cartesian](https://geodynamics.org/cig/software/specfem3d/), a numerical solver for seismic wave propogation.
 
 The design philosophy of **Pyatoa** is easy-to-use custom-built objects that make tomography research flexible, rapid, and repeatable.
 
