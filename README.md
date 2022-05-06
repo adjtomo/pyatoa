@@ -6,7 +6,7 @@
 ### Misfit assessment for the modern tomographer
 
 ---
-`Documentation` can be found on Read the Docs: https://pyatoa.readthedocs.io (in development)
+`Documentation` can be found on Read the Docs: https://pyatoa.readthedocs.io
 
 ---
 <p align="center">
