@@ -9,8 +9,10 @@ import pytest
 import yaml
 from pyasdf import ASDFDataSet
 from pyatoa import Manager
-from pyatoa.core.pyaflowa import IO, PathStructure, Pyaflowa
+# from pyatoa.core.pyaflowa import IO, PathStructure, Pyaflowa
 
+# Skip this whole test suite for now because Pyaflowa was gutted
+pytest.skip(allow_module_level=True)
 
 class Dict(dict):
     """
