@@ -472,7 +472,7 @@ class Pyaflowa:
 
     def _manager_flow(self):
         """
-        Attempt to process data for the given Pyaflowa state. Allow unctronlled
+        Attempt to process data for the given Pyaflowa state. Allow uncontrolled
         exceptions through so as to not break the workflow. Return a status
         to let the main function know if things should proceed.
 
