@@ -17,6 +17,7 @@ from pyatoa.utils.form import format_event_name
 
 DEGREE_CHAR = u"\N{DEGREE SIGN}"
 
+
 class MapMaker:
     """
     A class to call on the Basemap package to generate a map with
@@ -140,12 +141,11 @@ class MapMaker:
             projection = getattr(ccrs, "Stereographic")
 
         # Most major projections use the central_longitude function while only
-        # some require central latitude
+        # some require central latitude, so we set that outside the init
         projection = projection(central_longitude=self.ev_lon, **kwargs)
         projection.central_latitude = self.ev_lat
 
-        # Initiate matplotlib instances, either standalone or in tandem with
-        # a waveform plot using GridSpec
+        # Start fig either standalone or tandem with a waveform plot in GridSpec
         if figure is None:
             fig = plt.figure(figsize=figsize, dpi=dpi)
         else:
@@ -156,20 +156,20 @@ class MapMaker:
         else:
             ax = fig.add_subplot(gridspec[1], projection=projection)
 
-        # Initiate map and draw in very barebones style
         # Since the extents are in Lat/Lon, we set the extent in a lat/lon proj
         ax.set_extent(self.extents, crs=ccrs.PlateCarree())
         ax.coastlines(lw=axis_linewidth)
-
+    
         gl = ax.gridlines(draw_labels=True, dms=True, x_inline=False,
                           y_inline=False, linewidth=.25, alpha=0.25, color="k")
         gl.top_labels = False
         gl.right_labels = False
         gl.xlabel_style = {"rotation": 0}
 
+        # Axis linewidth is set differently than in Matplotlib, see:
         # https://github.com/SciTools/cartopy/issues/1077
         ax.outline_patch.set_linewidth(axis_linewidth)
-        # Set a scale bar on the Cartopy map
+
         scale_bar(ax, 100)
 
         return fig, ax, projection
@@ -178,6 +178,12 @@ class MapMaker:
         """
         Plot the source, either as a focal mechanism, moment tensor, or as a
         simple point, based on the input.
+
+        .. note::
+            scale_source kwarg was guessed with trial and error and is based on
+            the guessed returned length from the scale_bar() function defined
+            at the bottom, which tries to guess a reasonable length of the 
+            scale bar based on the dimensions of the map
 
         :type fm_type: str
         :param fm_type: choice to plot
@@ -189,7 +195,7 @@ class MapMaker:
         size = self.kwargs.get("source_size", 75)
 
         lw = self.kwargs.get("source_lw", 1.75)
-        width = self.kwargs.get("source_width", 5E4)
+        scale_source = self.kwargs.get("scale_source", .3)
 
         # No focal mechanism? Just plot a marker
         self.ax.scatter(self.ev_lon, self.ev_lat, transform=ccrs.PlateCarree(),
@@ -217,14 +223,15 @@ class MapMaker:
                 raise ValueError("fm_type must be 'focal_mechanism' or "
                                  "'strike_dip_rake")
 
-            # !!! This does not work but I think it's what I'm supposed to do
-            # !!! https://docs.obspy.org/tutorial/code_snippets/cartopy_plot_with_beachballs.html#cartopy-plot-of-the-globe-with-beachballs
-            x, y = ccrs.PlateCarree().transform_point(
-                x=self.ev_lon, y=self.ev_lat, src_crs=self.projection
+            # Transform lon/lat to given projection to give to beachball
+            x, y = self.projection.transform_point(
+                x=self.ev_lon, y=self.ev_lat, src_crs=ccrs.PlateCarree()
             )
-            # TODO figure out how to convert lat/lon coordinates (and width)
-            # TODO to match the manually-determiend x and y values
-            b = beach(beach_input, xy=(2690, -4.6E6), width=width,
+            # Guess a width of the focal mechanism that fits nicely on the plot
+            width = scale_source * scale_bar(ax=self.ax, length=None, 
+                                             return_length=True)
+
+            b = beach(beach_input, xy=(x, y), width=width,
                       linewidth=lw, facecolor=color)
             b.set_zorder(11)
             self.ax.add_collection(b)
@@ -348,10 +355,11 @@ class MapMaker:
             plt.show()
 
 
-def scale_bar(ax, length=None, location=(0.85, 0.95), linewidth=3):
+def scale_bar(ax, length=None, location=(0.85, 0.95), linewidth=3, 
+              return_length=False):
     """
     Create a scale bar on a Cartopy plot.
-    Copied from: https://stackoverflow.com/questions/32333870/
+    Modifiedd from: https://stackoverflow.com/questions/32333870/
                           how-can-i-show-a-km-ruler-on-a-cartopy-matplotlib-plot
 
     :type ax: matplotlib.pyplot.axes
@@ -363,6 +371,9 @@ def scale_bar(ax, length=None, location=(0.85, 0.95), linewidth=3):
         (ie. 0.5 is the middle of the plot)
     :type linewidth: float
     :param linewidth: the thickness of the scalebar.
+    :type return_length: bool
+    :param return_length: Simply returns the scaled length of the bar, added
+        to use for scaling of the moment tensor
     """
     # Get the limits of the axis in lat long
     llx0, llx1, lly0, lly1 = ax.get_extent(ccrs.PlateCarree())
@@ -394,8 +405,13 @@ def scale_bar(ax, length=None, location=(0.85, 0.95), linewidth=3):
 
     # Generate the x coordinate for the ends of the scalebar
     bar_xs = [sbx - length * 500, sbx + length * 500]
-    # Plot the scalebar
-    ax.plot(bar_xs, [sby, sby], transform=tmc, color="k", linewidth=linewidth)
-    # Plot the scalebar label
-    ax.text(sbx, sby, f"{length} km", transform=tmc,
-            horizontalalignment="center", verticalalignment="bottom")
+    
+    if return_length:
+        return bar_xs[1] - bar_xs[0]
+    else:
+        # Plot the scalebar
+        ax.plot(bar_xs, [sby, sby], transform=tmc, color="k", 
+                linewidth=linewidth)
+        # Plot the scalebar label
+        ax.text(sbx, sby, f"{length} km", transform=tmc,
+                horizontalalignment="center", verticalalignment="bottom")
