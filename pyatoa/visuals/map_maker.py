@@ -167,8 +167,7 @@ class MapMaker:
         gl.xlabel_style = {"rotation": 0}
 
         # Axis linewidth is set differently than in Matplotlib, see:
-        # https://github.com/SciTools/cartopy/issues/1077
-        ax.outline_patch.set_linewidth(axis_linewidth)
+        ax.spines["geo"].set_linewidth(axis_linewidth)
 
         scale_bar(ax, 100)
 
