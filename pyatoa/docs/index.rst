@@ -42,7 +42,8 @@ preserve your root environment. The 'devel' branch provides the latest codebase.
    $ conda activate pyatoa
    $ git clone --branch devel https://github.com/bch0w/pyatoa.git
    $ cd pyatoa
-   $ pip install .
+   $ conda install --file requirements.txt
+   $ pip install -e .
 
 
 Running Tests

@@ -621,7 +621,7 @@ class WaveMaker:
                         ax.set_ylabel("")
 
         if save:
-            plt.savefig(save, figsize=figsize, dpi=dpi)
+            plt.savefig(save)
         if show:
             plt.show()
 
