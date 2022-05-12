@@ -13,6 +13,7 @@ logger.addHandler(ch)
 
 from pyatoa.core.config import Config # NOQA
 from pyatoa.core.manager import Manager, ManagerError # NOQA
+from pyatoa.core.executive import Executive # NOQA
 from pyatoa.core.gatherer import (Gatherer, append_focal_mechanism,
                                   get_gcmt_moment_tensor)  # NOQA
 from pyatoa.core.inspector import Inspector  # NOQA

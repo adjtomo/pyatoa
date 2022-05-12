@@ -12,7 +12,6 @@ from obspy.geodetics.flinnengdahl import FlinnEngdahl
 from obspy.core.event.catalog import Catalog
 
 from pyatoa import logger
-from pyatoa.utils.srcrcv import gcd_and_baz
 from pyatoa.utils.form import format_event_name
 
 DEGREE_CHAR = u"\N{DEGREE SIGN}"
@@ -49,7 +48,6 @@ class MapMaker:
 
         # Extents is a tuple [lon_min, lon_max, lat_min, lat_max]
         self.extents = self.define_bounding_box(corners, corner_buffer_deg)
-        self.dist, _ = gcd_and_baz(event=self.event, sta=self.inv[0][0])
 
         if figsize is None:
             figsize = (600 / dpi, 600 / dpi)

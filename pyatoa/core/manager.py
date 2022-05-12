@@ -5,8 +5,8 @@ A class to control workflow and temporarily store and manipulate data
 import os
 import obspy
 import pyflex
-import warnings
 import pyadjoint
+import warnings
 from copy import deepcopy
 from obspy.signal.filter import envelope
 from pyatoa import logger
@@ -465,7 +465,7 @@ class Manager:
         self.check()
         return self
 
-    def flow(self, **kwargs):
+    def flow(self, codes=None, **kwargs):
         """
         A convenience function to run the full workflow with a single command.
         Does not include gathering. Takes kwargs related to all underlying
