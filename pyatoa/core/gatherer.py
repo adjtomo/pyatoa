@@ -1053,9 +1053,9 @@ def get_gcmt_moment_tensors(event=None, origintime=None, magnitude=None,
     return cat_filt
 
 
-def get_usgs_moment_tensor(event, time_wiggle_sec=120., magnitude_wiggle=.5,
-                           latitude_wiggle_deg=1., longitude_wiggle_deg=1.,
-                           depth_wiggle_km=2.5, **kwargs):
+def get_usgs_moment_tensors(event, time_wiggle_sec=120., magnitude_wiggle=.5,
+                            latitude_wiggle_deg=1., longitude_wiggle_deg=1.,
+                            depth_wiggle_km=5., **kwargs):
     """
     Query FDSN webservices USGS client for moment tensors using the current
     event definition, which may or may not have been collected via USGS.
@@ -1083,7 +1083,7 @@ def get_usgs_moment_tensor(event, time_wiggle_sec=120., magnitude_wiggle=.5,
     magnitude = event.preferred_magnitude().mag
     latitude = event.preferred_origin().latitude
     longitude = event.preferred_origin().longitude
-    depth = event.preferred_origin().depth
+    depth = event.preferred_origin().depth * 1E-3
 
     # Assuming that time, magnitude, and hypocenter are enough to uniquely
     # identify a given earthquake
