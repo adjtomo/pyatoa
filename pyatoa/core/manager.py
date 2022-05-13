@@ -587,12 +587,14 @@ class Manager:
             # Catch the Gatherer exception and redirect as ManagerError 
             # so that it can be caught by flow()
             logger.warning(e, exc_info=False)
-            raise ManagerError("Data Gatherer could not find some data") from e
+            raise ManagerError(
+                f"Data Gatherer could not find some data: {e}") from e
         except Exception as e:
             # Gathering should be robust, but if something slips through, dont
             # let it kill a workflow, display and raise ManagerError
             logger.warning(e, exc_info=True)
-            raise ManagerError("Uncontrolled error in data gathering") from e
+            raise ManagerError(
+                f"Uncontrolled error in data gathering {e}") from e
 
     def standardize(self, force=False, standardize_to="syn"):
         """

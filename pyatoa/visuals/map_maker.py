@@ -13,6 +13,8 @@ from obspy.core.event.catalog import Catalog
 
 from pyatoa import logger
 from pyatoa.utils.form import format_event_name
+from pyatoa.utils.srcrcv import gcd_and_baz
+from pyatoa.utils.calculate import enforce_angle_pi
 
 DEGREE_CHAR = u"\N{DEGREE SIGN}"
 
@@ -23,7 +25,7 @@ class MapMaker:
     source-receiver information
     """
     def __init__(self, cat, inv, dpi=100, figsize=None, figure=None,
-                 gridspec=None, corners=None, corner_buffer_deg=2, **kwargs):
+                 gridspec=None, corners=None, corner_buffer_deg=1, **kwargs):
         """
         Initiate recurring parameters and parse out a few parameters for
         easier access
@@ -46,6 +48,9 @@ class MapMaker:
         self.sta_lat = inv[0][0][0].latitude
         self.sta_lon = inv[0][0][0].longitude
 
+        # Used for coordinate transforms between lat/lon and projection
+        self.ref_proj = ccrs.PlateCarree()
+
         # Extents is a tuple [lon_min, lon_max, lat_min, lat_max]
         self.extents = self.define_bounding_box(corners, corner_buffer_deg)
 
@@ -55,6 +60,7 @@ class MapMaker:
         self.fig, self.ax, self.projection = self.initiate_figure(
             figsize, dpi, figure, gridspec
         )
+
 
     def define_bounding_box(self, corners=None, corner_buffer_deg=2):
         """
@@ -85,8 +91,12 @@ class MapMaker:
             lat_max = max(self.ev_lat, self.sta_lat)
 
             d_lat = max(corner_buffer_deg, 0.25 * (lat_max - lat_min))
-            lat_min -= d_lat
-            lat_max += d_lat
+            # !!! BUG? Using __iadd__ (+=) kept returning NoneType not float
+            # !!! Related to how ObsPy defining types (core/util/obspy_types)
+            lat_min = lat_min - d_lat
+            lat_max = lat_max + d_lat
+            # lat_min -= d_lat
+            # lat_max += d_lat  # <<< only lat_max was being affected
 
             # Crude scaling for longitude based on max latitude value to get a
             # roughly square buffer domain around the source and receiver
@@ -102,8 +112,8 @@ class MapMaker:
             d_lon = lon_scale * max(corner_buffer_deg,
                                     0.25 * (lon_max - lon_min)
                                     )
-            lon_min -= d_lon
-            lon_max += d_lon
+            lon_min = lon_min - d_lon
+            lon_max = lon_max + d_lon
         else:
             # Parse the corners into usable values
             assert(isinstance(corners, dict))
@@ -115,6 +125,9 @@ class MapMaker:
             lat_max = corners["lat_max"]
             lon_min = corners["lon_min"]
             lon_max = corners["lon_max"]
+
+        lon_max = enforce_angle_pi(lon_max)
+        lon_min = enforce_angle_pi(lon_min)
 
         return lon_min, lon_max, lat_min, lat_max
 
@@ -155,7 +168,7 @@ class MapMaker:
             ax = fig.add_subplot(gridspec[1], projection=projection)
 
         # Since the extents are in Lat/Lon, we set the extent in a lat/lon proj
-        ax.set_extent(self.extents, crs=ccrs.PlateCarree())
+        ax.set_extent(self.extents, crs=self.ref_proj)
         ax.coastlines(lw=axis_linewidth)
     
         gl = ax.gridlines(draw_labels=True, dms=True, x_inline=False,
@@ -167,7 +180,7 @@ class MapMaker:
         # Axis linewidth is set differently than in Matplotlib, see:
         ax.spines["geo"].set_linewidth(axis_linewidth)
 
-        scale_bar(ax, 100)
+        scale_bar(ax, 100, ref_proj=self.ref_proj)
 
         return fig, ax, projection
 
@@ -195,7 +208,7 @@ class MapMaker:
         scale_source = self.kwargs.get("scale_source", .3)
 
         # No focal mechanism? Just plot a marker
-        self.ax.scatter(self.ev_lon, self.ev_lat, transform=ccrs.PlateCarree(),
+        self.ax.scatter(self.ev_lon, self.ev_lat, transform=self.ref_proj,
                         marker=marker, color=color, edgecolor="k", linewidth=lw,
                         s=size, zorder=10)
 
@@ -222,11 +235,12 @@ class MapMaker:
 
             # Transform lon/lat to given projection to give to beachball
             x, y = self.projection.transform_point(
-                x=self.ev_lon, y=self.ev_lat, src_crs=ccrs.PlateCarree()
+                x=self.ev_lon, y=self.ev_lat, src_crs=self.ref_proj
             )
             # Guess a width of the focal mechanism that fits nicely on the plot
-            width = scale_source * scale_bar(ax=self.ax, length=None, 
-                                             return_length=True)
+            width = scale_source * scale_bar(ax=self.ax, length=None,
+                                             return_length=True,
+                                             ref_proj=self.ref_proj)
 
             b = beach(beach_input, xy=(x, y), width=width,
                       linewidth=lw, facecolor=color)
@@ -243,7 +257,7 @@ class MapMaker:
         lw = self.kwargs.get("station_lw", 1.5)
 
         self.ax.scatter(self.sta_lon, self.sta_lat,
-                        transform=ccrs.PlateCarree(), marker=marker,
+                        transform=self.ref_proj, marker=marker,
                         color=color, linewidth=lw, s=size,
                         edgecolor="k", zorder=10)
 
@@ -256,7 +270,7 @@ class MapMaker:
         lc = self.kwargs.get("srcrcv_color", "k")
 
         self.ax.plot([self.ev_lon, self.sta_lon], [self.ev_lat, self.sta_lat],
-                     transform=ccrs.PlateCarree(), linestyle=ls, linewidth=lw,
+                     transform=self.ref_proj, linestyle=ls, linewidth=lw,
                      c=lc, zorder=8)
 
     def annotate(self, location="lower-right", anno_latlon=False):
@@ -353,7 +367,7 @@ class MapMaker:
 
 
 def scale_bar(ax, length=None, location=(0.85, 0.95), linewidth=3, 
-              return_length=False):
+              return_length=False, ref_proj=ccrs.PlateCarree()):
     """
     Create a scale bar on a Cartopy plot.
     Modifiedd from: https://stackoverflow.com/questions/32333870/
@@ -373,14 +387,17 @@ def scale_bar(ax, length=None, location=(0.85, 0.95), linewidth=3,
         to use for scaling of the moment tensor
     """
     # Get the limits of the axis in lat long
-    llx0, llx1, lly0, lly1 = ax.get_extent(ccrs.PlateCarree())
+    llx0, llx1, lly0, lly1 = ax.get_extent(ref_proj)
+
     # Make tmc horizontally centred on the middle of the map,
     # vertically at scale bar location
     sbllx = (llx1 + llx0) / 2
     sblly = lly0 + (lly1 - lly0) * location[1]
     tmc = ccrs.TransverseMercator(sbllx, sblly, approx=True)
+
     # Get the extent of the plotted area in coordinates in metres
     x0, x1, y0, y1 = ax.get_extent(tmc)
+
     # Turn the specified scalebar location into coordinates in metres
     sbx = x0 + (x1 - x0) * location[0]
     sby = y0 + (y1 - y0) * location[1]
