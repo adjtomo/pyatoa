@@ -70,7 +70,7 @@ def get_geonet_mt(event_id, csv_fid=None):
         raise AttributeError(f"no geonet moment tensor found for: {event_id}")
 
 
-def geonet_mt(event_id, units, event=None, csv_fid=None):
+def generate_geonet_moment_tensor(event_id, units, event=None, csv_fid=None):
     """
     Focal mechanisms created by John Ristau are written to a .csv file
     located on Github. This function will append information from the .csv file
@@ -174,14 +174,17 @@ def geonet_mt(event_id, units, event=None, csv_fid=None):
         comments=[comment]
         )
 
-    # Append the focal mechanisms to the event object. Set the preferred
-    # focal mechanism so that this attribute can be used in the future
-    if event:
-        event.focal_mechanisms = [focal_mechanism]
-        event.preferred_focal_mechanism_id = focal_mechanism.resource_id
-        return event, focal_mechanism
-    # If no event is given, just return the focal mechanism
-    else:
-        return None, focal_mechanism
+    # # Append the focal mechanisms to the event object. Set the preferred
+    # # focal mechanism so that this attribute can be used in the future
+    # if event:
+    #     event.focal_mechanisms = [focal_mechanism]
+    #     event.preferred_focal_mechanism_id = focal_mechanism.resource_id
+    #     return event, focal_mechanism
+    # # If no event is given, just return the focal mechanism
+    # else:
+    #     return None, focal_mechanism
+
+    return focal_mechanism
+
 
 
