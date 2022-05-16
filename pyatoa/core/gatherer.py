@@ -698,7 +698,7 @@ class Gatherer:
             identify the units of the synthetic data: For Specfem3D:
             ["d", "v", "a", "?"] 'd' for displacement, 'v' for velocity,
             'a' for acceleration. Wildcards okay. Defaults to '?'
-        :type syn_dir_template: str 
+        :type syn_dir_template: str
         :param syn_dir_template: Directory structure template to search for
             synthetic waveforms. Defaults to empty string
         :type syn_fid_template: str
