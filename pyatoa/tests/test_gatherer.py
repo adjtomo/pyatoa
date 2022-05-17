@@ -78,18 +78,6 @@ def gatherer(config, origintime):
     return Gatherer(config=config, origintime=origintime)
 
 
-def test_gather_no_client(gatherer, code):
-    """
-    Make sure that external getter functions always returns None if no Client
-    is provided
-    """
-    gatherer.Client = None
-
-    assert gatherer.get_event_from_fdsn() is None
-    assert gatherer.get_inv_from_fdsn(code) is None
-    assert gatherer.get_waveform_from_fdsn(code) is None
-
-
 def test_event_get(gatherer):
     """
     Ensure that querying for an event works. Only tests GeoNet gathering.
