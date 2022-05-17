@@ -465,7 +465,7 @@ class WaveMaker:
             title += f" {self.config.event_id}"
 
         # Filter bounds to plot title
-        title += f" [{self.config.min_period}s, {self.config.max_period}s]"
+        title += f" [{self.config.min_period}-{self.config.max_period}]s"
 
         # Tell the User if the data has been normalized
         if normalized:

@@ -128,7 +128,7 @@ class Gatherer:
                 logger.debug(f"event QuakeML was not added to ASDFDataSet: {e}")
                 pass
 
-        logger.info(f"matching event found: {format_event_name(event)}")
+        logger.info(f"matching event found: '{format_event_name(event)}'")
         return event
 
     def gather_station(self, code, **kwargs):
@@ -941,19 +941,23 @@ def append_focal_mechanism_to_event(event, method="all", overwrite_focmec=False,
     if not isinstance(event, Event):
         raise TypeError(f"`event` must be an ObsPy Event object, "
                         f"not: {type(event)}")
-    method = method.upper()
-    event_id = format_event_name(event)
-
     # If the event already has a focal mechanism attribute, don't gather
-    if hasattr(event, "focal_mechanisms") and \
+    elif hasattr(event, "focal_mechanisms") and \
             event.focal_mechanisms and not overwrite_focmec:
-        logger.warning("event already has focal mechanism, will not attempt to"
+        logger.debug("event already has focal mechanism, will not attempt to"
                        "append new focal mechanism")
         return event
+    # Only gather moment tensors if we're already trying to do FDSN stuff
+    elif client is None:
+        logger.debug("client not specified, will not attempt gathering "
+                     "moment tensor")
+        return event
 
+    method = method.upper()
+    event_id = format_event_name(event)
     cat = Catalog()
     focal_mechanism = None
-    if client is not None and client.upper() == "GEONET":
+    if client.upper() == "GEONET":
         logger.info("querying GeoNet moment tensor catalog")
         focal_mechanism = generate_geonet_moment_tensor(event_id=event_id,
                                                         units="nm")
