@@ -20,8 +20,12 @@ To call Pyaflowa from inside an active SeisFlows3 working environment:
     misfit = pyaflowa.process()
 """
 import os
-import pyatoa
 import logging
+import time
+import random
+import numpy as np
+import pyatoa
+from concurrent.futures import ProcessPoolExecutor
 from glob import glob
 from pyasdf import ASDFDataSet
 
@@ -118,37 +122,11 @@ class Pyaflowa:
         self.paths = self.define_path_structure(self.sfpath)  # Unformatted
         self.config = None
         self.logger = None
+        self.memhandler = None  # for logging
         self.codes = None
 
         # Internal stats attributes used by process_single_station()
-        self.mgmt = None
-        self.misfit = None
-        self.nwin = None
-        self.stations = 0
-        self.processed = 0
-        self.exceptions = 0
-        self.plot_fids = []
         self.fix_windows = False
-        self.scaled_misfit = 0
-
-    def reset(self):
-        """
-        Although it is better practice to initiate a NEW Pyaflowa instance each
-        time processing is required, the reset function also allows clearing out
-        any saved values from a previous run.
-        """
-        self.config = None
-        self.logger = None
-        self.codes = None
-        self.mgmt = None
-        self.misfit = None
-        self.nwin = None
-        self.stations = 0
-        self.processed = 0
-        self.exceptions = 0
-        self.plot_fids = []
-        self.fix_windows = False
-        self.scaled_misfit = 0
 
     @staticmethod
     def define_path_structure(sfpath):
@@ -252,13 +230,14 @@ class Pyaflowa:
 
         # Tag and create a unique event log file which will track processing
         log_name = self._create_logger_name(self.config)
-        self.logger = self.generate_logger(log_name)
+        # self.logger, self.memhandler = self.generate_logger(log_name)
+        self.logger, _ = self.generate_logger(log_name)
 
         # Codes define the stations used in this workflow
         self.codes = read_station_codes(self.paths.stations_file, loc=loc,
                                         cha=cha)
 
-        # Figure out how to address whether or not we re-use misfit windows
+        # Figure out how to address whether we re-use misfit windows
         self.fix_windows = self.check_fix_windows(iteration, step_count)
 
         with ASDFDataSet(self.paths.ds_file) as ds:
@@ -332,14 +311,21 @@ class Pyaflowa:
         :rtype: logging.Logger
         :return: an individualized logging handler
         """
+        # Convenience to not carry around long attribute call
+        log_level = self.sfpar.PYATOA_LOG_LEVEL.upper()
+
         # Propagate logging to individual log files, always overwrite
         handler = logging.FileHandler(log_path, mode="w")
+
+        # memhandler = logging.handlers.MemoryHandler(capacity=1024 * 100,
+        #                                             flushLevel=log_level,
+        #                                             target=handler)
 
         # Maintain the same look as the standard console log messages
         logfmt = "[%(asctime)s] - %(name)s - %(levelname)s: %(message)s"
         formatter = logging.Formatter(logfmt, datefmt="%Y-%m-%d %H:%M:%S")
         handler.setFormatter(formatter)
-        handler.setLevel(self.sfpar.PYATOA_LOG_LEVEL.upper())
+        handler.setLevel(log_level)
 
         for log in ["pyflex", "pyadjoint", "pyatoa"]:
             # Set the overall log level
@@ -348,10 +334,10 @@ class Pyaflowa:
             while logger.hasHandlers():
                 logger.removeHandler(logger.handlers[0])
 
-            logger.setLevel(self.sfpar.PYATOA_LOG_LEVEL.upper())
+            logger.setLevel(log_level)
             logger.addHandler(handler)
 
-        return logger
+        return logger, None
 
     def check_fix_windows(self, iteration, step_count):
         """
@@ -408,93 +394,122 @@ class Pyaflowa:
         # Bool fix windows simply sets the parameter
         elif isinstance(self.sfpar.FIX_WINDOWS, bool):
             fix_windows = self.sfpar.FIX_WINDOWS
-            self.logger.info(f"option for re-using misfit windows is set to: "
+            self.logger.info(f"re-use misfit window flag is set: "
                              f"{self.sfpar.FIX_WINDOWS}")
 
         return fix_windows
 
-    def process(self):
+    def process(self, nproc=1):
         """
-        The main processing function for Pyaflowa misfit quantification.
+        Calculate misfit given a set of data-synthetic waveforms for a single
+        event and a list of stations. Save all of the output into ASDFDataSets.
+        Generate the required STATIONS_ADJOINT file and adjoint source files.
 
-        Processes waveform data for all stations related to a given event,
-        produces waveform and map plots during the processing step, saves data
-        to an ASDFDataSet and writes adjoint sources and STATIONS_ADJOINT file,
-        required by SPECFEM3D's adjoint simulations, to disk.
+        Options for serial processing (slow) and parallel processing (fast).
 
-        :rtype: float or None
-        :return: the total scaled misfit collected during the processing chain,
-            scaled_misfit will return None if no windows have been found or
-            no misfit was calculated
+        :type nproc: int
+        :param nproc: number of processors to use concurrently for parallel
+            processing
         """
-        # Open the dataset as a context manager and process all events in serial
-        with ASDFDataSet(self.paths.ds_file) as ds:
-            self.mgmt = pyatoa.Manager(ds=ds, config=self.config)
-            for code in self.codes:
-                self.process_single_station(code=code)
-        if self.plot_fids:
-            self.make_event_figure_pdf()
+        _start = time.time()
+        mgmt_stats = {}
+        # Use concurrent futures to do station processing in parallel
+        with ProcessPoolExecutor(max_workers=nproc) as executor:
+            for code, stats in zip(self.codes,
+                                    executor.map(self._process_single_station,
+                                                 self.codes)):
+                mgmt_stats[code] = stats
+
+        # Remainder of these tasks are run in serial; collect processing stats
+        self.make_event_figure_pdf()
         self.write_stations_adjoint()
-        self.scaled_misfit = self.calculate_misfit()
-        self.log_stats()
-        return self.scaled_misfit
 
-    def process_single_station(self, code):
+        misfit, nwin = 0, 0
+        for sta, stats in mgmt_stats.items():
+            if stats.status_ok:
+                misfit += stats.misfit
+                nwin += stats.nwin or 0  # deal with NoneType nwin values
+
+        scaled_misfit = self.calculate_misfit(misfit=misfit, nwin=nwin)
+
+        # Finalization log statement for the user
+        _end = time.time()
+        status_str = self._parse_stats_for_log(mgmt_stats)
+        msg = (f"\n{'=' * 80}\n\nSUMMARY\n\n{'=' * 80}\n"
+               f"NPROC: {nproc} // TIME: {_end - _start:.2f}s\n"
+               f"SOURCE NAME: {self.config.event_id}\n"
+               f"WINDOWS: {nwin}\n"
+               f"RAW MISFIT: {misfit:.4f}\n"
+               f"{status_str}"
+               )
+        self.logger.info(msg)
+
+        return scaled_misfit
+
+    def _process_single_station(self, code):
         """
         Process a single seismic station for a given event. Multiple error
         catching chunks to ensure that a failed processing for a single station
         won't kill the entire job.
+
+        Manager status returns:
+            'STATION_NO_DATA': Processing error; gatherer failed to return data
+            'STATION_OK': Processing completed fine
+            'STATION_CONTROLLED_ERROR': Processing error but within expected
+                failure criteria for processing
+            'STATION_UNCONTROLLED_ERROR': Processing error; unexpected failure
+                criteria should probably be investigated by user
 
         :type code: str
         :param code: Pyatoa station code (formatted NN.SSS.LL.CCC) used to
             select which station we are processing
         """
         self.logger.info(f"\n{'=' * 80}\n\n{code}\n\n{'=' * 80}")
-        self.stations += 1
-        self.mgmt.reset()
+        mgmt = pyatoa.Manager(config=self.config)
         # Data gathering chunk; if fail, do not continue
         try:
-            self.mgmt.gather(code=code)
+            mgmt.gather(code=code,  event_id="",
+                        prefix=self.sfpar.SOURCE_PREFIX)
         except pyatoa.ManagerError as e:
             self.logger.warning(e)
-            return None
-        # Data processing
-        status_ok = self._manager_flow()
-        # Data plotting
-        if self.sfpar.PLOT:
-            self._plot_waveform_and_map(code)
-        # Final cleanup steps only if processing is successful
-        if status_ok:
-            self._record_stats_after_processing()
-            # SPECFEM wants adjsrcs for each comp, regardless if it has data
-            self.mgmt.write_adjsrcs(path=self.paths.adjsrcs,
-                                    write_blanks=True)
+            mgmt.stats.status_ok = "STATION_NO_DATA"
+            return mgmt.stats
 
-    def _manager_flow(self):
-        """
-        Attempt to process data for the given Pyaflowa state. Allow uncontrolled
-        exceptions through so as to not break the workflow. Return a status
-        to let the main function know if things should proceed.
-
-        :rtype: bool
-        :return: The status of the processing step. True means processing
-            completed nominally (without error), False means processing failed.
-        """
         # Data processing chunk; if fail, continue to plotting
         try:
-            self.mgmt.flow(fix_windows=self.fix_windows)
-            status_ok = True
+            mgmt.flow(fix_windows=self.fix_windows)
+            mgmt.stats.status_ok = "STATION_OK"
         except pyatoa.ManagerError as e:
             self.logger.warning(e)
-            status_ok = False
+            mgmt.stats.status_ok = "STATION_CONTROLLED_ERROR"
         except Exception as e:
             # Uncontrolled exceptions should be noted in more detail
             self.logger.warning(e, exc_info=True)
-            self.exceptions += 1
-            status_ok = False
-        return status_ok
+            mgmt.stats.status_ok = "STATION_UNCONTROLLED_ERROR"
 
-    def _plot_waveform_and_map(self, code):
+        # Data plotting chunk; if fail continue to writing
+        if self.sfpar.PLOT:
+            self._plot_waveform_and_map(mgmt, code)
+        # Final cleanup steps only if processing is successful
+        if mgmt.stats.status_ok:
+            # SPECFEM wants adjsrcs for each comp, regardless if it has data
+            mgmt.write_adjsrcs(path=self.paths.adjsrcs, write_blanks=True)
+
+        # Wait till the very end to write to the HDF5 file, then do it
+        # pseudo-serially to get around trying to parallel write to HDF5 file
+        while True:
+            try:
+                with ASDFDataSet(self.paths.ds_file) as ds:
+                    mgmt.write(ds=ds)
+                    break
+            except BlockingIOError:
+                # Random sleep time to decrease chances of two processes
+                # attempting to access at exactly the same time
+                time.sleep(random.random())
+
+        return mgmt.stats
+
+    def _plot_waveform_and_map(self, mgmt, code):
         """
         Attempt to plot the internal Manager as a waveform + map figure with
         a unique tag that defines the evaluation number, event id etc.
@@ -505,9 +520,9 @@ class Pyaflowa:
         :param code: Pyatoa station code, NN.SSS.LL.CCC
         """
         net, sta, loc, cha = code.split(".")
-        # fid is e.g. path/i01s00_NZ_BFZ.pdf
-        plot_fid = "_".join([self.mgmt.config.iter_tag,  # e.g., i01
-                             self.mgmt.config.step_tag,  # e.g., s00
+        # fid is e.g. path/i01s00_NZ_BFZ.png
+        plot_fid = "_".join([mgmt.config.iter_tag,  # e.g., i01
+                             mgmt.config.step_tag,  # e.g., s00
                              net,  # e.g., NZ
                              sta + ".pdf"  # e.g., BFZ.pdf
                              ])
@@ -515,64 +530,56 @@ class Pyaflowa:
         # Mapping may fail if no Inventory or Event object is attached
         # Waveform figures are expected to work if we have gotten this far
         try:
-            self.mgmt.plot(choice="both", show=False, save=save)
+            mgmt.plot(choice="both", show=False, save=save)
         except pyatoa.ManagerError as e:
             self.logger.warning("cannot plot map, plotting waveform only")
-            self.mgmt.plot(choice="wav", show=False, save=save)
-        # If a plot is made, keep track so it can be merged later on
+            mgmt.plot(choice="wav", show=False, save=save)
         self.logger.info(f"plotting figure and saving to: {save}")
-        self.plot_fids.append(save)
 
-    def _record_stats_after_processing(self):
-        """
-        Keep track of processing stats for each source-receiver pair. Thsi will
-        be used to calculate the scaled misfit later
 
-        .. note::
-            We allow misfit and nwin to be None to signify that no misfits
-            have been calculated. But if we calculate something then we
-            need to overwrite the None values. Should only happen once.
-        """
-        if self.misfit is None:
-            self.misfit = 0
-        if self.nwin is None:
-            self.nwin = 0
-        # Raw misfit which will be scaled by the number of misfit windows
-        self.misfit += self.mgmt.stats.misfit
-        # The deal with the case where window selection is skipped and
-        # mgmt.stats.nwin == None
-        num_new_win = self.mgmt.stats.nwin or 0
-        self.nwin += num_new_win
-        self.processed += 1
-
-    def log_stats(self):
-        """
-        A final log message after all the processing is done to wrap up log file
-        """
-        # Finalization log statement for the user
-        msg = (f"\n{'=' * 80}\n\nSUMMARY\n\n{'=' * 80}\n"
-               f"SOURCE NAME: {self.config.event_id}\n"
-               f"STATIONS: {self.processed} / {self.stations}\n"
-               f"WINDOWS: {self.nwin}\n"
-               f"RAW MISFIT: {self.misfit}\n"
-               f"UNEXPECTED ERRORS: {self.exceptions}"
-               )
-        self.logger.info(msg)
-
-    def calculate_misfit(self):
+    @staticmethod
+    def calculate_misfit(misfit, nwin):
         """
         Calculate the misfit based on the number of windows. Equation from
-        Tape et al. (2010).
+        Tape et al. (2010). If no windows, misfit is simply raw misfit
+
+        :type misfit: float
+        :param misfit: total RAW event misfit for all data-synthetic pairs
+        :type nwin: int
+        :param nwin: number of misfit windows collected for all data-synthetic
+            pairs for a given event
         """
         # Scale the raw event misfit by
         try:
-            scaled_misfit = 0.5 * self.misfit / self.nwin
+            scaled_misfit = 0.5 * misfit / nwin
         # Dealing with the cases where 1) nwin==0 (signifying either no windows
         # found, or calc'ing misfit on whole trace) and 2) when misfit and nwin
         # are None (no misfit found for event)
         except (TypeError, ZeroDivisionError):
-            scaled_misfit = self.misfit
+            scaled_misfit = misfit
         return scaled_misfit
+
+    def _parse_stats_for_log(self, mgmt_stats):
+        """
+        Count and list all of the station status codes to let the user know
+        how each stations was processed and what catagegory it falls under
+
+        :rtype: str
+        :return: string with all statuses, their respective counts,
+            and a list of stations which falls under each status
+        """
+        # Count the different output states and related codes to relay to user
+        status_str = ""
+        status_list = np.array([s.status_ok for s in mgmt_stats.values()])
+        code_list = np.array([*mgmt_stats])  # list of station codes
+
+        statuses, counts = np.unique(status_list, return_counts=True)
+
+        for i, status in enumerate(statuses):
+            status_str += (f"{status}: {counts[i]} / {len(status_list)}\n"
+                           f"{code_list[np.where(status_list == status)[0]]}"
+                           )
+        return status_str
 
     def write_stations_adjoint(self):
         """
@@ -607,16 +614,22 @@ class Pyaflowa:
         for the given event. Mostly a convenience function to make it easier
         to ingest waveform figures during a workflow.
         """
+        # e.g., i01s00_NZ_BFZ.png
+        input_fids = glob(os.path.join(self.paths.event_figures, "*.pdf"))
+        if not input_fids:
+            self.logger.warning(f"no event figures found searching glob for: "
+                                f"{self.paths.event_figures}/*.png")
+            return
         # e.g. i01s00_2018p130600.pdf
         output_fid = (f"{self.config.iter_tag}{self.config.step_tag}_" 
                       f"{self.config.event_id}.pdf")
-        self.logger.info(f"merging {len(self.plot_fids)} output figures into a "
+        self.logger.info(f"merging {len(input_fids)} output figures into a "
                          f"single pdf: '{output_fid}'")
 
         # Merge all output pdfs into a single pdf, delete originals
         save = os.path.join(self.paths.event_figures, output_fid)
-        merge_pdfs(fids=sorted(self.plot_fids), fid_out=save)
-        for fid in self.plot_fids:
+        merge_pdfs(fids=sorted(input_fids), fid_out=save)
+        for fid in input_fids:
             os.remove(fid)
 
     def make_evaluation_composite_pdf(self, delete_originals=True):
@@ -634,6 +647,10 @@ class Pyaflowa:
         :param delete_originals: delete original pdf files after mergin
         """
         event_figures = glob(os.path.join(self.paths.figures, "*", "*.pdf"))
+        if not event_figures:
+            self.logger.warning(f"no composite PDFs found searching glob for: "
+                                f"{self.paths.figures}/*/*.pdf")
+            return
         # Collecting evaluation tags, e.g., ['i01s00', 'i01s01']
         tags = set([os.path.basename(_).split("_")[0] for _ in event_figures])
         for tag in tags:
@@ -644,9 +661,3 @@ class Pyaflowa:
             if delete_originals:
                 for fid in fids:
                     os.remove(fid)
-
-
-
-
-
-

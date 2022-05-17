@@ -25,7 +25,7 @@ class MapMaker:
     source-receiver information
     """
     def __init__(self, cat, inv, dpi=100, figsize=None, figure=None,
-                 gridspec=None, corners=None, corner_buffer_deg=1, **kwargs):
+                 gridspec=None, corners=None, corner_buffer_deg=2., **kwargs):
         """
         Initiate recurring parameters and parse out a few parameters for
         easier access

@@ -3,6 +3,11 @@
 A class and functionality to direct multiple Managers to parallelize data
 processing in Pyatoa using the in-built concurrent.futures package
 
+.. rubric::
+    >>> from pyatoa import Executive
+    >>> exc = Executive(event_ids=..., station_codes=..., config=...)
+    >>> misfits = exc.process()
+
 .. note::
     I was getting the following error randomly on my runs, I think it had to
     do with the fact that I was requesting all of my cores to do the job (16).
@@ -29,7 +34,8 @@ class Executive:
     quantification.
     """
     def __init__(self, event_ids, station_codes, config, max_stations=4,
-                 max_events=1, cat="+", log_level="DEBUG"):
+                 max_events=1, cat="+", log_level="DEBUG", datasets=None,
+                 figures=None, logs=None, adjsrcs=None, ds_fid_template=None):
         """
         The Executor needs some key information before it can run processing
 
@@ -54,6 +60,19 @@ class Executive:
             uncommon as it is given to str.split()
         :type log_level: str
         :param log_level: log level to be given to all underlying loggers
+        :type datasets: str
+        :param datasets: path to save ASDFDataSets. defaults to a subdirectory
+            'datasets', inside the current working directory.
+        :type figures: str
+        :param figures: path to save output figures. defaults to a subdirectory
+            'figures', inside the current working directory.
+        :type logs: str
+        :param logs: path to save text log files. defaults to a subdirectory
+            'logs', inside the current working directory.
+        :type adjsrcs: str
+        :param adjsrcs: path to save text adjoint source text files.
+            defaults to a subdirectory 'adjsrcs', inside the current working
+            directory.
         """
         self.config = config
 
@@ -63,11 +82,16 @@ class Executive:
         self.max_stations = max_stations
         self.max_events = max_events
 
-        # Define a rudimentary path structure to keep main dir. light
+        # Define a rudimentary path structure to keep main dir. light.
+        # These can usually be defaults but if working with Pyaflowa, allow
+        # them to be overwritten
         self.cwd = os.getcwd()
-        self.datasets = os.path.join(self.cwd, "datasets")
-        self.figures = os.path.join(self.cwd, "figures")
-        self.logs = os.path.join(self.cwd, "logs")
+        self.datasets = datasets or os.path.join(self.cwd, "datasets")
+        self.figures = figures or os.path.join(self.cwd, "figures")
+        self.logs = logs or os.path.join(self.cwd, "logs")
+        self.adjsrcs = adjsrcs or os.path.join(self.cwd, "adjsrcs")
+        self.ds_fid_template = ds_fid_template or os.path.join(self.datasets,
+                                                               "{event_id}.h5")
 
         for path in [self.datasets, self.figures, self.logs]:
             if not os.path.exists(path):
@@ -188,13 +212,14 @@ class Executive:
         # Processing break will allow writing waveforms and plotting
         try:
             mgmt.flow()
+            mgmt.write_adjsrcs(path=self.paths.adjsrcs, write_blanks=True)
         except Exception as e:
             logger.warning(e)
             pass
         # Plotting break will allow writing waveforms
         try:
-            mgmt.plot(choice="both", show=False, save=os.path.join(
-                self.figures, f"{filename}.png")
+            mgmt.plot(choice="both", show=False,
+                      save=os.path.join(self.figures, f"{filename}.png")
                       )
         except Exception as e:
             logger.warning(e)
@@ -204,8 +229,10 @@ class Executive:
         # as it should be quick
         while True:
             try:
-                with ASDFDataSet(os.path.join(self.datasets,
-                                              f"{event_id}.h5")) as ds:
+                # Default dataset name needs to be formatted, but user-defined
+                # filenames may not, and will not be affected by format()
+                ds_fid = self.ds_fid_template.format(event_id=event_id)
+                with ASDFDataSet(ds_fid) as ds:
                     mgmt.ds = ds
                     mgmt.write()
                     if rank == 0:

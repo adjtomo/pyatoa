@@ -87,7 +87,7 @@ class Gatherer:
         :return: event retrieved either via internal or external methods
         :raises GathererNoDataException: if no event information is found.
         """
-        logger.debug("gathering event QuakeML")
+        logger.info("gathering event QuakeML")
         # Try 1: fetch from ASDFDataSet
         if self.ds:
             logger.debug("searching ASDFDataSet for event info")
@@ -99,7 +99,7 @@ class Gatherer:
             logger.debug("searching local filesystem for QuakeML")
             event = self.fetch_event_by_dir(event_id, **kwargs)
         # Try 3: query FDSN for event information
-        if event is None:
+        if event is None and self.Client is not None:
             logger.debug(f"querying client {self.config.client} for QuakeML")
             event = self.get_event_from_fdsn(event_id)
         # Abort if none of the three attempts returned successfully
@@ -116,7 +116,7 @@ class Gatherer:
 
         # Overwrite origintime with the catalog value to be consistent
         self.origintime = event.preferred_origin().time
-        logger.debug(f"event origin time is set to {self.origintime}")
+        logger.debug(f"event origin time is set to: {self.origintime}")
 
         # Save event information to dataset if necessary
         if self.ds and self.config.save_to_ds:
@@ -125,10 +125,10 @@ class Gatherer:
                 logger.debug(f"event QuakeML added to ASDFDataSet")
             # Trying to re-add an event to the ASDFDataSet throws ValueError
             except ValueError as e:
-                logger.debug(f"event QuakeML was not added to ASDFDataSet\n{e}")
+                logger.debug(f"event QuakeML was not added to ASDFDataSet: {e}")
                 pass
 
-        logger.debug(f"matching event found: {format_event_name(event)}")
+        logger.info(f"matching event found: {format_event_name(event)}")
         return event
 
     def gather_station(self, code, **kwargs):
@@ -157,12 +157,12 @@ class Gatherer:
             logger.debug("searching local filesystem for StationXML")
             inv = self.fetch_inv_by_dir(code, **kwargs)
         # Try 3: fetch from FDSN client
-        if inv is None:
+        if inv is None and self.Client is not None:
             logger.debug(f"querying client {self.config.client} for StationXML")
             inv = self.get_inv_from_fdsn(code, **kwargs)
         # Abort if none of the three attempts returned successfully
         if inv:
-            logger.debug("matching StationXML found")
+            logger.info(f"matching StationXML found: {code}")
             if (self.ds is not None) and self.config.save_to_ds:
                 # !!! This is a temp fix for PyASDF 0.6.1 where re-adding
                 # !!! StationXML that contains comments throws a TypeError.
@@ -195,7 +195,7 @@ class Gatherer:
 
         # Try 1: fetch from ASDFDataSet
         if self.ds:
-            logger.info("searching ASDFDataSet for observations")
+            logger.debug("searching ASDFDataSet for observations")
             st_obs = self.fetch_waveform_from_dataset(
                 code=code, tag=self.config.observed_tag
             )
@@ -204,7 +204,7 @@ class Gatherer:
         # Try 2: fetch from local file system, different approaches if we're
         # looking for data or synthetic "data"
         if st_obs is None:
-            logger.info("searching local filesystem for observations")
+            logger.debug("searching local filesystem for observations")
             if self.config.synthetics_only:
                 st_obs = self.fetch_synthetic_by_dir(code,
                                                      syn_cfgpath="waveforms",
@@ -212,12 +212,13 @@ class Gatherer:
             else:
                 st_obs = self.fetch_observed_by_dir(code, **kwargs)
         # Try 3: grab waveforms from FDSN client
-        if st_obs is None:
+        if st_obs is None and (self.Client is not None or not
+                               self.config.synthetics_only):
             logger.debug(f"querying client {self.config.client} for waveforms")
             st_obs = self.get_waveform_from_fdsn(code)
         # Abort if none of the three attempts returned successfully
         if st_obs:
-            logger.info(f"matching observed waveforms found for: {code}")
+            logger.info(f"matching observed waveforms found: {code}")
             self.save_waveforms_to_dataset(st_obs, self.config.observed_tag)
         else:
             raise GathererNoDataException(f"no observed waveforms found "
@@ -245,7 +246,7 @@ class Gatherer:
 
         # Try 1: fetch from ASDFDataSet
         if self.ds:
-            logger.info("searching ASDFDataSet for synthetics")
+            logger.debug("searching ASDFDataSet for synthetics")
             st_syn = self.fetch_waveform_from_dataset(
                 code=code, tag=self.config.synthetic_tag
             )
@@ -253,11 +254,11 @@ class Gatherer:
             st_syn = None
         # Try 2: fetch from local directories
         if st_syn is None:
-            logger.info("searching local filesystem for synthetics")
+            logger.debug("searching local filesystem for synthetics")
             st_syn = self.fetch_synthetic_by_dir(code, **kwargs)
         # Abort if none of the three attempts returned successfully
         if st_syn:
-            logger.info(f"matching synthetic waveforms found for: {code}")
+            logger.debug(f"matching synthetic waveforms found: {code}")
             self.save_waveforms_to_dataset(st_syn, self.config.synthetic_tag)
         else:
             raise GathererNoDataException(f"no synthetic waveforms found "
@@ -278,8 +279,6 @@ class Gatherer:
         :rtype event: obspy.core.event.Event or None
         :return event: event object if found, else None.
         """
-        if not self.Client:
-            return None
         if event_id is None:
             event_id = self.config.event_id
 
@@ -331,11 +330,9 @@ class Gatherer:
         :rtype: obspy.core.inventory.Inventory
         :return: inventory containing relevant network and stations
         """
-        if not self.Client:
-            return None
-
         net, sta, loc, cha = code.split('.')
         try:
+            logger.debug(f"querying station {code} with level {station_level}")
             inv = self.Client.get_stations(
                 network=net, station=sta, location=loc, channel=cha,
                 starttime=self.origintime - self.config.start_pad,
@@ -363,11 +360,9 @@ class Gatherer:
         :rtype stream: obspy.core.stream.Stream
         :return stream: waveform contained in a stream, or None if no data
         """
-        if not self.Client or self.config.synthetics_only:
-            return None
-
         net, sta, loc, cha = code.split('.')
         try:
+            logger.debug(f"padding {pad_s}s on waveform search origin time")
             st = self.Client.get_waveforms(
                 network=net, station=sta, location=loc, channel=cha,
                 starttime=self.origintime - (self.config.start_pad + pad_s),
@@ -397,6 +392,7 @@ class Gatherer:
         try:
             event = self.ds.events[0]
         except (IndexError, AttributeError):
+            logger.debug(f"no matching event found in dataset")
             event = None
         return event
 
@@ -419,6 +415,7 @@ class Gatherer:
             inv = self.ds.waveforms[f"{net}_{sta}"].StationXML
             inv = inv.select(channel=cha)
         except (KeyError, AttributeError):
+            logger.debug(f"no matching inventory in dataset: {net}_{sta}")
             inv = None
         return inv
 
@@ -449,6 +446,7 @@ class Gatherer:
         try:
             st = self.ds.waveforms[f"{net}_{sta}"][tag].select(component=comp)
         except KeyError:
+            logger.debug(f"no matching waveform in dataset: {net}_{sta}_{tag}")
             st = None
         return st
 
@@ -505,21 +503,20 @@ class Gatherer:
                     try:
                         # Allow input of various types of source files
                         if "SOURCE" in prefix.upper():
-                            logger.info(f"reading SPECFEM2D SOURCE: {filepath}")
+                            logger.debug(f"found SPECFEM2D SOURCE: {filepath}")
                             cat = [read_specfem2d_source(filepath)]
                         elif "FORCESOLUTION" in prefix.upper():
-                            logger.info(f"reading FORCESOLUTION: {filepath}")
+                            logger.debug(f"found FORCESOLUTION: {filepath}")
                             cat = [read_forcesolution(filepath)]
                         # ObsPy can handle QuakeML and CMTSOLUTION
                         else:
-                            logger.info(
-                                    f"reading source using ObsPy: {filepath}")
+                            logger.debug(f"found event file: {filepath}")
                             cat = read_events(filepath, format=format_)
 
                         if len(cat) != 1:
                             logger.warning(
-                                f"{filepath} event file contains more than one "
-                                f"event, returning 1st entry")
+                                f"{filepath} event file contains {len(cat)} "
+                                f"events, returning 0th index")
                         event = cat[0]
                         break
                     except Exception as e:
@@ -528,7 +525,7 @@ class Gatherer:
         if event is not None:
             logger.info(f"retrieved local file: {filepath}")
         else:
-            logger.info(f"no local event file found")
+            logger.debug(f"no local event file found")
 
         return event
 
@@ -726,17 +723,22 @@ class Gatherer:
                 continue
             # Expand the full path for searching for synthetics
             full_path = os.path.join(path_, syn_dir_template, syn_fid_template)
-            logger.debug(f"searching for synthetics: {full_path}")
-            for filepath in glob.glob(full_path.format(
-                    net=net, sta=sta, cmp=cha[2:], dva=syn_unit.lower())):
-                try:
-                    # Convert the ASCII file to a miniseed
-                    st += read_sem(filepath, self.origintime)
-                except UnicodeDecodeError:
-                    # If the data file is for some reason already in miniseed
-                    st += read(filepath)
-                logger.info(f"retrieved synthetics locally: {filepath}")
-            break
+            filenames = glob.glob(full_path.format(net=net, sta=sta,
+                                                   cmp=cha[2:],
+                                                   dva=syn_unit.lower())
+                                       )
+            logger.debug(f"found {len(filenames)} synthetics: {full_path}")
+            if filenames:
+                for filename in filenames:
+                    try:
+                        # Convert the ASCII file to a miniseed
+                        st += read_sem(filename, self.origintime)
+                    except UnicodeDecodeError:
+                        # If the data file is for some reason already in miniseed
+                        st += read(filename)
+                    logger.info(f"retrieved synthetics locally: {filename}")
+            else:
+                continue
         # Take care of gaps in data by converting to masked data
         if len(st) > 0:
             st.merge()
@@ -768,7 +770,7 @@ class Gatherer:
                 warnings.filterwarnings("error")
                 try:
                     self.ds.add_waveforms(waveform=st, tag=tag)
-                    logger.info(f"saved waveform to ASDFDataSet w/ tag: '{tag}'")
+                    logger.debug(f"saved waveform to ASDFDataSet as: '{tag}'")
                 except ASDFWarning:
                     pass
 
@@ -951,7 +953,7 @@ def append_focal_mechanism_to_event(event, method="all", overwrite_focmec=False,
 
     cat = Catalog()
     focal_mechanism = None
-    if client.upper() == "GEONET":
+    if client is not None and client.upper() == "GEONET":
         logger.info("querying GeoNet moment tensor catalog")
         focal_mechanism = generate_geonet_moment_tensor(event_id=event_id,
                                                         units="nm")
@@ -959,16 +961,18 @@ def append_focal_mechanism_to_event(event, method="all", overwrite_focmec=False,
         # Try 1: Look at USGS catalog
         if method in ["ALL", "USGS"]:
             logger.debug("querying USGS database for moment tensor")
-            cat = get_usgs_moment_tensor(event=event)
+            cat = get_usgs_moment_tensors(event=event)
         # Try 2: Look at GCMT catalog if USGS catalog did not return
         elif (method in ["ALL", "GCMT"]) and len(cat) == 0:
             logger.debug("querying GCMT database for moment tensor")
             cat = get_gcmt_moment_tensors(event=event)
-        # Try ?: Options here for more catalog selection
+        # Try ?: Add options below for more catalog selection
+        # +++++++++++++++++++++++++++++++++++++++++++++++++++
         # If multiple events found for a given set of event criteria, pick first
-        if len(cat) > 1:
-            logger.warning(f"multiple ({len(cat)}) events found, picking first")
-        if cat:
+        if cat is not None:
+            if len(cat) > 1:
+                logger.warning(f"multiple ({len(cat)}) events found, "
+                               f"picking zeroth index")
             # Distinguish `event_new` from `event`, sometimes you still want the
             # catalog location, not the one from USGS or GCMT. Or if nothing was
             # found, then we will return the same event
@@ -1087,16 +1091,20 @@ def get_usgs_moment_tensors(event, time_wiggle_sec=120., magnitude_wiggle=.5,
 
     # Assuming that time, magnitude, and hypocenter are enough to uniquely
     # identify a given earthquake
-    cat = c.get_events(starttime=origintime - time_wiggle_sec,
-                       endtime=origintime + time_wiggle_sec,
-                       minmagnitude=magnitude - magnitude_wiggle,
-                       maxmagnitude=magnitude + magnitude_wiggle,
-                       mindepth=depth - depth_wiggle_km,
-                       maxdepth=depth + depth_wiggle_km,
-                       minlatitude=latitude - latitude_wiggle_deg,
-                       maxlatitude=latitude + latitude_wiggle_deg,
-                       minlongitude=longitude - longitude_wiggle_deg,
-                       maxlongitude=longitude + longitude_wiggle_deg,
-                       includeallorigins=True, **kwargs
-                       )
+    try:
+        cat = c.get_events(starttime=origintime - time_wiggle_sec,
+                           endtime=origintime + time_wiggle_sec,
+                           minmagnitude=magnitude - magnitude_wiggle,
+                           maxmagnitude=magnitude + magnitude_wiggle,
+                           mindepth=depth - depth_wiggle_km,
+                           maxdepth=depth + depth_wiggle_km,
+                           minlatitude=latitude - latitude_wiggle_deg,
+                           maxlatitude=latitude + latitude_wiggle_deg,
+                           minlongitude=longitude - longitude_wiggle_deg,
+                           maxlongitude=longitude + longitude_wiggle_deg,
+                           includeallorigins=True, **kwargs
+                           )
+    # Broad failure criteria but these are usually FDSNExceptions from ObsPy
+    except Exception as e:
+        cat = None
     return cat
