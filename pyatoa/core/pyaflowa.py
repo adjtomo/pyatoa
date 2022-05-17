@@ -116,7 +116,7 @@ class Pyaflowa:
         self.sfpath = sfpath
 
         # Attributes to be created and formatted by setup()
-        self.paths = self.define_path_structure(self.sfpath)  # Unformatted
+        self.paths = self.define_path_structure(self.sfpath)  # unformatted
         self.config = None
         self.logger = None
         self.codes = None
@@ -445,35 +445,6 @@ class Pyaflowa:
 
         return scaled_misfit
 
-    def collect_tmp_log_files(self):
-        """
-        Each source-receiver pair has made its own log file. This function
-        collects these files and writes their content back into the main log.
-        This is a lot of IO but should be okay since the files are small.
-
-        .. note::
-            This was the most foolproof method for having multiple parallel
-            processes write to the same file. I played around with StringIO
-            buffers and file locks, but they became overly complicated and
-            ultimately did not work how I wanted them to. This function trades
-            filecount and IO overhead for simplicity.
-
-        .. warning::
-            The assumption here is that the number of source-receiver pairs
-            is manageable (in the thousands). If we start reaching file count
-            limits on the cluster then this method for logging may have to be
-            re-thought. See link for example:
-
-            https://stackless.readthedocs.io/en/3.7-slp/howto/
-              logging-cookbook.html#using-concurrent-futures-processpoolexecutor
-        """
-        tmp_logs = sorted(glob(os.path.join(self.paths.tmplogs, "*")))
-        with open(self.logger.handlers[0].baseFilename, "a") as fw:
-            for tmp_log in tmp_logs:
-                with open(tmp_log, "r") as fr:
-                    fw.writelines(fr.readlines())
-        shutil.rmtree(self.paths.tmplogs)
-
     def _process_single_station(self, code):
         """
         Process a single seismic station for a given event. Multiple error
@@ -608,6 +579,35 @@ class Pyaflowa:
                            f"{code_list[np.where(status_list == status)[0]]}"
                            )
         return status_str
+
+    def collect_tmp_log_files(self):
+        """
+        Each source-receiver pair has made its own log file. This function
+        collects these files and writes their content back into the main log.
+        This is a lot of IO but should be okay since the files are small.
+
+        .. note::
+            This was the most foolproof method for having multiple parallel
+            processes write to the same file. I played around with StringIO
+            buffers and file locks, but they became overly complicated and
+            ultimately did not work how I wanted them to. This function trades
+            filecount and IO overhead for simplicity.
+
+        .. warning::
+            The assumption here is that the number of source-receiver pairs
+            is manageable (in the thousands). If we start reaching file count
+            limits on the cluster then this method for logging may have to be
+            re-thought. See link for example:
+
+            https://stackless.readthedocs.io/en/3.7-slp/howto/
+              logging-cookbook.html#using-concurrent-futures-processpoolexecutor
+        """
+        tmp_logs = sorted(glob(os.path.join(self.paths.tmplogs, "*")))
+        with open(self.logger.handlers[0].baseFilename, "a") as fw:
+            for tmp_log in tmp_logs:
+                with open(tmp_log, "r") as fr:
+                    fw.writelines(fr.readlines())
+        shutil.rmtree(self.paths.tmplogs)
 
     def write_stations_adjoint(self):
         """

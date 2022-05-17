@@ -129,6 +129,8 @@ def read_stations(path_to_stations):
     :return: a station-level Inventory object
     """
     stations = np.loadtxt(path_to_stations, dtype="str")
+    if stations.size == 0:
+        return Inventory()
 
     # Get all the unique network names, try-except to catch when there is only
     # one station in the file
@@ -162,7 +164,8 @@ def read_stations(path_to_stations):
     return Inventory(networks=list_of_networks, source="PYATOA")
 
 
-def read_station_codes(path_to_stations, loc="??", cha="*"):
+def read_station_codes(path_to_stations, loc="??", cha="*",
+                       seed_template="{net}.{sta}.{loc}.{cha}"):
     """
     Read the SPECFEM3D STATIONS file and return a list of codes (Pyatoa format)
     that are accepted by the Manager and Pyaflowa classes. Since the STATIONS
@@ -178,14 +181,17 @@ def read_station_codes(path_to_stations, loc="??", cha="*"):
     :param cha: formatting of the channel section fo the code, defaults to
         'HH?' for wildcard component of a high-gain seismometer. Follows SEED
         convention (see IRIS).
+    :type seed_template: str
+    :param seed_template: string template to be formatted with some combination
+        of 'net', 'sta', 'loc' and 'cha', used for generating station codes
     :rtype: list of str
     :return: list of codes to be used by the Manager or Pyaflowa classes for
         data gathering and processing
     """
-    SEED_TEMPLATE = "{net}.{sta}.{loc}.{cha}"
-
     codes = []
     stations = np.loadtxt(path_to_stations, dtype="str")
+    if stations.size == 0:
+        return codes
 
     # Deal with the special case where the stations file is only 1 station long
     # otherwise we end up iterating over a string and not an ndarray
@@ -195,7 +201,7 @@ def read_station_codes(path_to_stations, loc="??", cha="*"):
     for station in stations:
         sta = station[0]
         net = station[1] 
-        codes.append(SEED_TEMPLATE.format(net=net, sta=sta, loc=loc, cha=cha))
+        codes.append(seed_template.format(net=net, sta=sta, loc=loc, cha=cha))
 
     return codes
 
