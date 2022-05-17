@@ -16,7 +16,6 @@ import glob
 import traceback
 import warnings
 
-
 from pyasdf import ASDFWarning
 from obspy.core.event import Event
 from obspy.clients.fdsn import Client

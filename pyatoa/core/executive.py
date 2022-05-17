@@ -34,8 +34,9 @@ class Executive:
     quantification.
     """
     def __init__(self, event_ids, station_codes, config, max_stations=4,
-                 max_events=1, cat="+", log_level="DEBUG", datasets=None,
-                 figures=None, logs=None, adjsrcs=None, ds_fid_template=None):
+                 max_events=1, cat="+", log_level="DEBUG", cwd=None,
+                 datasets=None, figures=None, logs=None, adjsrcs=None,
+                 ds_fid_template=None):
         """
         The Executor needs some key information before it can run processing
 
@@ -60,6 +61,8 @@ class Executive:
             uncommon as it is given to str.split()
         :type log_level: str
         :param log_level: log level to be given to all underlying loggers
+        :type cwd: str
+        :param cwd: active working directory to look for inputs and save output
         :type datasets: str
         :param datasets: path to save ASDFDataSets. defaults to a subdirectory
             'datasets', inside the current working directory.
@@ -76,8 +79,8 @@ class Executive:
         """
         self.config = config
 
-        self.station_codes = sorted(station_codes)
-        self.event_ids = sorted(event_ids)
+        self.station_codes = station_codes
+        self.event_ids = event_ids
 
         self.max_stations = max_stations
         self.max_events = max_events
@@ -85,7 +88,7 @@ class Executive:
         # Define a rudimentary path structure to keep main dir. light.
         # These can usually be defaults but if working with Pyaflowa, allow
         # them to be overwritten
-        self.cwd = os.getcwd()
+        self.cwd = cwd or os.getcwd()
         self.datasets = datasets or os.path.join(self.cwd, "datasets")
         self.figures = figures or os.path.join(self.cwd, "figures")
         self.logs = logs or os.path.join(self.cwd, "logs")
@@ -126,8 +129,11 @@ class Executive:
         # Ensure entries are lists
         if not isinstance(self.station_codes, list):
             self.station_codes = [self.station_codes]
+        self.station_codes = sorted(self.station_codes)
+
         if not isinstance(self.event_ids, list):
             self.event_ids = [self.event_ids]
+        self.event_ids = sorted(self.event_ids)
 
         for sta in self.station_codes:
             assert(len(sta.split(".")) == 4), (f"station codes must be in " 
