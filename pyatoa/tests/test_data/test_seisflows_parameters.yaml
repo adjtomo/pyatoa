@@ -1,361 +1,336 @@
-# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+# Manually edited from SPECFEM2D example problem (seisflows examples 3)
+# Date: May 17, 2022; Commit: 26a8441
+# //////////////////////////////////////////////////////////////////////////////
 #
-#                 Seisflows YAML Parameter File and Path Input
+#                        SeisFlows3 YAML Parameter File
 #
-#   variables set to '', or `null`, will be ignored and set to default values 
+# //////////////////////////////////////////////////////////////////////////////
 #
-# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+# Modules correspond to the structure of the source code, and determine
+# SeisFlows3' behavior at runtime. Each module requires its own sub-parameters.
 #
-#                                    MODULES                                  
+# .. rubric::
+#   - To determine available options for modules listed below, run:
+#       > seisflows print modules
+#   - To auto-fill with docstrings and default values (recommended), run:
+#       > seisflows configure
+#   - To set values as NoneType, use: null
+#   - To set values as infinity, use: inf
 #
-# These modules correspond to the structure of the source code, determining
-# which modules are loaded at runtime. Each of these modules may also 
-# correspond to a sub-set of parameters below, which in turn may have custom
-# parameters that relate to overwritten/super'd modules
-# 
-#
-# PARAMETERS:
-# -----------
-# WORKFLOW: The method for running Seisflows
-#    inversion, migration, thrifty_inversion, etc.
-# SOLVER: External solver to use
-#    specfem2d, specfem3d, specfem3d_globe
-# SYSTEM: Computer architecture
-#    serial, pbs, slurm, etc.
-# OPTIMIZE: Optimization algorithm for the inverse problem
-#    steepest_descent, LBFGS, NLCG
-# LINESEARCH: Line-search algorithm to be used in optimization
-#    Bracket, Backtrack
-# PREPROCESS: Preprocessing schema for waveform data
-#    base, Pyatoa
-# POSTPROCESS: Postprocessing schema for kernel and gradients
-#    base
-#
+#                                    MODULES
+#                                    ///////
+# WORKFLOW (str):    The method for running SeisFlows3; equivalent to main()
+# SOLVER (str):      External numerical solver to use for waveform simulations
+# SYSTEM (str):      Computer architecture of the system being used
+# OPTIMIZE (str):    Optimization algorithm for the inverse problem
+# PREPROCESS (str):  Preprocessing schema for waveform data
+# POSTPROCESS (str): Postprocessing schema for kernels and gradients
 # ==============================================================================
-WORKFLOW: thrifty_maui
-SOLVER: specfem3d_maui
-SYSTEM: maui_lg
+WORKFLOW: inversion
+SOLVER: specfem2d
+SYSTEM: workstation
 OPTIMIZE: LBFGS 
-LINESEARCH: backtrack
-PREPROCESS: pyatoa_nz
+PREPROCESS: pyatoa
 POSTPROCESS: base
 
-# ==============================================================================
-#
-#                                   WORKFLOW
-#
-#           The specific set of instructions for Seisflows to follow
-#
-# PARAMETERS:
-# -----------
-# TITLE (str): Name used to submit jobs to the HPC system, defaults to
-#              directory name containing this file
-# BEGIN (int): First iteration to begin the workflow on, counting from 1
-# END (int):   Last iteration in the workflow, must have END >= BEGIN
-# NSRC (int):  Number of sources to use in the workflow. Available sources will
-#              be gathered and sorted from the DATA directory
-#
-# ==============================================================================
-TITLE: decluster
-BEGIN: 1
-END: 1
-VERBOSE: True
+# =============================================================================
+#                                    SYSTEM                                    
+#                                    //////                                    
+# TITLE (str):
+#   The name used to submit jobs to the system, defaults to the name of the
+#   working directory
+# PRECHECK (list):
+#   A list of parameters that will be displayed to stdout before 'submit' or
+#   'resume' is run. Useful for manually reviewing important parameters prior
+#   to system submission
+# LOG_LEVEL (str):
+#   Verbosity output of SF3 logger. Available from least to most verbosity:
+#   'CRITICAL', 'WARNING', 'INFO', 'DEBUG'; defaults to 'DEBUG'
+# VERBOSE (bool):
+#   Level of verbosity provided to the output log. If True, log statements
+#   will declare what module/class/function they are being called from.
+#   Useful for debugging but also very noisy.
+# MPIEXEC (str):
+#   Function used to invoke executables on the system. For example 'srun' on
+#   SLURM systems, or './' on a workstation. If left blank, will guess based
+#   on the system.
+# NTASK (int):
+#   Number of separate, individual tasks. Also equal to the number of desired
+#   sources in workflow
+# NPROC (int):
+#   Number of processor to use for each simulation
+# =============================================================================
+TITLE: specfem2d_workstation_example
+PRECHECK:
+    - TITLE
+LOG_LEVEL: DEBUG
+VERBOSE: False
+MPIEXEC:
+NTASK: 3
+NPROC: 1
 
-# ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# 
-#                            CUSTOM WORKFLOW: inversion
-#
-# PARAMETERS:
-# -----------
-# RESUME_FROM (str): Resume a workflow from a given task, incase time out or 
-#                    error encountered mid-iteration. Parameter must match
-#                    method names inside workflow.inversion_pyatoa.main()
-# STOP_AFTER (str):  Stop the workflow after completing the given function
-#                    Useful for interogating the inversion mid-iteration
-#
-#                    Available functions:
-#                       initialize, evaluate_gradient, write_gradient
-#                       compute_direction, line_search, finalize, clean
-#
-# ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-RESUME_FROM: null
-STOP_AFTER: initialize
-
-# ==============================================================================
-#
-#                               SYSTEM: SlurmLg
-#
-#     Parameters used to interact with the compute system running Seisflows
-#
-# 
-# PARAMETERS:
-# -----------
-# NTASK (int):    Number of tasks specified in submission scripts. 
-# NPROC (int):    Number of processors specified in submission scripts
-# NODESIZE (int): Number of cores per node set by the system architecture
-# TASKTIME (int): Maximum job time for each task within the workflow
-# ENVIRONS (str): Comma delimited environment variables to pass to `run`
-#
-# ==============================================================================
-NTASK: 60
-NPROC: 40
-NODESIZE: 40
-WALLTIME: 1400
-TASKTIME: 25
-ENVIRONS: ''
-
-# ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# 
-#                           CUSTOM SYSTEM: MauiLg
-#
-#     Parameters specific to the New Zealand HPC cluster Maui (& Maui_ancil)
-#
-# PARAMETERS:
-# -----------
-# ACCOUNT (str):         NeSI account name
-# ANCIL_TASKTIME (int):  For shorter preprocessing tasktimes, 
-#                        defaults = TASKTIME
-# SLURMARGS (str):       Extra arguments to put in slurm 'sbatch' script,
-#                        should be in format '--arg1=val1 --arg2=val2' etc.
-#
-# ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-ACCOUNT: nesi00263
-ANCIL_TASKTIME: 10
-SLURMARGS: --hint=nomultithread
-
-# ==============================================================================
-#
-#                                    SOLVER
-#
-#          Control the external solver, its inputs and desired outputs
-#
-#
-# PARAMETERS:
-# -----------
-# CASE (str):          Changes some options, names, for synthetic-synthetic case
-#                      `Data` for a data-synthetic workflow
-#                      `Synthetic` for a synthetic-synthetic workflow
-# MATERIALS (str):     Choose which parameters are used in the workflow
-#                      `Elastic`: Vp, Vs used as model parameters
-#                      `Acoustic`: Vp is used as model parameter 
-# DENSITY (str):       Update density during inversions
-#                      `Variable`: update density
-#                      `Constant`: don't update density
-# PRECOND (str):       Name of class for User defined preconditioner
-# NT (int):            Number of time steps for simulations, must be equal to 
-#                      Specfem3D Par_file NSTEP
-# DT (float):          Delta, time step. Must be equal Specfem3D Par_file DT
-# F0 (float):          Dominant frequency (Specfem2D only)
-# SOURCE_PREFIX (str): Prefix to look for source files in PATH.DATA, e.g. if 
-#                      prefix is CMTSOLUTION, Seisflows will look for files 
-#                      labelled CMTSOLUTION_* 
-# SOLVERIO (str):      File type to be used by the solver, Specfem3D allows for 
-#                      `fortran_binary` and `adios`
-#                      Seisflows currently supports: `fortran_binary`
-#
-# ==============================================================================
-CASE: Synthetic
-MATERIALS: Elastic
-DENSITY: Constant
-PRECOND: null
-NT: 20000
-DT: 0.015
-F0: .1
-SOURCE_PREFIX: CMTSOLUTION
-SOLVERIO: fortran_binary
-
-# ==============================================================================
-#
-#                                PREPROCESSING
-#
-#         Parameters related to observed and synthetic waveform processing
-#
-# PARAMETERS:
-# -----------
-# FORMAT (str):  Data file formats. Available: `ascii`, `su`
-# COMPONENTS (str): Components to use for generating data, formatted as a single
-#   string. For example, if Z and N components, should be 'ZN'
-#
-# ==============================================================================
-FORMAT: ascii 
-COMPONENTS: ZNE
-
-# ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# 
-#                          CUSTOM PREPROCESSING: base
-#
-# ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-NORMALIZE: null          # normalize traces
-FILTER: null             # highpass, lowpass, bandpass
-MUTE: null               # mute direct arrival
-MUTECONST: 0.            # mute constant (for muting early arrivals)
-MUTESLOPE: 0.            # mute slope (for muting early arrivals)
-
-# ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-#
-#                        CUSTOM PREPROCESSING: pyatoa
-#
-#        Parameters related to preprocessing using the package Pyatoa
-#        Will be used in the Pyaflowa workflow, or passed to the Config
-#
-# PARAMETERS:
-# -----------
-# LOGGING (str):          [null, warning, info, debug] level for log statements
-# UNIT_OUTPUT (str):      [disp, vel, acc] desired units of the observed data
-# MIN_PERIOD (float):     Low corner period in seconds for bandpass filter
-# MAX_PERIOD (float):     High corner period in seconds for bandpass filter
-# CORNERS (int):          Number of corners in bandpass (default=4)
-# ROTATE (bool):          Rotate from North/East/Z to Radial/Transverse/Z 
-# CLIENT (str):           ObsPy FDSN client to get data externally 
-# START_PAD (int):        For observed data, length of data in seconds to get
-#                         before origin time. Should match or exceed 
-#                         synthetic t0. Should be positive 
-# END_PAD (int):          Same as start_pad but for after origin time. Should be
-#                         longer than PAR.NT * PAR.DT    
-# PYFLEX_PRESET (str):    Optional preset map for Pyflex, see pyatoa plugins
-# ADJ_SRC_TYPE (str):     [cc, mt, wav] Adjoint source type for Pyadjoint 
-# FIX_WINDOWS (bool/str): [True (bool), False (bool), ITER (str), ONCE (str)]
-#                         True: Fix windows for every function evaluation
-#                               except for the very first one.
-#                         False: Evaluate new windows each function evaluation
-#                         ITER: Evaluate new windows only at new iterations, 
-#                               but not during line search
-#                         ONCE: Evaluate new windows at the first function eval
-#                               of a submitted or resumed workflow
-# SNAPSHOT (bool):        Duplicate .h5 output files on disk for redundancy,
-#                         Occurs at the end of each iteration.
-# PLOT (bool):            Plot waveforms and maps at each function evaluation.
-# MAP_CORNERS (dict):     Optional list of corners to feed into basemap which
-#                         defines the region for generating source-rcv maps.
-#                         If 'null', will dynamically choose map bounds.
-#
-# ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-LOGGING: debug
-UNIT_OUTPUT: DISP       
-MIN_PERIOD: 8.         
-MAX_PERIOD: 20.         
+# =============================================================================
+#                                  PREPROCESS                                  
+#                                  //////////                                  
+# UNIT_OUTPUT (str):
+#   Data units. Must match the synthetic output of external solver.
+#   Available: ['DISP': displacement, 'VEL': velocity, 'ACC': acceleration]
+# START_PAD (float):
+#   For data gathering; time before origin time to gather. START_PAD >= T_0
+#   in SPECFEM constants.h.in. Positive values only
+# END_PAD (float):
+#   For data gathering; time after origin time to gather. END_PAD >= NT * DT
+#   (of Par_file). Positive values only
+# MIN_PERIOD (float):
+#   Minimum filter corner in unit seconds. Bandpass filter if set with
+#   `MAX_PERIOD`, highpass filter if set without `MAX_PERIOD`, no filtering
+#   if not set and `MAX_PERIOD also not set
+# MAX_PERIOD (float):
+#   Maximum filter corner in unit seconds. Bandpass filter if set with
+#   `MIN_PERIOD`, lowpass filter if set without `MIN_PERIOD`, no filtering if
+#   not set and `MIN_PERIOD also not set
+# CORNERS (int):
+#   Number of filter corners applied to filtering
+# CLIENT (str):
+#   Client name for ObsPy FDSN data gathering. Pyatoa will attempt to collect
+#   waveform and metadata based on network and station codes provided in the
+#   SPECFEM STATIONS file. If set None, no FDSN gathering will be attempted
+# ROTATE (bool):
+#   Attempt to rotate waveform components from NEZ -> RTZ
+# PYFLEX_PRESET (str):
+#   Parameter map for misfit window configuration defined by Pyflex. IF None,
+#   misfit and adjoint sources will be calculated on whole traces. For
+#   available choices, see Pyatoa docs page (pyatoa.rtfd.io)
+# FIX_WINDOWS (bool or str):
+#   How to address misfit window evaluation at each evaluation. Options to
+#   re-use misfit windows collected during an inversion, available options:
+#   [True, False, 'ITER', 'ONCE'] True: Re-use windows after first evaluation
+#   (i01s00); False: Calculate new windows each evaluation; 'ITER': Calculate
+#   new windows at first evaluation of each iteration (e.g., i01s00...
+#   i02s00...'ONCE': Calculate new windows at first evaluation of the
+#   workflow, i.e., at PAR.BEGIN
+# ADJ_SRC_TYPE (str):
+#   Adjoint source type to evaluate misfit, defined by Pyadjoint. Currently
+#   available options: ['cc': cross-correlation, 'mt': multitaper, wav:
+#   waveform']
+# PLOT (bool):
+#   Attempt to plot waveforms and maps as PDF files at each function
+#   evaluation
+# PYATOA_LOG_LEVEL (str):
+#   Log level to set Pyatoa, Pyflex, Pyadjoint. Available: ['null': no
+#   logging, 'warning': warnings only, 'info': task tracking, 'debug': log
+#   all small details (recommended)]
+# SAVE_DATASETS (bool):
+#   Save PyASDF HDF5 datasets to disk. These datasets store waveform data,
+#   metadata, misfit windows, adjoint sources and configuration parameters
+# SAVE_FIGURES (bool):
+#   Save output waveform figures to disk as PDFs
+# SAVE_LOGS (bool):
+#   Save event-specific Pyatoa logs to disk as .txt files
+# =============================================================================
+UNIT_OUTPUT: DISP
+START_PAD: 48
+END_PAD: 300.0
+MIN_PERIOD: 
+MAX_PERIOD: 
+CORNERS: 4
+CLIENT:
 ROTATE: False
-CORNERS: 4       
-CLIENT: GEONET
-START_PAD: 20           
-END_PAD: 350           
-PYFLEX_PRESET: nznorth_8-30s
-ADJ_SRC_TYPE: cc
+PYFLEX_PRESET: 
 FIX_WINDOWS: False
-SNAPSHOT: True     
+ADJ_SRC_TYPE: cc
 PLOT: True
-MAP_CORNERS: null
+PYATOA_LOG_LEVEL: INFO
+SAVE_DATASETS: True
+SAVE_FIGURES: True
+SAVE_LOGS: True
 
-# ==============================================================================
-#
-#                                 POSTPROCESSING
-#
-#               Tasks related to processing of gradient information
-# 
-# PARAMETERS:
-# -----------
-# SMOOTH_H (float):      Gaussian half-width for horizontal smoothing in meters
-# SMOOTH_V (float):      Gaussian half-width for vertical smoothing in meters
-# NOTE (on smoothing):   Gaussian full-width is ~= sqrt(8) * half_width
-# SCALE (float):         Scaling factor
-#
-# ==============================================================================
-SMOOTH_H: 8500.
-SMOOTH_V: 6000.
+# =============================================================================
+#                                    SOLVER                                    
+#                                    //////                                    
+# MATERIALS (str):
+#   Material parameters used to define model. Available: ['ELASTIC': Vp, Vs,
+#   'ACOUSTIC': Vp, 'ISOTROPIC', 'ANISOTROPIC']
+# DENSITY (str):
+#   How to treat density during inversion. Available: ['CONSTANT': Do not
+#   update density, 'VARIABLE': Update density]
+# ATTENUATION (str):
+#   If True, turn on attenuation during forward simulations, otherwise set
+#   attenuation off. Attenuation is always off for adjoint simulations.
+# COMPONENTS (str):
+#   Components used to generate data, formatted as a single string, e.g. ZNE
+#   or NZ or E
+# SOLVERIO (int):
+#   The format external solver files. Available: ['fortran_binary', 'adios']
+# NT (float):
+#   Number of time steps set in the SPECFEM Par_file
+# DT (float):
+#   Time step or delta set in the SPECFEM Par_file
+# F0 (float):
+#   Dominant source frequency
+# FORMAT (float):
+#   Format of synthetic waveforms used during workflow, available options:
+#   ['ascii', 'su']
+# SOURCE_PREFIX (str)
+#   Prefix of SOURCE files in path SPECFEM_DATA. By default, 'SOURCE' for
+#   SPECFEM2D
+# =============================================================================
+MATERIALS: elastic
+DENSITY: constant
+ATTENUATION: False
+COMPONENTS: ZNE
+SOLVERIO: fortran_binary
+NT: 5000
+DT: 0.06
+F0: 0.084
+FORMAT: ascii
+SOURCE_PREFIX: CMTSOLUTION
+
+# =============================================================================
+#                                  POSTPROCESS                                 
+#                                  ///////////                                 
+# SMOOTH_H (float):
+#   Gaussian half-width for horizontal smoothing in units of meters. If 0.,
+#   no smoothing applied
+# SMOOTH_V (float):
+#   Gaussian half-width for vertical smoothing in units of meters
+# TASKTIME_SMOOTH (int):
+#   Large radii smoothing may take longer than normal tasks. Allocate
+#   additional smoothing task time as a multiple of TASKTIME
+# =============================================================================
+SMOOTH_H: 0.0
+SMOOTH_V: 0.0
 TASKTIME_SMOOTH: 1
-SCALE: 1.
 
-# ==============================================================================
-#
-#                                  OPTIMIZATION
-#
-#       Parameters for control of line search and optimization algorithms
-# 
-# PARAMETERS:
-# -----------
-# STEPCOUNTMAX (int):  Maximum allowable trial step lengths. Default=10, min=3
-# STEPLENINIT (float): Initial step length guess, fraction of current model
-#                      Default = 0.05
-# STEPLENMAX (float):  Maximum step length allowed as fraction of current model
-#                      Default = 0.5
-#
-# ==============================================================================
-STEPCOUNTMAX: 4
-STEPLENINIT: 0.025
+# =============================================================================
+#                                   OPTIMIZE                                   
+#                                   ////////                                   
+# LINESEARCH (str):
+#   Algorithm to use for line search, see seisflows.plugins.line_search for
+#   available choices
+# PRECOND (str):
+#   Algorithm to use for preconditioning gradients, see
+#   seisflows3.plugins.preconds for available choices
+# STEPCOUNTMAX (int):
+#   Max number of trial steps in line search before a change in line search
+#   behavior
+# STEPLENINIT (float):
+#   Initial line search step length, as a fraction of current model
+#   parameters
+# STEPLENMAX (float):
+#   Max allowable step length, as a fraction of current model parameters
+# LBFGSMEM (int):
+#   Max number of previous gradients to retain in local memory
+# LBFGSMAX (int):
+#   LBFGS periodic restart interval, between 1 and 'inf'
+# LBFGSTHRESH (float):
+#   LBFGS angle restart threshold
+# =============================================================================
+LINESEARCH: Backtrack
+PRECOND:
+STEPCOUNTMAX: 10
+STEPLENINIT: 0.05
 STEPLENMAX: 0.5
+LBFGSMEM: 3
+LBFGSMAX: inf
+LBFGSTHRESH: 0.0
 
-# ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-#
-#                          CUSTOM OPTIMIZATION: LBFGS
-# 
-# PARAMETERS:
-# -----------
-# LBFGSMAX (int):      Periodic LBFGS restart interval. Default = infinity
-# LBFGSMEM (int):      Number of previous model updates/ gradients to 
-#                      store in memory. Default = 3
-# LBFGSTHRESH (float): Descent direction threshold. If the angle between the new
-#                      and current descent direction is greater than 90deg minus
-#                      LBFGSTHRESH, then a restart is applied. Default = 0.0
-#
-# ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-LBFGSMAX: null
-LBFGSMEM: null
-LBFGSTHRESH: null
-
-# ==============================================================================
-#
-#                               WORKFLOW OUTPUTS
-#
-# Parameters to control what outputs are stored permanently to disk during work
-#
-# OPTIONS:
-# --------
-# SAVEGRADIENT (bool):  Save the gradient from each iteration
-# SAVEKERNELS (bool):   Save all kernels (event, misfit) from each iteration
-# SAVEMODEL (bool):     Save the final model from each iteration
-# SAVE_AS (str):        Format to save gradients, kernels and models
-#                       `vector`: saves as .npy files. reduces file count
-#                       `binary`: saves as .bin files, used by Specfem
-#                       `both`:   saves as both .npy and .bin files
-# SAVERESIDUALS (bool): Preprocessing, save waveform residuals
-# SAVETRACES (bool):    Preprocessing, save waveforms
-# 
-# ==============================================================================
+# =============================================================================
+#                                   WORKFLOW                                   
+#                                   ////////                                   
+# CASE (str):
+#   Type of inversion, available: ['data': real data inversion, 'synthetic':
+#   synthetic-synthetic inversion]
+# RESUME_FROM (str):
+#   Name of task to resume inversion from
+# STOP_AFTER (str):
+#   Name of task to stop inversion after finishing
+# SAVEMODEL (bool):
+#   Save final model files after each iteration
+# SAVEGRADIENT (bool):
+#   Save gradient files after each iteration
+# SAVEKERNELS (bool):
+#   Save event kernel files after each iteration
+# SAVETRACES (bool):
+#   Save waveform traces after each iteration
+# SAVERESIDUALS (bool):
+#   Save waveform residuals after each iteration
+# SAVEAS (str):
+#   Format to save models, gradients, kernels. Available: ['binary': save
+#   files in native SPECFEM .bin format, 'vector': save files as NumPy .npy
+#   files, 'both': save as both binary and vectors]
+# BEGIN (int):
+#   First iteration of workflow, 1 <= BEGIN <= inf
+# END (int):
+#   Last iteration of workflow, BEGIN <= END <= inf
+# =============================================================================
+CASE: synthetic
+RESUME_FROM:     
+STOP_AFTER: initialize
+SAVEMODEL: True
 SAVEGRADIENT: True
 SAVEKERNELS: False
-SAVEMODEL: True
-SAVEAS: binary  
-SAVERESIDUALS: False
 SAVETRACES: False
+SAVERESIDUALS: False
+SAVEAS: binary
+BEGIN: 1
+END: 1
 
-# ==============================================================================
-#
-#                                    PATHS
-#
-#    List of paths that are passed to the Seisflows workflow for input/ouput 
-#
-# PARAMETERS:
-# -----------
-# SCRATCH:      Scratch directory to store all temporary workflow files
-# OUTPUT:       Output directory to store all permanent workflow files
-# MODEL_INIT:   Location of initial model for synthetics generation
-# MODEL_TRUE:   Location of true model for synthetic-synthetic cases. Optional
-# SPECFEM_DATA: Specfem3D `DATA` dir. containing Par_file, events and stations
-# SPECFEM_BIN:  Specfem3D `bin` dir. containing Specfem executables
-#
-# CUSTOM PATHING:
-# ---------------
-# DATA:     Location of any observation data, must be in the form
-#           path/to/DATA/EVENT_ID/NN.SSS.CCC.sem?
-#           or if using Pyatoa preprocess class
-#               path/to/DATA/mseeds/... (seed naming convention)
-#               path/to/DATA/seed/... (seed naming convention)
-#
-# ==============================================================================
+# =============================================================================
+#                                     PATHS                                    
+#                                     /////                                    
+# SCRATCH:
+#   scratch path to hold temporary data during workflow
+# OUTPUT:
+#   directory to save workflow outputs to disk
+# SYSTEM:
+#   scratch path to hold any system related data
+# LOCAL:
+#   path to local data to be used during workflow
+# LOGFILE:
+#   the main output log file where all processes will track their status
+# PREPROCESS:
+#   scratch/ path to store waveform data and figures. Pyatoa will generate an
+#   internal directory structure here
+# DATA:
+#   path to data available to workflow
+# SOLVER:
+#   scratch path to hold solver working directories
+# SPECFEM_BIN:
+#   path to the SPECFEM binary executables
+# SPECFEM_DATA:
+#   path to the SPECFEM DATA/ directory containing the 'Par_file', 'STATIONS'
+#   file and 'CMTSOLUTION' files
+# MASK:
+#   Directory to mask files for gradient masking
+# OPTIMIZE:
+#   scratch path to store data related to nonlinear optimization
+# MODEL_INIT:
+#   location of the initial model to be used for workflow
+# MODEL_TRUE:
+#   Target model to be used for PAR.CASE == 'synthetic'
+# FUNC:
+#   scratch path to store data related to function evaluations
+# GRAD:
+#   scratch path to store data related to gradient evaluations
+# HESS:
+#   scratch path to store data related to Hessian evaluations
+# =============================================================================
 PATHS:
-    SCRATCH: "./scratch"
-    OUTPUT: "./output"
-    SPECFEM_DATA: "./sfDATA"
-    MODEL_INIT: "./model_init"
-    SPECFEM_BIN: "./bin"
-    DATA: 
+    SCRATCH: ./scratch
+    OUTPUT: ./output
+    SYSTEM: ./scratch/system
+    LOCAL:
+    LOGFILE: ./output_sf3.txt
+    PREPROCESS: ./scratch/preprocess
+    DATA:
+    SOLVER: ./scratch/solver
+    SPECFEM_BIN: ./bin
+    SPECFEM_DATA: ./DATA
+    MASK:
+    OPTIMIZE: ./scratch/optimize
+    MODEL_INIT: ./OUTPUT_FILES_INIT
+    MODEL_TRUE: ./OUTPUT_FILES_TRUE
+    FUNC: ./scratch/evalfunc
+    GRAD: ./scratch/evalgrad
+    HESS: ./scratch/evalhess

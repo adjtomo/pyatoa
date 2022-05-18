@@ -5,10 +5,11 @@ A class to control workflow and temporarily store and manipulate data
 import os
 import obspy
 import pyflex
-import warnings
 import pyadjoint
+import warnings
 from copy import deepcopy
 from obspy.signal.filter import envelope
+from pyasdf import ASDFWarning
 from pyatoa import logger
 from pyatoa.core.config import Config
 from pyatoa.core.gatherer import Gatherer, GathererNoDataException
@@ -56,7 +57,10 @@ class ManagerStats(dict):
         self[key] = value
 
     def __getattr__(self, key):
-        return self[key]    
+        try:
+            return self[key]
+        except KeyError:
+            raise AttributeError(key)
 
     def __str__(self):
         str_ = ""
@@ -292,46 +296,58 @@ class Manager:
         self.__init__(ds=self.ds, event=self.event, config=self.config,
                       gatherer=self.gatherer)
 
-    def write(self, write_to="ds"):
+    def write(self, ds=None):
         """
-        Write the data collected inside Manager to either a Pyasdf Dataset,
-        or to individual files (not implemented).
+        Write the data collected inside Manager to an ASDFDataSet,
 
-        :type write_to: str
-        :param write_to: choice to write data to, if "ds" writes to a
-            pyasdf.asdf_data_set.ASDFDataSet
-
-            * write_to == "ds":
-                If gather is skipped but data should still be saved into an
-                ASDFDataSet for data storage, this function will
-                fill that dataset in the same fashion as the Gatherer class
-            * write_to == "/path/to/output":
-                write out all the internal data of the manager to a path
+        :type ds: pyasdf.asdf_data_set.ASDFDataSet or None
+        :param ds: write to a given ASDFDataSet. If None, will look for
+            internal attribute `self.ds` to write to. Allows overwriting to
+            new datasets
         """
-        if write_to == "ds":
-            if self.event:
+        # Allow using both default and input datasets for writing
+        if ds is None:
+            ds = self.ds
+
+        if ds is None:
+            logger.warning("no dataset found, cannot write")
+            return
+
+        if self.event:
+            try:
+                ds.add_quakeml(self.event)
+            except ValueError:
+                logger.warning("Event already present, not added")
+        if self.inv:
+            try:
+                ds.add_stationxml(self.inv)
+            except TypeError:
+                logger.warning("StationXML already present, not added")
+        # Redirect PyASDF 'waveforms already present' warnings for cleaner look
+        if self.st_obs:
+            with warnings.catch_warnings():
+                warnings.filterwarnings("error")
                 try:
-                    self.ds.add_quakeml(self.event)
-                except ValueError:
-                    logger.warning("Event already present, not added")
-            if self.inv:
+                    ds.add_waveforms(waveform=self.st_obs,
+                                     tag=self.config.observed_tag)
+                except ASDFWarning:
+                    logger.warning(f"{self.config.observed_tag} waveform "
+                                   f"already present, not added")
+                    pass
+        if self.st_syn:
+            with warnings.catch_warnings():
+                warnings.filterwarnings("error")
                 try:
-                    self.ds.add_stationxml(self.inv)
-                except TypeError:
-                    logger.warning("StationXML already present, not added")
-            # PyASDF has its own warnings if waveform data already present
-            if self.st_obs:
-                self.ds.add_waveforms(waveform=self.st_obs,
-                                      tag=self.config.observed_tag)
-            if self.st_syn:
-                self.ds.add_waveforms(waveform=self.st_syn,
-                                      tag=self.config.synthetic_tag)
-            if self.windows:
-                self.save_windows()
-            if self.adjsrcs:
-                self.save_adjsrcs()
-        else:
-            raise NotImplementedError
+                    ds.add_waveforms(waveform=self.st_obs,
+                                     tag=self.config.synthetic_tag)
+                except ASDFWarning:
+                    logger.warning(f"{self.config.synthetic_tag} waveform "
+                                   f"already present, not added")
+                    pass
+        if self.windows:
+            self.save_windows(ds=ds)
+        if self.adjsrcs:
+            self.save_adjsrcs(ds=ds)
 
     def write_adjsrcs(self, path="./", write_blanks=True):
         """
@@ -465,7 +481,7 @@ class Manager:
         self.check()
         return self
 
-    def flow(self, **kwargs):
+    def flow(self, codes=None, **kwargs):
         """
         A convenience function to run the full workflow with a single command.
         Does not include gathering. Takes kwargs related to all underlying
@@ -587,12 +603,14 @@ class Manager:
             # Catch the Gatherer exception and redirect as ManagerError 
             # so that it can be caught by flow()
             logger.warning(e, exc_info=False)
-            raise ManagerError("Data Gatherer could not find some data") from e
+            raise ManagerError(
+                f"Data Gatherer could not find some data: {e}") from e
         except Exception as e:
             # Gathering should be robust, but if something slips through, dont
             # let it kill a workflow, display and raise ManagerError
             logger.warning(e, exc_info=True)
-            raise ManagerError("Uncontrolled error in data gathering") from e
+            raise ManagerError(
+                f"Uncontrolled error in data gathering: {e}") from e
 
     def standardize(self, force=False, standardize_to="syn"):
         """
@@ -992,15 +1010,22 @@ class Manager:
 
         return self
 
-    def save_windows(self):
+    def save_windows(self, ds=None):
         """
         Convenience function to save collected misfit windows into an 
         ASDFDataSet with some preliminary checks
 
         Auxiliary data tag is hardcoded as 'MisfitWindows'
+
+        :type ds: pyasdf.ASDFDataSet
+        :param ds: allow replacement of the internal `ds` dataset. If None,
+            will try to write to internal `ds`
         """
-        if self.ds is None:
-            logger.warning("Manager has no ASDFDataSet, cannot save windows")
+        if ds is None:
+            ds = self.ds
+
+        if ds is None:
+            logger.warning("no ASDFDataSet, cannot save windows")
         elif not self.windows:
             logger.warning("Manager has no windows to save")
         elif not self.config.save_to_ds:
@@ -1008,18 +1033,24 @@ class Manager:
                            "will not save windows")
         else:
             logger.debug("saving misfit windows to ASDFDataSet")
-            add_misfit_windows(self.windows, self.ds, path=self.config.aux_path)
+            add_misfit_windows(self.windows, ds, path=self.config.aux_path)
 
-    def save_adjsrcs(self):
+    def save_adjsrcs(self, ds=None):
         """
         Convenience function to save collected adjoint sources into an 
         ASDFDataSet with some preliminary checks
 
-        Auxiliary data tag is hardcoded as 'AdjointSources'        
+        Auxiliary data tag is hardcoded as 'AdjointSources'
+
+        :type ds: pyasdf.ASDFDataSet
+        :param ds: allow replacement of the internal `ds` dataset. If None,
+            will try to write to internal `ds`
         """
-        if self.ds is None:
-            logger.warning("Manager has no ASDFDataSet, cannot save "
-                           "adjoint sources")
+        if ds is None:
+            ds = self.ds
+
+        if ds is None:
+            logger.warning("no ASDFDataSet, cannot save adjoint sources")
         elif not self.adjsrcs:
             logger.warning("Manager has no adjoint sources to save")
         elif not self.config.save_to_ds:
@@ -1027,7 +1058,7 @@ class Manager:
                            "will not save adjoint sources")
         else:
             logger.debug("saving adjoint sources to ASDFDataSet")
-            add_adjoint_sources(adjsrcs=self.adjsrcs, ds=self.ds,
+            add_adjoint_sources(adjsrcs=self.adjsrcs, ds=ds,
                                 path=self.config.aux_path,
                                 time_offset=self.stats.time_offset_sec)
 

@@ -40,6 +40,21 @@ def myround(x, base=5, choice='near'):
     return roundout
 
 
+def enforce_angle_pi(angle, bound=180):
+    """
+    Used for mapping mostly, sometimes when adding values to map bounds, you
+    can cross over the accepted threshold, e.g., angle > 180deg.
+    This function just keeps things within bounds
+
+    https://stackoverflow.com/questions/2320986/
+                          easy-way-to-keeping-angles-between-179-and-180-degrees
+    """
+    angle = angle % 360  # reduce
+    if angle > bound:
+        angle -= 360
+    return angle
+
+
 def overlapping_days(origin_time, start_pad=20, end_pad=200):
     """
     Helper function to return a list of julian days based on a given
