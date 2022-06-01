@@ -12,6 +12,8 @@ logger.propogate = False
 logger.setLevel("CRITICAL")
 
 
+pytest.skip(allow_module_level=True)
+
 @pytest.fixture
 def events():
     """
