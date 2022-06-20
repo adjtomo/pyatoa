@@ -22,10 +22,8 @@ else:
             "matplotlib>=3.0.3",  
             "cartopy>=0.20.2",
             "pillow>=8.4.0",
-            "pyflex @ git+https://github.com/bch0w/pyflex",
-            "pyadjoint @ git+https://github.com/bch0w/pyadjoint"
-            # "pyflex @ git+https://github.com/adjtomo/pyflex",
-            # "pyadjoint @ git+https://github.com/adjtomo/pyadjoint"
+            "pyflex @ git+https://github.com/adjtomo/pyflex",
+            "pyadjoint @ git+https://github.com/adjtomo/pyadjoint"
             ]
 
 setup(name='pyatoa',
