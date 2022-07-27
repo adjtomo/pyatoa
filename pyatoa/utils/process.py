@@ -60,6 +60,8 @@ def default_process(mgmt, choice, **kwargs):
         is_synthetic_data = mgmt.config.synthetics_only
 
     if is_preprocessed(st):
+        logger.info("stream has already been preprocessed, skipping "
+                    "processing step")
         return st
 
     # Get rid of any long period trends that may affect that data
@@ -68,14 +70,18 @@ def default_process(mgmt, choice, **kwargs):
 
     # Observed specific data preprocessing includes response and rotating to ZNE
     # No response data (inventory) also means don't try to remove response
-    if mgmt.inv[0][0][0].response is None:
+    if not hasattr(mgmt, "inv") or mgmt.inv is None:
         remove_response = False
-        logger.info("inventory has no response attribute, will not "
+        logger.info("Manager has no inventory attribute, will not "
                     "remove response")
-    elif is_synthetic_data == False:
+    elif mgmt.inv[0][0][0].response is None:
+        remove_response = False
+        logger.info("Manager Inventory has no response attribute, will not "
+                    "remove response")
+    elif is_synthetic_data == True:
         remove_response = False
         logger.info("data marked as type 'synthetic' will not "
-                       "remove response")
+                    "remove response")
 
     if remove_response:
         logger.info(f"removing response, units to {mgmt.config.unit_output}")
@@ -86,6 +92,8 @@ def default_process(mgmt, choice, **kwargs):
         logger.info("rotating from generic coordinate system to ZNE")
         st.rotate(method="->ZNE", inventory=mgmt.inv)
         st.detrend("simple").detrend("demean").taper(taper_percentage)
+    else:
+        logger.info(f"skip remove response: no inventory or requested not to")
 
     # Rotate the given stream from standard NEZ to RTZ if BAz given
     if mgmt.baz:
@@ -140,6 +148,10 @@ def filters(st, min_period=None, max_period=None, min_freq=None, max_freq=None,
     :rtype: obspy.core.stream.Stream
     :return: Filtered stream object
     """
+    if min_period is None and max_period is None:
+        logger.info(f"no filter bounds given, no filtering will be applied")
+        return st
+
     # Ensure that the frequency and period bounds are the same
     if not min_period and max_freq:
         min_period = 1 / max_freq
@@ -168,8 +180,6 @@ def filters(st, min_period=None, max_period=None, min_freq=None, max_freq=None,
         st.filter("lowpass", freq=min_freq, corners=corners, zerophase=True,
                   **kwargs)
         logger.debug(f"lowpass filter: {max_period}s w/ {corners} corners")
-    else:
-        logger.info(f"no filter bounds given, no filtering will be applied")
 
     return st
 

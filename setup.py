@@ -12,19 +12,20 @@ if READ_THE_DOCS:
     install_requires = []
 else:
     install_requires=[
+            # Install requires has been shifted to 'requirements.txt' to avoid
+            # Using Pip for package installation. Conda install preferred
             "obspy>=1.2.2",
             "pyasdf>=0.7.2",
             "pandas>=1.1.0",
             "pypdf2>=1.26.0",
             "pyyaml>=5.4",
-            "matplotlib==3.0.3",  
-            "basemap>=1.3.0",
+            "matplotlib>=3.0.3",  
+            "cartopy>=0.20.2",
             "pillow>=8.4.0",
-            "pyflex @ git+https://github.com/bch0w/pyflex@0.2.0",
-            "pyadjoint @ git+https://github.com/krischer/pyadjoint"
+            "pyflex @ git+https://github.com/adjtomo/pyflex",
+            "pyadjoint @ git+https://github.com/adjtomo/pyadjoint"
             ]
 
-# Remove the public repos (not hosted) from install requires, put in dependency
 setup(name='pyatoa',
       version='0.1.0',
       description="Python's Adjoint Tomography Operations Assistant",

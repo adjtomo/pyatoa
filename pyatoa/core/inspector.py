@@ -300,6 +300,9 @@ class Inspector(InspectorPlotter):
         Model and Step information should match between the two
         auxiliary data objects MisfitWindows and AdjointSources
 
+        TODO: break this into _get_windows_from_dataset and 
+              _get_adjsrcs_from_dataset?
+
         :type ds: pyasdf.ASDFDataSet
         :param ds: dataset to query for misfit:
         :rtype: pandas.DataFrame
@@ -310,8 +313,8 @@ class Inspector(InspectorPlotter):
         # Initialize an empty dictionary that will be used to initalize
         # a Pandas DataFrame
         window = {"event": [], "iteration": [], "step": [], "network": [],
-                  "station": [], "channel": [], "component": [], "misfit": [],
-                  "length_s": [],
+                  "station": [], "location": [], "channel": [], "component": [],
+                  "misfit": [], "length_s": [],
                   }
         # These are direct parameter names of the MisfitWindow aux data objects
         winfo = {"dlnA": [], "window_weight": [], "max_cc_value": [],
@@ -323,61 +326,109 @@ class Inspector(InspectorPlotter):
         misfit_windows = ds.auxiliary_data.MisfitWindows
         adjoint_sources = ds.auxiliary_data.AdjointSources
 
+        # Initiation loop to get iteration and step count, allows for the case
+        # where no step count is given (e.g., iteration == 'default')
+        iters, steps = [], []
         for iter_ in misfit_windows.list():
+            iters.append(iter_)
             for step in misfit_windows[iter_].list():
-                # If any entries exist for a given event/model/step
-                # ignore appending them to the internal structure as they've
-                # already been collected
-                if not self.windows.empty and \
-                        not self.isolate(iter_, step, eid).empty:
-                    continue
+                # Ensure that step counts are formatted like: 's00'
+                # if not then we DONT have step counts in the dataset
+                if not step.startswith("s") and not len(step) == 3:
+                    step = ""
+                steps.append(step)
 
-                for win in misfit_windows[iter_][step]:
-                    # pick apart information from this window
-                    cha_id = win.parameters["channel_id"]
-                    net, sta, loc, cha = cha_id.split(".")
-                    component = cha[-1]
+        # Pulling out important information from the windows and adj src.
+        for iter_, step in zip(iters, steps):
+            # If any entries exist for a given event/model/step
+            # ignore appending them to the internal structure as they've
+            # already been collected
+            if not self.windows.empty and \
+                    not self.isolate(iter_, step, eid).empty:
+                continue
 
-                    try:
+            # Explicitely allow for case with no step count in dataset
+            misfit_window_eval = misfit_windows[iter_]
+            adjoint_source_eval = adjoint_sources[iter_]
+            if step:
+                misfit_window_eval = misfit_window_eval[step]
+                adjoint_source_eval = adjoint_source_eval[step]
 
-                        # Workaround for potential mismatch between channel
-                        # names of windows and adjsrcs, search for w/ wildcard
-                        adj_tag = fnf(adjoint_sources[iter_][step].list(),
-                                      f"{net}_{sta}_*{component}"
-                                      )[0]
+            for win in misfit_window_eval:
+                # pick apart information from this window
+                cha_id = win.parameters["channel_id"]
+                net, sta, loc, cha = cha_id.split(".")
+                component = cha[-1]
 
-                        # This misfit value will be the same for mult windows
-                        window["misfit"].append(adjoint_sources[iter_][step][
-                            adj_tag].parameters["misfit"])
-                    except IndexError:
-                        if self.verbose:
-                            print(f"No matching adjoint source for {cha_id}")
-                        window["misfit"].append(np.nan)
+                try:
+                    # Workaround for potential mismatch between channel
+                    # names of windows and adjsrcs, search for w/ wildcard
+                    adj_tag = fnf(adjoint_source_eval.list(),
+                                  f"{net}_{sta}_*{component}"
+                                  )[0]
 
-                    # winfo keys match the keys of the Pyflex Window objects
-                    for par in winfo:
-                        winfo[par].append(win.parameters[par])
+                    # This misfit value will be the same for mult windows
+                    window["misfit"].append(adjoint_source_eval[
+                                                adj_tag].parameters["misfit"])
+                except IndexError:
+                    if self.verbose:
+                        print(f"No matching adjoint source for {cha_id}")
+                    window["misfit"].append(np.nan)
 
-                    # get identifying information for this window
-                    window["event"].append(eid)
-                    window["network"].append(net)
-                    window["station"].append(sta)
-                    window["channel"].append(cha)
-                    window["component"].append(component)
-                    window["iteration"].append(iter_)
-                    window["step"].append(step)
+                # winfo keys match the keys of the Pyflex Window objects
+                for par in winfo:
+                    winfo[par].append(win.parameters[par])
 
-                    # useful to get window length information
-                    window["length_s"].append(
-                        win.parameters["relative_endtime"] -
-                        win.parameters["relative_starttime"]
-                    )
+                # get identifying information for this window
+                window["event"].append(eid)
+                window["network"].append(net)
+                window["station"].append(sta)
+                window["location"].append(loc)
+                window["channel"].append(cha)
+                window["component"].append(component)
+                window["iteration"].append(iter_)
+                window["step"].append(step)
+
+                # useful to get window length information
+                window["length_s"].append(
+                    win.parameters["relative_endtime"] -
+                    win.parameters["relative_starttime"]
+                )
 
         # Only add to internal structure if something was collected
         if window["event"]:
             window.update(winfo)
             self.windows = pd.concat([self.windows, pd.DataFrame(window)],
                                      ignore_index=True)
+
+    def _parse_nonetype_eval(self, iteration, step_count):
+        """
+        Whenever a user does not choose an iteration or step count, e.g., in
+        plotting functions, this function defines default values based on the
+        initial model (if neither given), or the last step count for a given
+        iteration (if only iteration is given). Only step count is not allowed
+
+        :type iteration: str
+        :param iteration: chosen iteration, formatted as e.g., 'i01'
+        :type step_count: str
+        :param step_count: chosen step count, formatted as e.g., 's00'
+        :rtype: tuple of str
+        :return: (iteration, step_count) default values for the iteration
+            and step_count
+        """
+        # Default iteration and step count if None are given
+        if iteration is None and step_count is None:
+            iteration, step_count = self.initial_model
+            print(f"No iteration or step count given, defaulting to initial "
+                  f"model: {iteration}{step_count}")
+        elif iteration is None and step_count is not None:
+            step_count = self.steps[iteration][-1]
+            print(f"No step count given, defaulting to final step count within"
+                  f"given iteration: {iteration}{step_count}")
+        elif iteration and (step_count is not None):
+            raise ValueError("'step_count' cannot be provided by itself, you "
+                             "must also set the variable: 'iteration'")
+        return iteration, step_count
     
     def discover(self, path="./", ignore_symlinks=True):
         """

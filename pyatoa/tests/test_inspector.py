@@ -179,7 +179,15 @@ def test_compare_no_data():
 
 def test_compare_windows(seisflows_inspector):
     """
-    !!! TO DO: Need fixed window inversion results to make this work
+    TODO Need fixed window inversion results to make this work
+    """
+    pass
+
+
+def test_no_step_information(seisflows_inspector):
+    """
+    TODO Test that when no step information is provided (only iteration),
+    TODO inspector can still handle data
     """
     pass
 

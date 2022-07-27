@@ -116,7 +116,7 @@ def test_read_write_from_asdfdataset(tmpdir, mgmt_pre, config):
     """
     with ASDFDataSet(os.path.join(tmpdir, "test_dataset.h5")) as ds:
         mgmt_pre.ds = ds
-        mgmt_pre.write(write_to="ds")
+        mgmt_pre.write()
 
         # Load data back from dataset
         mgmt_loaded = Manager(ds=ds, config=config)

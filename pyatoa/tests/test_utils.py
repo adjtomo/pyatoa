@@ -116,7 +116,7 @@ def test_form_utils():
         "quakeml:earthquake.usgs.gov/fdsnws/event/1/query?eventid={eid}"
                                                     "&format=quakeml",  # USGS
         "quakeml:us.anss.org/event/{eid}",  # USGS COMCAT,
-        "pyatoa:source/{eid}"
+        "smi:local/source/{eid}/source"
                   ]
     for test_case in test_cases:
         test_case = test_case.format(eid=eid)

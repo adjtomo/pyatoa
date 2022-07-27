@@ -1,110 +1,139 @@
+#!/usr/bin/env python
 """
-A class and associated functions that simplify calling Pyatoa functionality
-with a SeisFlows workflow. Includes multiprocessing functionality to run Pyatoa
-processing in parallel.
+A SeisFlows3 plugin which simplifies how SeisFlows3 calls Pyatoa during an
+active workflow. Pyaflowa is meant to be called from within the
+SeisFlows3.preprocess.pyatoa module.
+
+Pyaflowa is in charge of navigating through the SeisFlows3 directory structure,
+collecting required data including waveforms and metadata, processing waveforms
+to generate misfit windows and adjoint sources, store data, metadata and results
+in ASDFDataSets, and generate figures.
+
+To call Pyaflowa from inside an active SeisFlows3 working environment:
+.. rubric::
+    from pyatoa import Pyaflowa
+    pyaflowa = Pyaflowa(sfpar=PAR, sfpath=PATH)  # PAR and PATH defined by SF3
+    pyaflowa.setup(source_name=solver.source_name[0],
+                   iteration=optimize.iter,
+                   step_count=optimize.line_search.step_count,
+                   loc="*", cha="*")
+    misfit = pyaflowa.process()
 """
 import os
-import pyatoa
 import logging
-import warnings
-from glob import glob
-from time import sleep
-from copy import deepcopy
+import time
+import random
+import shutil
+import numpy as np
+import pyatoa
 from concurrent.futures import ProcessPoolExecutor
+from glob import glob
 from pyasdf import ASDFDataSet
 
-from pyatoa.utils.images import merge_pdfs
+from pyatoa.utils.images import imgs_to_pdf, merge_pdfs
 from pyatoa.utils.read import read_station_codes
 from pyatoa.utils.asdf.clean import clean_dataset
 
 
-class IO(dict):
+class Paths(dict):
+    """Dictionary that prints keys like attributes for cleaner calls and allows
+    on the fly formatting of all values within the dict. Assumes that all
+    values are strings.
+       
+    .. note::
+        Had some trouble pickling this class, fixed see: 
+        https://stackoverflow.com/questions/42272335/
+                         how-to-make-a-class-which-has-getattr-properly-pickable
     """
-    Dictionary with accessible attributes, used to simplify access to dicts.
-    """
-    def __init__(self, event_id, iter_tag, step_tag, paths, logger, codes,
-                 misfit=None, nwin=None, stations=0, processed=0, exceptions=0, 
-                 plot_fids=None, fix_windows=False):
-        """
-        Hard set required parameters here, that way the user knows what is
-        expected of the IO class during the workflow.
-
-        :type event_id: str
-        :param event_id: event identifier to be passed in from Config
-        :type iter_tag: str
-        :param iter_tag: iteration identifier to be passed in from Config, 
-            e.g., i00
-        :type paths: pyatoa.core.pyaflowa.PathStructure
-        :param paths: The specific path structure that Pyaflowa will use to
-            navigate the filesystem, gather inputs and produce outputs.
-        :type logger: logging.Logger
-        :param logger: An individual event-specific log handler so that log
-            statements can be made in parallel if required
-        :type codes: list
-        :param codes: a list of station codes that will be passed to the 
-            Manager when gathering waveform data
-        :type cfg: pyatoa.core.config.Config
-        :param cfg: The event specific Config object that will be used to
-            control the processing during each pyaflowa workflow.
-        :type misfit: int
-        :param misfit: output storage to keep track of the total misfit accrued
-            for all the stations processed for a given event
-        :type nwin: int
-        :param nwin: output storage to keep track of the total number of windows
-            accrued during event processing. Will be used to scale raw misfit
-        :type stations: int
-        :param stations: output storage to keep track of the total number of
-            stations where processing was attempted. For output log statement
-        :type processed: int
-        :param processed: output storage to keep track of the total number of
-            stations where SUCCESSFULLY processed. For output log statement
-        :type exceptions: int
-        :param exceptions: output storage to keep track of the total number of
-            stations where processing hit an unexpected exception.
-            For output log statement
-        :type plot_fids: list
-        :param plot_fids: output storage to keep track of the the output .pdf
-            files created for each source-receiver pair. Used to merge all pdfs
-            into a single output pdf at the end of the processing workflow.
-        :type fix_windows: bool
-        :param fix_windows: tells the processing function within the Manager
-            whether or not to re-use misfit windows from a previous evaluation.
-        """
-        self.event_id = event_id
-        self.iter_tag = iter_tag
-        self.step_tag = step_tag
-        self.paths = paths
-        self.codes = codes
-        self.logger = logger
-        self.misfit = misfit
-        self.nwin = nwin
-        self.stations = stations
-        self.processed = processed
-        self.exceptions = exceptions
-        self.plot_fids = plot_fids or []
-        self.fix_windows = fix_windows
-
     def __setattr__(self, key, value):
         self[key] = value
 
     def __getattr__(self, key):
-        return self[key]
+        try:
+            return self[key]
+        except KeyError:
+            raise AttributeError(key)
 
+    @staticmethod
+    def _make_nonexistent_dir(key, val):
+        """Checks if a path is a directory by whether it has a file ext, and
+        whether or not the dir actually exists"""
+        if "_file" in key:
+            make_dir = False
+        else:
+            if os.path.splitext(val)[1]:
+                make_dir = False
+            else:
+                if os.path.exists(val):
+                    make_dir = False
+                else:
+                    make_dir = True
+        if make_dir:
+            os.makedirs(val)
 
-class PathStructure:
-    """
-    Generalizable path structure that Pyaflowa requires to work.
-    The idea is that we hardcode paths into a separate class so that the
-    functionality of Pyaflowa remains independent of the path structure,
-    allowing Pyaflowa to operate e.g. with SeisFlows, or independently.
-    """
-    def __init__(self, structure="standalone", **kwargs):
+    def format(self, **kwargs):
         """
-        Define the necessary path structure for Pyaflowa
+        Format any open string formatters with any available kwargs. Allow
+        for list-like values where all values in the list will be formatted. 
+        Also allow for making whatever looks like a directory (no file ext) 
+        to establish the path structure on disk
+        """
+        path_out = self
+        for key, val in self.items():
+            try:
+                new_val = val.format(**kwargs)
+                path_out[key] = new_val
+                self._make_nonexistent_dir(key, new_val)
+            # Lists will not format by themselves, need to go in and format
+            # each entry separately.
+            except AttributeError:
+                new_vals = []
+                for item in val:
+                    new_val = item.format(**kwargs)
+                    self._make_nonexistent_dir(key, new_val)
+                    new_vals.append(new_val)
+                path_out[key] = new_vals
+        return path_out
+
+
+class Pyaflowa:
+    """
+    A class that simplifies calling the Pyatoa waveform misfit quantification
+    workflow inside an active SeisFlows3 workflow
+    """
+    def __init__(self, sfpar, sfpath):
+        """
+        Initialize Pyaflowa based on the SeisFlows3 PAR and PATH dictionaries,
+        which define the parameter suite and required paths used in the
+        workflow.
+
+        :type sfpar: seisflows.config.Dict
+        :param sfpar: Parameter definitions defined by var `PAR` in SeisFlows3
+        :type sfpath: seisflows.config.Dict
+        :param sfpath: Path definitions defined by variable `PATH` in SeisFlows3
+        """
+        self.sfpar = sfpar
+        self.sfpath = sfpath
+
+        # Attributes to be created and formatted by setup()
+        self.paths = self.define_path_structure(self.sfpath)  # unformatted
+        self.config = None
+        self.logger = None
+        self.codes = None
+        self.nproc = os.cpu_count()  # default behavior: fill out the node
+
+        # Internal stats attributes used by process_single_station()
+        self.fix_windows = False
+
+    @staticmethod
+    def define_path_structure(sfpath):
+        """
+        Define the internal workflow directory structure based on the SeisFlows3
+        PATH dictionary. Allows Pyaflowa to know how to navigate around and
+        where to find data and save results.
 
         .. note::
-            Pyaflowa mandates the following required directory structure:
-
+            Path definitions are as follows:
             * cwd: The individual event working directory. This is modelled
               after a SPECFEM working directory, and for SeisFlows points
               directly to each of the solver working directories
@@ -112,6 +141,8 @@ class PathStructure:
               ASDFDataSets which contain all the working data.
             * figures: Path where Pyaflowa is allowed to save the PDFS/PNGS
               that result from the workflow
+            * tmplogs: Path where temporary log files are stored, which are
+              later collected to the main log file and then deleted
             * logs: Path where Pyaflowa can store the log outputs from each
               of the individual event workflows
             * responses: The path to response files stored on disk in SEED fmt
@@ -130,581 +161,473 @@ class PathStructure:
             * adjsrcs: Path to save the resulting adjoint sources that will be
               generated during the processing workflow.
 
-        :type structure: str
-        :param structure: the choice of PathStructure
-
-            * 'standalone': The default path structure that is primarily used
-              for running Pyaflowa standalone, without other workflow tools.
-            * 'seisflows': The path structure required when Pyaflowa is called
-              by SeisFlows. Paths are hardcoded here based on the SeisFlows 
-              directory structure.
+        :type sfpath: seisflows.config.Dict
+        :param sfpath: Path definitions defined by variable `PATH` in SeisFlows3
         """
-        # This 'constants' list mandates that the following paths exist.
-        # The Pyaflowa workflow assumes that it can read/write from all of the
-        # paths associated with these keys
-        self._REQUIRED_PATHS = ["cwd", "data", "datasets", "figures", "logs", 
-                                "ds_file", "stations_file", "responses", 
-                                "waveforms", "synthetics", "adjsrcs", 
-                                "event_figures"]
-
-        # Call the available function using its string representation,
-        # which sets the internal path structure.
-        try:
-            getattr(self, structure)(**kwargs)
-        except AttributeError as e:
-            raise AttributeError(
-                f"{structure} is not a valid path structure") from e
-
-    def __str__(self):
-        """String representation for PathStructure, print out dict"""
-        maxkeylen=max([len(_) for _ in self._REQUIRED_PATHS])
-
-        str_out = ""
-        for path in self._REQUIRED_PATHS:
-            str_out += f"{path:<{maxkeylen}}: '{getattr(self, path)}'\n"
-        return str_out
-            
-    def __repr__(self):
-        """Simple call string representation"""
-        return self.__str__()
-
-    def standalone(self, workdir=None, data=None, datasets=None, figures=None,
-                   logs=None, responses=None, waveforms=None, 
-                   synthetics=None, adjsrcs=None, stations_file=None, 
-                   event_file=None, **kwargs):
-        """
-        If Pyaflowa should be used in a standalone manner without external
-        workflow management tools. Simply creates the necessary directory
-        structure within the current working directory.
-        Attributes can be used to overwrite the default path names
-
-        .. to do:
-            !!! How to work in event file recovery in standalone mode?
-        """
-        # General directories that all processes will write to
-        self.workdir = workdir or os.getcwd()
-        self.cwd = self.workdir
-
-        self.datasets = datasets or os.path.join(self.workdir, "datasets")
-        self.figures = figures or os.path.join(self.workdir, "figures")
-        self.logs = logs or os.path.join(self.workdir, "logs")
-
-        # Event-specific directories that only certain processes will write to
-        self.ds_file = os.path.join(self.datasets, "{source_name}.h5")
-        self.event_figures = os.path.join(self.figures, "{source_name}")
-        self.synthetics = synthetics or os.path.join(self.workdir, "input",
-                                                     "synthetics",
-                                                     "{source_name}"
-                                                     )
-
-        # General read-only directories that may or may not contain input data
-        self.data = data or os.path.join(self.workdir, "input", "DATA")
-        self.responses = responses or os.path.join(self.workdir, "input", 
-                                                   "responses")
-        self.waveforms = waveforms or os.path.join(self.workdir, "input", 
-                                                   "waveforms")
-
-        # General write-only directories that processes will output data to
-        self.adjsrcs = adjsrcs or os.path.join(self.workdir, "adjsrcs", 
-                                               "{source_name}")
-
-        # Event-specific read-only STATIONS file that defines stations to be
-        # used during the workflow
-        self.stations_file = stations_file or os.path.join(self.workdir, 
-                                                           "{source_name}",
-                                                           "STATIONS")
-
-    def seisflows(self, **kwargs):
-        """
-        Hard coded SeisFlows directory structure which is created based on the
-        PATH seisflows.config.Dict class, central to the SeisFlows workflow.
-        """
-        # Be explicit about the required argument 'sfpaths'
-        PATH = kwargs.get("sfpaths", None)
-        if PATH is None:
-            raise TypeError("Pyaflowa SeisFlows path structure requires the "
-                            "positional argument 'sfpaths' which should point "
-                            "to the global PATH attribute in SeisFlows")
-
-        self.workdir = PATH.WORKDIR
-        self.cwd = os.path.join(PATH.SOLVER, "{source_name}")
-        self.data = os.path.join(self.cwd, "DATA")
-
-        self.datasets = os.path.join(PATH.PREPROCESS, "datasets")
-        self.figures = os.path.join(PATH.PREPROCESS, "figures")
-        self.logs = os.path.join(PATH.PREPROCESS, "logs")
-        
-        self.ds_file = os.path.join(self.datasets, "{source_name}.h5")
-        self.event_figures = os.path.join(self.figures, "{source_name}")
-
-        self.responses = []
-        self.waveforms = [os.path.join(self.cwd, "traces", "obs")]
-        if PATH.DATA is not None: 
-            self.responses.append(os.path.join(PATH.DATA, "seed"))
-            self.waveforms.append(os.path.join(PATH.DATA, "mseed"))
-
-        self.synthetics = [os.path.join(self.cwd, "traces", "syn")]
-        self.adjsrcs = [os.path.join(self.cwd, "traces", "adj")]
-        self.stations_file = os.path.join(self.cwd, "DATA", "STATIONS")
-
-    def format(self, mkdirs=True, **kwargs):
-        """
-        Paths must be source dependent in order for the directory structure
-        to remain dynamic and navigable. This function provides a blanket
-        formatting to all required paths making it easier to pass this
-        path structure around. Returns a copy of itself so that the internal
-        structure is unchanged and can be re-used.
-
-        :type mkdirs: bool
-        :param mkdirs: make directories that don't exist. this should always be
-            True otherwise Pyaflowa won't work as intended if directories are
-            missing, but oh well it's here.
-        :rtype: pyatoa.core.pyaflowa.PathStructure
-        :return: a formatted PathStructure object
-        """
-        assert("source_name" in kwargs.keys()), \
-                f"format() missing required argument 'source_name' (pos 1)"
-
-        # Ensure we are not overwriting the template path structure
-        path_structure_copy = deepcopy(self)
-
-        for key in self._REQUIRED_PATHS:
-            # Some paths may be lists so treat everything like a list
-            req_paths = getattr(self, key)
-            if isinstance(req_paths, str):
-                req_paths = [req_paths]
-
-            # Format using the kwargs, str with no format braces not affected
-            fmt_paths = [os.path.abspath(_.format(**kwargs)) for _ in req_paths]
-      
-            # Files don't need to go through makedirs but need to exist. 
-            if "_file" in key:
-                # Dict comp to see which files in the list dont exist, if any
-                file_bool = {f: os.path.exists(f) for f in fmt_paths 
-                                                       if not os.path.exists(f)}
-                # Kinda hacky way to skip over requiring dataset to exist,
-                # maybe try to find a more elegant way to exclude it 
-                if file_bool and key != "ds_file":
-                    raise FileNotFoundError(f"Paths: {file_bool.keys()} "
-                                            f"must exist and doesn't, please "
-                                            f"check these files")
-
-            # Required path structure must exist. Called repeatedly but cheap
-            else:
-                for path_ in fmt_paths:
-                    if not os.path.exists(path_):
-                        if mkdirs:
-                            try:
-                                os.makedirs(path_)  
-                            except FileExistsError:
-                                # Parallel processes trying to make the same dir
-                                # will throw this error. Just let it pass as we
-                                # only need to make them once.
-                                continue
-                        else:
-                            raise IOError(f"{path_} is required but does not "
-                                          f"exist and cannot be made")
-
-            # Convert single lists back to str, ugh
-            if len(fmt_paths) == 1:
-                fmt_paths = fmt_paths[0]
-            
-            # Overwrite the template structure with the formatted one
-            setattr(path_structure_copy, key, fmt_paths)
-
-        return path_structure_copy
-
-
-class Pyaflowa:
-    """
-    A class that simplifies calling the Pyatoa waveform misfit quantification
-    workflow en-masse, i.e. processing, multiple stations and multiple events
-    at once.
-    """
-    def __init__(self, structure="standalone", config=None, plot=True, 
-                 map_corners=None, log_level="DEBUG", 
-                 source_prefix="CMTSOLUTION", **kwargs):
-        """
-        Initialize the flow. Feel the flow.
-        
-        :type paths: seisflows.config.Dict
-        :param paths: PREPROCESS module specific tasks that should be defined
-            by the SeisFlows preprocess class. Three required keys, data,
-            figures, and logs
-        :type par: seisflows.config.Dict
-        :param par: Parameter list tracked internally by SeisFlows
-        :type source_prefix: str
-        :param source_prefix: How source files will be prefixed, e.g.,
-            CMTSOLUTION_???????? or FORCESOLUTION_??????
-        """
-        # Establish the internal workflow directories based on chosen structure
-        self.structure = structure.lower()
-        self.path_structure = PathStructure(self.structure, **kwargs)
-
-        # Pyaflowa and Seisflows working together requires data exchange
-        # of path and parameter information.
-        if self.structure == "seisflows":
-            sfpaths = kwargs.get("sfpaths")
-            sfpar = kwargs.get("sfpar")
-
-            assert(sfpaths is not None and sfpar is not None), \
-                ("Pyaflowa + SeisFlows requires SeisFlows 'PAR' and 'PATH' "
-                 "Dict objects to be passed to Pyaflowa upon initialization")
-
-            # Pyatoa's Config object will initialize using the parameter already
-            # set by the SeisFlows workflow. We need the BEGIN parameter to 
-            # check status in window fixing.
-            self.config = pyatoa.Config(seisflows_par=sfpar, **kwargs)
-
-            # Overwrite init parameters based on SeisFlows Par file
-            plot = sfpar.PLOT
-            log_level = sfpar.LOGGING 
+        # DATA path may be None, e.g., during synthetic inversion
+        if sfpath.DATA is None:
+            path_data = os.path.join(sfpath.PREPROCESS, "data")
         else:
-            self.begin = -9999
-            if config is None:
-                warnings.warn("No Config object passed, initiating empty "
-                              "Config", UserWarning)
-                self.config = pyatoa.Config(iteration=1, step_count=0)
-            else:
-                self.config = config
+            path_data = sfpath.DATA
 
-        self.plot = plot
-        self.map_corners = map_corners
-        self.log_level = log_level
+        paths = Paths(
+            workdir=sfpath.WORKDIR,
+            cwd=os.path.join(sfpath.SOLVER, "{source_name}"),
+            data=os.path.join(sfpath.SOLVER, "{source_name}", "DATA"),
+            datasets=os.path.join(sfpath.PREPROCESS, "datasets"),
+            figures=os.path.join(sfpath.PREPROCESS, "figures"),
+            logs=os.path.join(sfpath.PREPROCESS, "logs"),
+            tmplogs=os.path.join(sfpath.PREPROCESS, "logs", "{source_name}"),
+            ds_file=os.path.join(sfpath.PREPROCESS, "datasets",
+                                 "{source_name}.h5"),
+            event_figures=os.path.join(sfpath.PREPROCESS, "figures",
+                                       "{source_name}"),
+            responses=os.path.join(path_data, "seed"),
+            stations_file=os.path.join(sfpath.SOLVER, "{source_name}", "DATA",
+                                       "STATIONS"),
+            synthetics=os.path.join(sfpath.SOLVER, "{source_name}",
+                                    "traces", "syn"),
+            adjsrcs=os.path.join(sfpath.SOLVER, "{source_name}", "traces",
+                                 "adj"),
+            waveforms=[os.path.join(path_data, "mseed"),
+                       os.path.join(sfpath.SOLVER, "{source_name}", "traces",
+                                    "obs")]
+        )
+        return paths
 
-    def copy(self):
+    def setup(self, source_name, iteration, step_count, loc="*", cha="*"):
         """
-        Convenience copy function to provide a deep copy of Pyaflowa for use 
-        when multiple instances of the same object are required
-        """
-        return deepcopy(self)
-
-    def process_event(self, io, config, station_code=None, **kwargs):
-        """
-        The main processing function for Pyaflowa misfit quantification. IO
-        and config should be passed in from setup()
-
-        Processes waveform data for all stations related to a given event,
-        produces waveform and map plots during the processing step, saves data
-        to an ASDFDataSet and writes adjoint sources and STATIONS_ADJOINT file,
-        required by SPECFEM3D's adjoint simulations, to disk.
-
-        Kwargs passed to pyatoa.Manager.flow() function.
+        Format the paths and config object with the current place in the
+        workflow. This must be called each time we use Pyaflowa, as there are
+        source and evaluation-specific filenames and paths that need to be
+        generated each time.
 
         :type source_name: str
-        :param source_name: event id to be used for data gathering, processing
-        :type station_code: str
-        :param station_code: used to limit processing to a single station,
-            used mostly for debug purposes. Must match part of one of the codes
-            defined by 'io.codes'. e.g., 'BFZ' to match 'NZ.BFZ.*.*'
-        :rtype: float or None
-        :return: the total scaled misfit collected during the processing chain,
-            scaled_misfit will return None if no windows have been found or
-            no misfit was calculated
+        :param source_name: the name of the event which is used to tag the
+            solver working directory. In SeisFlows3 this is usually defined
+            by `solver.source_names`
+        :type iteration: int
+        :param iteration: The current iteration of the SeisFlows3 workflow,
+            within SeisFlows3 this is defined by `optimize.iter`
+        :type step_count: int
+        :param step_count: Current line search step count within the SeisFlows3
+            workflow. Within SeisFlows3 this is defined by
+            `optimize.line_search.step_count`
+        :type loc: str
+        :param loc: How to format location codes as in NET.STA.LOC.CHA for data
+            fetching. Since SPECFEM STATIONS files do not specify locations,
+            we must do it ourselves. Defaults to a wildcard '*'.
+        :param cha: How to format channel codes as in NET.STA.LOC.CHA for data
+            fetching. Since SPECFEM STATIONS files do not specify channel,
+            we must do it ourselves. Defaults to a wildcard '*'.
         """
-        # Open the dataset as a context manager and process all events in serial
-        with ASDFDataSet(io.paths.ds_file) as ds:
-            mgmt = pyatoa.Manager(ds=ds, config=config)
-            for code in io.codes:
-                # Allow user to process a single station, used for debugging
-                if station_code and station_code not in code:
-                    continue
-                mgmt_out, io = self.process_station(mgmt=mgmt, code=code,
-                                                    io=io, **kwargs)
+        # Set path structure, formatted by the specific event tag
+        unformatted_paths = self.define_path_structure(self.sfpath)
+        self.paths = unformatted_paths.format(source_name=source_name)
 
-        self.finalize(io)
+        # Generate the configuration parameter which will control processing
+        self.config = self.generate_config(source_name, iteration, step_count)
 
-        # Scale the raw event misfit by the number of windows according to
-        # Tape et al. (2010).
+        # Tag and create a unique event log file which will track processing.
+        # Write a nice log header to make things easy to identify
+        self.logger = self.generate_logger(self.config)
+        _header = f"EVENT: {source_name} // EVAL: {self.config.eval_tag}"
+        self.logger.info(f"\n{'=' * 80}\n{_header:^80}\n{'=' * 80}\n")
+
+        # Codes define the stations used in this workflow
+        self.codes = read_station_codes(self.paths.stations_file, loc=loc,
+                                        cha=cha)
+
+        # Figure out how to address whether we re-use misfit windows
+        self.fix_windows = self.check_fix_windows(iteration, step_count)
+
+        with ASDFDataSet(self.paths.ds_file) as ds:
+            # Make sure Dataset does not have previous processing information
+            clean_dataset(ds, iteration=iteration, step_count=step_count)
+            self.config.write(write_to=ds)
+
+            # Gather event from solver/*/DATA/ directory and save to ASDFDataSet
+            mgmt = pyatoa.Manager(ds=ds, config=self.config)
+            mgmt.gather(choice=["event"], event_id="",
+                        prefix=self.sfpar.SOURCE_PREFIX)
+
+    def generate_config(self, source_name, iteration, step_count):
+        """
+        Generate a Pyatoa.Config object based on the current location in the
+        workflow and on the pre-defined path structure.
+
+        :type source_name: str
+        :param source_name: the name of the event which is used to tag the
+            solver working directory. In SeisFlows3 this is usually defined
+            by `solver.source_names`
+        :type iteration: int
+        :param iteration: The current iteration of the SeisFlows3 workflow,
+            within SeisFlows3 this is defined by `optimize.iter`
+        :type step_count: int
+        :param step_count: Current line search step count within the SeisFlows3
+            workflow. Within SeisFlows3 this is defined by
+            `optimize.line_search.step_count`
+        """
+        config = pyatoa.Config(seisflows_par=self.sfpar, iteration=iteration,
+                               step_count=step_count, event_id=source_name,
+                               paths={"responses": self.paths.responses,
+                                      "waveforms": self.paths.waveforms,
+                                      "synthetics": self.paths.synthetics,
+                                      "events": self.paths.data},
+                               )
+        # Only query FDSN at the very first function evaluation
+        if iteration != 1 and step_count != 0:
+            config.client = None
+
+        return config
+
+    def generate_logger(self, config, prefix="", tmpdir=False):
+        """
+        Create a log file to spit out any log statements that occur during
+        processing. Removes handlers that are by default defined in the Pyatoa
+        __init__ script so that log statements don't end up printing to stdout
+        during a SeisFlows3 workflow.
+
+        :type config: pyatoa.core.config.Config
+        :param config: Pyatoa Config object from which we take the iteration,
+            step count and event name
+        :type prefix: str
+        :param prefix: optional prefix for logs, to create process-specific
+            log files (i.e., for every source-receiver pair)
+        :type tmpdir: bool
+        :param tmpdir: if True, redirect log files to a temporary directory
+            stored in the `path` attribute, to be collected later. This is for
+            station specific logging
+        :rtype: logging.Logger
+        :return: an individualized logging handler
+        """
+        # Generate the name of the config based on our place in the workflow
+        if config.eval_tag is not None:
+            log_fid = f"{prefix}{config.eval_tag}_{config.event_id}.txt"
+        else:
+            log_fid = f"{prefix}{config.event_id}.txt"
+
+        if tmpdir:
+            log_path = os.path.join(self.paths.tmplogs, log_fid)
+        else:
+            log_path = os.path.join(self.paths.logs, log_fid)
+
+        # Convenience to not carry around long attribute call
+        log_level = self.sfpar.PYATOA_LOG_LEVEL.upper()
+
+        # Propagate logging to individual log files, always overwrite
+        handler = logging.FileHandler(log_path, mode="w")
+
+        # Maintain the same look as the standard console log messages
+        logfmt = "[%(asctime)s] - %(name)s - %(levelname)s: %(message)s"
+        formatter = logging.Formatter(logfmt, datefmt="%Y-%m-%d %H:%M:%S")
+        handler.setFormatter(formatter)
+        handler.setLevel(log_level)
+
+        for log in ["pyflex", "pyadjoint", "pyatoa"]:
+            # Set the overall log level
+            logger = logging.getLogger(log)
+            # Turn off any existing handlers (stream and file)
+            while logger.hasHandlers():
+                logger.removeHandler(logger.handlers[0])
+
+            logger.setLevel(log_level)
+            logger.addHandler(handler)
+
+        return logger
+
+    def check_fix_windows(self, iteration, step_count):
+        """
+        Determine how to address re-using misfit windows during an inversion
+        workflow. Throw some log messages out to let the User know whether or
+        not misfit windows will be re used throughout an inversion.
+
+        Options for SeisFlows3 PAR.FIX_WINDOWS:
+            True: Always fix windows except for i01s00 because we don't have any
+                  windows for the first function evaluation
+            False: Don't fix windows, always choose a new set of windows
+            Iter: Pick windows only on the initial step count (0th) for each
+                  iteration. WARNING - does not work well with Thrifty Inversion
+                  because the 0th step count is usually skipped
+            Once: Pick new windows on the first function evaluation and then fix
+                  windows. Useful for when parameters have changed, e.g. filter
+                  bounds
+
+        :type iteration: int
+        :param iteration: The current iteration of the SeisFlows3 workflow,
+            within SeisFlows3 this is defined by `optimize.iter`
+        :type step_count: int
+        :param step_count: Current line search step count within the SeisFlows3
+            workflow. Within SeisFlows3 this is defined by
+            `optimize.line_search.step_count`
+        :rtype: bool
+        :return: bool on whether to use windows from the previous step
+        """
+        fix_windows = False
+        # First function evaluation never fixes windows
+        if iteration == 1 and step_count == 0:
+            fix_windows = False
+            self.logger.info("new windows; first evaluation")
+        elif isinstance(self.sfpar.FIX_WINDOWS, str):
+            # By 'iter'ation only pick new windows on the first step count
+            if self.sfpar.FIX_WINDOWS.upper() == "ITER":
+                if step_count == 0:
+                    fix_windows = False
+                    self.logger.info("new windows; first step count")
+                else:
+                    fix_windows = True
+                    self.logger.info("fix windows; mid line search")
+            # 'Once' picks windows only for the first function evaluation of
+            # the current set of iterations.
+            elif self.sfpar.FIX_WINDOWS.upper() == "ONCE":
+                if iteration == self.sfpar.BEGIN and step_count == 0:
+                    fix_windows = False
+                    self.logger.info("new windows; first workflow evaluation")
+                else:
+                    fix_windows = True
+                    self.logger.info("fix windows; mid workflow")
+        # Bool fix windows simply sets the parameter
+        elif isinstance(self.sfpar.FIX_WINDOWS, bool):
+            fix_windows = self.sfpar.FIX_WINDOWS
+            self.logger.info(f"fixed windows flag set: "
+                             f"{self.sfpar.FIX_WINDOWS}")
+
+        return fix_windows
+
+    def process(self, nproc=None):
+        """
+        Calculate misfit given a set of data-synthetic waveforms for a single
+        event and a list of stations. Save all of the output into ASDFDataSets.
+        Generate the required STATIONS_ADJOINT file and adjoint source files.
+
+        .. note::
+            For serial processing set `nproc`==1
+
+        :type nproc: int
+        :param nproc: number of processors to use concurrently for parallel
+            processing. If not given, defaults to internal attribute nproc
+            which will try to fill out the entire CPU
+        """
+        _start = time.time()
+        mgmt_stats = {}
+        # Use concurrent futures to do station processing in parallel
+        with ProcessPoolExecutor(max_workers=nproc or self.nproc) as executor:
+            for code, stats in zip(self.codes,
+                                    executor.map(self._process_single_station,
+                                                 self.codes)):
+                mgmt_stats[code] = stats
+
+        # Calculate total misfit based on number of windows collected
+        misfit, nwin = 0, 0
+        for sta, stats in mgmt_stats.items():
+            if stats.status_ok:
+                misfit += stats.misfit
+                nwin += stats.nwin or 0  # deal with NoneType nwin values
+        scaled_misfit = self.calculate_misfit(misfit=misfit, nwin=nwin)
+
+        # Remainder of these tasks are run in serial; collect processing stats
+        self.make_event_figure_pdf()
+        self.write_stations_adjoint()
+
+        # Finalization log statement for the user
+        _end = time.time()
+        status_str = self._parse_stats_for_log(mgmt_stats)
+        msg = (f"\n{'=' * 80}\n{'SUMMARY':^80}\n{'=' * 80}\n"
+               f"NPROC: {nproc} // TIME: {_end - _start:.2f}s\n"
+               f"SOURCE NAME: {self.config.event_id}\n"
+               f"WINDOWS: {nwin}\n"
+               f"RAW MISFIT: {misfit:.4f}\n"
+               f"{status_str}"
+               f"\n{'=' * 80}\n{'RAW LOGS':^80}\n{'=' * 80}"
+               )
+        self.logger.info(msg)
+        self.collect_tmp_log_files()
+
+        return scaled_misfit
+
+    def _process_single_station(self, code):
+        """
+        Process a single seismic station for a given event. Multiple error
+        catching chunks to ensure that a failed processing for a single station
+        won't kill the entire job.
+
+        .. note::
+            Each station gets tagged with a status that let's the user know how
+            processing went. Manager status returns are:
+            * 'STATION_OK': Processing completed with expected behavior
+            * 'STATION_NO_DATA': Processing error; failed to return some data
+            * 'STATION_CONTROLLED_ERROR': Processing error but within expected
+                failure criteria for processing (e.g., large misfit)
+            * 'STATION_UNCONTROLLED_ERROR': Processing error; unexpected failure
+                criteria should probably be investigated by user
+
+        :type code: str
+        :param code: Pyatoa station code (formatted NN.SSS.LL.CCC) used to
+            select which station we are processing
+        :rtype: pyatoa.core.manager.ManagerStats
+        :return: manager stats dictionary which contains information about
+            the misfit, number of windows, and processing status
+        """
+        net, sta, loc, cha = code.split(".")
+        # Station-specific temporary log file which will be re-added to main
+        logger = self.generate_logger(config=self.config,
+                                      prefix=f"{net}_{sta}_", tmpdir=True)
+
+        logger.info(f"\n{'/' * 80}\n{code:^80}\n{'/' * 80}")
+        mgmt = pyatoa.Manager(config=self.config)
+        # Data gathering chunk; if fail, do not continue
         try:
-            scaled_misfit = 0.5 * io.misfit / io.nwin
+            mgmt.gather(code=code,  event_id="",
+                        prefix=self.sfpar.SOURCE_PREFIX)
+        except pyatoa.ManagerError as e:
+            logger.warning(e)
+            mgmt.stats.status_ok = "STATION_NO_DATA"
+            return mgmt.stats
+        # Data processing chunk; if fail, continue to plotting
+        try:
+            mgmt.flow(fix_windows=self.fix_windows)
+            mgmt.stats.status_ok = "STATION_OK"
+        except pyatoa.ManagerError as e:
+            logger.warning(e)
+            mgmt.stats.status_ok = "STATION_CONTROLLED_ERROR"
+        except Exception as e:
+            # Uncontrolled exceptions should be noted in more detail
+            logger.warning(e, exc_info=True)
+            mgmt.stats.status_ok = "STATION_UNCONTROLLED_ERROR"
+
+        # Data plotting chunk; if fail continue to writing
+        if self.sfpar.PLOT:
+            # fid is e.g. path/i01s00_NZ_BFZ.png
+            plot_fid = "_".join([mgmt.config.iter_tag,  # e.g., i01
+                                 mgmt.config.step_tag,  # e.g., s00
+                                 net,  # e.g., NZ
+                                 sta + ".png"  # e.g., BFZ.pdf
+                                 ])
+            save = os.path.join(self.paths.event_figures, plot_fid)
+            # Mapping may fail if no Inventory or Event object is attached
+            # Waveform figures are expected to work if we have gotten this far
+            try:
+                mgmt.plot(choice="both", show=False, save=save)
+            except pyatoa.ManagerError as e:
+                logger.warning("cannot plot map, plotting waveform only")
+                mgmt.plot(choice="wav", show=False, save=save)
+            logger.info(f"plotting figure and saving to: {save}")
+
+        # Final cleanup steps only if processing is successful
+        if mgmt.stats.status_ok:
+            # SPECFEM wants adjsrcs for each comp, regardless if it has data
+            mgmt.write_adjsrcs(path=self.paths.adjsrcs, write_blanks=True)
+
+        # Wait until the very end to write to the HDF5 file, then do it
+        # pseudo-serially to get around trying to parallel write to HDF5 file
+        while True:
+            try:
+                with ASDFDataSet(self.paths.ds_file) as ds:
+                    mgmt.write(ds=ds)
+                break
+            except BlockingIOError:
+                # Random sleep time [0,1]s to decrease chances of two processes
+                # attempting to access at exactly the same time
+                time.sleep(random.random())
+
+        return mgmt.stats
+
+    @staticmethod
+    def calculate_misfit(misfit, nwin):
+        """
+        Calculate the misfit based on the number of windows. Equation from
+        Tape et al. (2010). If no windows, misfit is simply raw misfit
+
+        :type misfit: float
+        :param misfit: total RAW event misfit for all data-synthetic pairs
+        :type nwin: int
+        :param nwin: number of misfit windows collected for all data-synthetic
+            pairs for a given event
+        """
+        # Scale the raw event misfit by
+        try:
+            scaled_misfit = 0.5 * misfit / nwin
         # Dealing with the cases where 1) nwin==0 (signifying either no windows
         # found, or calc'ing misfit on whole trace) and 2) when misfit and nwin
         # are None (no misfit found for event)
         except (TypeError, ZeroDivisionError):
-            scaled_misfit = io.misfit
-
+            scaled_misfit = misfit
         return scaled_misfit
 
-    def setup(self, source_name, iteration=None, step_count=None, 
-              source_prefix="CMTSOLUTION", loc="*", cha="*", fix_windows=False, 
-              multiprocess=False):
+    def _parse_stats_for_log(self, mgmt_stats):
         """
-        Generate a config object for a specific event id / source name
-        Set the correct paths and adjust a few parameters based on the 
-        location in the inversion
+        Count and list all the station status codes to let the user know
+        how each stations was processed and what status category it falls under
 
-        Sets up the IO attribute dictionary to be carried around through the 
-        processing procedure.
+        :type mgmt_stats: pyatoa.core.manager.ManagerStats
+        :param mgmt_stats: manager stats dictionary which contains information
+            processing status
+        :rtype: str
+        :return: string with all statuses, their respective counts,
+            and a list of stations which falls under each status. To be
+            appended to the final log message
+        """
+        # Count the different output states and related codes to relay to user
+        status_str = ""
+        status_list = np.array([s.status_ok for s in mgmt_stats.values()])
+        code_list = np.array([*mgmt_stats])  # list of station codes
+
+        statuses, counts = np.unique(status_list, return_counts=True)
+
+        for i, status in enumerate(statuses):
+            status_str += (f"{status}: {counts[i]} / {len(status_list)}\n"
+                           f"{code_list[np.where(status_list == status)[0]]}"
+                           )
+        return status_str
+
+    def collect_tmp_log_files(self):
+        """
+        Each source-receiver pair has made its own log file. This function
+        collects these files and writes their content back into the main log.
+        This is a lot of IO but should be okay since the files are small.
 
         .. note::
-            IO object is not made an internal attribute because multiprocessing
-            may require multiple, different IO objects to exist simultaneously,
-            so they need to be passed into each of the functions.
+            This was the most foolproof method for having multiple parallel
+            processes write to the same file. I played around with StringIO
+            buffers and file locks, but they became overly complicated and
+            ultimately did not work how I wanted them to. This function trades
+            filecount and IO overhead for simplicity.
 
-        :type cwd: str
-        :param cwd: current event-specific working directory within SeisFlows
-        :type multiprocess: bool
-        :param multiprocess: flag to turn on parallel processing for a given 
-            event --- uses concurrent futures to perform multiprocessing
-        :type multiprocess: bool
-        :param multiprocess: If intending to use concurrent futures to 
-            multiprocess an event, setup needs to know as this affects how the
-            logger is setup
-        :type loc: str
-        :param loc: if codes is None, Pyatoa will generate station codes based 
-            on the SPECFEM STATIONS file, which does not contain location info.
-            This allows user to set the location values manually when building
-            the list of station codes. Defaults to wildcard '??', which is 
-            usually acceptable
-        :type cha: str
-        :param cha: if codes is None, Pyatoa will generate station codes based
-            on the SPECFEM STATIONS file, which does not contain channel info. 
-            This variable allows the user to set channel searching manually,
-            wildcards okay. Defaults to 'HH?' for high-gain, high-sampling rate
-            broadband seismometers, but this is dependent on the available data.
-        :rtype: pyatoa.core.pyaflowa.IO
-        :return: dictionary like object that contains all the necessary
-            information to perform processing for a single event
+        .. warning::
+            The assumption here is that the number of source-receiver pairs
+            is manageable (in the thousands). If we start reaching file count
+            limits on the cluster then this method for logging may have to be
+            re-thought. See link for example:
+
+            https://stackless.readthedocs.io/en/3.7-slp/howto/
+              logging-cookbook.html#using-concurrent-futures-processpoolexecutor
         """
-        paths = self.path_structure.format(source_name=source_name)
+        tmp_logs = sorted(glob(os.path.join(self.paths.tmplogs, "*")))
+        with open(self.logger.handlers[0].baseFilename, "a") as fw:
+            for tmp_log in tmp_logs:
+                with open(tmp_log, "r") as fr:
+                    fw.writelines(fr.readlines())
+        shutil.rmtree(self.paths.tmplogs)
 
-        # Create a new instance of the internal config which keeps track of
-        # our current location in the workflow
-        config = deepcopy(self.config)
-        config.iteration = iteration
-        config.step_count = step_count
-        config.event_id = source_name
-        config.paths = {"responses": paths.responses,
-                        "waveforms": paths.waveforms,
-                        "synthetics": paths.synthetics,
-                        "events": paths.data,
-                        }
-
-        # Only query FDSN at the very first function evaluation
-        if config.iteration != 1 and config.step_count != 0:
-            config.client = None
-
-        # Clean out any existing dataset for the current evaluation
-        with ASDFDataSet(paths.ds_file) as ds:
-            # Enure the ASDFDataSet has no previous data 
-            clean_dataset(ds, iteration=config.iteration, 
-                          step_count=config.step_count) 
-            config.write(write_to=ds)
-            
-            # Initiate the manager and gather event, searching for source prefix
-            # only, e.g., CMTSOLUTION or FORCESOLUTION
-            mgmt = pyatoa.Manager(ds=ds, config=config)
-            mgmt.gather(choice="event", event_id="", prefix=source_prefix)
-
-        # Event-specific log files to track processing workflow. If no iteration
-        # given, dont tag with iter/step, likely not an inversion scenario
-        log_fid = f"{config.event_id}.log"
-        if config.iter_tag is not None:
-            log_fid = f"{config.eval_tag}_{log_fid}"
-        log_fid = os.path.join(paths.logs, log_fid)
-
-        if not multiprocess:
-            event_logger = self._create_event_log_handler(fid=log_fid)
-        else:
-            # Multiprocess logging is less verbose 
-            event_logger = self._create_multiprocess_log_handler(fid=log_fid)
-
-        codes = read_station_codes(paths.stations_file, loc=loc, cha=cha)
-
-        # Dict-like object used to keep track of information for a single event
-        # processing run, simplifies information passing between functions.
-        io = IO(event_id=config.event_id, iter_tag=config.iter_tag, codes=codes,
-                step_tag=config.step_tag, paths=paths, logger=event_logger,
-                misfit=None, nwin=None, stations=0, processed=0, exceptions=0,
-                plot_fids=[], fix_windows=fix_windows)
-
-        return io, config
-
-    def finalize(self, io):
-        """
-        Wrapper for any finalization procedures after a single event workflow
-        Returns total misfit calculated during process()
-
-        :type io: pyatoa.core.pyaflowa.IO
-        :param io: dict-like container that contains processing information
-        :rtype: float or None
-        :param: the scaled event-misfit, i.e. total raw misfit divided by
-            number of windows. If no stations were processed, returns None
-            because that means theres a problem. If 0 were returned that would
-            give the false impression of 0 misfit which is wrong.
-        """
-        # Finalization log statement for the user
-        io.logger.info(f"\n{'=' * 80}\n\nSUMMARY\n\n{'=' * 80}\n"
-                       f"SOURCE NAME: {io.event_id}\n"
-                       f"STATIONS: {io.processed} / {io.stations}\n"
-                       f"WINDOWS: {io.nwin}\n"
-                       f"RAW MISFIT: {io.misfit}\n"
-                       f"UNEXPECTED ERRORS: {io.exceptions}"
-                       )
-
-        self._make_event_pdf_from_station_pdfs(io)
-        self._write_specfem_stations_adjoint_to_disk(io)
-
-    def process_station(self, mgmt, code, io, **kwargs):
-        """
-        Process a single seismic station for a given event. Return processed
-        manager and status describing outcome of processing. Multiple error 
-        catching chunks to ensure that a failed processing for a single station
-        won't kill the entire job. Needs to be called by process_event()
-
-        Kwargs passed to pyatoa.core.manager.Manager.flow()
-
-        :type mgmt: pyatoa.core.manager.Manager
-        :param mgmt: Manager object to be used for data gathering
-        :type code: str
-        :param code: Pyatoa station code, NN.SSS.LL.CCC
-        :type io: pyatoa.core.pyaflowa.IO
-        :param io: dict-like object that contains the necessary information
-            to process the station
-        :type fix_windows: bool
-        :param fix_windows: pased to the Manager flow function, determines 
-            whether previously gathered windows will be used to evaluate the 
-            current set of synthetics. First passed through an internal check
-            function that evaluates a few criteria before continuing.
-        :rtype tuple: (pyatoa.core.manager.Manager, pyatoa.core.pyaflowa.IO)
-        :return: a processed manager class, and the IO attribute class
-        """
-        net, sta, loc, cha = code.split(".")
-
-        io.logger.info(f"\n{'=' * 80}\n\n{code}\n\n{'=' * 80}")
-        io.stations += 1
-        mgmt.reset()
-
-        # Data gathering chunk; if fail, do not continue
-        try:
-            mgmt.gather(code=code)
-        except pyatoa.ManagerError as e:
-            io.logger.warning(e)
-            return None, io
-
-        # Data processing chunk; if fail, continue to plotting
-        try:
-            mgmt.flow(fix_windows=io.fix_windows)
-
-            # Basic log statement, mostly useful for multiprocesses which dont
-            # have access to the more detailed log statements
-            io.logger.info(f"\n\n\tOBS WAVS:  {mgmt.stats.len_obs}"
-                           f"\n\tSYN WAVS:  {mgmt.stats.len_syn}"
-                           f"\n\tWINDOWS:   {mgmt.stats.nwin}"
-                           f"\n\tMISFIT:    {mgmt.stats.misfit:.2f}\n"
-                           )
-    
-            status_ok = True
-        except pyatoa.ManagerError as e:
-            io.logger.warning(e)
-            status_ok = False
-            pass
-        except Exception as e:
-            # Uncontrolled exceptions should be noted in more detail
-            io.logger.warning(e, exc_info=True)
-            io.exceptions += 1
-            status_ok = False
-            pass
-
-        # Plotting chunk; fid is e.g. path/i01s00_NZ_BFZ.pdf
-        if self.plot:
-            plot_fid = "_".join([mgmt.config.iter_tag, mgmt.config.step_tag,
-                                 net, sta + ".pdf"]
-                                )
-            save = os.path.join(io.paths.event_figures, plot_fid)
-            io.logger.info(f"saving figure to: {save}")
-            mgmt.plot(corners=self.map_corners, show=False, save=save)
-
-            # If a plot is made, keep track so it can be merged later on
-            io.plot_fids.append(save)
-
-        # Finalization chunk; only if processing is successful
-        if status_ok:
-            # We allow misfit and nwin to be None to signify that no misfits
-            # have been calculated. But if we calculate something then we
-            # need to overwrite the None values
-            if io.misfit is None:
-                io.misfit = 0
-            if io.nwin is None:
-                io.nwin = 0
-
-            # Keep track of outputs for the final log summary and misfit value
-            io.misfit += mgmt.stats.misfit
-            # The deal with the case where window selection is skipped and 
-            # mgmt.stats.nwin == None
-            num_new_win = mgmt.stats.nwin or 0
-            io.nwin += num_new_win
-            io.processed += 1
-            
-            # SPECFEM wants adjsrcs for each comp, regardless if it has data
-            mgmt.write_adjsrcs(path=io.paths.adjsrcs, write_blanks=True)
-
-        return mgmt, io
-
-    def _process_event_multiprocess_true(self, *args, **kwargs):
-        """
-        A hacky way to get around problem in passing additional kwargs through
-        ProcessPoolExecutor. Simply define a new process_event function that 
-        hardcodes the 'multiprocess' parameter controlling logging. To be called
-        by multi_event_process() only.
-        """
-        return self.process_event(*args, **kwargs, multiprocess=True)
-        
-    def multi_event_process(self, source_names, max_workers=None, **kwargs):
-        """
-        Use concurrent futures to run the process() function in parallel.
-        This is a multiprocessing function, meaning multiple instances of Python
-        will be instantiated in parallel.
-
-        :type source_names: list of str
-        :param solver_dir: a list of all the source names to process. each will
-            be passed to process()
-        :type max_workers: int
-        :param max_workers: maximum number of parallel processes to use. If
-            None, automatically determined by system number of processors.
-        """
-        misfits = {}
-
-        print(f"Beginning parallel processing of {len(source_names)} events...")
-    
-        with ProcessPoolExecutor(max_workers=max_workers) as executor:
-            for source_name, misfit in zip(
-                    source_names, 
-                    executor.map(self._process_event_multiprocess_true,
-                                 source_names)
-                    ):
-                misfits[os.path.basename(source_name)] = misfit
-        return misfits
-
-    def _write_specfem_stations_adjoint_to_disk(self, io):
+    def write_stations_adjoint(self):
         """
         Create the STATIONS_ADJOINT file required by SPECFEM to run an adjoint
         simulation. Should be run after all processing has occurred. Works by
         checking what stations have adjoint sources available and re-writing the
         existing STATIONS file that is on hand.
-
-        :type cwd: str
-        :param cwd: current SPECFEM run directory within the larger SeisFlows
-            directory structure
         """
-        io.logger.info("generating STATIONS_ADJOINT file for SPECFEM")
-
+        self.logger.info("writing SPECFEM file: STATIONS_ADJOINT")
         # These paths follow the structure of SeisFlows and SPECFEM
-        adjoint_traces = glob(os.path.join(io.paths.adjsrcs, "*.adj"))
-
+        adjoint_traces = glob(os.path.join(self.paths.adjsrcs, "*.adj"))
         # Simply append to end of file name e.g. "path/to/STATIONS" + "_ADJOINT"
-        stations_adjoint = io.paths.stations_file  + "_ADJOINT"
-
+        stations_adjoint = self.paths.stations_file + "_ADJOINT"
         # Determine the network and station names for each adjoint source
         # Note this will contain redundant values but thats okay because we're
         # only going to check membership using it, e.g. [['NZ', 'BFZ']]
         adjoint_stations = [os.path.basename(_).split(".")[:2] for _ in
                             adjoint_traces]
-
         # The STATION file is already formatted so leverage for STATIONS_ADJOINT
-        lines_in = open(io.paths.stations_file, "r").readlines()
-
+        lines_in = open(self.paths.stations_file, "r").readlines()
         with open(stations_adjoint, "w") as f_out:
             for line in lines_in:
                 # Station file line format goes: STA NET LAT LON DEPTH BURIAL
@@ -713,89 +636,60 @@ class Pyaflowa:
                 if check in adjoint_stations:
                     f_out.write(line)
 
-    def _make_event_pdf_from_station_pdfs(self, io):
+    def make_event_figure_pdf(self, delete_originals=True):
         """
-        Combine a list of single source-receiver PDFS into a single PDF file
-        for the given event.
+        Combine a list of single source-receiver PNGs into a single PDF file
+        for the given event. Mostly a convenience function to make it easier
+        to ingest waveform figures during a workflow.
 
-        :type fids: list of str
-        :param fids: paths to the pdf file identifiers
-        :type output_fid: str
-        :param output_fid: name of the output pdf, will be joined to the figures
-            path in this function
+        :type delete_originals: bool
+        :param delete_originals: delete original pdf files after mergin
         """
-        if io.plot_fids:
-            io.logger.info("creating single .pdf file of all output figures")
-            # e.g. i01s00_2018p130600.pdf
-            output_fid = f"{io.iter_tag}{io.step_tag}_{io.event_id}.pdf"
+        # e.g., i01s00_NZ_BFZ.png
+        input_fids = glob(os.path.join(self.paths.event_figures, "*.png"))
+        if not input_fids:
+            self.logger.warning(f"no event figures found searching glob for: "
+                                f"{self.paths.event_figures}/*.png")
+            return
+        # e.g. i01s00_2018p130600.pdf
+        output_fid = (f"{self.config.iter_tag}{self.config.step_tag}_" 
+                      f"{self.config.event_id}.pdf")
+        self.logger.info(f"merge {len(input_fids)} figures into "
+                         f"composite: '{output_fid}'")
 
-            # Merge all output pdfs into a single pdf, delete originals
-            save = os.path.join(io.paths.event_figures, output_fid)
-            merge_pdfs(fids=sorted(io.plot_fids), fid_out=save)
-
-            for fid in io.plot_fids:
+        # Merge all output pdfs into a single pdf, delete originals
+        save = os.path.join(self.paths.event_figures, output_fid)
+        imgs_to_pdf(fids=sorted(input_fids), fid_out=save)
+        if delete_originals:
+            for fid in input_fids:
                 os.remove(fid)
 
-    def _create_event_log_handler(self, fid):
+    def make_evaluation_composite_pdf(self, delete_originals=True):
         """
-        Create a separate log file for each embarassingly parallel event.
-        SeisFlows just runs individual Pyaflowa instances so we can use the 
-        package-wide logger.
-
-        :type fid: str
-        :param fid: the name of the outputted log file
-        :rtype: logging.Logger
-        :return: an individualized logging handler
-        """
-        # Propogate logging to individual log files, always overwrite
-        handler = logging.FileHandler(fid, mode="w")
-
-        # Maintain the same look as the standard console log messages
-        logfmt = "[%(asctime)s] - %(name)s - %(levelname)s: %(message)s"
-        formatter = logging.Formatter(logfmt, datefmt="%Y-%m-%d %H:%M:%S")
-        handler.setFormatter(formatter)
-        handler.setLevel(self.log_level.upper())
-
-        for log in ["pyflex", "pyadjoint", "pyatoa"]:
-            # Set the overall log level
-            logger = logging.getLogger(log)
-            logger.setLevel(self.log_level.upper())
-            logger.addHandler(handler)
-
-        return logger
-
-    def _create_multiprocess_log_handler(self, fid):
-        """
-        Create a separate logger and file for each multiprocessed event.
+        Utility function to combine all PDFs generated by 
+        make_event_figure_pdf() into a single PDF tagged by the current 
+        evaluation (iteration, step count). This is meant to make it easier
+        for the User to scroll through figures. Option to delete the original
+        event-specific PDFs which are now redundant
 
         .. note::
-            Because of the way Pyatoa logging is written, we can't propagate the
-            log statements within the package into Pyaflowa, it just leads to 
-            all the processes writing everything to the same file.
+            This can be run without running Pyaflowa.format()
 
-            Instead we turn off the package logger completely and instead create
-            a new 'Pyaflowa' logger which will be more restricted in the info
-            it can provide, but will be able to log separately for each multi
-            process
-
-        :type fid: str
-        :param fid: the name of the outputted log file
-        :rtype: logging.Logger
-        :return: an individualized logging handler
+        :type delete_originals: bool
+        :param delete_originals: delete original pdf files after mergin
         """
-        # Turn off the package-wide logger by setting to strictest mode
-        logging.getLogger("pyatoa").setLevel("CRITICAL")
+        event_figures = glob(os.path.join(self.paths.figures, "*", "*.pdf"))
+        if not event_figures:
+            self.logger.warning(f"no composite PDFs found searching glob for: "
+                                f"{self.paths.figures}/*/*.pdf")
+            return
+        # Collecting evaluation tags, e.g., ['i01s00', 'i01s01']
+        tags = set([os.path.basename(_).split("_")[0] for _ in event_figures])
+        for tag in tags:
+            fids = [fid for fid in event_figures if tag in fid]
+            fid_out = os.path.join(self.paths.figures, f"{tag}.pdf")
 
-        # Create a new file-specific logger
-        logger = logging.getLogger(f"pyaflowa")
-        logfmt = "[%(asctime)s] - %(name)s - %(levelname)s: %(message)s"
-        formatter = logging.Formatter(logfmt, datefmt="%Y-%m-%d %H:%M:%S")
-
-        # Set handler with specific file name
-        handler = logging.FileHandler(fid, mode="w")
-        handler.setFormatter(formatter)
-
-        logger.setLevel(self.log_level)
-        logger.addHandler(handler)
-
-        return logger
+            merge_pdfs(fids=sorted(fids), fid_out=fid_out)
+            if delete_originals:
+                for fid in fids:
+                    os.remove(fid)

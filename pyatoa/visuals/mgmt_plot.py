@@ -126,8 +126,9 @@ class ManagerPlotter:
         :param save: absolute filepath and filename if figure should be saved
         """
         # Call external function to generate map
-        mm = MapMaker(inv=self.mgmt.inv, cat=self.mgmt.event, **kwargs)
-        mm.plot(corners=corners, show=show, save=save)
+        mm = MapMaker(inv=self.mgmt.inv, cat=self.mgmt.event, corners=corners,
+                      **kwargs)
+        mm.plot(show=show, save=save)
         plt.close()
 
     def plot(self, corners=None, dpi=100, figsize=None, show=True, save=False,
@@ -149,9 +150,10 @@ class ManagerPlotter:
                 **kwargs)
 
         # Plot the map on the right
-        mm = MapMaker(inv=self.mgmt.inv, cat=self.mgmt.event, **kwargs)
-        ax = fig.add_subplot(gs[1])
-        mm.plot(corners=corners, figure=fig, ax=ax, show=False, save=False)
+        mm = MapMaker(cat=self.mgmt.event, inv=self.mgmt.inv, figsize=figsize,
+                      figure=fig, gridspec=gs, corners=corners,
+                      **kwargs)
+        mm.plot(figure=fig, gridspec=gs, show=False, save=False)
 
         if save:
             plt.savefig(save)

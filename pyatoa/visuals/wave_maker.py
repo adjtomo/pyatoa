@@ -465,7 +465,7 @@ class WaveMaker:
             title += f" {self.config.event_id}"
 
         # Filter bounds to plot title
-        title += f" [{self.config.min_period}s, {self.config.max_period}s]"
+        title += f" [{self.config.min_period}-{self.config.max_period}]s"
 
         # Tell the User if the data has been normalized
         if normalized:
@@ -500,8 +500,10 @@ class WaveMaker:
 
         # Distribute some kwargs before starting
         dpi = self.kwargs.get("dpi", 100)
-        figsize = self.kwargs.get("figsize",
-                                  (800 / dpi, 200 * len(self.st_obs) / dpi))
+        # Make the figure just slightly larger than the size of all traces
+        figsize = self.kwargs.get("figsize", 
+                (800 / dpi,  200 * (len(self.st_obs) + .3) / dpi)
+                )
         fontsize = self.kwargs.get("fontsize", 8)
         legend_fontsize = self.kwargs.get("legend_fontsize", 6)
         append_title = self.kwargs.get("append_title", None)
@@ -619,7 +621,7 @@ class WaveMaker:
                         ax.set_ylabel("")
 
         if save:
-            plt.savefig(save, figsize=figsize, dpi=dpi)
+            plt.savefig(save)
         if show:
             plt.show()
 

@@ -7,6 +7,8 @@ To Do 02.04.21: Allow config to set pyflex and pyadjoint config as a function,
     currently it's obscured behind some private functions
 """
 import yaml
+import numpy as np
+from copy import deepcopy
 from pyatoa import logger
 from pyatoa.utils.form import format_iter, format_step
 from pyatoa.plugins.pyflex_presets import pyflex_presets
@@ -260,8 +262,9 @@ class Config:
             assert(self.step_count >= 0), "Step count must start from 0"
 
         # Check period range is acceptable
-        assert(self.min_period < self.max_period), \
-            "min_period must be less than max_period"
+        if self.min_period and self.max_period:
+            assert(self.min_period < self.max_period), \
+                "min_period must be less than max_period"
 
         # Check if unit output properly set, dictated by ObsPy units
         acceptable_units = ['DISP', 'VEL', 'ACC']
@@ -389,6 +392,12 @@ class Config:
         else:
             return fmt
 
+    def copy(self):
+        """
+        Simply convenience function to return a deep copy of the Config
+        """
+        return deepcopy(self)
+
     def write(self, write_to, fmt=None):
         """
         Wrapper for underlying low-level write functions
@@ -465,10 +474,6 @@ class Config:
         :type ds: pyasdf.asdf_data_set.ASDFDataSet
         :param ds: dataset to save the config file to
         """
-        # Lazy imports because this function isn't always called
-        from numpy import array
-        from copy import deepcopy
-
         # Deep copy to ensure that we aren't editing the Config parameters
         attrs = vars(deepcopy(self))
 
@@ -497,7 +502,7 @@ class Config:
             attrs.pop(key)
         attrs.update(add_attrs)
 
-        ds.add_auxiliary_data(data_type="Configs", data=array([True]),
+        ds.add_auxiliary_data(data_type="Configs", data=np.array([True]),
                               path=self.aux_path, parameters=attrs
                               )
 

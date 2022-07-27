@@ -8,8 +8,9 @@ import numpy as np
 from obspy import Stream, Trace, UTCDateTime, Inventory
 from obspy.core.inventory.network import Network
 from obspy.core.inventory.station import Station
-from obspy.core.event import Event
-from pyatoa.utils.srcrcv import Source
+from obspy.core.event import Event, Origin, Magnitude
+from pyatoa.utils.srcrcv import Source, seismic_moment, moment_magnitude
+from pyatoa import logger
 
 
 def read_fortran_binary(path):
@@ -128,6 +129,8 @@ def read_stations(path_to_stations):
     :return: a station-level Inventory object
     """
     stations = np.loadtxt(path_to_stations, dtype="str")
+    if stations.size == 0:
+        return Inventory()
 
     # Get all the unique network names, try-except to catch when there is only
     # one station in the file
@@ -161,7 +164,8 @@ def read_stations(path_to_stations):
     return Inventory(networks=list_of_networks, source="PYATOA")
 
 
-def read_station_codes(path_to_stations, loc="??", cha="*"):
+def read_station_codes(path_to_stations, loc="??", cha="*",
+                       seed_template="{net}.{sta}.{loc}.{cha}"):
     """
     Read the SPECFEM3D STATIONS file and return a list of codes (Pyatoa format)
     that are accepted by the Manager and Pyaflowa classes. Since the STATIONS
@@ -177,14 +181,17 @@ def read_station_codes(path_to_stations, loc="??", cha="*"):
     :param cha: formatting of the channel section fo the code, defaults to
         'HH?' for wildcard component of a high-gain seismometer. Follows SEED
         convention (see IRIS).
+    :type seed_template: str
+    :param seed_template: string template to be formatted with some combination
+        of 'net', 'sta', 'loc' and 'cha', used for generating station codes
     :rtype: list of str
     :return: list of codes to be used by the Manager or Pyaflowa classes for
         data gathering and processing
     """
-    SEED_TEMPLATE = "{net}.{sta}.{loc}.{cha}"
-
     codes = []
     stations = np.loadtxt(path_to_stations, dtype="str")
+    if stations.size == 0:
+        return codes
 
     # Deal with the special case where the stations file is only 1 station long
     # otherwise we end up iterating over a string and not an ndarray
@@ -194,26 +201,37 @@ def read_station_codes(path_to_stations, loc="??", cha="*"):
     for station in stations:
         sta = station[0]
         net = station[1] 
-        codes.append(SEED_TEMPLATE.format(net=net, sta=sta, loc=loc, cha=cha))
+        codes.append(seed_template.format(net=net, sta=sta, loc=loc, cha=cha))
 
     return codes
 
 
-def read_specfem2d_source(path_to_source, default_time="2000-01-01T00:00:00"):
+def read_specfem2d_source(path_to_source, origin_time=None):
     """
-    Create a barebones Pyatoa Source object from a SPECFEM2D Source file, which
-    mimics the behavior of the more complex ObsPy Event object. We only need
-    few key pieces of information from the SOURCE file for things to work
+    Create a barebones ObsPy Event object from a SPECFEM2D Source file, which
+    only contains information required by Pyatoa, which only accesses 
+    event.preferred_origin(), event.preferred_magnitude() and 
+    event.preferred_moment_tensor(). Moment tensor is wrapped in try-except
+    so we only need origin and magnitude.
+
+    https://docs.obspy.org/master/_modules/obspy/io/cmtsolution/
+                                            core.html#_internal_read_cmtsolution
+
+    .. note::
+        Source files do not provide origin times so we just provide an 
+        arbitrary value but allow user to set time
     """
+    if origin_time is None:
+        origin_time = "2000-01-01T00:00:00"
+        logger.warning("no origin time set for SPECFEM2D source, setting "
+                       f"default value: {origin_time}")
+
     with open(path_to_source, "r") as f:
         lines = f.readlines()
    
-    # Place values from file into dict
-    source_dict = {}
-
     # First line expected to be e.g.,: '## Source 1'
-    source_dict["source_id"] = lines[0].strip().split()[-1]
-
+    source_name = lines[0].strip().split()[-1]
+    source_dict = {}
     for line in lines:
         # Skip comments and newlines
         if line.startswith("#") or line == "\n":
@@ -223,13 +241,43 @@ def read_specfem2d_source(path_to_source, default_time="2000-01-01T00:00:00"):
         val = val.split("#")[0].strip()
         source_dict[key.strip()] = val.strip()
 
-    event = Source(
-            resource_id=f"pyatoa:source/{source_dict['source_id']}",
-            origin_time=default_time, latitude=source_dict["xs"],
-            longitude=source_dict["xs"], depth=source_dict["zs"]
-            )
+    origin = Origin(
+        resource_id=_get_resource_id(source_name, "origin", tag="source"),
+        time=origin_time, longitude=source_dict["xs"], 
+        latitude=source_dict["xs"], depth=source_dict["zs"]
+    ) 
+
+    # Calculate the moment magnitude from the moment tensor components
+    moment = seismic_moment(mt=[float(source_dict["Mxx"]), 
+                                float(source_dict["Mzz"]),
+                                float(source_dict["Mxz"])
+                                ])
+    moment_mag = moment_magnitude(moment=moment)
+
+    magnitude = Magnitude(
+        resource_id=_get_resource_id(source_name, "magnitude"),
+        mag=moment_mag, magnitude_type="Mw", origin_id=origin.resource_id.id
+    )
+
+    event = Event(resource_id=_get_resource_id(name=source_name, 
+                                               res_type="event"))
+    event.origins.append(origin)
+    event.magnitudes.append(magnitude)
+
+    event.preferred_origin_id = origin.resource_id.id
+    event.preferred_magnitude_id = magnitude.resource_id.id
 
     return event
+
+
+def _get_resource_id(name, res_type, tag=None):
+    """
+    Helper function to create consistent resource ids. From ObsPy
+    """
+    res_id = f"smi:local/source/{name:s}/{res_type:s}"
+    if tag is not None:
+        res_id += "#" + tag
+    return res_id
 
 
 def read_forcesolution(path_to_source, default_time="2000-01-01T00:00:00"):
