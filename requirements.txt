@@ -1,6 +1,7 @@
 obspy>=1.2.2
 pyasdf>=0.7.2
 pandas>=1.1.0
-cartopy
+proj>=8.0.0
+cartopy>=0.20.2
 pypdf2>=1.27.5
 pyyaml>=5.4

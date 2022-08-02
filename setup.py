@@ -20,6 +20,7 @@ else:
             "pypdf2>=1.26.0",
             "pyyaml>=5.4",
             "matplotlib>=3.0.3",  
+            "proj>=8.0.0",
             "cartopy>=0.20.2",
             "pillow>=8.4.0",
             "pyflex @ git+https://github.com/adjtomo/pyflex",
@@ -27,7 +28,7 @@ else:
             ]
 
 setup(name='pyatoa',
-      version='0.1.0',
+      version='0.1.1',
       description="Python's Adjoint Tomography Operations Assistant",
       url='http://github.com/bch0w/pyatoa',
       download_url='https://github.com/bch0w/pyatoa/archive/refs/tags/v0.1.0.tar.gz',
