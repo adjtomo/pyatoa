@@ -305,24 +305,27 @@ class Manager:
             internal attribute `self.ds` to write to. Allows overwriting to
             new datasets
         """
-        # Allow using both default and input datasets for writing
+        # Allow using both default and input datasets for writing. Check if we
+        # can actually write to the dataset
         if ds is None:
             ds = self.ds
-
         if ds is None:
             logger.warning("no dataset found, cannot write")
+            return
+        elif ds._ASDFDataSet__file.mode == "r":  # NOQA
+            logger.warning("dataset opened in read-only mode, cannot write")
             return
 
         if self.event:
             try:
                 ds.add_quakeml(self.event)
             except ValueError:
-                logger.warning("Event already present, not added")
+                logger.debug("Event already present, not added")
         if self.inv:
             try:
                 ds.add_stationxml(self.inv)
             except TypeError:
-                logger.warning("StationXML already present, not added")
+                logger.debug("StationXML already present, not added")
         # Redirect PyASDF 'waveforms already present' warnings for cleaner look
         if self.st_obs:
             with warnings.catch_warnings():
@@ -331,8 +334,8 @@ class Manager:
                     ds.add_waveforms(waveform=self.st_obs,
                                      tag=self.config.observed_tag)
                 except ASDFWarning:
-                    logger.warning(f"{self.config.observed_tag} waveform "
-                                   f"already present, not added")
+                    logger.debug(f"{self.config.observed_tag} waveform already "
+                                 f"present, not added")
                     pass
         if self.st_syn:
             with warnings.catch_warnings():
@@ -341,13 +344,13 @@ class Manager:
                     ds.add_waveforms(waveform=self.st_obs,
                                      tag=self.config.synthetic_tag)
                 except ASDFWarning:
-                    logger.warning(f"{self.config.synthetic_tag} waveform "
-                                   f"already present, not added")
+                    logger.debug(f"{self.config.synthetic_tag} waveform "
+                                 f"already present, not added")
                     pass
         if self.windows:
-            self.save_windows(ds=ds)
+            self.save_windows(ds=ds, force=True)
         if self.adjsrcs:
-            self.save_adjsrcs(ds=ds)
+            self.save_adjsrcs(ds=ds, force=True)
 
     def write_adjsrcs(self, path="./", write_blanks=True):
         """
@@ -1010,7 +1013,7 @@ class Manager:
 
         return self
 
-    def save_windows(self, ds=None):
+    def save_windows(self, ds=None, force=False):
         """
         Convenience function to save collected misfit windows into an 
         ASDFDataSet with some preliminary checks
@@ -1020,6 +1023,9 @@ class Manager:
         :type ds: pyasdf.ASDFDataSet
         :param ds: allow replacement of the internal `ds` dataset. If None,
             will try to write to internal `ds`
+        :type force: bool
+        :param force: force saving windows even if Config says don't do it.
+            This is used by write() to bypass the default 'dont save' behavior
         """
         if ds is None:
             ds = self.ds
@@ -1028,14 +1034,14 @@ class Manager:
             logger.warning("no ASDFDataSet, cannot save windows")
         elif not self.windows:
             logger.warning("Manager has no windows to save")
-        elif not self.config.save_to_ds:
-            logger.warning("config parameter save_to_ds is set False, "
+        elif not self.config.save_to_ds and not force:
+            logger.warning("config parameter `save_to_ds` is set False, "
                            "will not save windows")
         else:
             logger.debug("saving misfit windows to ASDFDataSet")
             add_misfit_windows(self.windows, ds, path=self.config.aux_path)
 
-    def save_adjsrcs(self, ds=None):
+    def save_adjsrcs(self, ds=None, force=False):
         """
         Convenience function to save collected adjoint sources into an 
         ASDFDataSet with some preliminary checks
@@ -1045,6 +1051,9 @@ class Manager:
         :type ds: pyasdf.ASDFDataSet
         :param ds: allow replacement of the internal `ds` dataset. If None,
             will try to write to internal `ds`
+        :type force: bool
+        :param force: force saving windows even if Config says don't do it.
+            This is used by write() to bypass the default 'dont save' behavior
         """
         if ds is None:
             ds = self.ds
@@ -1053,8 +1062,8 @@ class Manager:
             logger.warning("no ASDFDataSet, cannot save adjoint sources")
         elif not self.adjsrcs:
             logger.warning("Manager has no adjoint sources to save")
-        elif not self.config.save_to_ds:
-            logger.warning("config parameter save_to_ds is set False, "
+        elif not self.config.save_to_ds and not force:
+            logger.warning("config parameter `save_to_ds` is set False, "
                            "will not save adjoint sources")
         else:
             logger.debug("saving adjoint sources to ASDFDataSet")
