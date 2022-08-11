@@ -90,7 +90,8 @@ def read_sem(path, origintime=None, location='', precision=4):
         data = np.array(data)
 
     if origintime is None:
-        print("No origintime given, setting to default 1970-01-01T00:00:00")
+        logger.warning("No origintime given, setting to default "
+                       "1970-01-01T00:00:00")
         origintime = UTCDateTime("1970-01-01T00:00:00")
 
     # We assume that dt is constant after 'precision' decimal points
