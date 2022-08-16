@@ -1,6 +1,6 @@
 ## Python's Adjoint Tomography Operations Assitant  
 
-![SCOPED](https://img.shields.io/endpoint?url=https://runkit.io/wangyinz/scoped/branches/master/Pyatoa)
+[![SCOPED](https://img.shields.io/endpoint?url=https://runkit.io/wangyinz/scoped/branches/master/Pyatoa)](https://github.com/SeisSCOPED/container/pkgs/container/pyatoa)
 [![Join the chat at https://gitter.im/pyatoa/community](https://badges.gitter.im/pyatoa/community.svg)](https://gitter.im/pyatoa/community?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 [![Documentation Status](https://readthedocs.org/projects/pyatoa/badge/?version=latest)](https://pyatoa.readthedocs.io/en/latest/?badge=latest)
 
