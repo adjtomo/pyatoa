@@ -6,11 +6,11 @@
 ### Misfit assessment for the modern tomographer
 
 ---
-`Documentation` can be found on Read the Docs: https://pyatoa.readthedocs.io
+`Documentation` can be found on Read the Docs: https://pyatoa.readthedocs.io/en/devel
 
 ---
 <p align="center">
-  <img src="pyatoa/docs/images/pyatoa_logo_w_text.png" />
+  <img src="docs/images/pyatoa_logo_w_text.png" />
 </p>
 
 **Pyatoa**\* is a waveform-based misfit quantification package, with additional tools for measurement aggregation, and visualizations of inversion results. It is meant to facilitate the assessment of seismic inversions. Under the hood, **Pyatoa** is built on, and provides a high-level API for, a few key Python packages:
