@@ -18,3 +18,10 @@ Version 0.2.0
 - Added test data pertaining to docs. Docs now do not work directly with test data but rather make copies in non-repo'd directories. 
 
 - Added __init__.py to all relevant directories that were missing it before
+
+- Removed 'Pyaflowa' class, tests and related docs. Pyaflowa was the 
+  Pyatoa-SeisFlows3 interaction class. All of its functionality has been moved
+  directly into the `seisflows.preprocess.pyaflowa.Pyaflowa` class
+
+- Added hard requirements for Cartopy and Proj in requirements.txt as their 
+  absence was causing some dependency conflicts
