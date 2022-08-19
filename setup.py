@@ -20,7 +20,7 @@ else:
             "pypdf2>=1.26.0",
             "pyyaml>=5.4",
             "matplotlib>=3.0.3",  
-            "proj>=8.0.0",
+            # "proj>=8.0.0",  # needs to be installed w/ Conda, pip wont find it
             "cartopy>=0.20.2",
             "pillow>=8.4.0",
             "pyflex @ git+https://github.com/adjtomo/pyflex",

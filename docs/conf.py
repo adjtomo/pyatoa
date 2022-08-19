@@ -65,7 +65,7 @@ extensions = [
 
 # Need to tell the autoapi that our source code is one level up
 autoapi_type = "python"
-autoapi_dirs = [".."]
+autoapi_dirs = ["../pyatoa"]
 autoapi_add_toctree_entry = True
 
 # Add any paths that contain templates here, relative to this directory.

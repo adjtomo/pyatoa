@@ -115,7 +115,6 @@ Geophysical Journal International, 223(3), 1461-1480.
    config
    manager
    gatherer
-   pyaflowa
    storage
    inspector
    utilities
