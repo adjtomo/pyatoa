@@ -1,4 +1,5 @@
 obspy>=1.2.2
+scipy<=1.8.0
 pyasdf>=0.7.2
 pandas>=1.1.0
 proj>=8.0.0
