@@ -23,7 +23,7 @@ else:
             # "proj>=8.0.0",  # needs to be installed w/ Conda, pip wont find it
             "cartopy>=0.20.2",
             "pillow>=8.4.0",
-            "scipy>=1.8.0,<1.9.0",
+            "scipy<1.9.0",
             "pyflex @ git+https://github.com/adjtomo/pyflex",
             "pyadjoint @ git+https://github.com/adjtomo/pyadjoint"
             ]
