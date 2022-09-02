@@ -205,7 +205,7 @@ class WaveMaker:
             ax.axhline(y=waterlevel, xmin=self.time_axis[0], 
                        xmax=self.time_axis[-1], alpha=0.4, zorder=8, 
                        linewidth=linewidth, c=stalta_color, linestyle='--')
-            ax.annotate(s=f"stalta_waterlevel = {stalta_wl}", alpha=0.7, 
+            ax.annotate(f"stalta_waterlevel = {stalta_wl}", alpha=0.7, 
                         fontsize=fontsize,
                         xy=(0.75 * (xmax - xmin) + xmin, waterlevel)
                         )
@@ -280,7 +280,7 @@ class WaveMaker:
                                 dlnA=window.dlnA,
                                 left=tleft,
                                 length=tright - tleft)
-                ax.annotate(s=s_anno, ha=window_anno_ha, va=window_anno_va,
+                ax.annotate(s_anno, ha=window_anno_ha, va=window_anno_va,
                             xy=(t_anno, y_anno),
                             zorder=12, fontsize=window_anno_fontsize,
                             rotation=window_anno_rotation, 
@@ -295,7 +295,7 @@ class WaveMaker:
                         ax.axvline(x=phase_arrivals["time"], ymin=0, ymax=0.05,
                                    color='b', alpha=0.5
                                    )
-                        ax.annotate(s=phase_arrivals["name"],
+                        ax.annotate(phase_arrivals["name"],
                                     xy=(0.975 * phase_arrivals["time"], 
                                         0.05 * (ymax-ymin) + ymin),
                                     fontsize=8

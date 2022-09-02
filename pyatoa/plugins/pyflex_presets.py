@@ -80,6 +80,23 @@ pyflex_presets = {
         "c_4a": 2.5,
         "c_4b": 12.0
     },
+    # Shun: North Island study area, 20-40s bandpass, for long period start waveforms
+    "nznorth_20-40s": {
+        "stalta_waterlevel": 0.07,
+        "tshift_acceptance_level": 14.0,
+        "dlna_acceptance_level": 3.0,
+        "cc_acceptance_level": 0.7,
+        "s2n_limit": 2.5,
+        "max_time_before_first_arrival": 15.,
+        "min_surface_wave_velocity": 1.0,
+        "check_global_data_quality": True,
+        "c_0": 0.7,
+        "c_1": 2.0,
+        "c_3a": 1.0,
+        "c_3b": 2.0,
+        "c_4a": 3.0,
+        "c_4b": 10.0
+    },
     # North Island study area, 15-30s bandpass, for long period start waveforms
     "nznorth_15-30s": {
         "stalta_waterlevel": 0.08,
