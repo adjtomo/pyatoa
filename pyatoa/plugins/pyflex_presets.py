@@ -84,7 +84,7 @@ pyflex_presets = {
     "nznorth_20-40s": {
         "stalta_waterlevel": 0.07,
         "tshift_acceptance_level": 14.0,
-        "dlna_acceptance_level": 3.0,
+        "dlna_acceptance_level": 4.0,
         "cc_acceptance_level": 0.7,
         "s2n_limit": 2.5,
         "max_time_before_first_arrival": 15.,

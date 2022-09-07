@@ -94,7 +94,7 @@ class CompWave:
 
             # !!! NZ Temp network skip remove response
             net, sta = self.station.split(".")
-            remove_response = not bool(net in ["ZX", "Z8"])
+            remove_response = not bool(net in ["ZX","Z8","ZZ"])
                 
             # Overwrite the filter corners stored in the dataset
             mgmt.config.min_period = self.min_period
