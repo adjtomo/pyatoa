@@ -661,13 +661,17 @@ class Manager:
             )
 
         # Determine if synthetics start before the origintime
-        if self.event is not None:
+        if hasattr(self.st_syn[0].stats, "time_offset"):
+            self.stats.time_offset_sec = self.st_syn[0].stats.time_offset
+        elif self.event is not None:
             self.stats.time_offset_sec = (self.st_syn[0].stats.starttime -
                                           self.event.preferred_origin().time
                                           )
-            logger.debug(f"time offset is {self.stats.time_offset_sec}s")
         else:
+            logger.warning("cannot find information relating to synthetic time "
+                           "offset. Setting to 0")
             self.stats.time_offset_sec = 0
+        logger.info(f"synthetic time offset is {self.stats.time_offset_sec}s")
 
         self.stats.standardized = True
 
