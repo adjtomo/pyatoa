@@ -760,7 +760,7 @@ def format_adj_src_type(choice):
     elif choice in ["mt", "mtm", "multitaper_misfit", "multitaper"]:
         adj_src_type = "multitaper_misfit"
     elif choice in ["wav", "wave", "waveform", "w"]:
-        adj_src_type = "waveform"
+        adj_src_type = "waveform_misfit"
     else:
         raise ValueError(f"'{choice}' does not match available adjoint source "
                          f"types, must be 'cc', 'mt', or 'wav'")
