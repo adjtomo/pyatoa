@@ -49,6 +49,7 @@ class ManagerStats(dict):
         self.misfit = None
         self.half_dur = None
         self.time_offset_sec = None
+        self.user_t0 = None
         self.standardized = False 
         self.obs_processed = False
         self.syn_processed = False
@@ -182,7 +183,7 @@ class Manager:
                 f"    synthetic [st_syn]:    {self.stats.len_syn}\n"
                 "Stats & Status\n"  
                 f"    half_dur:              {self.stats.half_dur}\n"
-                f"    time_offset_sec:       {self.stats.time_offset_sec}\n"
+                f"    user_t0:               {self.stats.user_t0}\n"
                 f"    standardized:          {self.stats.standardized}\n"
                 f"    obs_processed:         {self.stats.obs_processed}\n"
                 f"    syn_processed:         {self.stats.syn_processed}\n"
@@ -376,7 +377,7 @@ class Manager:
         for adj in self.adjsrcs.values():
             fid = f"{adj.network}.{adj.station}.{adj.component}.adj"
             adj.write(filename=os.path.join(path, fid), format="SPECFEM",
-                      time_offset=self.stats.time_offset_sec
+                      time_offset=self.stats.user_t0
                       )
         if write_blanks:
             # To see if any blank adjoint sources required, check the difference
@@ -395,7 +396,7 @@ class Manager:
                     fid = f"{adj.network}.{adj.station}.{new_adj_comp}.adj"
                     blank_adj.write(filename=os.path.join(path, fid),
                                     format="SPECFEM",
-                                    time_offset=self.stats.time_offset_sec
+                                    time_offset=self.stats.user_t0
                                     )
 
     def load(self, code=None, path=None, ds=None, synthetic_tag=None,
@@ -662,16 +663,28 @@ class Manager:
 
         # Determine if synthetics start before the origintime
         if hasattr(self.st_syn[0].stats, "time_offset"):
-            self.stats.time_offset_sec = self.st_syn[0].stats.time_offset
+            self.stats.user_t0 = self.st_syn[0].stats.time_offset
         elif self.event is not None:
-            self.stats.time_offset_sec = (self.st_syn[0].stats.starttime -
-                                          self.event.preferred_origin().time
-                                          )
+            self.stats.user_t0 = (self.st_syn[0].stats.starttime -
+                                  self.event.preferred_origin().time
+                                  )
         else:
             logger.warning("cannot find information relating to synthetic time "
                            "offset. Setting to 0")
+            self.stats.user_t0 = 0
+        logger.info(f"synthetic time offset (user_t0) is {self.stats.user_t0}s")
+
+        # Calculate time offset of waveform starttime against event origin time
+        # Used for plotting and window rejection etc.
+        if self.event is not None:
+            self.stats.time_offset_sec = (self.st_obs[0].stats.starttime - 
+                                          self.event.preferred_origin().time)
+            logger.info(f"time offset from event origin time is "
+                        f"{self.stats.time_offset_sec}s")
+        else:
+            logger.warning("no event object, cannot determine event origin "
+                           "time to calculate time offset, setting to 0")
             self.stats.time_offset_sec = 0
-        logger.info(f"synthetic time offset is {self.stats.time_offset_sec}s")
 
         self.stats.standardized = True
 

@@ -11,6 +11,7 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 from pyatoa.utils.calculate import normalize_a_to_b, abs_max
+from pyatoa import logger
 
 
 # Hardcoded colors that represent rejected misfit windows. Description from 

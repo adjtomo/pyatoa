@@ -30,7 +30,7 @@ class Config:
                  event_id=None, min_period=10, max_period=30, filter_corners=2,
                  client=None, rotate_to_rtz=False, unit_output="DISP",
                  pyflex_preset="default", component_list=None,
-                 adj_src_type="cc_traveltime_misfit", start_pad=20, end_pad=500,
+                 adj_src_type="cc_traveltime_misfit", start_pad=0, end_pad=500,
                  observed_tag="observed", synthetic_tag=None,
                  synthetics_only=False, win_amp_ratio=0., paths=None,
                  save_to_ds=True, **kwargs):
@@ -75,9 +75,13 @@ class Config:
         :param adj_src_type: method of misfit quantification for Pyadjoint
         :type start_pad: int
         :param start_pad: seconds before event origintime to grab waveform data
-            for use by data gathering class
+            for use by data gathering class. Also zero pads data and synthetics
+            before origin time. Only used for processing, padded zeros will NOT
+            be saved alongside data
         :type end_pad: int
         :param end_pad: seconds after event origintime to grab waveform data
+            Also used to zero pad after event origin time. Only for processing,
+            padded zeros will NOT be saved alongside data
         :type synthetics_only: bool
         :param synthetics_only: If the user is doing a synthetic-synthetic
             example, e.g. in a checkerboard test, this will tell the internal

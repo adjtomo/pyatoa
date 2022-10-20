@@ -64,8 +64,15 @@ def default_process(mgmt, choice, **kwargs):
                     "processing step")
         return st
 
-    # Get rid of any long period trends that may affect that data
-    st.detrend("simple").detrend("demean").taper(taper_percentage)
+    # Try to make sure signal is at 0
+    st.detrend("simple").detrend("demean").taper(taper_percentage, side="right")
+
+    # Zero pad data by 1/3 trace length before processing to ensure some 
+    # stability in signal and that the taper does not cut off any signal
+    zero_pad_in_s = len(st[0].data) // 3 * st[0].stats.delta
+    logger.info(f"zero-padding waveform by {zero_pad_in_s}s for processing")
+    st = zero_pad(st, zero_pad_in_s, before=True, after=True)
+
     st = taper_time_offset(st, taper_percentage, mgmt.stats.time_offset_sec)
 
     # Observed specific data preprocessing includes response and rotating to ZNE
@@ -110,6 +117,9 @@ def default_process(mgmt, choice, **kwargs):
         st.detrend("simple").detrend("demean").taper(taper_percentage)
     else:
         logger.info(f"no filter applied to data")
+
+    # Remove zero-padding before returning stream
+    st = remove_zero_pad(st, zero_pad_in_s, before=True, after=True)
 
     # Convolve synthetic data with a Gaussian source time function
     if convolve_with_stf and is_synthetic_data and mgmt.stats.half_dur:
@@ -223,6 +233,12 @@ def zero_pad(st, pad_length_in_seconds, before=True, after=True):
     Zero pad the data of a stream, change the starttime to reflect the change.
     Useful for if e.g. observed data starttime comes in later than synthetic.
 
+    .. note::
+        If you append ANY data to an ObsPy trace, only the endtime changes, the
+        starttime remains the SAME. So if we pad zeros at the start of a trace,
+        we need to manually shift the starttime. The endtime automatically 
+        follows the shifted starttime. This is the same with removing data.
+
     :type st: obspy.stream.Stream
     :param st: stream to be zero padded
     :type pad_length_in_seconds: int
@@ -247,8 +263,47 @@ def zero_pad(st, pad_length_in_seconds, before=True, after=True):
         logger.info(f"zero pad {tr.id} ({pad_before}, {pad_after}) samples")
         # Constant value is default 0
         tr.data = np.pad(array, (pad_before, pad_after), mode='constant')
-        tr.stats.starttime -= pad_length_in_seconds
-        logger.info(f"new starttime {tr.id}: {tr.stats.starttime}")
+        if before:
+            og_starttime = tr.stats.starttime
+            tr.stats.starttime -= pad_length_in_seconds
+        logger.info(f"{tr.id}: {og_starttime} -> {tr.stats.starttime}")
+
+    return st_pad
+
+
+def remove_zero_pad(st, pad_length_in_seconds, before=True, after=True):
+    """
+    Remove a zero pad on a data stream that has been applied by `zero_pad()`
+    Remember to change the starttime to reflect the pad removal
+
+    :type st: obspy.stream.Stream
+    :param st: stream to be zero padded
+    :type pad_length_in_seconds: int
+    :param pad_length_in_seconds: length of padding front and back
+    :type before: bool
+    :param before: pad the stream before the origin time
+    :type after: bool
+    :param after: pad the stream after the last sample
+    :rtype st: obspy.stream.Stream
+    :return st: stream with zero padded data object
+    """
+    pad_before, pad_after = 0, 0
+    st_pad = st.copy()
+    for tr in st_pad:
+        array = tr.data
+        pad_width = int(pad_length_in_seconds * tr.stats.sampling_rate)
+        # Determine if we should pad before or after
+        if before:
+            pad_before = pad_width
+        if after:
+            pad_after = pad_width
+        logger.info(f"remove zero pad {tr.id} ({pad_before}, {pad_after})")
+        tr.data = tr.data[pad_before:len(tr.data) - pad_after]
+        # Constant value is default 0
+        if before:
+            og_starttime = tr.stats.starttime
+            tr.stats.starttime += pad_length_in_seconds
+            logger.info(f"{tr.id}: {og_starttime} -> {tr.stats.starttime}")
 
     return st_pad
 
