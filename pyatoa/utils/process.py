@@ -42,6 +42,7 @@ def default_process(mgmt, choice, **kwargs):
     """
     assert choice in ["obs", "syn"], "choice must be 'obs' or 'syn"
 
+    zero_pad_s = kwargs.get("zero_pad_s", None)
     water_level = kwargs.get("water_level", 60)
     taper_percentage = kwargs.get("taper_percentage", 0.05)
     zerophase = kwargs.get("zerophase", True)
@@ -67,11 +68,12 @@ def default_process(mgmt, choice, **kwargs):
     # Try to make sure signal is at 0
     st.detrend("simple").detrend("demean").taper(taper_percentage, side="right")
 
-    # Zero pad data by 1/3 trace length before processing to ensure some 
+    # Allow zero pad data trace before processing to ensure some 
     # stability in signal and that the taper does not cut off any signal
-    zero_pad_in_s = len(st[0].data) // 3 * st[0].stats.delta
-    logger.info(f"zero-padding waveform by {zero_pad_in_s}s for processing")
-    st = zero_pad(st, zero_pad_in_s, before=True, after=True)
+    # !!! USER NEEDS TO REMEMBER TO UN-ZERO PAD DATA BEFORE WRITING ADJSRC
+    if zero_pad_s:
+        logger.info(f"zero-padding waveform by {zero_pad_s}s for processing")
+        st = zero_pad(st, zero_pad_s, before=True, after=True)
 
     st = taper_time_offset(st, taper_percentage, mgmt.stats.time_offset_sec)
 
@@ -119,7 +121,7 @@ def default_process(mgmt, choice, **kwargs):
         logger.info(f"no filter applied to data")
 
     # Remove zero-padding before returning stream
-    st = remove_zero_pad(st, zero_pad_in_s, before=True, after=True)
+    # st = remove_zero_pad(st, zero_pad_s, before=True, after=True)
 
     # Convolve synthetic data with a Gaussian source time function
     if convolve_with_stf and is_synthetic_data and mgmt.stats.half_dur:

@@ -202,14 +202,25 @@ class WaveMaker:
                       linewidth=linewidth, zorder=9, label=f"STA/LTA")
 
         if plot_waterlevel:
-            # Plot the waterlevel of the STA/LTA defined by Pyflex Config
-            ax.axhline(y=waterlevel, xmin=self.time_axis[0], 
-                       xmax=self.time_axis[-1], alpha=0.4, zorder=8, 
-                       linewidth=linewidth, c=stalta_color, linestyle='--')
-            ax.annotate(f"stalta_waterlevel = {stalta_wl}", alpha=0.7, 
-                        fontsize=fontsize,
-                        xy=(0.75 * (xmax - xmin) + xmin, waterlevel)
-                        )
+            # Plot static STALTA waterlevel 
+            if isinstance(waterlevel, float):
+                ax.axhline(y=waterlevel, xmin=self.time_axis[0], 
+                           xmax=self.time_axis[-1], alpha=0.4, zorder=8, 
+                           linewidth=linewidth, c=stalta_color, linestyle='--')
+
+                ax.annotate(f"stalta_waterlevel = {stalta_wl}", alpha=0.7, 
+                            fontsize=fontsize,
+                            xy=(0.75 * (xmax - xmin) + xmin, waterlevel)
+                            )
+            # Plot array-like STALTA waterlevel
+            else:
+                ax.plot(self.time_axis, waterlevel, alpha=0.4, zorder=8, 
+                        linewidth=linewidth, c=stalta_color, linestyle='--')
+
+                ax.annotate(f"stalta_waterlevel", alpha=0.7, 
+                            fontsize=fontsize, 
+                            xy=(0.75 * (xmax - xmin) + xmin, .1)
+                            )
 
         return [b2]
 

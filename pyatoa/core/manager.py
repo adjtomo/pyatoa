@@ -353,7 +353,8 @@ class Manager:
         if self.adjsrcs:
             self.save_adjsrcs(ds=ds, force=True)
 
-    def write_adjsrcs(self, path="./", write_blanks=True):
+    def write_adjsrcs(self, path="./", write_blanks=True, 
+                      remove_zero_pad=False):
         """
         Write internally stored adjoint source traces into SPECFEM3D defined
         two-column ascii files. Filenames are based on what is expected by
@@ -688,6 +689,7 @@ class Manager:
 
         self.stats.standardized = True
 
+
         return self
 
     def preprocess(self, which="both", overwrite=None, **kwargs):
@@ -756,6 +758,14 @@ class Manager:
             logger.info("preprocessing synthetic data")
             self.st_syn = preproc_fx(self, choice="syn", **kwargs)
             self.stats.syn_processed = True
+
+        # Recalculate time offset seconds if zero padding has happened
+        # !!! Somewhat kludge
+        if self.event is not None:
+            self.stats.time_offset_sec = (self.st_obs[0].stats.starttime - 
+                                          self.event.preferred_origin().time)
+            logger.info(f"time offset from event origin time is "
+                        f"{self.stats.time_offset_sec}s")
 
         # Set stats
         self.stats.len_obs = len(self.st_obs)
@@ -1086,7 +1096,7 @@ class Manager:
             logger.debug("saving adjoint sources to ASDFDataSet")
             add_adjoint_sources(adjsrcs=self.adjsrcs, ds=ds,
                                 path=self.config.aux_path,
-                                time_offset=self.stats.time_offset_sec)
+                                time_offset=self.stats.user_t0)
 
     def _format_windows(self):
         """
