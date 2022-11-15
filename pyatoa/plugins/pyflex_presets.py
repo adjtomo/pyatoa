@@ -35,6 +35,10 @@ pyflex_presets = {
     # Empty preset or 'default' will use default init values
     "default": {
     },
+    # 'Custom' preset tells Pyatoa that the User will be providing their own
+    # windowing parameters to the Pyatoa config object
+    "custom": {
+    },
     # Example configuration from the Pyflex website
     "example": {
         "stalta_waterlevel": 0.08,
