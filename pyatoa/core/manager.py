@@ -86,8 +86,7 @@ class Manager:
 
         .. note::
             If `ds` is not given in data can only be gathered via the
-            config.paths attribute or using the ObsPy client service.
-            Data will also not be saved.
+            config.paths attribute. Data will also not be saved.
 
         :type config: pyatoa.core.config.Config
         :param config: configuration object that contains necessary parameters

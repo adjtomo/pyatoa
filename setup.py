@@ -26,6 +26,7 @@ else:
             "scipy<1.9.0",
             "pyflex @ git+https://github.com/adjtomo/pyflex",
             "pyadjoint @ git+https://github.com/adjtomo/pyadjoint"
+            "pysep @ git+https://github.com/adjtomo/pysep"
             ]
 
 setup(name='pyatoa',

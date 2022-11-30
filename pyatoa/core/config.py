@@ -28,7 +28,7 @@ class Config:
     def __init__(self, yaml_fid=None, seisflows_yaml=None, seisflows_par=None,
                  ds=None, path=None, iteration=None, step_count=None,
                  event_id=None, min_period=10, max_period=30, filter_corners=2,
-                 client=None, rotate_to_rtz=False, unit_output="DISP",
+                 rotate_to_rtz=False, unit_output="DISP",
                  pyflex_preset="default", component_list=None,
                  adj_src_type="cc_traveltime_misfit", start_pad=20, end_pad=500,
                  observed_tag="observed", synthetic_tag=None,
@@ -62,8 +62,6 @@ class Config:
         :param max_period: maximum bandpass filter period
         :type filter_corners: int
         :param filter_corners: filter steepness for obspy filter
-        :type client: str
-        :param client: ObsPy FDSN Client to be used for data gathering.
         :type rotate_to_rtz: bool
         :param rotate_to_rtz: components from NEZ to RTZ
         :type unit_output: str
@@ -112,7 +110,6 @@ class Config:
         self.min_period = float(min_period)
         self.max_period = float(max_period)
         self.filter_corners = float(filter_corners)
-        self.client = client
         self.rotate_to_rtz = rotate_to_rtz
         self.unit_output = unit_output.upper()
         self.observed_tag = observed_tag
@@ -179,7 +176,7 @@ class Config:
                    f"    {'event_id:':<25}{self.event_id}\n"
                    )
         # Format the remainder of the keys identically
-        key_dict = {"Gather": ["client", "start_pad", "end_pad", "save_to_ds"],
+        key_dict = {"Gather": ["start_pad", "end_pad", "save_to_ds"],
                     "Process": ["min_period", "max_period", "filter_corners",
                                 "unit_output", "rotate_to_rtz", "win_amp_ratio",
                                 "synthetics_only"],
@@ -599,7 +596,6 @@ class Config:
         self.max_period = par.MAX_PERIOD
         self.filter_corners = par.CORNERS
         self.unit_output = par.UNIT_OUTPUT
-        self.client = par.CLIENT
         self.start_pad = par.START_PAD
         self.end_pad = par.END_PAD
         self.adj_src_type = par.ADJ_SRC_TYPE

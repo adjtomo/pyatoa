@@ -1,12 +1,7 @@
 #!/usr/bin/env python
 """
 Mid and Low level data gathering classes to retrieve data from local filesystems
-or to query data from FDSN webservices via ObsPy.
-
-.. note::
-    * Fetch: used to denote searching local filesystems for data (internal)
-    * Get: used to denote querying FDSN webservices via ObsPy (external), naming
-      convention from the obspy.fdsn.client.Client function names
+either via an ASDFDataSet or through a pre-defined data directory structure.
 
 Gatherer directly called by the Manager class and shouldn't need to be called
 by the User unless for bespoke data gathering functionality.
@@ -17,14 +12,10 @@ import traceback
 import warnings
 
 from pyasdf import ASDFWarning
-from pysep.utils.io import read_sem
-from obspy.clients.fdsn import Client
-from obspy.clients.fdsn.header import FDSNException
+from pysep.utils.io import read_sem, read_specfem2d_source, read_forcesolution
 from obspy import Stream, read, read_inventory, read_events
 
 from pyatoa import logger
-from pyatoa.utils.read import (read_specfem2d_source,
-                               read_forcesolution)
 from pyatoa.utils.form import format_event_name
 from pyatoa.utils.calculate import overlapping_days
 from pyatoa.utils.srcrcv import merge_inventories
@@ -54,31 +45,14 @@ class Gatherer:
         self.ds = ds
         self.config = config
         self.origintime = origintime
-        if self.config.client is not None:
-            self.Client = Client(self.config.client)
-        else:
-            self.Client = None
 
-    def gather_event(self, event_id=None, append_focal_mechanism="all",
-                     **kwargs):
+    def gather_event(self, event_id=None, **kwargs):
         """
-        Gather an ObsPy Event object by searching disk then querying webservices
-
-        .. note::
-            Event info need only be retrieved once per Pyatoa workflow.
+        Gather an ObsPy Event object by searching disk
+        Event info need only be retrieved once per Pyatoa workflow.
 
         :type event_id: str
         :param event_id: a unique event idenfitier to search and tag event info
-        :type append_focal_mechanism: bool
-        :param append_focal_mechanism: try to find correspondig focal mechanism
-            using various public catalogs. Currently available:
-            'all': Try all available options in order until MT is found
-            'USGS': Search the USGS moment tensor catalog
-            'GCMT': Search the GCMT moment tensor catalog
-            False: Don't attempt to search for moment tensors
-            Specific `client`s come built-in with specific MT catalogs
-            If matching client, will ignore other MT choices:
-            'GEONET': will search John Ristau catalog for moment tensors
         :rtype: obspy.core.event.Event
         :return: event retrieved either via internal or external methods
         :raises GathererNoDataException: if no event information is found.
@@ -94,21 +68,10 @@ class Gatherer:
         if event is None:
             logger.debug("searching local filesystem for QuakeML")
             event = self.fetch_event_by_dir(event_id, **kwargs)
-        # Try 3: query FDSN for event information
-        if event is None and self.Client is not None:
-            logger.debug(f"querying client {self.config.client} for QuakeML")
-            event = self.get_event_from_fdsn(event_id)
         # Abort if none of the three attempts returned successfully
         if event is None:
             raise GathererNoDataException(f"no QuakeML found for "
                                           f"{self.config.event_id}")
-
-        # Append focal mechanism or moment tensor information
-        if append_focal_mechanism:
-            logger.debug(f"attempting to append focal mechanism to event")
-            event = append_focal_mechanism_to_event(
-                event, method=append_focal_mechanism, client=self.config.client,
-            )
 
         # Overwrite origintime with the catalog value to be consistent
         self.origintime = event.preferred_origin().time
@@ -129,7 +92,7 @@ class Gatherer:
 
     def gather_station(self, code, **kwargs):
         """
-        Gather StationXML information. Check disk then query webservices.
+        Gather StationXML information from disk
 
         :type code: str
         :param code: Station code following SEED naming convention.
@@ -152,10 +115,6 @@ class Gatherer:
         if inv is None:
             logger.debug("searching local filesystem for StationXML")
             inv = self.fetch_inv_by_dir(code, **kwargs)
-        # Try 3: fetch from FDSN client
-        if inv is None and self.Client is not None:
-            logger.debug(f"querying client {self.config.client} for StationXML")
-            inv = self.get_inv_from_fdsn(code, **kwargs)
         # Abort if none of the three attempts returned successfully
         if inv:
             logger.info(f"matching StationXML found: {code}")
@@ -175,8 +134,7 @@ class Gatherer:
 
     def gather_observed(self, code, **kwargs):
         """
-        Gather observed waveforms as ObsPy streams.
-        Check disk, else query webservice. Save to ASDFDataSet if requested.
+        Gather observed waveforms from disk as ObsPy streams
 
         :type code: str
         :param code: Station code following SEED naming convention.
@@ -207,11 +165,6 @@ class Gatherer:
                                                      **kwargs)
             else:
                 st_obs = self.fetch_observed_by_dir(code, **kwargs)
-        # Try 3: grab waveforms from FDSN client
-        if st_obs is None and (self.Client is not None or not
-                               self.config.synthetics_only):
-            logger.debug(f"querying client {self.config.client} for waveforms")
-            st_obs = self.get_waveform_from_fdsn(code)
         # Abort if none of the three attempts returned successfully
         if st_obs:
             logger.info(f"matching observed waveforms found: {code}")
@@ -252,7 +205,7 @@ class Gatherer:
         if st_syn is None:
             logger.debug("searching local filesystem for synthetics")
             st_syn = self.fetch_synthetic_by_dir(code, **kwargs)
-        # Abort if none of the three attempts returned successfully
+        # Abort if none of the attempts returned successfully
         if st_syn:
             logger.debug(f"matching synthetic waveforms found: {code}")
             self.save_waveforms_to_dataset(st_syn, self.config.synthetic_tag)
@@ -261,116 +214,6 @@ class Gatherer:
                                           f"for: {code}"
                                           )
         return st_syn
-
-    def get_event_from_fdsn(self, event_id=None, time_wiggle_sec=50.):
-        """
-        Return event information parameters pertaining to a given event id
-        if an event id is given, else by origin time. Catches FDSN exceptions.
-
-        :type event_id: str
-        :param event_id: name of the event ID to use to search for event
-        :type time_wiggle_sec: int
-        :param time_wiggle_sec: padding on catalog filtering criteria realted to
-            event origin time
-        :rtype event: obspy.core.event.Event or None
-        :return event: event object if found, else None.
-        """
-        if event_id is None:
-            event_id = self.config.event_id
-
-        event, origintime = None, None
-        if event_id is not None:
-            try:
-                # Get events via event id, only available from certain clients
-                logger.debug(f"event ID: {event_id}, querying "
-                             f"client {self.config.client}")
-                event = self.Client.get_events(eventid=event_id)[0]
-            except FDSNException:
-                pass
-        if self.origintime and event is None:
-            try:
-                # If getting by event id doesn't work, try based on origintime
-                logger.debug(f"origintime: {self.origintime}, querying"
-                             f"client {self.config.client}")
-                event = self.Client.get_events(
-                    starttime=self.origintime - time_wiggle_sec,
-                    endtime=self.origintime + time_wiggle_sec
-                )
-                if len(event) > 1:
-                    # Getting by origin time may result in multiple events
-                    # found in the catalog, this is hard to control and will
-                    # probably need to be addressed manually.
-                    logger.warning(f"{len(event)} events found, expected 1."
-                                   f"Returning first entry, manual revision "
-                                   f"may be required."
-                                   )
-                event = event[0]
-            except FDSNException:
-                pass
-        return event
-
-    def get_inv_from_fdsn(self, code, station_level="response", **kwargs):
-        """
-        Call for ObsPy FDSN client to download station dataless information.
-        Defaults to retrieving response information.
-
-        :type code: str
-        :param code: Station code following SEED naming convention.
-            This must be in the form NN.SSSS.LL.CCC (N=network, S=station,
-            L=location, C=channel). Allows for wildcard naming. By default
-            the pyatoa workflow wants three orthogonal components in the N/E/Z
-            coordinate system. Example station code: NZ.OPRZ.10.HH?
-        :type station_level: str
-        :param: The level of the station metadata if retrieved using the ObsPy
-            Client. Defaults to 'response'
-        :rtype: obspy.core.inventory.Inventory
-        :return: inventory containing relevant network and stations
-        """
-        net, sta, loc, cha = code.split('.')
-        try:
-            logger.debug(f"querying station {code} with level {station_level}")
-            inv = self.Client.get_stations(
-                network=net, station=sta, location=loc, channel=cha,
-                starttime=self.origintime - self.config.start_pad,
-                endtime=self.origintime + self.config.end_pad,
-                level=station_level
-            )
-            return inv
-        except FDSNException:
-            return None
-
-    def get_waveform_from_fdsn(self, code, pad_s=10):
-        """
-        Call for ObsPy FDSN webservice client to download waveform data.
-
-        :type code: str
-        :param code: Station code following SEED naming convention.
-            This must be in the form NN.SSSS.LL.CCC (N=network, S=station,
-            L=location, C=channel). Allows for wildcard naming. By default
-            the pyatoa workflow wants three orthogonal components in the N/E/Z
-            coordinate system. Example station code: NZ.OPRZ.10.HH?
-        :type pad_s: float
-        :param pad_s: ObsPy sometimes returns traces with varying sample lengths,
-            so we use a `pad` second cushion on start and end time and trim
-            after retrieval to make sure traces are the same length.
-        :rtype stream: obspy.core.stream.Stream
-        :return stream: waveform contained in a stream, or None if no data
-        """
-        net, sta, loc, cha = code.split('.')
-        try:
-            logger.debug(f"padding {pad_s}s on waveform search origin time")
-            st = self.Client.get_waveforms(
-                network=net, station=sta, location=loc, channel=cha,
-                starttime=self.origintime - (self.config.start_pad + pad_s),
-                endtime=self.origintime + (self.config.end_pad + pad_s)
-            )
-            # Sometimes FDSN queries return improperly cut start and end times,
-            # so we retrieve +/-`pad` seconds and then cut down
-            st.trim(starttime=self.origintime - self.config.start_pad,
-                    endtime=self.origintime + self.config.end_pad)
-            return st
-        except FDSNException:
-            return None
 
     def fetch_event_from_dataset(self):
         """
@@ -769,130 +612,3 @@ class Gatherer:
                     logger.debug(f"saved waveform to ASDFDataSet as: '{tag}'")
                 except ASDFWarning:
                     pass
-
-    def _gather_obs_multithread(self, codes, max_workers=None,
-                                print_exception=False, **kwargs):
-        """
-        A multithreaded function that fetches all observed data (waveforms and
-        StationXMLs) for a given event and store it to an ASDFDataSet.
-        Multithreading is used to provide significant speed up for these request
-        based tasks.
-
-        .. warning::
-            Not currently used, may be developed in the future
-
-        :type codes: list of str
-        :param codes: A list of station codes where station codes must be in the
-            form NN.SSSS.LL.CCC (N=network, S=station, L=location, C=channel)
-        :type max_workers: int
-        :param max_workers: number of concurrent threads to use, passed to the
-            ThreadPoolExecutor. If left as None, conurrent futures will
-            automatically choose the system's number of cores.
-
-        Keyword Arguments
-        ::
-            int return_count:
-                if not None, determines how many data items must be collected
-                for the station to be saved into the ASDFDataSet.
-                e.g. StationXML and 3 component waveforms would equal 4 pieces
-                of data, so a return_count == 4 means stations that do not
-                return all components and metadata will not be saved to the
-                dataset.
-        """
-        from concurrent.futures import ThreadPoolExecutor, as_completed
-
-        logger.info("mass gathering observation data")
-
-        assert(self.ds is not None), \
-            "Mass gathering requires a dataset `ds` for data storage"
-        assert(self.Client is not None), \
-            "Mass gathering requires a Client for data queries"
-        assert(self.origintime is not None), \
-            "Mass gathering requires an origintime for data queries"
-
-        with ThreadPoolExecutor(max_workers=max_workers) as executor:
-            futures = {executor.submit(self._obs_get_multithread, code,
-                                       **kwargs):
-                           code for code in codes
-                       }
-            for future in as_completed(futures):
-                code = futures[future]
-                try:
-                    status = future.result()
-                except Exception as e:
-                    print(f"{code} exception: {e}\n")
-                    if print_exception:
-                        traceback.print_exc()
-                else:
-                    print(f"{code} data count: {status}")
-
-    def _obs_get_multithread(self, code, **kwargs):
-        """
-        A small function to gather StationXMLs and observed waveforms together.
-        Used for multithreading where IO queries are sped up.
-
-        .. warning::
-            Not currently used, may be developed in the future
-
-        :type code: str
-        :param code: Station code following SEED naming convention.
-            This must be in the form NN.SSSS.LL.CCC (N=network, S=station,
-            L=location, C=channel). Allows for wildcard naming. By default
-            the pyatoa workflow wants three orthogonal components in the N/E/Z
-            coordinate system. Example station code: NZ.OPRZ.10.HH?
-        :type return_count: int
-        :param return_count: if not None, determines how many data items must be
-            collected for the station to be saved into the ASDFDataSet. e.g.
-            StationXML and 3 component waveforms would equal 4 pieces of data,
-            so a return_count == 4 means stations that do not return all
-            components and metadata will not be saved to the dataset.
-        :rtype status: int
-        :return status: a simple status check that lets the user know how many
-            items were collected.
-        """
-        level = kwargs.get("station_level", "response")
-        return_count = kwargs.get("return_count", None)
-
-        data_count, inv, st = 0, None, None
-        net, sta, loc, cha = code.split(".")
-        try:
-            inv = self.Client.get_stations(
-                network=net, station=sta, location=loc, channel=cha,
-                starttime=self.origintime - self.config.start_pad,
-                endtime=self.origintime + self.config.end_pad, level=level
-            )
-            data_count += 1
-        except FDSNException:
-            pass
-
-        try:
-            st = self.Client.get_waveforms(
-                network=net, station=sta, location=loc, channel=cha,
-                starttime=self.origintime - (self.config.start_pad + 10),
-                endtime=self.origintime + (self.config.end_pad + 10),
-                attach_response=True
-            )
-            # Sometimes FDSN queries return improperly cut start and end times,
-            # so we retrieve +/-10 seconds and then cut down
-            st.trim(starttime=self.origintime - self.config.start_pad,
-                    endtime=self.origintime + self.config.end_pad
-                    )
-            data_count += len(st)
-        except FDSNException:
-            pass
-
-        # Additional check for saving data if not all requested data found
-        if (return_count is not None) and (data_count < return_count):
-            _save = False
-        else:
-            _save = True
-
-        # Save data to ASDFDataSet if save criteria are met and dats available
-        if _save and inv is not None:
-            self.ds.add_stationxml(inv)
-        if _save and st is not None:
-            self.ds.add_waveforms(waveform=st, tag=self.config.observed_tag)
-
-        return data_count
-
-
