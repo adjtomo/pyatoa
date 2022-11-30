@@ -9,7 +9,6 @@ from obspy import Stream, Trace, UTCDateTime, Inventory
 from obspy.core.inventory.network import Network
 from obspy.core.inventory.station import Station
 from obspy.core.event import Event, Origin, Magnitude
-from pyatoa.utils.srcrcv import Source, seismic_moment, moment_magnitude
 from pyatoa import logger
 
 

@@ -17,11 +17,9 @@ import traceback
 import warnings
 
 from pyasdf import ASDFWarning
-from obspy.core.event import Event
 from obspy.clients.fdsn import Client
 from obspy.clients.fdsn.header import FDSNException
-from obspy import (Stream, Catalog, UTCDateTime, read, read_inventory,
-                   read_events)
+from obspy import Stream, read, read_inventory, read_events
 
 from pyatoa import logger
 from pyatoa.utils.read import (read_sem, read_specfem2d_source,
@@ -29,8 +27,6 @@ from pyatoa.utils.read import (read_sem, read_specfem2d_source,
 from pyatoa.utils.form import format_event_name
 from pyatoa.utils.calculate import overlapping_days
 from pyatoa.utils.srcrcv import merge_inventories
-from pyatoa.plugins.new_zealand_moment_tensors import \
-    generate_geonet_moment_tensor
 
 
 class GathererNoDataException(Exception):
