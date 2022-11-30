@@ -17,12 +17,13 @@ import traceback
 import warnings
 
 from pyasdf import ASDFWarning
+from pysep.utils.io import read_sem
 from obspy.clients.fdsn import Client
 from obspy.clients.fdsn.header import FDSNException
 from obspy import Stream, read, read_inventory, read_events
 
 from pyatoa import logger
-from pyatoa.utils.read import (read_sem, read_specfem2d_source,
+from pyatoa.utils.read import (read_specfem2d_source,
                                read_forcesolution)
 from pyatoa.utils.form import format_event_name
 from pyatoa.utils.calculate import overlapping_days

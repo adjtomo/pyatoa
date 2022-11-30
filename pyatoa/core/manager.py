@@ -7,13 +7,13 @@ import obspy
 import pyflex
 import pyadjoint
 import warnings
+from pysep.utils.fmt import channel_code
 from copy import deepcopy
 from obspy.signal.filter import envelope
 from pyasdf import ASDFWarning
 from pyatoa import logger
 from pyatoa.core.config import Config
 from pyatoa.core.gatherer import Gatherer, GathererNoDataException
-from pyatoa.utils.form import channel_code
 from pyatoa.utils.process import is_preprocessed
 from pyatoa.utils.asdf.load import load_windows, load_adjsrcs
 from pyatoa.utils.window import reject_on_global_amplitude_ratio

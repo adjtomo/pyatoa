@@ -16,6 +16,6 @@ from pyatoa.core.manager import Manager, ManagerError # NOQA
 from pyatoa.core.executive import Executive # NOQA
 from pyatoa.core.gatherer import Gatherer  # NOQA
 from pyatoa.core.inspector import Inspector  # NOQA
-from pyatoa.utils.read import read_sem, read_stations # NOQA
-from pyatoa.utils.write import write_sem, write_stations # NOQA
+from pyatoa.utils.read import read_stations # NOQA
+from pyatoa.utils.write import write_sem # NOQA
 

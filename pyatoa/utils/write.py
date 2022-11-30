@@ -5,45 +5,9 @@ import os
 import glob
 import numpy as np
 from obspy.core.inventory.channel import Channel
+from pysep.utils.fmt import channel_code
 from pyatoa import logger
-from pyatoa.utils.form import (format_event_name, format_iter, format_step, 
-                               channel_code)
-
-
-def write_stations(inv, fid="./STATIONS", elevation=False, burial=0.):
-    """
-    Write a SPECFEM3D STATIONS file given an ObsPy inventory object
-
-    .. note::
-        If topography is implemented in your mesh, elevation values should be
-        set to 0 which means 'surface' in SPECFEM.
-
-    .. note::
-        burial information is not contained in the ObsPy inventory so it is
-        always set to a constant value, which can be given as input. default 0
-
-    :type inv: obspy.core.inventory.Inventory
-    :param inv: Inventory object with station locations to write
-    :type fid: str
-    :param fid: path and file id to save the STATIONS file to.
-    :type elevation: bool
-    :param elevation: if True, sets the actual elevation value from the
-        inventory. if False, sets elevation to 0.
-    :type burial: float
-    :param burial: the constant value to set burial values to. defaults to 0.
-    """
-    with open(fid, "w") as f:
-        for net in inv:
-            for sta in net:
-                lat = sta.latitude
-                lon = sta.longitude
-                if elevation:
-                    elv = sta.elevation
-                else:
-                    elv = 0.
-
-                f.write(f"{sta.code:>6}{net.code:>6}{lat:12.4f}{lon:12.4f}"
-                        f"{elv:7.1f}{burial:7.1f}\n")
+from pyatoa.utils.form import format_event_name, format_iter, format_step
 
 
 def write_inv_seed(inv, path="./", dir_structure="{sta}.{net}",
@@ -127,30 +91,6 @@ def write_inv_seed(inv, path="./", dir_structure="{sta}.{net}",
                     print("{}.{} could not be selected".format(sta.code,
                                                                cha.code)
                           )
-
-
-def write_sem(st, unit, path="./", time_offset=0):
-    """
-    Write an ObsPy Stream in the two-column ASCII format that Specfem uses
-
-    :type st: obspy.core.stream.Stream
-    :param st: stream containing synthetic data to be written
-    :type unit: str
-    :param unit: the units of the synthetic data, used for file extension, must 
-        be 'd', 'v', 'a' for displacement, velocity, acceleration, resp.
-    :type path: str
-    :param path: path to save data to, defaults to cwd
-    :type time_offset: float
-    :param time_offset: optional argument to offset the time array. Sign matters
-        e.g. time_offset=-20 means t0=-20
-    """
-    assert(unit.lower() in ["d", "v", "a"]), "'unit' must be 'd', 'v' or 'a'"
-    for tr in st:
-        s = tr.stats
-        fid = f"{s.network}.{s.station}.{channel_code(s.delta)}X{s.channel[-1]}"
-        fid = os.path.join(path, f"{fid}.sem{unit.lower()}")
-        data = np.vstack((tr.times() + time_offset, tr.data)).T
-        np.savetxt(fid, data, ["%13.7f", "%17.7f"])
 
 
 def write_misfit(ds, iteration, step_count=None, path="./", fidout=None):
