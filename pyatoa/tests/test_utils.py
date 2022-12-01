@@ -7,6 +7,7 @@ import shutil
 import pytest
 import numpy as np
 from glob import glob
+from pysep.utils.io import read_stations
 from obspy import UTCDateTime, read_inventory
 from obspy.core.util.testing import streams_almost_equal
 from pyasdf import ASDFDataSet
@@ -133,63 +134,15 @@ def test_images_utils():
 
 
 # ============================= TEST READ/ WRITE UTILS =========================
-def test_read_utils(tmpdir, station_fid, sem_fid):
-    """
-    Test read utilities
-    """
-    # Need to explicitely set starttime so we can figure out time offset
-    otime = UTCDateTime("2000-01-01T00:00:00")
-    sem = read.read_sem(path=sem_fid, origintime=otime)
-    time_offset = otime - sem[0].stats.starttime
-
-    arr = np.vstack((sem[0].times() - time_offset, sem[0].data)).T
-    check = np.loadtxt(sem_fid, dtype=float)
-
-    # Round off floating point differences so we can do an array comparison
-    arr = arr.round(decimals=3)
-    check = check.round(decimals=3)
-    assert((arr == check).all())
-
-    # Test read_stations
-    inv = read.read_stations(station_fid)
-    assert(inv[0][0].code == "BFZ")
-
-    # Test read_station_codes
-    codes = read.read_station_codes(station_fid, loc="??", cha="*")
-    assert(codes == ["NZ.BFZ.??.*"])
-
-    # Test read_specfem2d_source
-    # !!! TO DO
-
-    # Test read_forcesolution
-    # !!! TO DO
 
 
 def test_write_utils(tmpdir, station_fid, sem_fid, ds):
     """
     Test write utilities
     """
-    # Test write stations
-    fid_out = os.path.join(tmpdir, "STATIONS")
-    inv = read.read_stations(station_fid)
-    write.write_stations(inv, fid=fid_out)
-    inv_check = read.read_stations(fid_out)
-    assert(inv[0][0].code == inv_check[0][0].code)
-
-    # Test write_inv_seed with default dir structure
-    sta_net = f"{inv[0][0].code}.{inv[0].code}"
-    path_check = os.path.join(tmpdir, sta_net, "*")
-    write.write_inv_seed(inv, path=tmpdir)
-
-    expected_responses = glob(path_check)
-    assert(len(expected_responses) == 3)
-    resp = read_inventory(expected_responses[0])
-    assert(resp[0].code == "NZ")
-    assert(resp[0][0][0].latitude == -40.6796)
-
     # Test write_inv_seed with edited dir structure
     # Mess with the default template naming schema and see if it returns goodly
-    inv = read.read_stations(station_fid)
+    inv = read_stations(station_fid)
     write.write_inv_seed(inv, path=tmpdir, dir_structure="{net}+{sta}",
                          file_template="TEST-{loc}.{cha}_{sta}-{net}",
                          components="TZR", channel_code="BX{comp}")
@@ -198,16 +151,6 @@ def test_write_utils(tmpdir, station_fid, sem_fid, ds):
                   "NZ+BFZ/TEST-.BXZ_BFZ-NZ"]
     for check_fid in check_fids:
         assert(os.path.exists(os.path.join(tmpdir, check_fid)))
-
-    # Test write_sem by writing a stream, reading back and checking equality
-    origintime = UTCDateTime("2000-01-01T00:00:00")
-    st = read.read_sem(path=sem_fid, origintime=origintime)
-    time_offset = st[0].stats.starttime - origintime
-    write.write_sem(st, unit="d", path=tmpdir, time_offset=time_offset)
-    fids = glob(os.path.join(tmpdir, "*semd"))
-    assert(len(fids) == 1)
-    st_check = read.read_sem(path=fids[0], origintime=origintime)
-    assert(streams_almost_equal(st, st_check))
 
     # Test write_misfit
     event_id = form.format_event_name(ds)

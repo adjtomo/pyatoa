@@ -31,7 +31,7 @@ CDP 2022 -- 2023
 
 
 Short-Term Priorities [1--2 months]
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - Package manager installation with Pip and/or Conda (no need for cloning repo) 
 - Pre-commit framework (Flake8, Black, pre-commit, codecoverage) 
@@ -43,7 +43,7 @@ Short-Term Priorities [1--2 months]
 - FAQs and user knowledge base
 
 Medium-Term Objectives [3--6 months]
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 - Cookbook examples and `ObsPy-like gallery 
   <https://docs.obspy.org/gallery.html>`__ for new user introduction
 - Developer documentation for extending code in anticipated ways
