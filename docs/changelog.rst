@@ -26,8 +26,6 @@ Version 0.2.0
 - Added hard requirements for Cartopy and Proj in requirements.txt as their 
   absence was causing some dependency conflicts
 
-- Shifted all mapping utilities to Cartopy since Basemap was EOL'd 
-
 Version 0.3.0
 ~~~~~~~~~~~~~~
 
