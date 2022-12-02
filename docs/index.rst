@@ -105,7 +105,6 @@ Geophysical Journal International, 223(3), 1461-1480.
    :caption: Tutorials
 
    datasyn_misfit
-   inversion_prep
 
 .. toctree::
    :maxdepth: 3

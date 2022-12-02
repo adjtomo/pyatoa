@@ -5,9 +5,7 @@ import pytest
 from obspy import read_events
 from pyasdf import ASDFDataSet
 from pyatoa import Config
-from pyatoa.core.gatherer import (Gatherer, append_focal_mechanism_to_event,
-                                  get_gcmt_moment_tensors,
-                                  get_usgs_moment_tensors)
+from pyatoa.core.gatherer import Gatherer, GathererNoDataException
 
 
 @pytest.fixture
@@ -66,8 +64,8 @@ def config(event_id):
     """
     Default Pyatoa Config object
     """
-    return Config(event_id=event_id, client="GEONET", iteration=1,
-                  step_count=0, synthetics_only=False, save_to_ds=False)
+    return Config(event_id=event_id, iteration=1, step_count=0,
+                  synthetics_only=False, save_to_ds=False)
 
 
 @pytest.fixture
@@ -76,48 +74,6 @@ def gatherer(config, origintime):
     The Gatherer which is responsible for gathering data.
     """
     return Gatherer(config=config, origintime=origintime)
-
-
-def test_event_get(gatherer):
-    """
-    Ensure that querying for an event works. Only tests GeoNet gathering.
-    """
-    # Get by event id from GeoNet
-    assert gatherer.get_event_from_fdsn() is not None
-
-    # Get by origin time from GeoNet
-    gatherer.config.event_id = None
-    assert gatherer.get_event_from_fdsn() is not None
-
-
-def test_station_get(gatherer, code):
-    """
-    Ensure that querying for a station works. Only tests GeoNet gathering.
-    """
-    net, sta, loc, cha = code.split('.')
-
-    # !!! This throws an ObsPy UserWarning that the StationXML file has version
-    # !!! 1, but ObsPy only accepts 1.0 or 1.1. Acceptable warning so pass.
-    with pytest.warns(UserWarning):
-        inv = gatherer.get_inv_from_fdsn(code, station_level="response")
-
-    assert inv[0].code == net
-    assert inv[0][0].code == sta
-    assert hasattr(inv[0][0][0], "response")
-
-
-def test_obs_waveform_get(gatherer, code):
-    """
-    Ensure that querying for a waveforms works. Only tests GeoNet gathering.
-    """
-    net, sta, loc, cha = code.split('.')
-
-    st = gatherer.get_waveform_from_fdsn(code)
-    assert(len(st) == 3)
-
-    stats = st.select(component="Z")[0].stats
-    assert stats.network == net
-    assert stats.station == sta
 
 
 def test_asdf_event_fetch(gatherer, dataset_fid):
@@ -220,61 +176,11 @@ def test_gather_event(gatherer, dataset_fid):
     """
     Ensure gatherer can get an event from the correct sources
     """
-    assert gatherer.gather_event(append_focal_mechanism=False) is not None
+    with pytest.raises(GathererNoDataException):
+        gatherer.gather_event()
 
     with ASDFDataSet(dataset_fid) as ds:
         gatherer.ds = ds
         gatherer.Client = None
-        assert gatherer.gather_event(append_focal_mechanism=False) is not None
+        assert gatherer.gather_event() is not None
 
-
-def test_append_focal_mechanism(event):
-    """
-    Try appending focal mechanism from GeoNet. GCMT doesn't have this regional
-    event so we will need to test that separately.
-    """
-    del event.focal_mechanisms
-    assert(len(event.focal_mechanisms) == 0)
-
-    # Gather using the GeoNet client
-    event = append_focal_mechanism_to_event(event, client="GEONET",
-                                            overwrite_focmec=False,
-                                            overwrite_event=False)
-    assert(len(event.focal_mechanisms) != 0)
-    m_rr = event.preferred_focal_mechanism().moment_tensor.tensor.m_rr
-    assert(pytest.approx(m_rr, 1E-16) == -2.47938E16)
-
-
-def test_get_gcmt_moment_tensor():
-    """
-    Just ensure that getting via GCMT works as intended using an example event
-    """
-    # Kaikoura Earthquake
-    origintime = "2016-11-13T11:02:00"
-    magnitude = 7.8
-
-    cat = get_gcmt_moment_tensors(event=None, origintime=origintime,
-                                    magnitude=magnitude)
-    assert(len(cat) == 1)
-    event = cat[0]
-    assert hasattr(event, "focal_mechanisms")
-    m_rr = event.preferred_focal_mechanism().moment_tensor.tensor.m_rr
-    assert(pytest.approx(m_rr, 1E-20) == 3.56E20)
-
-    return event
-
-
-def test_get_usgs_moment_tensor():
-    """
-    Just ensure that getting via USGS works as intended using an example event
-    """
-    event = test_get_gcmt_moment_tensor()
-    del event.focal_mechanisms
-
-    cat = get_usgs_moment_tensors(event=event)
-    assert(len(cat) == 1)
-    event = cat[0]
-    assert hasattr(event, "focal_mechanisms")
-
-    m_rr = event.preferred_focal_mechanism().moment_tensor.tensor.m_rr
-    assert(pytest.approx(m_rr, 1E-20) == 4.81E20)

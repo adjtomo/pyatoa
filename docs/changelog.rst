@@ -25,3 +25,16 @@ Version 0.2.0
 
 - Added hard requirements for Cartopy and Proj in requirements.txt as their 
   absence was causing some dependency conflicts
+
+Version 0.3.0
+~~~~~~~~~~~~~~
+
+- Removed all FDSN gathering routines from Pyatoa completely to keep the package
+  more lightweight. This functionality has moved to PySEP.
+
+- Shifted all SPECFEM-based I/O routines to PySEP (e.g., reading synthetics, 
+  cmtsolutions). This functionality has moved to PySEP
+
+- Removed tests and documentation related to the above 
+
+- Added PySEP as a dependency of Pyatoa
