@@ -25,7 +25,7 @@ else:
             "pillow>=8.4.0",
             "scipy<1.9.0",
             "pyflex @ git+https://github.com/adjtomo/pyflex",
-            "pyadjoint @ git+https://github.com/adjtomo/pyadjoint"
+            "pyadjoint @ git+https://github.com/adjtomo/pyadjoint",
             "pysep @ git+https://github.com/adjtomo/pysep"
             ]
 
