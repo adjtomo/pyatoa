@@ -27,7 +27,7 @@ class Config:
     """
     def __init__(self, yaml_fid=None, seisflows_yaml=None, seisflows_par=None,
                  ds=None, path=None, iteration=None, step_count=None,
-                 event_id=None, min_period=None, max_period=None,
+                 event_id=None, min_period=1, max_period=100,
                  filter_corners=2, rotate_to_rtz=False, unit_output="DISP",
                  pyflex_preset="default", component_list=None,
                  adj_src_type="cc_traveltime_misfit", start_pad=20, end_pad=500,
