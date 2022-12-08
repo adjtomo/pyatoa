@@ -17,25 +17,15 @@ import sys
 sys.path.insert(0, os.path.abspath('..'))
 
 import sphinx_rtd_theme
-
-
-# Hacky way to get PROJ_LIB set for a fresh conda install
-on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
-if on_rtd:
-    os.environ['PROJ_LIB'] = (
-        f"{os.environ['CONDA_ENVS_PATH']}/{os.environ['CONDA_DEFAULT_ENV']}/share/proj"
-    )
-else:
-    os.environ['PROJ_LIB'] = f"{os.environ['CONDA_PREFIX']}/share/proj"
     
 # -- Project information -----------------------------------------------------
 
 project = 'Pyatoa'
-copyright = '2022, Bryant Chow'
-author = 'Bryant Chow'
+copyright = '2022, adjTomo'
+author = 'adjTomo Dev Team'
 
 # The short X.Y version
-version = '0.1.0'
+version = '0.1.1'
 # The full version, including alpha/beta/rc tags
 release = ''
 
