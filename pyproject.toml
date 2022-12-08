@@ -19,9 +19,9 @@ dependencies = [
     "pandas", 
     "cartopy",
     "pyyaml",
-    "pyflex @ git+https://github.com/adjtomo/pyflex", 
-    "pyadjoint @ git+https://github.com/adjtomo/pyadjoint",
-    "pysep @ git+https://github.com/adjtomo/pysep" 
+    "pyflex @ git+https://github.com/adjtomo/pyflex.git", 
+    "pyadjoint @ git+https://github.com/adjtomo/pyadjoint.git",
+    "pysep @ git+https://github.com/adjtomo/pysep.git" 
 ]
 
 [project.optional-dependencies]
