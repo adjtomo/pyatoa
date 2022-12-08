@@ -27,8 +27,8 @@ class Config:
     """
     def __init__(self, yaml_fid=None, seisflows_yaml=None, seisflows_par=None,
                  ds=None, path=None, iteration=None, step_count=None,
-                 event_id=None, min_period=10, max_period=30, filter_corners=2,
-                 rotate_to_rtz=False, unit_output="DISP",
+                 event_id=None, min_period=None, max_period=None,
+                 filter_corners=2, rotate_to_rtz=False, unit_output="DISP",
                  pyflex_preset="default", component_list=None,
                  adj_src_type="cc_traveltime_misfit", start_pad=20, end_pad=500,
                  observed_tag="observed", synthetic_tag=None,
@@ -107,9 +107,9 @@ class Config:
         self.iteration = iteration
         self.step_count = step_count
         self.event_id = event_id
-        self.min_period = float(min_period)
-        self.max_period = float(max_period)
-        self.filter_corners = float(filter_corners)
+        self.min_period = min_period
+        self.max_period = max_period
+        self.filter_corners = filter_corners
         self.rotate_to_rtz = rotate_to_rtz
         self.unit_output = unit_output.upper()
         self.observed_tag = observed_tag
