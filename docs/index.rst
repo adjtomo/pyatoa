@@ -1,11 +1,14 @@
 ===================================================
 Python’s Adjoint Tomography Operations Assistant
 ===================================================
-``Pyatoa`` is a Python-based toolbox meant to facilitate waveform comparisons in 
-adjoint tomography. With humble origins as a disjointed collection of scripts, 
-it has grown into a cohesive library for misfit quantification with
-purpose-built objects to facilitate automation of common tasks in full waveform
-tomography.
+`Pyatoa <https://github.com/adjtomo/pyatoa>`__ is an open-source, Python-based
+toolbox for adjoint tomography. Primarily intended to quantify misfit between
+two waveforms (generally data and synthetics), it also has tools for
+visualization, organized data storage, and statistical analysis of misfit for
+entire inversions.
+
+Pyatoa is hosted on `GitHub <https://github.com/adjtomo/pyatoa>`__ as part of
+the `adjTomo organization <https://github.com/adjtomo>`__.
 
 .. figure:: images/data-synthetic_misfit.png
     :alt: An example waveform figure showing off some of Pyatoa's features
@@ -16,6 +19,12 @@ tomography.
 
 ----------
 
+Quickstart
+~~~~~~~~~~~
+
+- Have a look at the `Overview <overview.html>` page to learn about Pyatoa and
+  its intended usage.
+- Head over to the `
 This docs page provides an overview of Pyatoa through introductory material,
 in-depth tutorials, and API for core classes and supporting utilities. Have a 
 look at the :doc:`Quick Start </quickstart>` and 

@@ -1,4 +1,4 @@
-name: pyatoa
+name: pyatoa-docs
 channels:
     - conda-forge
 dependencies:
