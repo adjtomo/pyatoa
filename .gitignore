@@ -64,7 +64,7 @@ coverage.xml
 *.log
 
 # Sphinx documentation
-docs/.ipynb_checkpoints
+docs/notebooks/.ipynb_checkpoints
 docs/_build
 pyatoa/docs/_build/*
 # pyatoa/docs/*rst

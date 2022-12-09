@@ -23,7 +23,8 @@ from pyatoa.utils.process import (default_process, trim_streams, zero_pad,
                                   match_npts)
 from pyatoa.scripts.load_example_data import load_example_data
 
-from pyatoa.visuals.mgmt_plot import ManagerPlotter
+from pyatoa.visuals.wave_maker import WaveMaker
+from pyatoa.visuals.map_maker import MapMaker
 
 
 class ManagerError(Exception):
@@ -1111,7 +1112,8 @@ class Manager:
 
         return adjoint_windows
 
-    def plot(self, choice="both", save=None, show=True, corners=None, **kwargs):
+    def plot(self, choice="both", save=None, show=True, corners=None,
+             figsize=None, dpi=None, **kwargs):
         """
         Plot observed and synthetics waveforms, misfit windows, STA/LTA and
         adjoint sources for all available components. Append information
@@ -1130,12 +1132,16 @@ class Manager:
             corners to cut the map to, otherwise a global map is provided
         :type choice: str
         :param choice: choice for what to plot:
-
             * 'wav': plot waveform figure only
             * 'map': plot a source-receiver map only
             * 'both' (default): plot waveform and source-receiver map together
+        :type figsize: tuple
+        :param figsize: optional size of the figure, set by plot()
+        :type dpi: int
+        :param dpi: optional dots per inch (resolution) of figure
         """
         self.check()
+
         # Precheck for correct data to plot
         if choice in ["wav", "both"] and not self.stats.standardized:
             raise ManagerError("cannot plot, waveforms not standardized")
@@ -1144,12 +1150,41 @@ class Manager:
                                           self.event is None):
             raise ManagerError("cannot plot map, no event and/or inv found")
 
-        mp = ManagerPlotter(mgmt=self)
+        # Plot only waveform
         if choice == "wav":
-            mp.plot_wav(show=show, save=save, **kwargs)
+            wm = WaveMaker(mgmt=self, **kwargs)
+            wm.plot(show=show, save=save)
+        # Plot only map
         elif choice == "map":
-            mp.plot_map(corners=corners, show=show, save=save,  **kwargs)
+            mm = MapMaker(inv=self.inv, cat=self.event, corners=corners,
+                          **kwargs)
+            mm.plot(show=show, save=save)
+        # Plot waveform and map on the same figure
         elif choice == "both":
-            mp.plot(corners=corners, show=show, save=save, **kwargs)
+            import matplotlib as mpl
+            import matplotlib.pyplot as plt
 
+            if figsize is None:
+                figsize = (1400 / dpi, 600 / dpi)
 
+            # Create an overlying GridSpec that will contain both plots
+            gs = mpl.gridspec.GridSpec(1, 2, wspace=0.25, hspace=0.)
+            fig = plt.figure(figsize=figsize, dpi=dpi)
+
+            # Plot the waveform on the left
+            wm = WaveMaker(mgmt=self)
+            wm.plot(figure=fig, subplot_spec=gs[0], show=False, save=False,
+                    **kwargs)
+
+            # Plot the map on the right
+            mm = MapMaker(cat=self.event, inv=self.inv, figsize=figsize,
+                          figure=fig, gridspec=gs, corners=corners,
+                          **kwargs)
+            mm.plot(figure=fig, gridspec=gs, show=False, save=None)
+
+            if save:
+                plt.savefig(save)
+            if show:
+                plt.show()
+            else:
+                plt.close()
