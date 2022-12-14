@@ -2,10 +2,10 @@
 Python’s Adjoint Tomography Operations Assistant
 ===================================================
 `Pyatoa <https://github.com/adjtomo/pyatoa>`__ is an open-source, Python-based
-misfit quantification toolbox for full waveform inversion / adjoint tomography.
+misfit quantification toolbox for full waveform inversion and adjoint tomography.
 
-Primarily intended to calculate misfit between two waveforms, it also hosts
-tools for data visualization, data storage, and statistical analysis of misfit
+Primarily intended to calculate misfit between two waveforms, it also contains
+tools for visualization, data storage, and statistical analysis of misfit
 for seismic inversions run with
 `SeisFlows <https://github.com/adjtomo/seisflows>`__.
 
@@ -78,27 +78,26 @@ publication:
    :caption: Introduction
 
    overview
-   quickstart
+   first_glance
    gallery
 
 .. toctree::
    :maxdepth: 1
    :hidden:
-   :caption: Tutorials
+   :caption: Structure
+
+   core_func
+   storage
+   inspector
+
+
+.. toctree:: 
+   :maxdepth: 1
+   :hidden:
+   :caption: Examples
 
    datasyn_misfit
 
-.. toctree::
-   :maxdepth: 3
-   :hidden:
-   :caption: Core Functionality
-
-   config
-   manager
-   gatherer
-   storage
-   inspector
-   utilities
 
 .. toctree::
    :maxdepth: 1

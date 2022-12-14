@@ -21,12 +21,12 @@ As an example we’ll gather event information from the `Mw7.8 Kaikoura
 Earthquake, New
 Zealand <http://ds.iris.edu/ds/nodes/dmc/tools/event/5197722>`__.
 
-.. code:: ipython3
+.. code:: bash
 
     from pyatoa import logger, Config, Manager
     logger.setLevel("DEBUG")
 
-.. code:: ipython3
+.. code:: bash
 
     cfg = Config(client="IRIS", event_id="5197722")
     mgmt = Manager(config=cfg)
@@ -70,7 +70,7 @@ argument to ``True`` in the ``gather`` function, it will search for
 matching moment tensor information using the ``Event`` origin time and
 magnitude.
 
-.. code:: ipython3
+.. code:: bash
 
     mgmt = Manager(config=cfg)
     mgmt.gather(choice="event", try_fm=True)
@@ -107,7 +107,7 @@ magnitude.
 
 
 
-.. code:: ipython3
+.. code:: bash
 
     mgmt.event
 
@@ -132,7 +132,7 @@ magnitude.
 
 
 
-.. code:: ipython3
+.. code:: bash
 
     mgmt.event.preferred_focal_mechanism().moment_tensor
 
@@ -154,7 +154,7 @@ magnitude.
 
 
 
-.. code:: ipython3
+.. code:: bash
 
     mgmt.event.plot();
 
@@ -169,7 +169,7 @@ magnitude.
 
 
 
-.. image:: gatherer_files/gatherer_10_1.png
+.. image:: images/gatherer_files/gatherer_10_1.png
 
 
 New Zealand event metadata from GeoNet
@@ -188,7 +188,7 @@ Let’s try to grab to same `Mw7.8 Kaikoura
 Earthquake <https://www.geonet.org.nz/earthquake/2016p858000>`__ using
 its unique GeoNet identifier.
 
-.. code:: ipython3
+.. code:: bash
 
     cfg = Config(client="GEONET", event_id="2016p858000")
     mgmt = Manager(config=cfg)
@@ -228,7 +228,7 @@ its unique GeoNet identifier.
 
 
 
-.. code:: ipython3
+.. code:: bash
 
     mgmt.event
 
@@ -257,7 +257,7 @@ its unique GeoNet identifier.
 
 
 
-.. code:: ipython3
+.. code:: bash
 
     mgmt.event.preferred_focal_mechanism().moment_tensor
 
@@ -276,7 +276,7 @@ its unique GeoNet identifier.
 
 
 
-.. code:: ipython3
+.. code:: bash
 
     mgmt.event.plot();
 
@@ -291,7 +291,7 @@ its unique GeoNet identifier.
 
 
 
-.. image:: gatherer_files/gatherer_15_1.png
+.. image:: images/gatherer_files/gatherer_15_1.png
 
 
 --------------
@@ -322,7 +322,7 @@ An example directory for station NZ.BFZ:
 
 !!! Include a link to the distribute_dataless script !!!
 
-.. code:: ipython3
+.. code:: bash
 
     cfg = Config(paths={"responses": ["../tests/test_data/test_seed"]})
     mgmt = Manager(config=cfg)
@@ -391,7 +391,7 @@ created. We add a dummy path to show that how multiple paths can be
 passed to the ``paths`` attribute. The logger output shows the location
 of the waveforms found, which matches the example path shown above.
 
-.. code:: ipython3
+.. code:: bash
 
     cfg = Config(event_id="2018p130600", client="GEONET", paths={"waveforms": ["./dummy_path", "../tests/test_data/test_mseeds"]})
     cfg.paths
@@ -413,7 +413,7 @@ of the waveforms found, which matches the example path shown above.
 
 
 
-.. code:: ipython3
+.. code:: bash
 
     mgmt = Manager(config=cfg)
     mgmt.gather(code="NZ.BFZ.??.HH?", choice=["event", "st_obs"]);
@@ -449,7 +449,7 @@ filesystems will occur first, but if not matching waveforms or metadata
 are found, then gathering will default to querying FDSN. Lets gather the
 same waveform data from the Eketahuna example.
 
-.. code:: ipython3
+.. code:: bash
 
     cfg = Config(event_id="2018p130600", client="GEONET")
     mgmt = Manager(config=cfg)
@@ -513,7 +513,7 @@ An example directory for station NZ.BFZ, for the day 2018-02-18:
    ``gather`` function to prepend additional paths, e.g. if many
    synthetics have been generated and grouped by event.
 
-.. code:: ipython3
+.. code:: bash
 
     mgmt.config.paths["synthetics"].append("../tests/test_data/")
     mgmt.gather(code="NZ.BFZ.??.BX?", choice=["st_syn"], syn_dir_template="synthetics")
@@ -569,7 +569,7 @@ ASDFDataSets that will be used in a future seismic inversion.
 We need a few prerequisite pieces of data: \* Event origin time \*
 ASDFDataSet \* Station codes for desired data
 
-.. code:: ipython3
+.. code:: bash
 
     from pyasdf import ASDFDataSet
     
@@ -618,7 +618,7 @@ multithreaded process will tell the user how many pieces of information
 were retrieved for each station, in this case 1 dataless file and 3
 waveforms, 1 per component.
 
-.. code:: ipython3
+.. code:: bash
 
     import warnings
     
@@ -643,7 +643,7 @@ waveforms, 1 per component.
     NZ.WEL.??.HH? data count: 4
 
 
-.. code:: ipython3
+.. code:: bash
 
     print(ds.waveforms.list())
     ds.waveforms.NZ_BFZ

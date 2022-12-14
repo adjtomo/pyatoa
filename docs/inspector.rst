@@ -9,7 +9,7 @@ Direct access to this aggregated information facilitates the generation useful s
 
 Some pre-defined functions allow quick access to useful inversion information, while the underlying DataFrame object provides all the power of the Pandas library to be used for assessing misfit and time windows for an inversion.
 
-.. code:: ipython3
+.. code:: bash
 
     def disp(df):
         """
@@ -34,7 +34,7 @@ evaluation of the misfit function (!!! Add link to this page). For this
 short example, we will manually fill a dataset to illustrate the
 ``Inspector`` initialization routine.
 
-.. code:: ipython3
+.. code:: bash
 
     import os
     import obspy
@@ -42,7 +42,7 @@ short example, we will manually fill a dataset to illustrate the
     from pyatoa import Config, Manager, Inspector, logger
     logger.setLevel("INFO")
 
-.. code:: ipython3
+.. code:: bash
 
     # This code block initiates an ASDFDataSet with waveform and metadata, to illustrate 
     # the Inspector. First read in test waveform data and metadata
@@ -105,7 +105,7 @@ These data are stored in a Pandas dataframe and uniquely labelled by
 keyword (e.g., iteration, event id, station name, component) so that
 they are easily accessible.
 
-.. code:: ipython3
+.. code:: bash
 
     # Initialize the Inspector and discover all available datasets (of which there is only 1)
     insp = Inspector(tag="default", verbose=True)
@@ -141,7 +141,7 @@ time are accesible through the ``sources`` and ``receivers`` attributes.
 The ``srcrcv`` attribute provides information relating to each
 source-receiver pair.
 
-.. code:: ipython3
+.. code:: bash
 
     # The `events` attributes simply lists all event ids (pulled from QuakeML resource IDs)
     disp(insp.events)
@@ -152,7 +152,7 @@ source-receiver pair.
     ['2018p130600']
 
 
-.. code:: ipython3
+.. code:: bash
 
     # The `stations` attributes lists receiver names (without network codes)
     disp(insp.stations)
@@ -163,7 +163,7 @@ source-receiver pair.
     ['BFZ']
 
 
-.. code:: ipython3
+.. code:: bash
 
     # `sources` provides more detailed event information, including origin time, hypocentral location, and magnitude.
     disp(insp.sources)
@@ -176,7 +176,7 @@ source-receiver pair.
     2018p130600  2018-02-18T07:43:48.127644Z   5.156706  20.594599 -39.948975  176.299515
 
 
-.. code:: ipython3
+.. code:: bash
 
     # `receivers` provides more detailed station information, with network code and location
     disp(insp.receivers)
@@ -189,7 +189,7 @@ source-receiver pair.
     NZ      BFZ     -40.679647  176.246245
 
 
-.. code:: ipython3
+.. code:: bash
 
     # The `srcrcv` attribute provides information relating to source-receiver pairs
     # including epicentral distance and backazimuth. Each pair will get a row in this dataframe.
@@ -218,7 +218,7 @@ window, which in turn is related to a component, station, event, and
 iteration. Since the ``windows`` attribute is simply a Pandas dataframe,
 all standard Pandas operations can be used to access data.
 
-.. code:: ipython3
+.. code:: bash
 
     disp(insp.windows)
 
@@ -231,7 +231,7 @@ all standard Pandas operations can be used to access data.
     2  2018p130600       i01  s00      NZ     BFZ     HHZ         Z  0.004050     21.21 -0.903363       2.101535      0.990823             41.46               20.25                 0.00  2018-02-18T07:43:48.377644Z  2018-02-18T07:44:09.587644Z
 
 
-.. code:: ipython3
+.. code:: bash
 
     # Rows in the `windows` dataframe are accessible via array indexing
     insp.windows.iloc[0]
@@ -262,7 +262,7 @@ all standard Pandas operations can be used to access data.
 
 
 
-.. code:: ipython3
+.. code:: bash
 
     # Each of these series can in turn be queried for specific attributes
     insp.windows.iloc[0].absolute_starttime
@@ -276,7 +276,7 @@ all standard Pandas operations can be used to access data.
 
 
 
-.. code:: ipython3
+.. code:: bash
 
     # The User can query a single column, e.g., to get all cc values in a list. Pandas is great:)
     insp.windows["max_cc_value"]
@@ -293,7 +293,7 @@ all standard Pandas operations can be used to access data.
 
 
 
-.. code:: ipython3
+.. code:: bash
 
     # Which in turn can be operated on like numpy arrays (or Pandas series)
     insp.windows["max_cc_value"].mean()
@@ -330,7 +330,7 @@ These are automatically calculated by the Inspector when you call the
 ``misfit`` function. The resulting dataframe rows are given for each
 line search step within an iteration.
 
-.. code:: ipython3
+.. code:: bash
 
     # Note: The summed_misfit and misfit are the same here because we only have 1 event
     # misfit = summed_misfit / n_event
@@ -344,7 +344,7 @@ line search step within an iteration.
     i01       s00         1       0.331575  0.331575
 
 
-.. code:: ipython3
+.. code:: bash
 
     # We can change the level to look at a per-event misfit. Misfit is scaled by the number of windows per event
     disp(insp.misfit(level="event"))
@@ -357,7 +357,7 @@ line search step within an iteration.
     i01       s00  2018p130600         1.989447     3  0.331575
 
 
-.. code:: ipython3
+.. code:: bash
 
     # We can also look at a per-station misfit
     disp(insp.misfit(level="station"))
@@ -390,7 +390,7 @@ be chopped into many smaller windows, while still covering the same
 section of the waveform. ``length_s`` therefore provides another value
 that can be compared between iterations.
 
-.. code:: ipython3
+.. code:: bash
 
     # `nwin` will return both the number of windows, and the cumulative window length
     disp(insp.nwin())
@@ -403,7 +403,7 @@ that can be compared between iterations.
     i01       s00      3    123.12
 
 
-.. code:: ipython3
+.. code:: bash
 
     # Again, we can make choices about the level at which we want this information
     disp(insp.nwin(level="event"))
@@ -416,7 +416,7 @@ that can be compared between iterations.
     i01       s00  2018p130600     3    123.12
 
 
-.. code:: ipython3
+.. code:: bash
 
     # These values are the same because we only have one source-receiver pair
     disp(insp.nwin(level="station"))
@@ -456,7 +456,7 @@ In order to illustrate the functionality behind these accessing
 functions, we’ll use an Inspector that has already been filled out with
 multiple iterations of data.
 
-.. code:: ipython3
+.. code:: bash
 
     insp = Inspector()
     # We explicitely call the `read` function to access an Inspector that we already created
@@ -475,7 +475,7 @@ multiple iterations of data.
 
 
 
-.. code:: ipython3
+.. code:: bash
 
     # Let's just take a look at this Inspector with tools we covered above
     disp(insp.srcrcv)
@@ -507,7 +507,7 @@ multiple iterations of data.
     67  2013p617227      NZ    WSRZ   538.802628   208.756817
 
 
-.. code:: ipython3
+.. code:: bash
 
     disp(insp.nwin())
 
@@ -522,7 +522,7 @@ multiple iterations of data.
               s03     97   7265.7325
 
 
-.. code:: ipython3
+.. code:: bash
 
     disp(insp.windows)
 
@@ -562,7 +562,7 @@ Arguably one of the more useful accessing functions, ``isolate`` allows
 the User to traverse through the Dataframe by keyword, or combination of
 keywords.
 
-.. code:: ipython3
+.. code:: bash
 
     # The `isolate` function allows us to pick out very specific keywords from our `windows`
     disp(insp.isolate(event="2014p952799"))
@@ -594,7 +594,7 @@ keywords.
     372  2014p952799       i01  s03      NZ    WSRZ     BXZ         Z   2.862028   47.2700  0.074768       4.650394      0.983794           78.8075             31.5375               2.3925  2014-12-19T12:51:34.017500Z  2014-12-19T12:52:21.287500Z
 
 
-.. code:: ipython3
+.. code:: bash
 
     # Multiple keyword arguments can be given to pick out unique data
     disp(insp.isolate(step_count="s02", event="2013p617227", component="E", station="HAZ"))
@@ -606,7 +606,7 @@ keywords.
     608  2013p617227       i01  s02      NZ     HAZ     BXE         E  2.175824     65.25  0.410534       6.018413      0.922362          126.8025             61.5525               6.8875  2013-08-17T08:59:21.872500Z  2013-08-17T09:00:27.122500Z
 
 
-.. code:: ipython3
+.. code:: bash
 
     # Isolate also takes `keys` and `exclude` arguments which relate to the measurement values, 
     # to further whittle things down
@@ -639,7 +639,7 @@ keywords.
     713  2013p617227  0.420637      0.925466
 
 
-.. code:: ipython3
+.. code:: bash
 
     # Here we drop the 'dlnA' parameter from the output dataframe
     disp(insp.isolate(event="2013p617227", exclude=["dlnA"]))
@@ -681,7 +681,7 @@ calculation. The default ‘stat’ is taking the mean. All the values
 returned in the following cell are mean values over all the
 measurements.
 
-.. code:: ipython3
+.. code:: bash
 
     disp(insp.stats())
 
@@ -700,7 +700,7 @@ measurements.
                    2014p952799  12.061748  75.136223  0.374679       6.925572      0.923833        107.965612           32.829388             4.744122
 
 
-.. code:: ipython3
+.. code:: bash
 
     # Choices are limited only by what Pandas allows you to do on their grouped dataframes. 
     # Some examples of useful ones are 'min', 'max', 'median'. Have a look at the Pandas documentation 
@@ -735,7 +735,7 @@ This simple argument simple prints out min and max values for the entire
 inversion, or on a per-evaluation basis. When running in a normal
 environment, setting pprint=True prints out a nicely formatted output.
 
-.. code:: ipython3
+.. code:: bash
 
     print(insp.minmax(pprint=False))
 
@@ -756,7 +756,7 @@ adjacent step counts in a line search to quantify how measurements are
 changing throughout the inversion. By default compare considers the
 first and last evaluations in the Inspector.
 
-.. code:: ipython3
+.. code:: bash
 
     disp(insp.compare())
 
@@ -769,7 +769,7 @@ first and last evaluations in the Inspector.
     2013p617227          113       7.134975            3       8.586960     1.451985       -110
 
 
-.. code:: ipython3
+.. code:: bash
 
     # But it's simple enough to compare two arbitrary evaluations
     disp(insp.compare("i01", "s00", "i01", "s01"))
@@ -800,7 +800,7 @@ Unfortunately our test data picks new window at each evaluation, so we
 cannot showcase this function. However we can look at window comparisons
 for the same evaluation just to show how things work.
 
-.. code:: ipython3
+.. code:: bash
 
     # As mentioned, nwin changes each step so we cannot use compare windows as intended
     disp(insp.nwin())
@@ -816,7 +816,7 @@ for the same evaluation just to show how things work.
               s03     97   7265.7325
 
 
-.. code:: ipython3
+.. code:: bash
 
     # Trying to compare windows for non-matching window numbers will throw an AssertionError
     try:
@@ -830,7 +830,7 @@ for the same evaluation just to show how things work.
     the number of windows does not match between the two evaluations, windows cannot be compared
 
 
-.. code:: ipython3
+.. code:: bash
 
     # However we can compare an evaluation with itself. All of the differences will simply be 0 since the 
     # values do not change. But this is a useful way to show what compare_windows does.
@@ -886,7 +886,7 @@ added to the evaluation. Rather than running ``discover`` on a new
 Inspector, which can take some time, we can use the ``append`` function
 to add a single dataset worth of data.
 
-.. code:: ipython3
+.. code:: bash
 
     # Append simply adds a single ASDFDataSet to the Inspector
     insp = Inspector()
@@ -915,7 +915,7 @@ inversion. In order to aggregate measurements from all working
 directories, the ``extend`` function combines windows from one Inspector
 with another.
 
-.. code:: ipython3
+.. code:: bash
 
     insp_a = Inspector()
     # We explicitely call the `read` function to access an Inspector that we already created
@@ -934,7 +934,7 @@ with another.
 
 
 
-.. code:: ipython3
+.. code:: bash
 
     # Since we only have one set of test data, we use a copy of A.
     insp_b = insp_a.copy()
@@ -980,19 +980,19 @@ Source-receiver metadata
 The following plotting functions are concerned with visualizing
 source-receiver metadata
 
-.. code:: ipython3
+.. code:: bash
 
     insp = Inspector()
     insp.read(path="../tests/test_data", tag="test_inspector")
 
-.. code:: ipython3
+.. code:: bash
 
     # map() uses source and receiver metadata to plot a very simple source-receiver map
     insp.map()
 
 
 
-.. image:: inspector_files/inspector_58_0.png
+.. image:: images/inspector_files/inspector_58_0.png
 
 
 
@@ -1004,7 +1004,7 @@ source-receiver metadata
 
 
 
-.. code:: ipython3
+.. code:: bash
 
     # event_depths() simply plots a 2D cross section of all the events at depth
     insp.event_depths(xaxis="longitude")
@@ -1020,17 +1020,17 @@ source-receiver metadata
 
 
 
-.. image:: inspector_files/inspector_59_1.png
+.. image:: images/inspector_files/inspector_59_1.png
 
 
-.. code:: ipython3
+.. code:: bash
 
     # raypaths() shows source-receiver connection points for any pair that has atleast one measurement
     insp.raypaths(iteration="i01", step_count="s00")
 
 
 
-.. image:: inspector_files/inspector_60_0.png
+.. image:: images/inspector_files/inspector_60_0.png
 
 
 
@@ -1042,7 +1042,7 @@ source-receiver metadata
 
 
 
-.. code:: ipython3
+.. code:: bash
 
     # raypath_density() provides a more detailed raypath plot by coloring in the density of rays. Useful 
     # if you have a large number of source-receiver pairs, at which point the raypaths tend to be more difficult
@@ -1051,10 +1051,10 @@ source-receiver metadata
 
 
 
-.. image:: inspector_files/inspector_61_0.png
+.. image:: images/inspector_files/inspector_61_0.png
 
 
-.. code:: ipython3
+.. code:: bash
 
     # event_hist() makes a simple histogram of event information based on a given source parameter
     print(insp.sources.keys())
@@ -1067,7 +1067,7 @@ source-receiver metadata
 
 
 
-.. image:: inspector_files/inspector_62_1.png
+.. image:: images/inspector_files/inspector_62_1.png
 
 
 
@@ -1088,7 +1088,7 @@ The following plotting functions are concerned with visualizing what
 part of the seismic waveform we are measuring. These include record
 sections and window plots.
 
-.. code:: ipython3
+.. code:: bash
 
     # travel_times() plots a proxy for phase arrivals, like a seismic record section.
     # useful for inspecting potential phases of your measurements
@@ -1096,10 +1096,10 @@ sections and window plots.
 
 
 
-.. image:: inspector_files/inspector_64_0.png
+.. image:: images/inspector_files/inspector_64_0.png
 
 
-.. code:: ipython3
+.. code:: bash
 
     # plot_windows() plots the time windows against source-receiver distance to illustrate which phases are 
     # included in the inversion. This was inspired by Carl Tape's PhD thesis and the LASIF plotting functionality
@@ -1108,7 +1108,7 @@ sections and window plots.
 
 
 
-.. image:: inspector_files/inspector_65_0.png
+.. image:: images/inspector_files/inspector_65_0.png
 
 
 --------------
@@ -1119,7 +1119,7 @@ Inversion statistics
 The following plotting functions help the user understand how an
 inversion is progressing by comparing iterations against one another
 
-.. code:: ipython3
+.. code:: bash
 
     # convergence() shows the convergence plot, or misfit reduction over the course of the inversion
     # Note: because our test data only has two iterations, its convergence plot is not very illustrative.
@@ -1127,7 +1127,7 @@ inversion is progressing by comparing iterations against one another
 
 
 
-.. image:: inspector_files/inspector_67_0.png
+.. image:: images/inspector_files/inspector_67_0.png
 
 
 
@@ -1139,7 +1139,7 @@ inversion is progressing by comparing iterations against one another
 
 
 
-.. code:: ipython3
+.. code:: bash
 
     # hist() creates misfit histograms for all measurements comparing two evaluations (defaults to first and last)
     # choices are available from any of the `windows` attributes
@@ -1158,11 +1158,11 @@ inversion is progressing by comparing iterations against one another
 
 
 
-.. image:: inspector_files/inspector_68_1.png
+.. image:: images/inspector_files/inspector_68_1.png
 
 
 
-.. image:: inspector_files/inspector_68_2.png
+.. image:: images/inspector_files/inspector_68_2.png
 
 
 
@@ -1183,7 +1183,7 @@ These plotting functions allow the user to plot measurements for a given
 evaluation in order to better understand the statistical distribution of
 measurements, or comparisons against one another.
 
-.. code:: ipython3
+.. code:: bash
 
     # scatter() compares any two attributes in the `windows` dataframe
     print(insp.windows.keys())
@@ -1200,7 +1200,7 @@ measurements, or comparisons against one another.
 
 
 
-.. image:: inspector_files/inspector_70_1.png
+.. image:: images/inspector_files/inspector_70_1.png
 
 
 
@@ -1212,7 +1212,7 @@ measurements, or comparisons against one another.
 
 
 
-.. code:: ipython3
+.. code:: bash
 
     # measurement_hist() makes histograms of measurement numbers for 'stations' or 'event'
     # Useful for identifying events or stations with outlier number of measurements
@@ -1227,14 +1227,14 @@ measurements, or comparisons against one another.
 
 
 
-.. image:: inspector_files/inspector_71_1.png
+.. image:: images/inspector_files/inspector_71_1.png
 
 
 
-.. image:: inspector_files/inspector_71_2.png
+.. image:: images/inspector_files/inspector_71_2.png
 
 
-.. code:: ipython3
+.. code:: bash
 
     # station_event_misfit_map() creates a map for a single station. Each point that isn't the station 
     # will be colored by a certain value corresponding to each event. Choices are 'nwin' or 'misfit'
@@ -1250,7 +1250,7 @@ measurements, or comparisons against one another.
 
 
 
-.. image:: inspector_files/inspector_72_1.png
+.. image:: images/inspector_files/inspector_72_1.png
 
 
 
@@ -1262,7 +1262,7 @@ measurements, or comparisons against one another.
 
 
 
-.. code:: ipython3
+.. code:: bash
 
     # event_station_misfit_map() creates a map for a single event. Each point that isn't the event 
     # will be colored by a certain value corresponding to each station. Choices are 'nwin' or 'misfit'
@@ -1276,7 +1276,7 @@ measurements, or comparisons against one another.
 
 
 
-.. image:: inspector_files/inspector_73_1.png
+.. image:: images/inspector_files/inspector_73_1.png
 
 
 
@@ -1288,7 +1288,7 @@ measurements, or comparisons against one another.
 
 
 
-.. code:: ipython3
+.. code:: bash
 
     # event_misfit_map() plots all events on a map and their corresponding scaled misfit value
     # for a given evaluation (defaults to last evaluation in the Inspector)
@@ -1296,7 +1296,7 @@ measurements, or comparisons against one another.
 
 
 
-.. image:: inspector_files/inspector_74_0.png
+.. image:: images/inspector_files/inspector_74_0.png
 
 
 

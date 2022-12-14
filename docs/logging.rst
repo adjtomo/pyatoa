@@ -11,7 +11,7 @@ which only outputs information when something unexpected occurs.
 To instantiate a logger, just import and set. Pyflex and Pyadjoint
 loggers can be set in the same manner.
 
-.. code:: ipython3
+.. code:: bash
 
     import obspy
     from pyatoa import logger, Manager, Config

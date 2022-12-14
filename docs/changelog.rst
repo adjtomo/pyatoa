@@ -38,3 +38,5 @@ Version 0.3.0
 - Removed tests and documentation related to the above 
 
 - Added PySEP as a dependency of Pyatoa
+
+- Overhauled documentation
