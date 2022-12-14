@@ -9,6 +9,7 @@ dependencies:
     - pandas
     - cartopy
     - pyyaml
+    - pypdf2
     - pip:
       - git+https://github.com/adjtomo/pyflex.git
       - git+https://github.com/adjtomo/pyadjoint.git

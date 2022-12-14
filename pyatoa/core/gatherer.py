@@ -8,7 +8,6 @@ by the User unless for bespoke data gathering functionality.
 """
 import os
 import glob
-import traceback
 import warnings
 
 from pyasdf import ASDFWarning

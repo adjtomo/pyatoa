@@ -1113,7 +1113,7 @@ class Manager:
         return adjoint_windows
 
     def plot(self, choice="both", save=None, show=True, corners=None,
-             figsize=None, dpi=None, **kwargs):
+             figsize=None, dpi=100, **kwargs):
         """
         Plot observed and synthetics waveforms, misfit windows, STA/LTA and
         adjoint sources for all available components. Append information
@@ -1148,7 +1148,8 @@ class Manager:
 
         if choice in ["map", "both"] and (self.inv is None or
                                           self.event is None):
-            raise ManagerError("cannot plot map, no event and/or inv found")
+            logger.warning("cannot plot map, no event and/or inv found")
+            choice = "wav"
 
         # Plot only waveform
         if choice == "wav":
