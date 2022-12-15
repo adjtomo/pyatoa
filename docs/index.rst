@@ -86,7 +86,7 @@ publication:
    :hidden:
    :caption: Structure
 
-   core_func
+   misfit
    discovery
    storage
    inspector

@@ -1,9 +1,9 @@
-Core Functionality
-===================
+Misfit Quantification
+=====================
 
-Pyatoa is comprised of a few core classes which take care of the main package
-functionality. These are the Config, Manager and Gatherer classes. The following
-page explains each class and shows some examples of how to use them.
+Pyatoa is comprised of a two core classes which take care of the main package
+functionality. These are the Config, Manager classes. The following
+page explains each class and their functionalities.
 
 Config
 ~~~~~~
