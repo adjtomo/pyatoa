@@ -22,7 +22,7 @@ data was collected by the broadband seismic network of New Zealand
 begin with imports of some of Pyatoa’s core classes, and set the logging
 to be verbose using the DEBUG option.
 
-.. code:: bash
+.. code:: python
 
     import shutil
     from pyasdf import ASDFDataSet
@@ -32,7 +32,7 @@ to be verbose using the DEBUG option.
 The ``ASDFDataSet`` is used for storage of seismic data. It is
 preferable to name the dataset after a unique event identifier.
 
-.. code:: bash
+.. code:: python
 
     event_id = "2018p130600"  # this is the unique GeoNet ID for the Eketahuna event
     dataset_original_fid = f"../tests/test_data/{event_id}.h5"  # it is preferable to name the dataset after the event id
@@ -53,7 +53,7 @@ and the zeroth step count.
 We also choose some preset parameters for our preprocessing, time
 windowing and adjoint source generation algorithms.
 
-.. code:: bash
+.. code:: python
 
     cfg = Config(iteration=1, step_count=0, 
                  event_id=event_id,
@@ -77,7 +77,7 @@ responsible for gathering, processing and storing data. It uses its
 ``config`` attribute to control the gathering and processing, and stores
 data to the ``ASDFDataSet``.
 
-.. code:: bash
+.. code:: python
 
     mgmt = Manager(config=cfg, ds=ds)
 
@@ -91,7 +91,7 @@ appended from the GeoNet moment tensor catalog.
    **NOTE:** Moment tensors are only available from the GeoNet moment
    tensor catalog, and from the Global Centroid Moment Tensor catalog.
 
-.. code:: bash
+.. code:: python
 
     mgmt.gather(choice="event")
 
@@ -124,7 +124,7 @@ appended from the GeoNet moment tensor catalog.
 
 
 
-.. code:: bash
+.. code:: python
 
     mgmt.event
 
@@ -156,7 +156,7 @@ in Wellington, New Zealand. We can use wildcards in the channel code to
 gather all available components, which are N, E and Z. Under the hood,
 Pyatoa is calling the ObsPy FDSN webservice client.
 
-.. code:: bash
+.. code:: python
 
     mgmt.gather(code="NZ.WEL.??.HH?", choice=["inv", "st_obs"])
 
@@ -201,7 +201,7 @@ Pyatoa is calling the ObsPy FDSN webservice client.
 
 
 
-.. code:: bash
+.. code:: python
 
     mgmt.inv
 
@@ -224,7 +224,7 @@ Pyatoa is calling the ObsPy FDSN webservice client.
 
 
 
-.. code:: bash
+.. code:: python
 
     # mgmt.st_obs = st_obs
     mgmt.st_obs
@@ -249,7 +249,7 @@ needs to be generated using an external numerical solver. For the sake
 of this tutorial, we’ll simply shift the phase and scale the amplitude
 of our observed data to create our “synthetic” data.
 
-.. code:: bash
+.. code:: python
 
     def generate_synthetic_data(st, shift_sec=4, multiply_amp=0.8, 
                                 tail_taper_pct=0.5):
@@ -293,7 +293,7 @@ involves matching the time series of the observation and synthetic
 waveforms. Preprocessing involves instrument response removal and
 frequency domain filtering.
 
-.. code:: bash
+.. code:: python
 
     mgmt.standardize().preprocess()
 
@@ -335,7 +335,7 @@ frequency domain filtering.
 
 
 
-.. code:: bash
+.. code:: python
 
     mgmt.plot(choice="wav")
 
@@ -351,7 +351,7 @@ Great, now that we have similar looking waveforms, we can use ``Pyflex``
 to generate time windows in which the two waveforms are in good
 agreement.
 
-.. code:: bash
+.. code:: python
 
     mgmt.window()
 
@@ -387,7 +387,7 @@ agreement.
 
 
 
-.. code:: bash
+.. code:: python
 
     mgmt.windows
 
@@ -402,7 +402,7 @@ agreement.
 
 
 
-.. code:: bash
+.. code:: python
 
     mgmt.plot(choice="wav")
 
@@ -417,7 +417,7 @@ Adjoint source creation
 Now we can use ``Pyadjoint`` to calculate the misfit and generate
 adjoint sources within each of these time windows.
 
-.. code:: bash
+.. code:: python
 
     mgmt.measure()
 
@@ -453,7 +453,7 @@ adjoint sources within each of these time windows.
 
 
 
-.. code:: bash
+.. code:: python
 
     mgmt.adjsrcs
 
@@ -468,7 +468,7 @@ adjoint sources within each of these time windows.
 
 
 
-.. code:: bash
+.. code:: python
 
     mgmt.plot(choice="both")
 
@@ -485,7 +485,7 @@ the ``ASDFDataSet``. We can access it by querying the data set itself,
 or by re-loading data using the ``Manager`` class. See the other
 tutorials for more information about these features.
 
-.. code:: bash
+.. code:: python
 
     ds
 
@@ -501,7 +501,7 @@ tutorials for more information about these features.
 
 
 
-.. code:: bash
+.. code:: python
 
     ds.waveforms.NZ_WEL
 
@@ -517,7 +517,7 @@ tutorials for more information about these features.
 
 
 
-.. code:: bash
+.. code:: python
 
     ds.auxiliary_data.MisfitWindows.i01.s00
 
@@ -536,7 +536,7 @@ tutorials for more information about these features.
 
 
 
-.. code:: bash
+.. code:: python
 
     ds.auxiliary_data.AdjointSources.i01.s00
 

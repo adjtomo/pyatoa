@@ -164,10 +164,10 @@ two synthetics; two sets of observed waeveforms).
 
     from obspy import read
 
-        st_obs = read("some_example_waveform_data.mseed")
-        st_syn = read("some_example_synthetic_data.mseed")
+    st_obs = read("some_example_waveform_data.mseed")
+    st_syn = read("some_example_synthetic_data.mseed")
 
-        mgmt = Manager(st_obs=st_obs, st_syn=st_syn)
+    mgmt = Manager(st_obs=st_obs, st_syn=st_syn)
 
 
 To unlock the full potential of the Manager, metadata should also be provided.

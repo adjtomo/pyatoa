@@ -5,7 +5,7 @@ Small code snippet to introduce you with Pyatoa. The code block below
 loads example waveforms and metadata, then processes and plots the
 waveforms alongside a source-receiver map.
 
-.. code:: bash
+.. code:: python
 
     from pyatoa import Manager
     
@@ -15,19 +15,6 @@ waveforms alongside a source-receiver map.
     mgmt.plot()
 
 
-.. parsed-literal::
-
-    [2022-12-14 11:26:51] - pyatoa - WARNING: no ASDFDataSet, cannot save windows
-    [2022-12-14 11:26:51] - pyatoa - WARNING: no ASDFDataSet, cannot save adjoint sources
-    /opt/miniconda3/envs/pyatoa-docs/lib/python3.11/site-packages/shapely/constructive.py:181: RuntimeWarning: invalid value encountered in buffer
-      return lib.buffer(
-    /opt/miniconda3/envs/pyatoa-docs/lib/python3.11/site-packages/shapely/set_operations.py:133: RuntimeWarning: invalid value encountered in intersection
-      return lib.intersection(a, b, **kwargs)
-    /opt/miniconda3/envs/pyatoa-docs/lib/python3.11/site-packages/shapely/predicates.py:798: RuntimeWarning: invalid value encountered in intersects
-      return lib.intersects(a, b, **kwargs)
-
-
-
 .. image:: images/first_glance_files/first_glance_1_1.png
 
 
@@ -35,7 +22,7 @@ You can see the underlying information of the Manager class by printing
 it. Important relative to a given source-receiver pair is displayed, as
 well as the status of the processing workflow.
 
-.. code:: bash
+.. code:: python
 
     print(mgmt)
 
@@ -63,7 +50,7 @@ Data, metadata, gathered misfit windows and output adjoint sources are
 all accesible as attributes of the Manager. We can access the observed
 waveforms through the ``st_obs`` attribute:
 
-.. code:: bash
+.. code:: python
 
     mgmt.st_obs  # the observed waveforms
 
@@ -81,7 +68,7 @@ waveforms through the ``st_obs`` attribute:
 
 Or grab the adjoint source data array through the ``adjsrcs`` attribute:
 
-.. code:: bash
+.. code:: python
 
     mgmt.adjsrcs["E"].adjoint_source  # the East component adjoint source
 

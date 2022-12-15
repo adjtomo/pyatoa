@@ -83,7 +83,7 @@ def cleanup_rst(rst_file):
     for i, line in enumerate(lines[:]):
         # Change ipython3 code blocks to bash
         if line == ".. code:: ipython3\n":
-            lines_out.append(".. code:: bash\n")
+            lines_out.append(".. code:: python\n")
         # Change image paths to correct directory
         elif ".. image::" in line:
             new_line = line.replace(".. image:: ", ".. image:: images/")
@@ -108,5 +108,8 @@ if __name__ == "__main__":
             
     else:
         for nbname in glob.glob("*ipynb"):
+            if "first_glance" in nbname:
+                print("skipping 'first_glance'")
+                continue
             convert_nb(nbname)
             adjust_nb(nbname)

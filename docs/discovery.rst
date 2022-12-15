@@ -1,12 +1,16 @@
 Data Discovery
 ==============
 
-The Pyatoa Manager class has internal routines to automatically discover
-observed and synthetic waveforms, and metadata, given an ASDFDataSet or a set
-of search paths and rules.
+The Manager class has internal routines to automatically discover
+observed and synthetic waveforms, and metadata, given a set of search paths and
+rules.
 
-This functionality replaces the direct passing of ObsPy objects to the Manager.
-All search paths are provided to the ``Config.paths`` attribute.
+This functionality replaces the direct passing of ObsPy objects to the Manager
+and is meant to facilitate automated data discovery within larger workflow tools
+like `SeisFlows <https://github.com/adjtomo/seisflows>`__.
+
+Data can also be discovered via ASDFDataSets, which is explained in the
+`storage docs page <storage.html>`__.
 
 Event Metadata
 ~~~~~~~~~~~~~~

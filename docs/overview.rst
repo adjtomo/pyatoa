@@ -53,12 +53,13 @@ through a Python interface or within Python scripts, Jupyter notebooks or other
 Python packages.
 
 In other words:
-```python
-from pyatoa import Manager
 
-mgmt = Manager()
-```
+.. code:: python
+    from pyatoa import Manager
 
-Check out `Getting started <getting_started.html>`__ for a first glimpse on
-how to use Pyatoa.
+    mgmt = Manager()
+
+
+Check out `First Glance <first_glance.html>`__ for a short code-based
+introduction to Pyatoa.
     

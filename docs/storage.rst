@@ -1,5 +1,5 @@
-Data Storage
-============
+Saving Data with ASDF
+=====================
 
 Pyatoa stores data using `PyASDF
 ASDFDataSets <https://seismicdata.github.io/pyasdf/asdf_data_set.html>`__,
@@ -21,7 +21,7 @@ accessed using PyASDF and Pyatoa.
 For a detailed tutorial on the ``ASDFDataSet``, see:
 https://seismicdata.github.io/pyasdf/tutorial.html
 
-.. code:: bash
+.. code:: python
 
     import os
     import obspy
@@ -47,7 +47,7 @@ Initializing
 | ``ASDFDataSet``\ s can also be used as a context manager, using the
   ``with`` argument. This ensures the file is closed after use.
 
-.. code:: bash
+.. code:: python
 
     # Fresh dataset: make sure we aren't trying to work with existing data
     ds_fid = "../tests/test_data/docs_data/test_ASDFDataSet.h5"
@@ -75,7 +75,7 @@ Initializing
    event identifier. This ensures that files are kept a reasonable size
    and avoids the need for more complicated internal naming schemes.
 
-.. code:: bash
+.. code:: python
 
     mgmt = Manager(ds=ds, config=Config(), inv=inv, event=event, st_obs=st_obs, st_syn=st_syn)
     print(mgmt)
@@ -117,12 +117,12 @@ function. The Pyatoa ``Config`` object can also be written to the
 Once written, we see the ``ASDFDataSet`` has been populated with event
 and station metadata, waveform data, and Config information.
 
-.. code:: bash
+.. code:: python
 
     mgmt.write()
     mgmt.config.write(write_to=ds)
 
-.. code:: bash
+.. code:: python
 
     ds
 
@@ -138,7 +138,7 @@ and station metadata, waveform data, and Config information.
 
 
 
-.. code:: bash
+.. code:: python
 
     ds.events
 
@@ -152,7 +152,7 @@ and station metadata, waveform data, and Config information.
 
 
 
-.. code:: bash
+.. code:: python
 
     ds.waveforms.list()
 
@@ -165,7 +165,7 @@ and station metadata, waveform data, and Config information.
 
 
 
-.. code:: bash
+.. code:: python
 
     ds.auxiliary_data.Configs
 
@@ -190,7 +190,7 @@ Automatically written data
   ``Manager.measure()`` functions saving their outputs into the data
   set.
 
-.. code:: bash
+.. code:: python
 
     mgmt.standardize().preprocess();
 
@@ -217,7 +217,7 @@ Automatically written data
     [2022-03-03 11:04:04] - pyatoa - DEBUG: convolving data w/ Gaussian (t/2=0.70s)
 
 
-.. code:: bash
+.. code:: python
 
     mgmt.window();
 
@@ -232,7 +232,7 @@ Automatically written data
     [2022-03-03 11:04:04] - pyatoa - INFO: 3 window(s) total found
 
 
-.. code:: bash
+.. code:: python
 
     mgmt.measure();
 
@@ -259,7 +259,7 @@ Accessing saved data using PyASDF
 **Event metadata** is stored as an ObsPy ``Catalog`` object in the
 ``ASDFDataSet.events`` attribute.
 
-.. code:: bash
+.. code:: python
 
     ds.events[0]
 
@@ -290,7 +290,7 @@ Accessing saved data using PyASDF
   metadata** is stored as ObsPy ``Inventory`` objects.
 | They are stored together in the ``ASDFDataSet.waveforms`` attribute.
 
-.. code:: bash
+.. code:: python
 
     ds.waveforms.NZ_BFZ.StationXML
 
@@ -313,7 +313,7 @@ Accessing saved data using PyASDF
 
 
 
-.. code:: bash
+.. code:: python
 
     ds.waveforms.NZ_BFZ.observed + ds.waveforms.NZ_BFZ.synthetic
 
@@ -337,7 +337,7 @@ Accessing saved data using PyASDF
 **Misfit windows**, **Adjoint Sources**, and **Configuration
 parameters** are stored in the ``ADSFDataSet.auxiliary_data`` attribute.
 
-.. code:: bash
+.. code:: python
 
     ds.auxiliary_data
 
@@ -357,7 +357,7 @@ If no ``iteration`` or ``step_count`` attributes are provided to the
 ``Config`` object, auxiliary data will be stored using the ``default``
 tag.
 
-.. code:: bash
+.. code:: python
 
     ds.auxiliary_data.MisfitWindows
 
@@ -371,7 +371,7 @@ tag.
 
 
 
-.. code:: bash
+.. code:: python
 
     ds.auxiliary_data.MisfitWindows['default']
 
@@ -387,7 +387,7 @@ tag.
 
 
 
-.. code:: bash
+.. code:: python
 
     ds.auxiliary_data.MisfitWindows.default.NZ_BFZ_E_0
 
@@ -426,7 +426,7 @@ tag.
 
 
 
-.. code:: bash
+.. code:: python
 
     ds.auxiliary_data.AdjointSources
 
@@ -440,7 +440,7 @@ tag.
 
 
 
-.. code:: bash
+.. code:: python
 
     ds.auxiliary_data.AdjointSources.default
 
@@ -456,7 +456,7 @@ tag.
 
 
 
-.. code:: bash
+.. code:: python
 
     ds.auxiliary_data.AdjointSources.default.NZ_BFZ_BXE
 
@@ -492,7 +492,7 @@ Data previously saved into an ``ASDFDataSet`` can be loaded back into a
 function will search for matching metadata, waveforms and configuration
 parameters, based on the ``path`` argument provided.
 
-.. code:: bash
+.. code:: python
 
     mgmt = Manager(ds=ds)
     mgmt.load(code="NZ.BFZ", path="default")
@@ -526,7 +526,7 @@ parameters, based on the ``path`` argument provided.
 
 
 
-.. code:: bash
+.. code:: python
 
    pwd
 
@@ -553,7 +553,7 @@ information in a reliable manner.
 Pyatoa tags using the ``Config.iteration`` and ``Config.step_count``
 attributes to define unique tags during an inversion.
 
-.. code:: bash
+.. code:: python
 
     # Set the config iteration and step_count parameters
     cfg = Config(iteration=1, step_count=0)
@@ -606,7 +606,7 @@ attributes to define unique tags during an inversion.
 The ``ASDFDataSet`` is now populated with appropriately tagged data,
 denoting which function evaluation it belongs to.
 
-.. code:: bash
+.. code:: python
 
     ds.waveforms.NZ_BFZ
 
@@ -623,7 +623,7 @@ denoting which function evaluation it belongs to.
 
 
 
-.. code:: bash
+.. code:: python
 
     ds
 
@@ -639,7 +639,7 @@ denoting which function evaluation it belongs to.
 
 
 
-.. code:: bash
+.. code:: python
 
     ds.waveforms.NZ_BFZ.synthetic_i01s00
 
@@ -658,7 +658,7 @@ denoting which function evaluation it belongs to.
 Auxiliary data will be tagged in a similar fashion, making it simple to
 re-access specific function evaluations.
 
-.. code:: bash
+.. code:: python
 
     ds.auxiliary_data.MisfitWindows
 
@@ -672,7 +672,7 @@ re-access specific function evaluations.
 
 
 
-.. code:: bash
+.. code:: python
 
     ds.auxiliary_data.MisfitWindows.i01
 
@@ -686,7 +686,7 @@ re-access specific function evaluations.
 
 
 
-.. code:: bash
+.. code:: python
 
     ds.auxiliary_data.MisfitWindows.i01.s00
 
@@ -706,7 +706,7 @@ Using the ``Manager.load()`` function, we can specify the unique
 ``path`` to determine which function evaluation we want to retrieve data
 from.
 
-.. code:: bash
+.. code:: python
 
     mgmt = Manager(ds=ds)
     mgmt.load("NZ.BFZ", path="i01/s00", synthetic_tag="synthetic_i01s00")
@@ -765,7 +765,7 @@ from.
   data. We can turn off automatic window saving using the optional
   ``save`` argument.
 
-.. code:: bash
+.. code:: python
 
     mgmt.window(fix_windows=True, iteration=1, step_count=0, save=False)
 

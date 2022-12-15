@@ -90,6 +90,8 @@ publication:
    discovery
    storage
    inspector
+   standards
+   logging
 
 
 .. toctree:: 
@@ -98,15 +100,6 @@ publication:
    :caption: Examples
 
    datasyn_misfit
-
-
-.. toctree::
-   :maxdepth: 1
-   :hidden:
-   :caption: Interface
-
-   standards
-   logging
 
 .. toctree::
    :maxdepth: 1

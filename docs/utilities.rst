@@ -50,7 +50,7 @@ rapid assessment of models, but higher-quality model visualizations are
 deferred to other packages like
 `ParaView <https://www.paraview.org/>`__.
 
-.. code:: bash
+.. code:: python
 
     # Allow mayavi visualizations to appear in notebook
     # from mayavi import mlab
