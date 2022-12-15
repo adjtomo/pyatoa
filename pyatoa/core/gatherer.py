@@ -508,7 +508,7 @@ class Gatherer:
 
     def fetch_synthetic_by_dir(self, code, syn_cfgpath="synthetics",
                                syn_unit="?", syn_dir_template="",
-                               syn_fid_template="{net}.{sta}.*{cmp}.sem{dva}",
+                               syn_fid_template="{net}.{sta}.*{cmp}.sem{dva}*",
                                **kwargs):
         """
         Fetch synthetic waveforms from Specfem3D via directory structure on
@@ -572,7 +572,7 @@ class Gatherer:
                         # Convert the ASCII file to a miniseed
                         st += read_sem(filename, self.origintime)
                     except UnicodeDecodeError:
-                        # If the data file is for some reason already in miniseed
+                        # If the data file is already in miniseed
                         st += read(filename)
                     logger.info(f"retrieved synthetics locally: {filename}")
             else:
