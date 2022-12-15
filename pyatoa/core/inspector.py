@@ -421,11 +421,11 @@ class Inspector(InspectorPlotter):
             iteration, step_count = self.initial_model
             print(f"No iteration or step count given, defaulting to initial "
                   f"model: {iteration}{step_count}")
-        elif iteration and step_count is not None:
+        elif iteration and (step_count is None):
             step_count = self.steps[iteration][-1]
             print(f"No step count given, defaulting to final step count within"
                   f"given iteration: {iteration}{step_count}")
-        elif iteration is None and (step_count is not None):
+        elif (iteration is None) and (step_count is not None):
             raise ValueError("'step_count' cannot be provided by itself, you "
                              "must also set the variable: 'iteration'")
         return iteration, step_count
