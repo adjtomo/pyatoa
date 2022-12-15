@@ -1,7 +1,7 @@
 SeisFlows Inversion Assessment
 ==============================
 
-The ``Inspector`` class uses the [Pandas library](https://pandas.pydata.org/>)
+The ``Inspector`` class uses the `Pandas library <https://pandas.pydata.org/>`__
 to aggregate, manipulate and visualize misfit information collected in
 ASDFDataSets during a seismic inversion run with
 `SeisFlows <https://github.com/adjtomo/seisflows>`__.
@@ -149,7 +149,7 @@ pair, including epicentral distance and backazimuth
 
 
 Misfit Windows
-~~~~~~~~~~~~~~
+--------------
 
 Misfit window information is stored in the ``windows`` attribute. Each row in
 the window dataframe attribute corresponds to a single misfit window and
@@ -220,7 +220,7 @@ The above code snippet will return the maximum window length for each event in
 your inversion and for each iteration.
 
 Minmax
-~~~~~~
+------
 
 This simple argument simple prints out minimum and maximum values for each
 column entry for the entire inversion.
@@ -230,7 +230,7 @@ column entry for the entire inversion.
     insp.minmax()
 
 Compare Iterations
-~~~~~~~~~~~~~~~~~~~
+------------------
 
 The ``compare`` function allows the User to compare different iterations in
 their inversion. This is useful when comparing misfit of your initial and final
@@ -249,7 +249,7 @@ models.
 
 
 Comparing Windows
-~~~~~~~~~~~~~~~~~
+-----------------
 
 The compare windows function finds differences between matching misfit windows
 for two iterations in your inversion.
@@ -327,8 +327,8 @@ Plotting Routines
 ~~~~~~~~~~~~~~~~~
 
 The Inspector comes with a suite of plotting routines to visualize the dataset.
-Check out the `gallery <gallery.html>`__ for examples and code snippets to
-generate them.
+Check out the `Gallery <gallery.html>`__ for figure examples and example code
+snippets used to generate them.
 
 Source-receiver Metadata
 -------------------------
