@@ -19,7 +19,7 @@ Wildcards are typically acceptable when specifying station codes in Pyatoa.
    **B**\ =Band code, **I**\ =Instrument code, **O**\ = Orientation
    code); e.g.HHZ
 -  **COMP (component)**: One character channel component, a.k.a the
-   **o**rientation code in **CHANNEL**
+   orientation code in **CHANNEL**
 
 .. note::
 
@@ -114,7 +114,7 @@ Synthetic Waveforms
 Synthetic waveforms therefore must follow the naming convention dictated by
 SPECFEM.
 
--   \__NN.SSS.BIO.__sem\ **U**
+-   NN.SSS.BIO.sem**U**
 
 Where:
 
@@ -125,8 +125,7 @@ Where:
 -  **O** = Orientation code
 -  **U** = Unit code
 
-Unit code **U** is dictated by the chosen output units in the SPECFEM3D
-Par_file, where: 
+Unit code **U** is dictated by the chosen output units in SPECFEM, e.g.:
 
 -  **d** = displacement 
 -  **v** = velocity 

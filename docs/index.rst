@@ -99,6 +99,7 @@ publication:
    :hidden:
    :caption: Examples
 
+   fresh_workflow
    datasyn_misfit
 
 .. toctree::

@@ -55,6 +55,7 @@ Python packages.
 In other words:
 
 .. code:: python
+
     from pyatoa import Manager
 
     mgmt = Manager()

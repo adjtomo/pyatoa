@@ -3,7 +3,7 @@ It's useful to generate a fully loaded Manager object for testing purposes.
 Load data from the test directory and run the Manager workflow to achieve this.
 """
 import os
-from pyatoa import Config
+from pyatoa import Config, Inspector
 from obspy import read, read_events, read_inventory
 
 
@@ -28,3 +28,13 @@ def load_example_data():
     
     return cfg, st_obs, st_syn, event, inv
 
+
+def load_example_inspector():
+    """
+    Returns example window and misfit information that can be used to preload
+    an Inspector
+    """
+    insp = Inspector(tag="test_inspector")
+    insp.read(path=_test_data_dir)
+
+    return insp
