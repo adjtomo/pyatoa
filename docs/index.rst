@@ -87,6 +87,7 @@ publication:
    :caption: Structure
 
    core_func
+   discovery
    storage
    inspector
 
