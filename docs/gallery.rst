@@ -34,3 +34,4 @@ Waveform Breakdown
     source-receiver pair.
 
 
+.. include:: insp_gallery.rst
