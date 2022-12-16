@@ -62,14 +62,14 @@ def adjust_nb(nbname):
         os.rename(nb_files_path_old, nb_files_path_new)
 
     # Cleanup text in the RST file and overwrite 
-    lines = cleanup_rst(rst_path)
+    lines = _cleanup_rst(rst_path)
 
     # Overwrite existing RST file
     with open(rst_path, "w") as f:
         f.writelines(lines)
     
 
-def cleanup_rst(rst_file):
+def _cleanup_rst(rst_file):
     """
     Files that get converted from a Jupyter notebook tend to have some weird 
     formatting that does not match the style of the rest of the docs, as 

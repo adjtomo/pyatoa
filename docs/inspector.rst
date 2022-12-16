@@ -343,7 +343,7 @@ models.
 .. code:: python
 
     >>> insp.compare(iteration_a="i01", step_count_a="s00",
-                     iteration_b="i01", step_count_b="s01")
+    >>>              iteration_b="i01", step_count_b="s01")
                  nwin_i01s00  misfit_i01s00  nwin_i01s01  misfit_i01s01  diff_misfit  diff_nwin
     event
     2014p952799           93       6.114807           92       5.697945    -0.416862         -1
@@ -365,7 +365,7 @@ for two iterations in your inversion.
 .. code:: python
 
     >>> insp.compare_windows(iteration_a="i01", step_count_a="s00",
-                             iteration_b="i01", step_count_b="s00")
+    >>>                      iteration_b="i01", step_count_b="s00")
                event network  ... diff_max_cc_value diff_cc_shift_in_seconds
     0    2014p952799      NZ  ...               0.0                      0.0
     1    2014p952799      NZ  ...               0.0                      0.0
@@ -449,147 +449,3 @@ Plotting Routines
 The Inspector comes with a suite of plotting routines to visualize the dataset.
 Check out the `Gallery <gallery.html>`__ for figure examples and example code
 snippets used to generate them.
-
-Source-receiver Metadata
--------------------------
-
-A very simple source-receiver scatter plot can be created with the ``map``
-function
-
-.. code:: python
-
-    insp.map()
-
-The ``event_depths`` functions plots a 2D cross section of all events at depth
-
-.. code:: python
-
-    insp.event_depths(xaxis="longitude")
-
-The ``raypaths`` function shows connecting lines for any source-receiver pair
-that has atleast one measurement
-
-.. code:: python
-
-    insp.raypaths(iteration="i01", step_count="s00")
-
-The ``raypath_density`` function provides a more detailed raypath plot, which is
-colored by the density of overlapping raypaths
-
-.. code:: python
-
-    insp.raypath_density(iteration="i01", step_count="s00")
-
-The ``event_hist`` function creates a simple event histogram based on event
-information such as magnitude.
-
-.. code:: python
-
-    insp.sources.keys()  #  <- Use to check available choices
-    insp.event_hist(choice="magnitude")
-
-
-
-Misfit Window Timing
----------------------
-
-The following plotting functions are concerned with visualizing the time
-dependent part of the measurements
-
-The ``travel_times`` function plots a proxy for phase arrivals, similar to
-a seismic record section.
-
-.. code:: python
-
-    insp.travel_times(markersize=2, t_offset=-20, constants=[2, 4, 6, 8, 10])
-
-The ``plot_windows`` function plots time windows (as bars) against source
-receiver distance, illustrating seismic phases included in the inversion.
-
-
-.. code:: python
-
-    insp.plot_windows(iteration="i01", step_count="s00")
-
-
-Inversion Statistics
---------------------
-
-The following plotting functions help the user understand how an inversion is
-progressing by comparing iterations against one another. These are common
-inversion statistics plots shown in many tomography publications.
-
-
-The ``convergence`` function plots total misfit per iteration over the course
-of an inversion. An additional Y axis is used to plot the number of windows for
-each iteration (or the overall length of the time windows)
-
-.. code:: python
-
-    insp.convergence(windows="nwin")
-
-
-The ``hist`` function generates histograms for a given measurement column,
-such as overall cross correlation or amplitude anomaly.
-
-.. code:: python
-
-    insp.windows.keys()  # <- To see available choices
-    insp.hist(choice="cc_shift_in_seconds")
-
-The ``hist`` function can also be used to generate two sets of histograms that
-compare one iteration to another:
-
-.. code:: python
-
-    insp.hist(iteration="i01", step_count="s00", iteration_comp="i01",
-              step_count_comp="s01", choice="dlnA")
-
-
-Measurement Statistics
------------------------
-
-These plotting functions allow the user to plot measurements for a given
-evaluation in order to better understand the statistical distribution of
-measurements, or comparisons against one another.
-
-The ``scatter`` function compares any two attributes in the `windows` dataframe
-
-.. code:: python
-
-    insp.scatter(x="relative_starttime", y="max_cc_value")
-
-The ``measurement_hist`` function generates histograms of source or receiver
-metadata. Useful for identifying events or stations which may be outliers in
-terms of overall measurements.
-
-.. code:: python
-
-    insp.measurement_hist(iteration="i01", step_count="s00", choice="station")
-
-The ``station_event_misfit_map`` creates a map for a single station. All other
-points correspond to events which the station has recorded. Colors of these
-markers correspond to given measurement criteria.
-
-.. code:: python
-
-    insp.station_event_misfit_map(station="BFZ", iteration="i01",
-                                  step_count="s00", choice="misfit")
-
-The ``station_event_misfit_map`` creates a map for a single event. All other
-points correspond to stations which have recorded the event. Colors of these
-markers correspond to given measurement criteria.
-
-.. code:: python
-
-    insp.event_station_misfit_map(event="2014p952799", iteration="i01",
-                                  step_count="s00", choice="nwin", cmap="jet_r")
-
-
-The ``event_misfit_map`` plots all events on a map and their corresponding
-scaled misfit value for a given evaluation (defaults to last evaluation in the
-Inspector).
-
-.. code:: python
-
-    insp.event_misfit_map(choice="misfit")

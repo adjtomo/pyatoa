@@ -1,5 +1,5 @@
-Name Standards
-==============
+Naming Standards
+=================
 
 Pyatoa enforces a few standards for book keeping which are listed here.
 
