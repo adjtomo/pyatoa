@@ -25,7 +25,7 @@ Quickstart
 ~~~~~~~~~~~
 
 - Have a look at the `Overview <overview.html>`__ page to learn about Pyatoa.
-- The `Getting Started <getting_started.html>`__ page shows you how to run a
+- `Getting Started <getting_started.html>`__ shows you how to run a
   small misfit quantification example.
 - The `Gallery <gallery.html>`__ provides a number of figures which illustrate
   how Pyatoa can be used to assess misfit during a seismic inversion.
@@ -93,7 +93,6 @@ publication:
    standards
    logging
 
-
 .. toctree:: 
    :maxdepth: 1
    :hidden:
@@ -107,6 +106,7 @@ publication:
    :hidden:
    :caption: Development
 
+   contributing
    code_dev_plan
    changelog
 
