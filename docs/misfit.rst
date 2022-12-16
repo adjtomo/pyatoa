@@ -8,9 +8,8 @@ page explains each class and their functionalities.
 Logging
 ~~~~~~~
 
-Pyatoa comes with a detailed logger which takes care of Python's logging
-library. Most of the processes in Pyatoa will output log messages. Log levels
-in decreasing verbosity are: DEBUG, INFO, WARNING, CRITICAL
+Pyatoa comes with a detailed logger; most processes will output log messages.
+Log levels in decreasing verbosity are: DEBUG, INFO, WARNING, CRITICAL
 
 .. code:: python
 
