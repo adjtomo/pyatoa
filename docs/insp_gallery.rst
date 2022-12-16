@@ -131,13 +131,6 @@ windows)
     insp.convergence(windows="nwin", show=True, save=False)
 
 
-.. parsed-literal::
-
-    /Users/chow/Repos/pyatoa/pyatoa/visuals/insp_plot.py:1513: UserWarning: FixedFormatter should only be used together with FixedLocator
-      ax.set_xticklabels(xlabs, rotation=60, ha="center")
-
-
-
 .. image:: images/insp_gallery_files/insp_gallery_17_1.png
 
 
@@ -200,12 +193,6 @@ be outliers in terms of overall measurements.
 .. code:: python
 
     insp.measurement_hist(iteration="i01", step_count="s00", choice="station", show=True, save=False)
-
-
-.. parsed-literal::
-
-    /Users/chow/Repos/pyatoa/pyatoa/visuals/insp_plot.py:607: PerformanceWarning: indexing past lexsort depth may impact performance.
-      arr = self.nwin(
 
 
 
