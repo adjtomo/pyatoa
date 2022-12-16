@@ -26,9 +26,6 @@ Version 0.2.0
 - Added hard requirements for Cartopy and Proj in requirements.txt as their 
   absence was causing some dependency conflicts
 
-Version 0.3.0
-~~~~~~~~~~~~~~
-
 - Removed all FDSN gathering routines from Pyatoa completely to keep the package
   more lightweight. This functionality has moved to PySEP.
 
@@ -39,4 +36,10 @@ Version 0.3.0
 
 - Added PySEP as a dependency of Pyatoa
 
-- Overhauled documentation
+- Overhauled documentation to minimize use of Jupyter notebooks and instead
+  hardcode code snippets. This leads to cleaner, more manageable code. Also
+  attempted to slim down documentation (read: less wordy)
+
+- Added example data reading functions
+
+- Bombed out pyatoa/scripts repository which contained unused or old scripts
