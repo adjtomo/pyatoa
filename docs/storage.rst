@@ -1,809 +1,323 @@
 Saving Data with ASDF
 =====================
 
-Pyatoa stores data using `PyASDF
+Pyatoa stores data and processing results to `PyASDF
 ASDFDataSets <https://seismicdata.github.io/pyasdf/asdf_data_set.html>`__,
 which are seismological data structures built upon the HDF5 file format.
 
-Datasets are hierarchical (tree-like), portable, compressible, and
-self-describing or containing both data and metadata. They are built
-around ObsPy objects, removing any need for conversions in the
-transition from data storage to data processing.
+Data are stored as ObsPy or NumPy objects within the ASDFDataSet and can be
+easily retrieved for later processing.
 
-An ``ASDFDataSet`` can be passed directly to the ``Manager`` class. By
-default, gathered data and processed results will automatically be
-stored inside the dataset following a pre-defined naming convention.
-Naming schemes are set using parameters in the ``Config`` object.
-
-Below we show how data is saved throughout a workflow, and how it can be
-accessed using PyASDF and Pyatoa.
-
-For a detailed tutorial on the ``ASDFDataSet``, see:
-https://seismicdata.github.io/pyasdf/tutorial.html
+Collections of ASDFDataSets can be read by the Inspector class to perform
+`bulk misfit assessment <inspector.html>`__.
 
 .. code:: python
 
-    import os
-    import obspy
-    from pyatoa import Config, Manager, logger
     from pyasdf import ASDFDataSet
-    
-    logger.setLevel("DEBUG")
-    
-    # Load in the test data
-    inv = obspy.read_inventory("../tests/test_data/test_dataless_NZ_BFZ.xml")
-    cat = obspy.read_events("../tests/test_data/test_catalog_2018p130600.xml")
-    event = cat[0]
-    st_obs = obspy.read("../tests/test_data/test_obs_data_NZ_BFZ_2018p130600.ascii")
-    st_syn = obspy.read("../tests/test_data/test_syn_data_NZ_BFZ_2018p130600.ascii")
+    from pyatoa import Manager
 
---------------
+    ds = ASDFDataSet("example.h5")
+    mgmt = Manager(ds=ds)
+    # ... some processing steps
+    mgmt.write()  # data are stored to the ASDFDataSet
 
-Initializing
-------------
-
-| First we must open a new ``ASDFDataSet`` file. We will fill it with
-  data from the ``Manager``.
-| ``ASDFDataSet``\ s can also be used as a context manager, using the
-  ``with`` argument. This ensures the file is closed after use.
-
-.. code:: python
-
-    # Fresh dataset: make sure we aren't trying to work with existing data
-    ds_fid = "../tests/test_data/docs_data/test_ASDFDataSet.h5"
-    if os.path.exists(ds_fid):
-        os.remove(ds_fid)
-    
-    ds = ASDFDataSet(ds_fid)
-    print(ds)
-
-
-.. parsed-literal::
-
-    ASDF file [format version: 1.0.3]: '../tests/test_data/docs_data/test_ASDFDataSet.h5' (96.0 bytes)
-    	Contains 0 event(s)
-    	Contains waveform data from 0 station(s).
-
-
-| We can pass the ``ASDFDataSet`` ds directly to the initialization of
-  the ``Manager`` class.
-| The string representation of the ``Manager`` class shows us that the
-  ``ASDFDataSet`` has been attached, by showing the name of the dataset.
-
-   **NOTE:** In Pyatoa, by convention, each event gets its own
-   ``ASDFDataSet``; each ``ASDFDataSet`` should be named using a unique
-   event identifier. This ensures that files are kept a reasonable size
-   and avoids the need for more complicated internal naming schemes.
-
-.. code:: python
-
-    mgmt = Manager(ds=ds, config=Config(), inv=inv, event=event, st_obs=st_obs, st_syn=st_syn)
-    print(mgmt)
-
-
-.. parsed-literal::
-
-    [2022-03-03 11:04:04] - pyatoa - DEBUG: Component list set to E/N/Z
-
-
-.. parsed-literal::
-
-    Manager Data
-        dataset   [ds]:        test_ASDFDataSet.h5
-        quakeml   [event]:     smi:nz.org.geonet/2018p130600
-        station   [inv]:       NZ.BFZ
-        observed  [st_obs]:    3
-        synthetic [st_syn]:    3
-    Stats & Status
-        half_dur:              0.6989458964552759
-        time_offset_sec:       None
-        standardized:          False
-        obs_processed:         False
-        syn_processed:         False
-        nwin   [windows]:      None
-        misfit [adjsrcs]:      None
-    
-
-
---------------
-
-Manually writing data
+Manually Data Writing
 ---------------------
 
-We can save the current Manager data using the ``Manager.write()``
-function. The Pyatoa ``Config`` object can also be written to the
-``ASDFDataSet`` using the ``Config.write()`` function.
+The ``write`` function of the Manager will write all available data into an
+ASDFDataSet. These include:
 
-Once written, we see the ``ASDFDataSet`` has been populated with event
-and station metadata, waveform data, and Config information.
-
-.. code:: python
-
-    mgmt.write()
-    mgmt.config.write(write_to=ds)
-
-.. code:: python
-
-    ds
-
-
-
-
-.. parsed-literal::
-
-    ASDF file [format version: 1.0.3]: '../tests/test_data/docs_data/test_ASDFDataSet.h5' (495.4 KB)
-    	Contains 1 event(s)
-    	Contains waveform data from 1 station(s).
-    	Contains 1 type(s) of auxiliary data: Configs
-
+- observed waveforms
+- synthetic waveforms
+- station metadata
+- event metadata
+- misfit windows
+- adjoint sources
 
 
 .. code:: python
 
-    ds.events
+    from pyasdf import ASDFDataSet
+    from pyatoa import Manager
 
+    ds = ASDFDataSet("example.h5")
+    mgmt = Manager(ds=ds)
+    # ... some processing steps
 
+    mgmt.write(ds=ds)
 
-
-.. parsed-literal::
-
-    1 Event(s) in Catalog:
-    2018-02-18T07:43:48.127644Z | -39.949, +176.300 | 5.156706293 M  | manual
-
-
-
-.. code:: python
-
-    ds.waveforms.list()
-
-
-
-
-.. parsed-literal::
-
-    ['NZ.BFZ']
-
-
+The Config class can also write itself to a dataset, this must be done
+separate from the Manager write.
 
 .. code:: python
 
-    ds.auxiliary_data.Configs
+    from pyatoa import Config
 
+    cfg = Config()
+    cfg.write(write_to=ds)
 
-
-
-.. parsed-literal::
-
-    1 auxiliary data item(s) of type 'Configs' available:
-    	default
-
-
-
---------------
-
-Automatically written data
+Automatic Data Writing
 --------------------------
 
-| During a Pyatoa workflow, individual functions will automatically
-  write their outputs into the given ``ASDFDataSet``.
-| Here the log statements show the ``Manager.window()`` and
-  ``Manager.measure()`` functions saving their outputs into the data
-  set.
+Prior to data gathering and processing with the Manager, you can set the Config
+parameter ``save_to_ds`` to tell a Manager to automatically save any data and
+processing results to the dataset (this is set `True` by default).
 
-.. code:: python
+The Manager must be supplied a valid ADSFDataSet. See the `data discovery
+<discovery.html>`__ page for automated data discovery routines.
 
-    mgmt.standardize().preprocess();
+.. code::
 
+    from pyatoa import Config, Manager
+    from pyasdf import ASDFDataSet
 
-.. parsed-literal::
+    ds = ASDFDataSet("example.h5")
+    cfg = Config(save_to_ds=True, paths={...})  # paths set to local data
+    mgmt = Manager(ds=ds, config=cfg)
+    mgmt.gather()  # <- automatically stores gathered data to dataset
+    mgmt.standardize().preprocess()
+    mgmt.window()  # <- automatically stores misfit windows to dataset
+    mgmt.measure()  # <- automatically stores adjoint sources to dataset
 
-    [2022-03-03 11:04:04] - pyatoa - INFO: standardizing streams
-    [2022-03-03 11:04:04] - pyatoa - DEBUG: zero pad NZ.BFZ.10.HHE (0, 0) samples
-    [2022-03-03 11:04:04] - pyatoa - DEBUG: new starttime NZ.BFZ.10.HHE: 2018-02-18T07:43:28.127644Z
-    [2022-03-03 11:04:04] - pyatoa - DEBUG: zero pad NZ.BFZ.10.HHN (0, 0) samples
-    [2022-03-03 11:04:04] - pyatoa - DEBUG: new starttime NZ.BFZ.10.HHN: 2018-02-18T07:43:28.127644Z
-    [2022-03-03 11:04:04] - pyatoa - DEBUG: zero pad NZ.BFZ.10.HHZ (0, 0) samples
-    [2022-03-03 11:04:04] - pyatoa - DEBUG: new starttime NZ.BFZ.10.HHZ: 2018-02-18T07:43:28.127644Z
-    [2022-03-03 11:04:04] - pyatoa - DEBUG: time offset is -20.0s
-    [2022-03-03 11:04:04] - pyatoa - INFO: preprocessing observation data
-    [2022-03-03 11:04:04] - pyatoa - INFO: adjusting taper to cover time offset -20.0
-    [2022-03-03 11:04:04] - pyatoa - DEBUG: removing response, units to DISP
-    [2022-03-03 11:04:04] - pyatoa - DEBUG: rotating from generic coordinate system to ZNE
-    [2022-03-03 11:04:04] - pyatoa - DEBUG: bandpass filter: 10.0 - 30.0s w/ 2.0 corners
-    [2022-03-03 11:04:04] - pyatoa - INFO: preprocessing synthetic data
-    [2022-03-03 11:04:04] - pyatoa - INFO: adjusting taper to cover time offset -20.0
-    [2022-03-03 11:04:04] - pyatoa - DEBUG: no response removal, synthetic data or requested not to
-    [2022-03-03 11:04:04] - pyatoa - DEBUG: bandpass filter: 10.0 - 30.0s w/ 2.0 corners
-    [2022-03-03 11:04:04] - pyatoa - DEBUG: convolving data w/ Gaussian (t/2=0.70s)
+Accessing ASDFDataSet
+---------------------
 
+This section details how to access waveforms, misfit results and metadata stored
+inside an ASDFDataSet.
 
-.. code:: python
+See the `PyASDF documentation
+<https://seismicdata.github.io/pyasdf/tutorial.html#reading-an-existing-asdf-data-set>`__
+for more information.
 
-    mgmt.window();
+Accessing Metadata
+~~~~~~~~~~~~~~~~~~
 
+To access ``event`` metadata, stored as an ObsPy Event object
 
-.. parsed-literal::
+.. note::
 
-    [2022-03-03 11:04:04] - pyatoa - INFO: running Pyflex w/ map: default
-    [2022-03-03 11:04:04] - pyatoa - INFO: 1 window(s) selected for comp E
-    [2022-03-03 11:04:04] - pyatoa - INFO: 1 window(s) selected for comp N
-    [2022-03-03 11:04:04] - pyatoa - INFO: 1 window(s) selected for comp Z
-    [2022-03-03 11:04:04] - pyatoa - DEBUG: saving misfit windows to ASDFDataSet
-    [2022-03-03 11:04:04] - pyatoa - INFO: 3 window(s) total found
-
-
-.. code:: python
-
-    mgmt.measure();
-
-
-.. parsed-literal::
-
-    [2022-03-03 11:04:04] - pyatoa - DEBUG: running Pyadjoint w/ type: cc_traveltime_misfit
-    [2022-03-03 11:04:04] - pyatoa - INFO: 0.365 misfit for comp E
-    [2022-03-03 11:04:04] - pyatoa - INFO: 1.620 misfit for comp N
-    [2022-03-03 11:04:04] - pyatoa - INFO: 0.004 misfit for comp Z
-    [2022-03-03 11:04:04] - pyatoa - DEBUG: saving adjoint sources to ASDFDataSet
-    [2022-03-03 11:04:04] - pyatoa - INFO: total misfit 1.989
-
-
---------------
-
-Accessing saved data using PyASDF
----------------------------------
-
-| All saved data can be accessed using ``ASDFDataSet`` attributes.
-| For a more thorough explanation of accessing data with an
-  ``ASDFDataSet``, see: https://seismicdata.github.io/pyasdf/index.html
-
-**Event metadata** is stored as an ObsPy ``Catalog`` object in the
-``ASDFDataSet.events`` attribute.
+    By design, Pyatoa only stores one event per ASDFDataSet, to avoid file
+    sizes getting too large;
 
 .. code:: python
 
     ds.events[0]
 
-
-
-
-.. parsed-literal::
-
-    Event:	2018-02-18T07:43:48.127644Z | -39.949, +176.300 | 5.156706293 M  | manual
-    
-    	                  resource_id: ResourceIdentifier(id="smi:nz.org.geonet/2018p130600")
-    	                   event_type: 'earthquake'
-    	                creation_info: CreationInfo(agency_id='WEL(GNS_Primary)', author='scevent@kseqp01.geonet.org.nz', creation_time=UTCDateTime(2018, 2, 18, 7, 44, 9, 156454))
-    	          preferred_origin_id: ResourceIdentifier(id="smi:nz.org.geonet/Origin#20180226021110.13419.62761")
-    	       preferred_magnitude_id: ResourceIdentifier(id="smi:nz.org.geonet/Origin#20180226021110.13419.62761#netMag.M")
-    	 preferred_focal_mechanism_id: ResourceIdentifier(id="smi:local/ad83e11b-cc91-4de7-9cd0-5c51f99e1062")
-    	                         ---------
-    	           event_descriptions: 1 Elements
-    	             focal_mechanisms: 1 Elements
-    	                      origins: 1 Elements
-    	                   magnitudes: 3 Elements
-
-
-
---------------
-
-| **Waveforms** are stored as ObsPy ``Stream`` objects, and **station
-  metadata** is stored as ObsPy ``Inventory`` objects.
-| They are stored together in the ``ASDFDataSet.waveforms`` attribute.
+To access the station list, which stores data and metadata for all stations
+in the dataset:
 
 .. code:: python
+
+    ds.waveforms
+
+Waveforms are stored alongside metadata coded by the the network and station
+code of each receiver. For an example station 'NZ.BFZ', you can access metadata
+with:
+
+.. code:: bash
 
     ds.waveforms.NZ_BFZ.StationXML
 
+Accessing Waveforms
+~~~~~~~~~~~~~~~~~~~
 
-
-
-.. parsed-literal::
-
-    Inventory created at 2020-02-02T22:21:59.000000Z
-    	Created by: Delta
-    		    None
-    	Sending institution: GeoNet (WEL(GNS_Test))
-    	Contains:
-    		Networks (1):
-    			NZ
-    		Stations (1):
-    			NZ.BFZ (Birch Farm)
-    		Channels (3):
-    			NZ.BFZ.10.HHZ, NZ.BFZ.10.HHN, NZ.BFZ.10.HHE
-
-
+Observed waveforms are tagged by Pyatoa with the ``Config.observed_tag``
+attribute, which is 'observed' by default. Waveforms are stored as Stream
+objects.
 
 .. code:: python
 
-    ds.waveforms.NZ_BFZ.observed + ds.waveforms.NZ_BFZ.synthetic
+    ds.waveforms.NZ_BFZ.observed
 
+Synthetic waveforms are tagged by Pyatoa with the ``Config.synthetic_tag``
+attribute.
 
+.. code:: python
 
+    ds.waveforms.NZ_BFZ.synthetic
 
-.. parsed-literal::
+During a SeisFlows inversion, the ``synthetic_tag`` may reflect the iteration
+and step count assigned by SeisFlows.
 
-    6 Trace(s) in Stream:
-    NZ.BFZ.10.HHE | 2018-02-18T07:43:28.128394Z - 2018-02-18T07:49:38.128394Z | 100.0 Hz, 37001 samples
-    NZ.BFZ.10.HHN | 2018-02-18T07:43:28.128394Z - 2018-02-18T07:49:38.128394Z | 100.0 Hz, 37001 samples
-    NZ.BFZ.10.HHZ | 2018-02-18T07:43:28.128394Z - 2018-02-18T07:49:38.128394Z | 100.0 Hz, 37001 samples
-    NZ.BFZ..BXE   | 2018-02-18T07:43:28.127644Z - 2018-02-18T07:48:28.097644Z | 33.3 Hz, 10000 samples
-    NZ.BFZ..BXN   | 2018-02-18T07:43:28.127644Z - 2018-02-18T07:48:28.097644Z | 33.3 Hz, 10000 samples
-    NZ.BFZ..BXZ   | 2018-02-18T07:43:28.127644Z - 2018-02-18T07:48:28.097644Z | 33.3 Hz, 10000 samples
+.. note::
 
+    See the `naming standards page <standards.html>`__ for further explanation
+    on tagging for inversions.
 
+For iteration 1, step count 0, synthetics will be saved as:
 
---------------
+.. code:: python
 
-**Misfit windows**, **Adjoint Sources**, and **Configuration
-parameters** are stored in the ``ADSFDataSet.auxiliary_data`` attribute.
+    ds.waveforms.NZ_BFZ.synthetics_i01s00
+
+This tagging allows Pyatoa to save multiple sets of synthetic waveforms to a
+single ASDFDataSet.
+
+Accessing Misfit Windows
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Misfit windows, adjoint sources and configuration parameters are stored in the
+``auxiliary_data`` attribute of the ASDFDataSet
 
 .. code:: python
 
     ds.auxiliary_data
 
+Configuration parameters are stored in the ``Config`` attribute.
 
+.. code:: python
 
+    ds.auxiliary_data.Configs
 
-.. parsed-literal::
-
-    Data set contains the following auxiliary data types:
-    	AdjointSources (1 item(s))
-    	Configs (1 item(s))
-    	MisfitWindows (1 item(s))
-
-
-
-If no ``iteration`` or ``step_count`` attributes are provided to the
-``Config`` object, auxiliary data will be stored using the ``default``
-tag.
+The ``MisfitWindows`` attribute stores information about misfit windows
 
 .. code:: python
 
     ds.auxiliary_data.MisfitWindows
 
+During an inversion, misfit windows are separated by iteration and step count
 
+.. code:: python
 
-
-.. parsed-literal::
-
+    >>> ds.auxiliary_data.MisfitWindows
     1 auxiliary data sub group(s) of type 'MisfitWindows' available:
-    	default
+        i01
+    >>> ds.auxiliary_data.MisfitWindows.i01
+    1 auxiliary data sub group(s) of type 'MisfitWindows/i01' available:
+        s00
+    >>> ds.auxiliary_data.MisfitWindows.i01.s00
+    3 auxiliary data item(s) of type 'MisfitWindows/i01/s00' available:
+        NZ_BFZ_E_0
+        NZ_BFZ_N_0
+        NZ_BFZ_Z_0
 
-
-
-.. code:: python
-
-    ds.auxiliary_data.MisfitWindows['default']
-
-
-
-
-.. parsed-literal::
-
-    3 auxiliary data item(s) of type 'MisfitWindows/default' available:
-    	NZ_BFZ_E_0
-    	NZ_BFZ_N_0
-    	NZ_BFZ_Z_0
-
-
+Accessing each misfit window provides a dictionary of window parameters, same
+as the information that is outputted by Pyflex.
 
 .. code:: python
 
-    ds.auxiliary_data.MisfitWindows.default.NZ_BFZ_E_0
-
-
-
-
-.. parsed-literal::
-
+    >>> ds.auxiliary_data.MisfitWindows.i01.s00.NZ_BFZ_E_0
     Auxiliary Data of Type 'MisfitWindows'
-    	Path: 'default/NZ_BFZ_E_0'
-    	Data shape: '(2,)', dtype: 'int64'
-    	Parameters:
-    		absolute_endtime: 2018-02-18T07:44:45.197644Z
-    		absolute_starttime: 2018-02-18T07:43:42.437644Z
-    		cc_shift_in_samples: 36
-    		cc_shift_in_seconds: 1.08
-    		center_index: 1523
-    		channel_id: NZ.BFZ.10.HHE
-    		dlnA: -0.70965282411
-    		dt: 0.03
-    		left_index: 477
-    		max_cc_value: 0.871536711295
-    		min_period: 10.0
-    		phase_arrival_P: 15.2626263355
-    		phase_arrival_Pn: 15.1318939626
-    		phase_arrival_S: 25.7016469855
-    		phase_arrival_Sn: 25.6750945772
-    		phase_arrival_p: 14.0460406583
-    		phase_arrival_s: 23.6216670031
-    		phase_arrival_sP: 18.7800304978
-    		relative_endtime: 77.07
-    		relative_starttime: 14.31
-    		right_index: 2569
-    		time_of_first_sample: 2018-02-18T07:43:28.127644Z
-    		window_weight: 5.46976440008
+        Path: 'i01/s00/NZ_BFZ_E_0'
+        Data shape: '(2,)', dtype: 'int64'
+        Parameters:
+            absolute_endtime: 2018-02-18T07:44:59.915000Z
+            absolute_starttime: 2018-02-18T07:43:57.130000Z
+            cc_shift_in_samples: 97
+            cc_shift_in_seconds: 7.0325
+            center_index: 833
+            channel_id: NZ.BFZ..BXE
+            dlnA: 0.8178943677509113
+            dt: 0.0725
+            left_index: 400
+            max_cc_value: 0.9260584412126905
+            min_period: 8.0
+            phase_arrival_P: 15.262235117775926
+            phase_arrival_Pn: 15.131536549180034
+            phase_arrival_S: 25.700988089152666
+            phase_arrival_Sn: 25.674453184025445
+            phase_arrival_p: 14.045597727214647
+            phase_arrival_s: 23.62091920350575
+            phase_arrival_sP: 18.77953271333086
+            relative_endtime: 91.785
+            relative_starttime: 28.999999999999996
+            right_index: 1266
+            time_of_first_sample: 2018-02-18T07:43:28.130000Z
+            window_weight: 7.267822403942347
 
 
+Accessing Adjoint Sources
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Adjoint sources can be accessed in the same manner as misfit windows, through
+the ``AdjointSources`` attribute of auxiliary data.
 
 .. code:: python
 
     ds.auxiliary_data.AdjointSources
 
+Adjoint sources are similarly stored per iteration and step count.
 
+.. code:: python
 
+    >>> ds.auxiliary_data.AdjointSources.i01.s00
+    3 auxiliary data item(s) of type 'AdjointSources/i01/s00' available:
+        NZ_BFZ_BXE
+        NZ_BFZ_BXN
+        NZ_BFZ_BXZ
 
-.. parsed-literal::
-
-    1 auxiliary data sub group(s) of type 'AdjointSources' available:
-    	default
-
+Adjoint sources are stored as dictionaries with information relevant to the
+creation of the adjoint source.
 
 
 .. code:: python
 
-    ds.auxiliary_data.AdjointSources.default
-
-
-
-
-.. parsed-literal::
-
-    3 auxiliary data item(s) of type 'AdjointSources/default' available:
-    	NZ_BFZ_BXE
-    	NZ_BFZ_BXN
-    	NZ_BFZ_BXZ
-
-
-
-.. code:: python
-
-    ds.auxiliary_data.AdjointSources.default.NZ_BFZ_BXE
-
-
-
-
-.. parsed-literal::
-
+    >>> ds.auxiliary_data.AdjointSources.default.NZ_BFZ_BXE
     Auxiliary Data of Type 'AdjointSources'
-    	Path: 'default/NZ_BFZ_BXE'
-    	Data shape: '(10000, 2)', dtype: 'float64'
-    	Parameters:
-    		adj_src_type: cc_traveltime_misfit
-    		component: BXE
-    		dt: 0.03
-    		location: 10
-    		max_period: 30.0
-    		min_period: 10.0
-    		misfit: 0.36539741683
-    		network: NZ
-    		starttime: 2018-02-18T07:43:28.127644Z
-    		station: BFZ
+        Path: 'i01/s00/NZ_BFZ_BXE'
+        Data shape: '(5000, 2)', dtype: 'float64'
+        Parameters:
+            adj_src_type: cc_traveltime_misfit
+            component: BXE
+            dt: 0.0725
+            location:
+            max_period: 20.0
+            min_period: 8.0
+            misfit: 24.220799999999993
+            network: NZ
+            starttime: 2018-02-18T07:43:28.130000Z
+            station: BFZ
 
 
+To access the actual data array of the adjoint source, which is stored in two
+column format, where the first column is time, and the second column is
+amplitude
 
---------------
+.. code:: python
 
-Re-loading data using the Manager
+    >>> ds.auxiliary_data.AdjointSources.i01.s00.NZ_BFZ_BXE.data[:]
+    array([[-20.    ,   0.    ],
+           [-19.9275,   0.    ],
+           [-19.855 ,   0.    ],
+           ...,
+           [342.2825,   0.    ],
+           [342.355 ,   0.    ],
+           [342.4275,   0.    ]])
+
+
+Reloading Data From a Dataset
 ---------------------------------
 
 Data previously saved into an ``ASDFDataSet`` can be loaded back into a
-``Manager`` class using the ``Manager.load()`` function. The ``load()``
-function will search for matching metadata, waveforms and configuration
-parameters, based on the ``path`` argument provided.
+``Manager`` class using the the ``load()`` function.
+
+The load function searches for metadata, waveforms and configuration
+parameters, based on the ``code`` and ``path`` arguments provided.
+
+.. note::
+
+    Waveforms stored in the ASDFDataSet are **unprocessed**. Users will have
+    to re-run the ``standardize`` and ``preprocess`` functions again to get
+    back to the process waveforms used to calculate windows and adjoint sources.
 
 .. code:: python
 
     mgmt = Manager(ds=ds)
-    mgmt.load(code="NZ.BFZ", path="default")
+    mgmt.load(code="NZ.BFZ", path="i01/s00")
 
-
-.. parsed-literal::
-
-    [2022-03-03 11:04:04] - pyatoa - INFO: no config provided, initiating default
-    [2022-03-03 11:04:04] - pyatoa - DEBUG: Component list set to E/N/Z
-    [2022-03-03 11:04:04] - pyatoa - INFO: loading config from dataset default
-
-
-
-
-.. parsed-literal::
-
-    Manager Data
-        dataset   [ds]:        test_ASDFDataSet.h5
-        quakeml   [event]:     smi:nz.org.geonet/2018p130600
-        station   [inv]:       NZ.BFZ
-        observed  [st_obs]:    3
-        synthetic [st_syn]:    3
-    Stats & Status
-        half_dur:              0.6989458964552759
-        time_offset_sec:       None
-        standardized:          False
-        obs_processed:         False
-        syn_processed:         False
-        nwin   [windows]:      None
-        misfit [adjsrcs]:      None
-
-
+Misfit windows and adjoint sources are **not** explicitely re-loaded when
+calling the load function. To re-load windows, you can call the ``window``
+function:
 
 .. code:: python
 
-   pwd
+    mgmt.standardize()
+    mgmt.window(fix_windows=True, iteration="i01", step_count="s00")
 
-
-.. parsed-literal::
-
-    /home/bchow/REPOSITORIES/pyatoa/pyatoa/docs
-
-
-Misfit windows and adjoint sources are not explicitely re-loaded.
-Windows can be loaded using optional arguments in the
-``Manager.window()`` function.
-
---------------
-
-Saving data during an inversion
--------------------------------
-
-For each function evaluation, a new set of synthetic waveforms, misfit
-windows, adjoint sources and (potentially) configuration parameters, are
-defined. Therefore, unique tags are required to save and load this
-information in a reliable manner.
-
-Pyatoa tags using the ``Config.iteration`` and ``Config.step_count``
-attributes to define unique tags during an inversion.
+You can then re-calculate the adjoint source with the re-loaded windows
+using the ``measure`` function:
 
 .. code:: python
 
-    # Set the config iteration and step_count parameters
-    cfg = Config(iteration=1, step_count=0)
-    
-    # Remove the previously created dataset
-    os.remove(ds_fid)
-    ds = ASDFDataSet(ds_fid)
-    
-    cfg.write(write_to=ds)
-    mgmt = Manager(ds=ds, config=cfg, inv=inv, event=event, st_obs=st_obs, st_syn=st_syn)
-    mgmt.write()
-    mgmt.flow()
+    mgmt.measure()
 
-
-.. parsed-literal::
-
-    [2022-03-03 11:04:05] - pyatoa - DEBUG: Component list set to E/N/Z
-    [2022-03-03 11:04:05] - pyatoa - INFO: standardizing streams
-    [2022-03-03 11:04:05] - pyatoa - DEBUG: zero pad NZ.BFZ.10.HHE (0, 0) samples
-    [2022-03-03 11:04:05] - pyatoa - DEBUG: new starttime NZ.BFZ.10.HHE: 2018-02-18T07:43:28.127644Z
-    [2022-03-03 11:04:05] - pyatoa - DEBUG: zero pad NZ.BFZ.10.HHN (0, 0) samples
-    [2022-03-03 11:04:05] - pyatoa - DEBUG: new starttime NZ.BFZ.10.HHN: 2018-02-18T07:43:28.127644Z
-    [2022-03-03 11:04:05] - pyatoa - DEBUG: zero pad NZ.BFZ.10.HHZ (0, 0) samples
-    [2022-03-03 11:04:05] - pyatoa - DEBUG: new starttime NZ.BFZ.10.HHZ: 2018-02-18T07:43:28.127644Z
-    [2022-03-03 11:04:05] - pyatoa - DEBUG: time offset is -20.0s
-    [2022-03-03 11:04:05] - pyatoa - INFO: preprocessing observation data
-    [2022-03-03 11:04:05] - pyatoa - INFO: adjusting taper to cover time offset -20.0
-    [2022-03-03 11:04:05] - pyatoa - DEBUG: removing response, units to DISP
-    [2022-03-03 11:04:05] - pyatoa - DEBUG: rotating from generic coordinate system to ZNE
-    [2022-03-03 11:04:05] - pyatoa - DEBUG: bandpass filter: 10.0 - 30.0s w/ 2.0 corners
-    [2022-03-03 11:04:05] - pyatoa - INFO: preprocessing synthetic data
-    [2022-03-03 11:04:05] - pyatoa - INFO: adjusting taper to cover time offset -20.0
-    [2022-03-03 11:04:05] - pyatoa - DEBUG: no response removal, synthetic data or requested not to
-    [2022-03-03 11:04:05] - pyatoa - DEBUG: bandpass filter: 10.0 - 30.0s w/ 2.0 corners
-    [2022-03-03 11:04:05] - pyatoa - DEBUG: convolving data w/ Gaussian (t/2=0.70s)
-    [2022-03-03 11:04:05] - pyatoa - INFO: running Pyflex w/ map: default
-    [2022-03-03 11:04:05] - pyatoa - INFO: 1 window(s) selected for comp E
-    [2022-03-03 11:04:05] - pyatoa - INFO: 1 window(s) selected for comp N
-    [2022-03-03 11:04:05] - pyatoa - INFO: 1 window(s) selected for comp Z
-    [2022-03-03 11:04:05] - pyatoa - DEBUG: saving misfit windows to ASDFDataSet
-    [2022-03-03 11:04:05] - pyatoa - INFO: 3 window(s) total found
-    [2022-03-03 11:04:05] - pyatoa - DEBUG: running Pyadjoint w/ type: cc_traveltime_misfit
-    [2022-03-03 11:04:05] - pyatoa - INFO: 0.365 misfit for comp E
-    [2022-03-03 11:04:05] - pyatoa - INFO: 1.620 misfit for comp N
-    [2022-03-03 11:04:05] - pyatoa - INFO: 0.004 misfit for comp Z
-    [2022-03-03 11:04:05] - pyatoa - DEBUG: saving adjoint sources to ASDFDataSet
-    [2022-03-03 11:04:05] - pyatoa - INFO: total misfit 1.989
-
-
-The ``ASDFDataSet`` is now populated with appropriately tagged data,
-denoting which function evaluation it belongs to.
-
-.. code:: python
-
-    ds.waveforms.NZ_BFZ
-
-
-
-
-.. parsed-literal::
-
-    Contents of the data set for station NZ.BFZ:
-        - Has a StationXML file
-        - 2 Waveform Tag(s):
-            observed
-            synthetic_i01s00
-
-
-
-.. code:: python
-
-    ds
-
-
-
-
-.. parsed-literal::
-
-    ASDF file [format version: 1.0.3]: '../tests/test_data/docs_data/test_ASDFDataSet.h5' (576.9 KB)
-    	Contains 1 event(s)
-    	Contains waveform data from 1 station(s).
-    	Contains 3 type(s) of auxiliary data: AdjointSources, Configs, MisfitWindows
-
-
-
-.. code:: python
-
-    ds.waveforms.NZ_BFZ.synthetic_i01s00
-
-
-
-
-.. parsed-literal::
-
-    3 Trace(s) in Stream:
-    NZ.BFZ..BXE | 2018-02-18T07:43:28.127644Z - 2018-02-18T07:48:28.097644Z | 33.3 Hz, 10000 samples
-    NZ.BFZ..BXN | 2018-02-18T07:43:28.127644Z - 2018-02-18T07:48:28.097644Z | 33.3 Hz, 10000 samples
-    NZ.BFZ..BXZ | 2018-02-18T07:43:28.127644Z - 2018-02-18T07:48:28.097644Z | 33.3 Hz, 10000 samples
-
-
-
-Auxiliary data will be tagged in a similar fashion, making it simple to
-re-access specific function evaluations.
-
-.. code:: python
-
-    ds.auxiliary_data.MisfitWindows
-
-
-
-
-.. parsed-literal::
-
-    1 auxiliary data sub group(s) of type 'MisfitWindows' available:
-    	i01
-
-
-
-.. code:: python
-
-    ds.auxiliary_data.MisfitWindows.i01
-
-
-
-
-.. parsed-literal::
-
-    1 auxiliary data sub group(s) of type 'MisfitWindows/i01' available:
-    	s00
-
-
-
-.. code:: python
-
-    ds.auxiliary_data.MisfitWindows.i01.s00
-
-
-
-
-.. parsed-literal::
-
-    3 auxiliary data item(s) of type 'MisfitWindows/i01/s00' available:
-    	NZ_BFZ_E_0
-    	NZ_BFZ_N_0
-    	NZ_BFZ_Z_0
-
-
-
-Using the ``Manager.load()`` function, we can specify the unique
-``path`` to determine which function evaluation we want to retrieve data
-from.
-
-.. code:: python
-
-    mgmt = Manager(ds=ds)
-    mgmt.load("NZ.BFZ", path="i01/s00", synthetic_tag="synthetic_i01s00")
-    mgmt.standardize().preprocess()
-
-
-.. parsed-literal::
-
-    [2022-03-03 11:04:05] - pyatoa - INFO: no config provided, initiating default
-    [2022-03-03 11:04:05] - pyatoa - DEBUG: Component list set to E/N/Z
-    [2022-03-03 11:04:05] - pyatoa - INFO: loading config from dataset i01/s00
-    [2022-03-03 11:04:05] - pyatoa - INFO: standardizing streams
-    [2022-03-03 11:04:05] - pyatoa - DEBUG: zero pad NZ.BFZ.10.HHE (0, 0) samples
-    [2022-03-03 11:04:05] - pyatoa - DEBUG: new starttime NZ.BFZ.10.HHE: 2018-02-18T07:43:28.127644Z
-    [2022-03-03 11:04:05] - pyatoa - DEBUG: zero pad NZ.BFZ.10.HHN (0, 0) samples
-    [2022-03-03 11:04:05] - pyatoa - DEBUG: new starttime NZ.BFZ.10.HHN: 2018-02-18T07:43:28.127644Z
-    [2022-03-03 11:04:05] - pyatoa - DEBUG: zero pad NZ.BFZ.10.HHZ (0, 0) samples
-    [2022-03-03 11:04:05] - pyatoa - DEBUG: new starttime NZ.BFZ.10.HHZ: 2018-02-18T07:43:28.127644Z
-    [2022-03-03 11:04:05] - pyatoa - DEBUG: time offset is -20.0s
-    [2022-03-03 11:04:05] - pyatoa - INFO: preprocessing observation data
-    [2022-03-03 11:04:05] - pyatoa - INFO: adjusting taper to cover time offset -20.0
-    [2022-03-03 11:04:05] - pyatoa - DEBUG: removing response, units to DISP
-    [2022-03-03 11:04:05] - pyatoa - DEBUG: rotating from generic coordinate system to ZNE
-    [2022-03-03 11:04:05] - pyatoa - DEBUG: bandpass filter: 10.0 - 30.0s w/ 2.0 corners
-    [2022-03-03 11:04:05] - pyatoa - INFO: preprocessing synthetic data
-    [2022-03-03 11:04:05] - pyatoa - INFO: adjusting taper to cover time offset -20.0
-    [2022-03-03 11:04:05] - pyatoa - DEBUG: no response removal, synthetic data or requested not to
-    [2022-03-03 11:04:05] - pyatoa - DEBUG: bandpass filter: 10.0 - 30.0s w/ 2.0 corners
-    [2022-03-03 11:04:05] - pyatoa - DEBUG: convolving data w/ Gaussian (t/2=0.70s)
-
-
-
-
-.. parsed-literal::
-
-    Manager Data
-        dataset   [ds]:        test_ASDFDataSet.h5
-        quakeml   [event]:     smi:nz.org.geonet/2018p130600
-        station   [inv]:       NZ.BFZ
-        observed  [st_obs]:    3
-        synthetic [st_syn]:    3
-    Stats & Status
-        half_dur:              0.6989458964552759
-        time_offset_sec:       -20.0
-        standardized:          True
-        obs_processed:         True
-        syn_processed:         True
-        nwin   [windows]:      None
-        misfit [adjsrcs]:      None
-
-
-
-| We can now load in previously retrieved windows from the dataset,
-  using the ``Manager.window()`` function.
-| Windows misfit criteria will be re-evaluated using the current set of
-  data. We can turn off automatic window saving using the optional
-  ``save`` argument.
-
-.. code:: python
-
-    mgmt.window(fix_windows=True, iteration=1, step_count=0, save=False)
-
-
-.. parsed-literal::
-
-    [2022-03-03 11:04:05] - pyatoa - INFO: retrieving windows from dataset
-    [2022-03-03 11:04:05] - pyatoa - DEBUG: searching for windows in i01s00
-    [2022-03-03 11:04:05] - pyatoa - DEBUG: 3 window(s) found in dataset for NZ.BFZ
-    [2022-03-03 11:04:05] - pyatoa - DEBUG: recalculating window criteria
-    [2022-03-03 11:04:05] - pyatoa - DEBUG: E0_old - cc:0.87 / dt:36.0 / dlnA:-0.71
-    [2022-03-03 11:04:05] - pyatoa - DEBUG: E0_new - cc:0.87 / dt:36.0 / dlnA:-0.71
-    [2022-03-03 11:04:05] - pyatoa - DEBUG: N0_old - cc:0.99 / dt:63.0 / dlnA:-0.83
-    [2022-03-03 11:04:05] - pyatoa - DEBUG: N0_new - cc:0.99 / dt:63.0 / dlnA:-0.83
-    [2022-03-03 11:04:05] - pyatoa - DEBUG: Z0_old - cc:0.99 / dt:0.0 / dlnA:-0.90
-    [2022-03-03 11:04:05] - pyatoa - DEBUG: Z0_new - cc:0.99 / dt:0.0 / dlnA:-0.90
-    [2022-03-03 11:04:05] - pyatoa - INFO: 3 window(s) total found
-
-
-
-
-.. parsed-literal::
-
-    Manager Data
-        dataset   [ds]:        test_ASDFDataSet.h5
-        quakeml   [event]:     smi:nz.org.geonet/2018p130600
-        station   [inv]:       NZ.BFZ
-        observed  [st_obs]:    3
-        synthetic [st_syn]:    3
-    Stats & Status
-        half_dur:              0.6989458964552759
-        time_offset_sec:       -20.0
-        standardized:          True
-        obs_processed:         True
-        syn_processed:         True
-        nwin   [windows]:      3
-        misfit [adjsrcs]:      None
-
-
-
-*easy peasy mate*
