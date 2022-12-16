@@ -5,6 +5,35 @@ Pyatoa is comprised of a two core classes which take care of the main package
 functionality. These are the Config, Manager classes. The following
 page explains each class and their functionalities.
 
+Logging
+~~~~~~~
+
+Pyatoa comes with a detailed logger which takes care of Python's logging
+library. Most of the processes in Pyatoa will output log messages. Log levels
+in decreasing verbosity are: DEBUG, INFO, WARNING, CRITICAL
+
+.. code:: python
+
+    from pyatoa import logger
+
+    logger.setLevel("DEBUG")
+
+An example of logging to stdout during misfit quantification:
+
+.. parsed-literal::
+
+    [2022-03-03 11:01:32] - pyatoa - INFO: preprocessing observation data
+    [2022-03-03 11:01:32] - pyatoa - INFO: adjusting taper to cover time offset -20.0
+    [2022-03-03 11:01:32] - pyatoa - DEBUG: removing response, units to DISP
+    [2022-03-03 11:01:32] - pyatoa - DEBUG: rotating from generic coordinate system to ZNE
+    [2022-03-03 11:01:32] - pyatoa - DEBUG: bandpass filter: 10.0 - 30.0s w/ 2.0 corners
+    [2022-03-03 11:01:32] - pyatoa - INFO: preprocessing synthetic data
+    [2022-03-03 11:01:32] - pyatoa - INFO: adjusting taper to cover time offset -20.0
+    [2022-03-03 11:01:32] - pyatoa - DEBUG: no response removal, synthetic data or requested not to
+    [2022-03-03 11:01:32] - pyatoa - DEBUG: bandpass filter: 10.0 - 30.0s w/ 2.0 corners
+    [2022-03-03 11:01:32] - pyatoa - DEBUG: convolving data w/ Gaussian (t/2=0.70s)
+    [2022-03-03 11:01:32] - pyatoa - INFO: running Pyflex w/ map: default
+
 Config
 ~~~~~~
 
