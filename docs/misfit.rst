@@ -249,8 +249,8 @@ The simplest method to provide the
 :class:`Manager <pyatoa.core.manager.Manager>` with data is to set it's
 attributes. Data are provided and stored as ObsPy objects.
 
-At a minimum, Manager expects two waveforms, observed (`st_obs`) and synthetics
-(`st_syn`). Despite the labels, these can be any types of waveforms (i.e.,
+At a minimum, Manager expects two waveforms, observed (``st_obs``) and synthetics
+(``st_syn``). Despite the labels, these can be any types of waveforms (i.e.,
 two synthetics; two sets of observed waveforms).
 
 .. code:: python
@@ -264,8 +264,8 @@ two synthetics; two sets of observed waveforms).
 
 
 To unlock the full potential of the Manager, metadata should also be provided.
-These include station metadata, including response (`inv`) and event metadata
-(`event`).
+These include station metadata, including response (``inv``) and event metadata
+(``event``).
 
 .. code:: python
 

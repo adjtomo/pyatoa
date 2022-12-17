@@ -29,14 +29,8 @@ Writing Data Manually
 ~~~~~~~~~~~~~~~~~~~~~
 
 The ``write`` function of the Manager will write all available data into an
-ASDFDataSet. These include:
-
-- observed waveforms
-- synthetic waveforms
-- station metadata
-- event metadata
-- misfit windows
-- adjoint sources
+ASDFDataSet. These include observed waveforms, synthetic waveforms,
+station metadata, event metadata, misfit windows and adjoint sources
 
 
 .. code:: python
@@ -50,8 +44,9 @@ ASDFDataSet. These include:
 
     mgmt.write(ds=ds)
 
-The Config class can also write itself to a dataset, this must be done
-separate from the Manager write.
+The :class:`Config <pyatoa.core.config.Config>` class can also write itself to
+a dataset, this must be done separate from the
+:class:`Manager <pyatoa.core.manager.Manager>` write.
 
 .. code:: python
 
@@ -63,9 +58,11 @@ separate from the Manager write.
 Writing Data Automatically
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Prior to data gathering and processing with the Manager, you can set the Config
-parameter ``save_to_ds`` to tell a Manager to automatically save any data and
-processing results to the dataset (this is set `True` by default).
+Prior to data gathering and processing with the
+:class:`Manager <pyatoa.core.manager.Manager>`, you can set the
+:class:`Config <pyatoa.core.config.Config>` parameter ``save_to_ds`` to tell a
+Manager to automatically save any data and processing results to the dataset
+(this is set `True` by default).
 
 The Manager must be supplied a valid ADSFDataSet. See the `data discovery
 <discovery.html>`__ page for automated data discovery routines.
@@ -205,7 +202,7 @@ Misfit Windows
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Misfit windows, adjoint sources and configuration parameters are stored in the
-``auxiliary_data`` attribute of the ASDFDataSet
+``auxiliary_data`` attribute of the ASDFDataSet.
 
 .. code:: python
 
@@ -331,7 +328,7 @@ amplitude
            [342.4275,   0.    ]])
 
 Configuration Parameters
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Users can also access saved configuration parameters from the auxiliary data
 attribute, in the same fashion as the misfit windows and adjoint sources.
@@ -354,92 +351,36 @@ attribute, in the same fashion as the misfit windows and adjoint sources.
             max_period: 20.0
             min_period: 8.0
             observed_tag: observed
-            paths_events: /tmp/pytest-of-bchow/pytest-85/test_pyaflowa_process_event0/scratch/solver/2018p130600/DATA
-            paths_responses: /tmp/pytest-of-bchow/pytest-85/test_pyaflowa_process_event0/seed
-            paths_synthetics: /tmp/pytest-of-bchow/pytest-85/test_pyaflowa_process_event0/scratch/solver/2018p130600/traces/syn
-            paths_waveforms: ['/tmp/pytest-of-bchow/pytest-85/test_pyaflowa_process_event0/scratch/solver/2018p130600/traces/obs'
-     '/tmp/pytest-of-bchow/pytest-85/test_pyaflowa_process_event0/mseed']
-            pyadjoint_config_dlna_sigma_min: 0.5
-            pyadjoint_config_dt_fac: 2.0
-            pyadjoint_config_dt_max_scale: 3.5
-            pyadjoint_config_dt_sigma_min: 1.0
-            pyadjoint_config_err_fac: 2.5
-            pyadjoint_config_ipower_costaper: 10
-            pyadjoint_config_lnpt: 15
-            pyadjoint_config_max_period: 20.0
-            pyadjoint_config_measure_type: dt
-            pyadjoint_config_min_cycle_in_window: 0.5
-            pyadjoint_config_min_period: 8.0
-            pyadjoint_config_mt_nw: 4.0
-            pyadjoint_config_num_taper: 5
-            pyadjoint_config_phase_step: 1.5
-            pyadjoint_config_taper_percentage: 0.3
-            pyadjoint_config_taper_type: hann
-            pyadjoint_config_transfunc_waterlevel: 1e-10
-            pyadjoint_config_use_cc_error: True
-            pyadjoint_config_use_mt_error: False
-            pyadjoint_config_water_threshold: 0.02
-            pyflex_config_c_0: 0.7
-            pyflex_config_c_1: 2.0
-            pyflex_config_c_2: 0.0
-            pyflex_config_c_3a: 4.0
-            pyflex_config_c_3b: 2.0
-            pyflex_config_c_4a: 2.5
-            pyflex_config_c_4b: 12.0
-            pyflex_config_cc_acceptance_level: 0.7
-            pyflex_config_check_global_data_quality: True
-            pyflex_config_dlna_acceptance_level: 1.5
-            pyflex_config_dlna_reference: 0.0
-            pyflex_config_earth_model: ak135
-            pyflex_config_max_period: 20.0
-            pyflex_config_max_time_before_first_arrival: 5.0
-            pyflex_config_min_period: 8.0
-            pyflex_config_min_surface_wave_velocity: 1.1
-            pyflex_config_noise_end_index:
-            pyflex_config_noise_start_index: 0
-            pyflex_config_resolution_strategy: interval_scheduling
-            pyflex_config_s2n_limit: 3.0
-            pyflex_config_signal_end_index:
-            pyflex_config_signal_start_index: 0
-            pyflex_config_snr_integrate_base: 3.5
-            pyflex_config_snr_max_base: 3.0
-            pyflex_config_stalta_waterlevel: 0.1
-            pyflex_config_tshift_acceptance_level: 8.0
-            pyflex_config_tshift_reference: 0.0
-            pyflex_config_window_signal_to_noise_type: amplitude
-            pyflex_config_window_weight_fct:
-            pyflex_preset: nznorth_8-30s
-            rotate_to_rtz: False
-            save_to_ds: True
-            start_pad: 20
-            step_count: 0
-            synthetics_only: True
-            unit_output: DISP
-            win_amp_ratio: 0.0
+            ...
 
 
 Reading Data From a Dataset
 ---------------------------------
 
 Data previously saved into an ``ASDFDataSet`` can be loaded back into a
-``Manager`` class using the the ``load()`` function.
+:class:`Manager <pyatoa.core.manager.Manager>` class using the the
+:meth:`load <pyatoa.core.manager.Manager.load>` function.
 
 
-To load the ``Config`` class from an ASDFDataSet
+To load the :class:`Config <pyatoa.core.config.Config>` class from an
+ASDFDataSet
 
 .. code:: python
 
     cfg = Config()
     cfg.read(read_from=ds, path="i01/s00", fmt="asdf")
 
-The Managers ``load`` function searches for metadata, waveforms and
-configuration parameters, based on the ``code`` and ``path`` arguments provided.
+The Managers :meth:`load <pyatoa.core.manager.Manager.load>` function searches
+for metadata, waveforms and configuration parameters, based on the ``code``
+and ``path`` arguments provided.
 
 .. note::
 
     Waveforms stored in the ASDFDataSet are **unprocessed**. Users will have
-    to re-run the ``standardize`` and ``preprocess`` functions again to get
-    back to the process waveforms used to calculate windows and adjoint sources.
+    to re-run the :meth:`standardize <pyatoa.core.manager.Manager.standardize>`
+    and :meth:`preprocess <pyatoa.core.manager.Manager.preprocess>` functions
+    again to get back to the process waveforms used to calculate windows and
+    adjoint sources.
 
 .. code:: python
 
@@ -447,8 +388,8 @@ configuration parameters, based on the ``code`` and ``path`` arguments provided.
     mgmt.load(code="NZ.BFZ", path="i01/s00")
 
 Misfit windows and adjoint sources are **not** explicitely re-loaded when
-calling the load function. To re-load windows, you can call the ``window``
-function:
+calling the load function. To re-load windows, you can call the
+:meth:`window <pyatoa.core.manager.Manager.window>` function:
 
 .. code:: python
 
@@ -456,7 +397,7 @@ function:
     mgmt.window(fix_windows=True, iteration="i01", step_count="s00")
 
 You can then re-calculate the adjoint source with the re-loaded windows
-using the ``measure`` function:
+using the :meth:`measure <pyatoa.core.manager.Manager.measure>` function:
 
 .. code:: python
 

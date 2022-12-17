@@ -1,12 +1,11 @@
-# Pyatoa Contributors Guide
-
-    This guide is modified from `PyGMTs
-    <https://github.com/GenericMappingTools/pygmt>`__ Contributors guide
+# Contributors Guide
 
 The adjTomo software suite is community driven project and everyone is welcome 
-to contribute to any of the packages.
+to contribute to any of the packages. The source code is hosted on 
+[GitHub](https://github.com/adjtomo/pyatoa)
 
-The repositories are hosted on [GitHub](https://github.com/adjtomo/pyatoa)
+*This guide is modified from 
+[PyGMTs](https://github.com/GenericMappingTools/pygmt) Contributors guide*
 
 ## Ways to Contribute
 
@@ -220,31 +219,10 @@ function/class/module/method listed there.
 You can reference functions, classes, modules, and methods from anywhere
 (including docstrings) using:
 
-
-
 - <code>:func:\`Function name <package.module.function\>`</code>
 - <code>:class:\`Class name <package.module.class>\`</code>
 - <code>:meth:\`Method name <package.module.method>\`</code>
 - <code>:mod:\`Module name <package.module>\`</code>
-
-An example would be to use
-<code>:meth:\`pygmt.Figure.grdview\`</code> to link
-to [https://www.pygmt.org/latest/api/generated/pygmt.Figure.grdview.html](https://www.pygmt.org/latest/api/generated/pygmt.Figure.grdview.html).
-PyGMT documentation that is not a class, method,
-or module can be linked with <code>:doc:\`Any Link Text </path/to/the/file>\`</code>.
-For example, <code>:doc:\`Install instructions \</install\>\`</code> links
-to [https://www.pygmt.org/latest/install.html](https://www.pygmt.org/latest/install.html).
-
-Linking to the GMT documentation and GMT configuration parameters can be done using:
-
-- <code>:gmt-docs:\`page_name.html\`</code>
-- <code>:gmt-term:\`GMT_PARAMETER\`</code>
-
-An example would be using
-<code>:gmt-docs:\`makecpt.html\`</code> to link to {gmt-docs}`makecpt.html`.
-For GMT configuration parameters, an example is
-<code>:gmt-term:\`COLOR_FOREGROUND\`</code> to link to
-{gmt-term}`https://docs.generic-mapping-tools.org/latest/gmt.conf#term-COLOR_FOREGROUND <COLOR_FOREGROUND>`.
 
 Sphinx will create a link to the automatically generated page for that
 function/class/module/method.
@@ -263,18 +241,12 @@ code, be sure to follow the general guidelines in the
 Automated testing helps ensure that our code is as free of bugs as it can be.
 It also lets us know immediately if a change we make breaks any other part of the code.
 
-All of our test code and data are stored in the `tests` subpackage.
+All of our test code and data are stored in the `tests` directory.
 We use the [pytest](https://pytest.org/) framework to run the test suite.
 
 Please write tests for your code so that we can be sure that it won't break any of the
 existing functionality.
 Tests also help us be confident that we won't break your code in the future.
-
-When writing tests, don't test everything that the GMT function already tests, such as
-the every unique combination arguments. An exception to this would be the most popular
-methods, such as <code>pygmt.Figure.plot</code> and <code>pygmt.Figure.basemap</code>.
-The highest priority for tests should be the Python-specific code, such as numpy,
-pandas, and xarray objects and the virtualfile mechanism.
 
 If you're **new to testing**, see existing test files for examples of things to do.
 **Don't let the tests keep you from submitting your contribution!**
@@ -282,22 +254,12 @@ If you're not sure how to do this or are having trouble, submit your pull reques
 anyway.
 We will help you create the tests and sort out any kind of problem during code review.
 
-Pull the baseline images, run the tests, and calculate test coverage using:
-
-    dvc status  # should report any files 'not_in_cache'
-    dvc pull  # pull down files from DVC remote cache (fetch + checkout)
-    make test
-
-The coverage report will let you know which lines of code are touched by the tests.
-If all the tests pass, you can view the coverage reports by opening `htmlcov/index.html`
-in your browser. **Strive to get 100% coverage for the lines you changed.**
-It's OK if you can't or don't know how to test something.
-Leave a comment in the PR and we'll help you out.
-
 You can also run tests in just one test script using:
 
-    pytest pygmt/tests/NAME_OF_TEST_FILE.py
+    cd pyatoa/tests
+    pytest NAME_OF_TEST_FILE.py
 
 or run tests which contain names that match a specific keyword expression:
 
-    pytest -k KEYWORD pygmt/tests
+    cd pyatoa/tests
+    pytest -k KEYWORD NAME_OF_TEST_FILE.py
