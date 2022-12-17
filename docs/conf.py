@@ -40,7 +40,6 @@ release = ''
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
-    # 'sphinx.ext.autodoc',
     'sphinx.ext.doctest',
     'sphinx.ext.intersphinx',
     'sphinx.ext.todo',
@@ -50,7 +49,8 @@ extensions = [
     'sphinx.ext.autosummary',
     'sphinx_rtd_theme',
     'autoapi.extension',
-    'nbsphinx'
+    'nbsphinx',
+    'myst_parser'
 ]
 
 # Need to tell the autoapi that our source code is one level up
@@ -64,7 +64,8 @@ templates_path = ['_templates']
 # The suffix(es) of source filenames.
 # You can specify multiple suffix as a list of string:
 #
-source_suffix = ['.rst', '.md']
+source_suffix = {'.rst': 'restructuredtext', 
+                 '.md': 'markdown'}
 
 # The master toctree document.
 master_doc = 'index'
