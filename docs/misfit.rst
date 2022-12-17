@@ -20,7 +20,7 @@ Log levels in decreasing verbosity are: DEBUG, INFO, WARNING, CRITICAL
 
 An example of logging to stdout during misfit quantification:
 
-.. parsed-literal::
+.. code-block:: text
 
     [2022-03-03 11:01:32] - pyatoa - INFO: preprocessing observation data
     [2022-03-03 11:01:32] - pyatoa - INFO: adjusting taper to cover time offset -20.0
@@ -91,7 +91,7 @@ file:
 
     cfg.write(write_to="config.yaml", fmt="yaml")
 
-See the `'Storage with ASDFDataSets' <storage.html>`__ doc page to see how
+See the `Saving data with ASDF <storage.html>`__ doc page to see how
 the Config object is written to ASDFDataSets.
 
 
@@ -124,7 +124,7 @@ Waveform Tags
 +++++++++++++
 
 The ``observed_tag`` and ``synthetic_tag`` parameters are used to save waveforms
-in ASDFDataSets. See the `'Storage with ASDFDataSets' <storage.html>`__ doc page
+in ASDFDataSets. See the `Saving data with ASDF <storage.html>`__ doc page
 to see how to access waveforms within an ASDFDatASet.
 
 The `synthetic_tag` distinguishes which model they were
@@ -148,16 +148,14 @@ Under the hood, Config controls the
 `Pyflex Config <http://adjtomo.github.io/pyflex/#config-object>`__ and
 `Pyadjoint Config
 <https://github.com/krischer/pyadjoint/blob/master/src/pyadjoint/config.py>`__
-objects.
-
-Valid parameters of those :class:`Config <pyatoa.core.config.Config>` objects
+objects. Valid parameters of those :class:`Config <pyatoa.core.config.Config>` objects
 can be passed directly to Config.
 
 The ``pyflex_preset`` and ``adj_src_type`` parameter lets the User define the
 misfit function.
 
-Click here for available `pyflex_preset <https://github.com/adjtomo/pyatoa/blob/master/pyatoa/plugins/pyflex_presets.py>`__
-Click here for available `adj_src_types <http://adjtomo.github.io/pyadjoint/adjoint_sources/index.html>`__
+- `Click here to see available Pyflex presets <https://github.com/adjtomo/pyatoa/blob/master/pyatoa/plugins/pyflex_presets.py>`__
+- `Click here to see available adjoint source types <http://adjtomo.github.io/pyadjoint/adjoint_sources/index.html>`__
 
 .. code:: python
 
@@ -240,7 +238,7 @@ waveforms. Printing the Manager shows the loaded data available.
 
 
 The load function is also used to load previously saved data from an
-ASDFDataSet. See the `'Storage with ASDFDataSets' <storage.html>`__ doc page for
+ASDFDataSet. See the `Saving data with ASDF <storage.html>`__ doc page for
 more information.
 
 
@@ -362,8 +360,8 @@ functions that it applies on data and synthetics.
 - :meth:`window <pyatoa.core.manager.Manager.window>`: generate misfit windows based on preprocessed data
 - :meth:`measure <pyatoa.core.manager.Manager.measure>`: calculate misfit and generate adjoint sources for given windows
 
-Standardize
-+++++++++++
+Standardize Time Series
+++++++++++++++++++++++++
 
 Oftentimes, observed and synthetic waveforms will differ in sampling rate,
 start and end time. The
@@ -380,8 +378,8 @@ function matches time series for the two waveforms: `st_obs` and `st_syn`.
     trace, as it is assumed that the adjoint source resulting from the
     processing will require the same time array as the synthetics.
 
-Preprocess
-++++++++++
+Preprocess Waveforms
++++++++++++++++++++++
 
 The :meth:`preprocess <pyatoa.core.manager.Manager.preprocess>` function
 involves detrending and filtering, with additional instrument response removal
@@ -445,9 +443,9 @@ Generate Misfit Windows
 
 Pyatoa uses Pyflex to window observed and synthetic waveforms. Windowing
 parameters are stored in ``Config.pyflex_config`` and is set internally via
-the function :meth:`pyatoa.core.config.Config.set_pyflex_config`
+the function :meth:`pyatoa.core.config.set_pyflex_config`
 
-Under the hood, the :meth:`window <pyatoa.core.mananger.Manager.window>` calls
+Under the hood, the :meth:`window <pyatoa.core.manager.Manager.window>` calls
 the Pylex package to generate misfit windows for the two waveforms ``st_obs``
 and ``st_syn``.
 
@@ -456,37 +454,9 @@ and ``st_syn``.
 
     mgmt.window()
 
-Fixed Time Windows
-...................
-
-Users can use a previously generated set of time windows to evaluate
-misfit on new waveforms. Rather than select new windows, the Manager can load
-a previous set of windows from an ASDFDataSet.
-
-The :class:`Config <pyatoa.core.config.Config>` parameters ``iteration`` and
-``step_count`` are important here, as they are used to tag saved windows and
-load them at a later time.
-
-.. code:: python
-
-    from pyasdf import ASDFDataSet as asdf
-    from pyatoa import Config, Manager
-
-    # Load in dataset that has saved misfit windows
-    ds = ASDFDataSet("test_dataset.h5")
-
-    mgmt = Manager(ds=ds, config=cfg)
-    mgmt.load()  # some example data, this could be any data
-
-    mgmt = Manager(ds=ds)
-    mgmt.standardize().preprocess()  # it is possible to chain functions
-
-    # Load in previously saved windows
-    mgmt.window(fix_windows=True, iteration="i01", step_count="s00")
-
 To access created misfit windows, check the `windows` attribute.
 
-Have a look at the `'Storage with ASDFDataSets' <storage.html>`__ doc page to
+Have a look at the `Saving data with ASDF <storage.html>`__ doc page to
 see how misfit windows are stored in ASDFDataSets.
 
 .. code:: python
@@ -526,22 +496,51 @@ windowing algorithm can be accessed in the `rejwins` attribute.
       'dlna': [Window(left=909, right=3800, center=2354, channel_id=NZ.BFZ.10.HHZ, max_cc_value=0.9101699760469617, cc_shift=85, dlnA=-1.3118583378421544),
        Window(left=1377, right=3800, center=2588, channel_id=NZ.BFZ.10.HHZ, max_cc_value=0.9267908457090609, cc_shift=86, dlnA=-1.3247299121081957)]}}
 
+Fixed Time Windows
+...................
 
-Measure Misfit and Generate Adjoint Sources
-++++++++++++++++++++++++++++++++++++++++++++
+Users can use a previously generated set of time windows to evaluate
+misfit on new waveforms. Rather than select new windows, the Manager can load
+a previous set of windows from an ASDFDataSet.
+
+The :class:`Config <pyatoa.core.config.Config>` parameters ``iteration`` and
+``step_count`` are important here, as they are used to tag saved windows and
+load them at a later time.
+
+.. code:: python
+
+    from pyasdf import ASDFDataSet as asdf
+    from pyatoa import Config, Manager
+
+    # Load in dataset that has saved misfit windows
+    ds = ASDFDataSet("test_dataset.h5")
+
+    mgmt = Manager(ds=ds, config=cfg)
+    mgmt.load()  # some example data, this could be any data
+
+    mgmt = Manager(ds=ds)
+    mgmt.standardize().preprocess()  # it is possible to chain functions
+
+    # Load in previously saved windows
+    mgmt.window(fix_windows=True, iteration="i01", step_count="s00")
+
+Generate Adjoint Sources
++++++++++++++++++++++++++
 
 Manager uses Pyadjoint to measure misfit within time windows, and generate
 adjoint sources for a seismic inversion. The type of adjoint source is defined
 by ``Config.adj_src_type`` and parameters are set internally with the function
-:meth:`pyatoa.core.config.Config.set_pyadjoint_config`.
+:meth:`pyatoa.core.config.set_pyadjoint_config`.
 
 
-The :meth:`measure <pyatoa.core.mananger.Manager.measure>` function calls
+The :meth:`measure <pyatoa.core.manager.Manager.measure>` function calls
 Pyadjoint under the hood to generate an adjoint source within the time windows
-selected by the :meth:`window <pyatoa.core.mananger.Manager.window>` function.
+selected by the :meth:`window <pyatoa.core.manager.Manager.window>` function.
 
-If no windows are provided or calculated, the Manager will calcualte misfit
-along the entire time series
+.. note::
+
+    If no windows are provided or calculated, the Manager will calcualte misfit
+    along the entire time series
 
 .. code:: python
 
@@ -606,7 +605,7 @@ Or the map on its own
 Flow Function
 ++++++++++++++
 
-The :meth:`flow <pyatoa.core.mananger.Manager.flow>` function simply chains all
+The :meth:`flow <pyatoa.core.manager.Manager.flow>` function simply chains all
 the preprocessing steps together. It is equivalent to running standardize,
 preprocess, window and measure one after another.
 
