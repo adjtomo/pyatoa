@@ -1,16 +1,25 @@
 Data Discovery
 ==============
 
-The Manager class has internal routines to automatically discover
-observed and synthetic waveforms, and metadata, given a set of search paths and
-rules.
+The :class:`Manager <pyatoa.core.manager.Manager>` class has internal
+routines in the :meth:`gather <pyatoa.core.manager.Manager.gather>` function
+that automatically discover/gather waveforms and metadata, given a set
+of search paths and rules. These routines are defined in the source code by the
+:class:`Gatherer <pyatoa.core.gatherer.Gatherer>` class.
 
 This functionality replaces the direct passing of ObsPy objects to the Manager
-and is meant to facilitate automated data discovery within larger workflow tools
+as described in the `Misfit Quantification <misfit.html>`__ documentation. It
+is meant to facilitate automated data discovery within larger workflow tools
 like `SeisFlows <https://github.com/adjtomo/seisflows>`__.
 
 Data can also be discovered via ASDFDataSets, which is explained in the
 `storage docs page <storage.html>`__.
+
+.. note::
+
+    *In a nutshell*: Users provide path and tag information (event id,
+    station code) and the Gatherer class builds a set of wild card search paths
+    in which to look for and read corresponding data/metadata.
 
 Event Metadata
 ~~~~~~~~~~~~~~
@@ -30,27 +39,27 @@ Event metadata can be gathered locally via a search path, using an event ID.
 The above code block will attempt to look for events under a specific path
 structure:
 
-- `{path}/{prefix}{event_id}{suffix}`
+.. code:: bash
+
+    {path}/{prefix}{event_id}{suffix}
+
+Which in this example would be:
+
 - `path/to/events/CMTSOLUTION_001test`
 - `path/to/other_events/CMTSOLUTION_001test`
 
-The optional `prefix` and `suffix` allow a User to add additional text around
-the `event_id`. However the entire file name can be passed the `event_id`
-directly.
+The optional ``prefix`` and ``suffix`` allow a User to wrap text around
+the ``event_id``.
 
 The Manager will loop through available paths until a matching file is found.
-If no file is found, the Manager will throw a ``GathererNoDataException``.
+If no file is found, the Manager will throw a
+:class:`pyatoa.core.gatherer.GathererNoDataException`.
 
 Station Metadata
 ~~~~~~~~~~~~~~~~
 
-Station response information can be gathered via a local search path using
-station and network code.
-
-.. note::
-
-    Response information is searched for with a specific path and filenaming
-    scheme that needs to be adhered to.
+Station response information can be gathered via a local search path using the
+station and network codes:
 
 .. code:: python
 
@@ -65,7 +74,12 @@ station and network code.
 The above code block will attempt to look for StationXML files under the
 following path structure:
 
-- `{path}/{net}.{sta}/RESP.{net}.{sta}.{loc}.{cha}`
+.. code:: bash
+
+    {path}/{net}.{sta}/RESP.{net}.{sta}.{loc}.{cha}
+
+Which in this example would be be:
+
 - path/to/responses/NZ.BFZ/RESP.NZ.BFZ..*
 - path/to/other_responses/NZ.BFZ/RESP.NZ.BFZ..*
 
@@ -75,7 +89,7 @@ channel codes, or as wildcards to make the search more general.
 .. note::
 
     Users who use `PySEP <https://github.com/adjtomo/pysep>`__ to gather their
-    data can automatically output station metadata in the required directory
+    data can automatically output station metadata in this required directory
     format.
 
 Custom Path Structure
@@ -83,7 +97,7 @@ Custom Path Structure
 
 Users who want to input their own custom path and filename structure for
 gathering station metadata can do so. The path can make use of formatting codes
-`net`, `sta`, `loc`, and `cha` (networkk, station, location, channel).
+`net`, `sta`, `loc`, and `cha` (network, station, location, channel).
 
 .. code:: python
 
@@ -94,7 +108,12 @@ gathering station metadata can do so. The path can make use of formatting codes
 The above code block will attempt to look for StationXML files under the
 following path structure:
 
-- `{path}//{net}_{sta}_RESPONSE`
+.. code:: bash
+
+    {path}//{net}_{sta}_RESPONSE
+
+Which in this example would be be:
+
 - `.//NZ_BFZ_RESPONSE`
 
 
@@ -119,35 +138,38 @@ to search for specific waveform start and end times.
     mgmt.gather_observed(code="NZ.BFZ..*")
 
 The above code block will attempt to look for observed waveform data under
-the following path structure, taking into account the Config parameters
-`start_pad` and `end_pad`, which define how much data to gather before and
-after the origin time.
+the following path structure:
 
-In this case, since the example origin time is at midnight (00:00:00),
+.. code:: bash
+
+    {path}/{year}/{network}/{station}/{channel}*/{net}.{sta}.{loc}.{cha}.{year}.{jday:0>3}
+
+Which in this example would be be:
+
+- `path/to/waveforms/NZ/BFZ/**/NZ.BFZ..*.2000.001`
+- `path/to/waveforms/NZ/BFZ/**/NZ.BFZ..*.1999.365`
+- `path/to/other_waveforms/NZ/BFZ/**/NZ.BFZ..*.2000.001`
+- `path/to/other_waveforms/NZ/BFZ/**/NZ.BFZ..*.1999.365`
+
+
+The gathering routine uses the
+:class:`Config <pyatoa.core.config.Config>` attributes
+``start_pad`` and ``end_pad`` to define how the search period over time. In this
+example, the example origin time is at midnight (00:00:00), so
 the Manager knows to look for data on both 2000-01-01 and 1999-12-31.
-
-.. note::
-
-    This default path structure and filename is meant to adhere to the
-    typical data storage in data centers.
 
 .. note::
 
     Users who use `PySEP <https://github.com/adjtomo/pysep>`__ to gather their
     data can automatically output observed waveforms in this format.
 
-- `{path}/{year}/{network}/{station}/{channel}*/{net}.{sta}.{loc}.{cha}.{year}.{jday:0>3}
-- `path/to/waveforms/NZ/BFZ/**/NZ.BFZ..*.2000.001`
-- `path/to/waveforms/NZ/BFZ/**/NZ.BFZ..*.1999.365`
-- `path/to/other_waveforms/NZ/BFZ/**/NZ.BFZ..*.2000.001`
-- `path/to/other_waveforms/NZ/BFZ/**/NZ.BFZ..*.1999.365`
 
 Custom Path Structure
 `````````````````````
 
 Users who want to input their own custom path and filename structure for
 gathering station metadata can do so. The path can make use of formatting codes
-`net`, `sta`, `loc`, and `cha`, `year` and `jday` (networkk, station, location,
+`net`, `sta`, `loc`, and `cha`, `year` and `jday` (network, station, location,
 channel, year, julian day).
 
 .. code:: python
@@ -161,7 +183,12 @@ channel, year, julian day).
 The above code block will attempt to look for observed waveforms under the
 following path structure:
 
-- `{path}/{net}_{sta}_{year}.{jday}.ms"
+.. code:: bash
+
+    {path}/{net}_{sta}_{year}.{jday}.ms
+
+Which in this example would be be:
+
 - `./NZ_BFZ_2000.001.ms`
 - `./NZ_BFZ_1999.365.ms`
 
@@ -169,8 +196,9 @@ following path structure:
 Synthetic Waveforms
 ~~~~~~~~~~~~~~~~~~~
 
-Synthetic waveforms can be discovered via local path, corresponding to a
-given event ID.
+Synthetic waveforms can be discovered via local path given a specific event ID.
+The default filenaming structure is meant to match synthetics output by
+SPECFEM2D/3D/3D_GLOBE.
 
 .. code:: python
 
@@ -185,14 +213,15 @@ given event ID.
 The above code block will attempt to look for synthetic waveforms under the
 following path structure:
 
-- `{path}/{net}.{sta}.*{cmp}.sem{dva}*`
+.. code:: bash
+
+    {path}/{net}.{sta}.*{cmp}.sem{dva}*
+
+Which in this example would be be:
+
 - `path/to/synthetics/NZ.BFZ.*?.sem?*`
 - `path/to/other_synthetics/NZ.BFZ.*?.sem?*`
 
-.. note::
-
-    The default filenaming structure is meant to match synthetics output by
-    SPECFEM2D/3D/3D_GLOBE.
 
 Custom Path Structure
 `````````````````````
@@ -211,7 +240,12 @@ gathering synthetics can do so.
 The above code block will attempt to look for synthetic waveforms under the
 following path structure:
 
-- `{path}/{syn_dir_template}/{syn_fid_template}`
+.. code:: bash
+
+    {path}/{syn_dir_template}/{syn_fid_template}
+
+Which in this example would be be:
+
 - `./synthetics/NZ_BFZ_HH?`
 
 
@@ -219,7 +253,8 @@ Combined Gathering Call
 ~~~~~~~~~~~~~~~~~~~~~~~
 
 Users can chain together all of the above gathering into a single call by
-setting paths all together and calling the ``Manager.gather()`` function.
+setting paths all together and calling the
+:meth:`gather <pyatoa.core.manager.Manager.gather>` function.
 
 .. code:: python
 
@@ -233,4 +268,4 @@ setting paths all together and calling the ``Manager.gather()`` function.
 
 This function will run all gathering functions one after another. If any part
 of the gathering call fails, the Manager will throw a
-``GathererNoDataException``.
+:class:`pyatoa.core.gatherer.GathererNoDataException`.

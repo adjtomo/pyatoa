@@ -28,9 +28,9 @@ either be done manually, or automatically during a processing workflow.
 Writing Data Manually
 ~~~~~~~~~~~~~~~~~~~~~
 
-The ``write`` function of the Manager will write all available data into an
-ASDFDataSet. These include observed waveforms, synthetic waveforms,
-station metadata, event metadata, misfit windows and adjoint sources
+The :meth:`write <pyatoa.core.manager.Manager.write>` function of the Manager
+writes data to ASDFDataSets, including: observed waveforms, synthetic waveforms,
+station metadata, event metadata, misfit windows and adjoint sources.
 
 
 .. code:: python
@@ -90,7 +90,7 @@ See the `PyASDF documentation
 <https://seismicdata.github.io/pyasdf/tutorial.html#reading-an-existing-asdf-data-set>`__
 for more information.
 
-Station and Event Metadata
+Event and Station Metadata
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 To access ``event`` metadata, stored as an ObsPy Event object
@@ -117,7 +117,7 @@ To access ``event`` metadata, stored as an ObsPy Event object
                               origins: 2 Elements
                            magnitudes: 3 Elements
 
-To access the station list, which stores data and metadata for all stations
+To access the ``station`` list, which stores data and metadata for all stations
 in the dataset:
 
 .. code:: python
@@ -195,11 +195,11 @@ For iteration 1, step count 0, synthetics will be saved as:
     NZ.BFZ..BXN | 2018-02-18T07:43:28.130000Z - 2018-02-18T07:49:30.557500Z | 13.8 Hz, 5000 samples
     NZ.BFZ..BXZ | 2018-02-18T07:43:28.130000Z - 2018-02-18T07:49:30.557500Z | 13.8 Hz, 5000 samples
 
-This tagging allows Pyatoa to save multiple sets of synthetic waveforms to a
-single ASDFDataSet.
+This tagging system allows Pyatoa to save multiple sets of synthetic waveforms
+to a single ASDFDataSet.
 
 Misfit Windows
-~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~
 
 Misfit windows, adjoint sources and configuration parameters are stored in the
 ``auxiliary_data`` attribute of the ASDFDataSet.
@@ -218,7 +218,8 @@ The ``MisfitWindows`` attribute stores information about misfit windows
 
     ds.auxiliary_data.MisfitWindows
 
-During an inversion, misfit windows are separated by iteration and step count
+During an inversion, misfit windows are tagged by the ``iter_tag`` and
+``step_tag`` attributes of :class:`Config <pyatoa.core.config.Config>`
 
 .. code:: python
 
@@ -279,7 +280,8 @@ the ``AdjointSources`` attribute of auxiliary data.
 
     ds.auxiliary_data.AdjointSources
 
-Adjoint sources are similarly stored per iteration and step count.
+During an inversion, adjoint sources are tagged by the ``iter_tag`` and
+``step_tag`` attributes of :class:`Config <pyatoa.core.config.Config>`
 
 .. code:: python
 
@@ -289,9 +291,7 @@ Adjoint sources are similarly stored per iteration and step count.
         NZ_BFZ_BXN
         NZ_BFZ_BXZ
 
-Adjoint sources are stored as dictionaries with information relevant to the
-creation of the adjoint source.
-
+Adjoint sources are stored as dictionaries with relevant creation information:
 
 .. code:: python
 
@@ -312,9 +312,8 @@ creation of the adjoint source.
             station: BFZ
 
 
-To access the actual data array of the adjoint source, which is stored in two
-column format, where the first column is time, and the second column is
-amplitude
+The actual data array of the adjoint source is also stored here in two column
+format (time, amplitude):
 
 .. code:: python
 
@@ -330,8 +329,9 @@ amplitude
 Configuration Parameters
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Users can also access saved configuration parameters from the auxiliary data
-attribute, in the same fashion as the misfit windows and adjoint sources.
+Users can access :class:`Config <pyatoa.core.config.Config>` parameters from
+the auxiliary data attribute. This is useful for understanding how windows
+and adjoint sources were generated.
 
 .. code:: python
 
@@ -354,50 +354,73 @@ attribute, in the same fashion as the misfit windows and adjoint sources.
             ...
 
 
-Reading Data From a Dataset
----------------------------------
+Loading Data From a Dataset
+----------------------------
 
-Data previously saved into an ``ASDFDataSet`` can be loaded back into a
+Data previously saved to an ``ASDFDataSet`` can be loaded back into a
 :class:`Manager <pyatoa.core.manager.Manager>` class using the the
-:meth:`load <pyatoa.core.manager.Manager.load>` function.
+:meth:`load <pyatoa.core.manager.Manager.load>` function. This is useful for
+repeating measurements, re-using misfit windows on new data, or running
+seismic inversions.
 
+Config Parameters
+~~~~~~~~~~~~~~~~~
 
 To load the :class:`Config <pyatoa.core.config.Config>` class from an
-ASDFDataSet
+ASDFDataSet, you need to specify a ``path`` which was generated from the
+``iter_tag`` and ``step_tag`` attributes of the saved
+:class:`Config <pyatoa.core.config.Config>`.
 
 .. code:: python
 
     cfg = Config()
     cfg.read(read_from=ds, path="i01/s00", fmt="asdf")
 
+Data and Metadata
+~~~~~~~~~~~~~~~~~~
+
 The Managers :meth:`load <pyatoa.core.manager.Manager.load>` function searches
 for metadata, waveforms and configuration parameters, based on the ``code``
-and ``path`` arguments provided.
+and ``path`` arguments.
+
+The ``path`` attribute is specified by the ``iter_tag`` and
+``step_tag`` attributes of the saved
+:class:`Config <pyatoa.core.config.Config>`.
+
 
 .. note::
 
     Waveforms stored in the ASDFDataSet are **unprocessed**. Users will have
     to re-run the :meth:`standardize <pyatoa.core.manager.Manager.standardize>`
     and :meth:`preprocess <pyatoa.core.manager.Manager.preprocess>` functions
-    again to get back to the process waveforms used to calculate windows and
-    adjoint sources.
+    to retrieve the waveforms used to generate saved windows/adjoint sources.
 
 .. code:: python
 
     mgmt = Manager(ds=ds)
     mgmt.load(code="NZ.BFZ", path="i01/s00")
 
-Misfit windows and adjoint sources are **not** explicitely re-loaded when
-calling the load function. To re-load windows, you can call the
-:meth:`window <pyatoa.core.manager.Manager.window>` function:
+
+Windows and Adjoint Sources
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. note::
+
+    Misfit windows and adjoint sources are **not** explicitely re-loaded when
+    calling the load function.
+
+To re-load windows, you can call the
+:meth:`window <pyatoa.core.manager.Manager.window>` function, setting the
+``fix_windows`` argument to True and specifying the ``iteration`` and
+``step_count`` to retrieve windows from:
 
 .. code:: python
 
-    mgmt.standardize()
     mgmt.window(fix_windows=True, iteration="i01", step_count="s00")
 
-You can then re-calculate the adjoint source with the re-loaded windows
-using the :meth:`measure <pyatoa.core.manager.Manager.measure>` function:
+The Manager does not currently have the capability to re-load adjoint sources,
+but given a loaded Config and set of windows, you can re-calculate adjoint
+sources with the :meth:`measure <pyatoa.core.manager.Manager.measure>` function:
 
 .. code:: python
 

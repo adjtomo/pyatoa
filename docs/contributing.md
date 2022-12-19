@@ -2,7 +2,7 @@
 
 The adjTomo software suite is community driven project and everyone is welcome 
 to contribute to any of the packages. The source code is hosted on 
-[GitHub](https://github.com/adjtomo/pyatoa)
+[GitHub](https://github.com/adjtomo/pyatoa).
 
 *This guide is modified from 
 [PyGMTs](https://github.com/GenericMappingTools/pygmt) Contributors guide*
