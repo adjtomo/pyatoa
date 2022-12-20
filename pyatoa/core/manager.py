@@ -123,7 +123,7 @@ class Manager:
         if config is not None:
             self.config = config
         else:
-            logger.info("no config provided, initiating default")
+            logger.info("`config` not provided, initiating empty")
             self.config = Config()
 
         # Ensure any user-provided event is an Event object
@@ -437,7 +437,7 @@ class Manager:
         :param adjsrcs: load adjoint sources from the dataset, defaults to False
         """
         if code is None:
-            logger.debug("no arguments given, returning example data")
+            logger.info("loading example data to Manager")
             self.cfg, self.st_obs, self.st_syn, self.event, self.inv = \
                                                             load_example_data() 
         else: 
@@ -635,7 +635,7 @@ class Manager:
         elif self.stats.standardized and not force:
             logger.info("data already standardized")
             return self
-        logger.info("standardizing streams")
+        logger.info("standardizing time series")
 
         # If observations starttime after synthetic, zero pad the front of obs
         dt_st = self.st_obs[0].stats.starttime - self.st_syn[0].stats.starttime
@@ -671,7 +671,7 @@ class Manager:
             logger.warning("cannot find information relating to synthetic time "
                            "offset. Setting to 0")
             self.stats.time_offset_sec = 0
-        logger.info(f"synthetic time offset is {self.stats.time_offset_sec}s")
+        logger.info(f"syn time offset == {self.stats.time_offset_sec}s")
 
         # Calculate epicentral distance and backazimuth
         if self.event and self.inv:
@@ -733,8 +733,7 @@ class Manager:
         # Preprocess observation waveforms
         if self.st_obs is not None and not self.stats.obs_processed and \
                 which.lower() in ["obs", "both"]:
-            logger.info(f"preprocessing observation data as "
-                        f"{self.config.st_obs_type}")
+            logger.info(f"preprocess `st_obs` as '{self.config.st_obs_type}'")
             self.st_obs = preproc_fx(
                 st=self.st_obs, choice=self.config.st_obs_type,
                 inv=self.inv, rotate_baz=self.baz,
@@ -745,12 +744,12 @@ class Manager:
         # Preprocess synthetic waveforms
         if self.st_syn is not None and not self.stats.syn_processed and \
                 which.lower() in ["syn", "both"]:
-            logger.info("preprocessing synthetic data")
+            logger.info(f"preprocess `st_syn` as '{self.config.st_syn_type}'")
             self.st_syn = preproc_fx(
                 st=self.st_syn, choice=self.config.st_syn_type,
-                inv=self.inv, rotate_baz=self.baz,
+                inv=self.inv, baz=self.baz,
                 **{**vars(self.config), **kwargs}
-                  **kwargs)
+            )
             self.stats.syn_processed = True
 
         # Set stats
@@ -905,7 +904,7 @@ class Manager:
             waveforms, and running select_windows() again, but for now we just
             raise a ManagerError and allow processing to continue
         """
-        logger.info(f"running Pyflex w/ map: {self.config.pyflex_preset}")
+        logger.info(f"windowing w/ map: {self.config.pyflex_preset}")
 
         nwin, window_dict, reject_dict = 0, {}, {}
         for comp in self.config.component_list:
@@ -947,7 +946,7 @@ class Manager:
                 reject_dict[comp] = ws.rejects
 
             # Count windows and tell User
-            logger.info(f"{len(windows)} window(s) selected for comp {comp}")
+            logger.info(f"{comp}: {len(windows)} window(s)")
             nwin += len(windows)
 
         self.windows = window_dict
@@ -988,7 +987,7 @@ class Manager:
             raise ManagerError("cannot measure misfit, not standardized")
         elif self.stats.nwin == 0 and not force:
             raise ManagerError("cannot measure misfit, no windows recovered")
-        logger.debug(f"running Pyadjoint w/ type: {self.config.adj_src_type}")
+        logger.debug(f"measure misfit of type: {self.config.adj_src_type}")
 
         # Create list of windows needed for Pyadjoint
         adjoint_windows = self._format_windows()
@@ -1010,7 +1009,7 @@ class Manager:
 
                 # Save adjoint sources in dictionary object. Sum total misfit
                 adjoint_sources[comp] = adj_src
-                logger.info(f"{adj_src.misfit:.3f} misfit for comp {comp}")
+                logger.info(f"{comp}: {adj_src.misfit:.3f} misfit")
                 total_misfit += adj_src.misfit
             except IndexError:
                 continue
@@ -1022,7 +1021,7 @@ class Manager:
 
         # Run check to get total misfit
         self.check()
-        logger.info(f"total misfit {self.stats.misfit:.3f}")
+        logger.info(f"total misfit == {self.stats.misfit:.3f}")
 
         return self
 
@@ -1044,11 +1043,11 @@ class Manager:
             ds = self.ds
 
         if ds is None:
-            logger.warning("no ASDFDataSet, cannot save windows")
+            logger.debug("no ASDFDataSet, will not save windows")
         elif not self.windows:
-            logger.warning("Manager has no windows to save")
+            logger.debug("Manager has no windows to save")
         elif not self.config.save_to_ds and not force:
-            logger.warning("config parameter `save_to_ds` is set False, "
+            logger.debug("config parameter `save_to_ds` is set False, "
                            "will not save windows")
         else:
             logger.debug("saving misfit windows to ASDFDataSet")
@@ -1072,11 +1071,11 @@ class Manager:
             ds = self.ds
 
         if ds is None:
-            logger.warning("no ASDFDataSet, cannot save adjoint sources")
+            logger.debug("no ASDFDataSet, cannot save adjoint sources")
         elif not self.adjsrcs:
-            logger.warning("Manager has no adjoint sources to save")
+            logger.debug("Manager has no adjoint sources to save")
         elif not self.config.save_to_ds and not force:
-            logger.warning("config parameter `save_to_ds` is set False, "
+            logger.debug("config parameter `save_to_ds` is set False, "
                            "will not save adjoint sources")
         else:
             logger.debug("saving adjoint sources to ASDFDataSet")

@@ -8,10 +8,10 @@ import numpy as np
 from pyatoa import logger
 
 
-def default_process(st, choice, inv=None, rotate_baz=None, min_period=None,
-                    max_period=None, unit_output=None, rotate_to_rtz=False,
-                    apply_filter=True, convolve_with_stf=True,
-                    remove_response=True, **kwargs):
+def default_process(st, choice, inv=None, baz=None, min_period=None,
+                    max_period=None, unit_output=None, half_dur=None,
+                    rotate_to_rtz=False, apply_filter=True,
+                    remove_response=True, convolve_with_stf=True, **kwargs):
     """
     Generalized, default preprocessing function to process waveform data.
     Preprocessing is slightly different for obs and syn waveforms. Each
@@ -59,34 +59,31 @@ def default_process(st, choice, inv=None, rotate_baz=None, min_period=None,
     assert choice in ["obs", "syn"], f"preprocess `choice` must be 'obs', 'syn'"
 
     if is_preprocessed(st):
-        logger.info("stream has already been preprocessed, skipping "
-                    "processing step")
+        logger.info("`st` already preprocessed, skipping")
         return st
     else:
         st_out = st.copy()
 
     # Get rid of any long period trends that may affect that data
     st_out.detrend("simple").detrend("demean").taper(taper_percentage)
-    st_out = taper_time_offset(st_out, taper_percentage,
-                               mgmt.stats.time_offset_sec)
 
     if choice == "obs" and remove_response:
-        logger.info(f"removing response, units set to: {unit_output}")
-        st_out.remove_response(inventory=mgmt.inv, output=unit_output,
+        logger.info(f"remove response, units: {unit_output}")
+        st_out.remove_response(inventory=inv, output=unit_output,
                                water_level=water_level, plot=False)
 
         # Rotate streams if not in ZNE, e.g. Z12. Only necessary for observed
-        logger.info("rotating from generic coordinate system to ZNE")
-        st_out.rotate(method="->ZNE", inventory=mgmt.inv,
+        logger.info("rotate -> ZNE")
+        st_out.rotate(method="->ZNE", inventory=inv,
                       components=["ZNE", "Z12", "123"])
         st_out.detrend("simple").detrend("demean").taper(taper_percentage)
     else:
-        logger.info(f"skip remove response: no `inv` or requested not to")
+        logger.info(f"skip remove response (no `inv`)")
 
     # Rotate the given stream from standard NEZ to RTZ if BAz given
-    if rotate_baz:
-        logger.info(f"rotating NE->RT by {rotate_baz} degrees")
-        st_out.rotate(method="NE->RT", back_azimuth=rotate_baz)
+    if rotate_to_rtz and baz is not None:
+        logger.info(f"rotate NE->RT by {baz} degrees")
+        st_out.rotate(method="NE->RT", back_azimuth=baz)
 
     # Filter data based on the given period bounds
     if apply_filter and (min_period is not None or max_period is not None):
@@ -100,9 +97,9 @@ def default_process(st, choice, inv=None, rotate_baz=None, min_period=None,
     # Convolve synthetic data with a Gaussian source time function
     if choice == "syn":
         if convolve_with_stf and half_dur is not None:
-            st_out= stf_convolve(st=st_out, half_duration=mgmt.stats.half_dur)
+            st_out= stf_convolve(st=st_out, half_duration=half_dur)
 
-    return st
+    return st_out
 
 
 def filters(st, min_period=None, max_period=None, min_freq=None, max_freq=None,
@@ -153,20 +150,20 @@ def filters(st, min_period=None, max_period=None, min_freq=None, max_freq=None,
     if min_period and max_period:
         st.filter("bandpass", corners=corners, zerophase=zerophase,
                   freqmin=min_freq, freqmax=max_freq, **kwargs)
-        logger.debug(f"bandpass filter: {min_period} - {max_period}s w/ "
+        logger.info(f"bandpass filter: {min_period} - {max_period}s w/ "
                      f"{corners} corners")
 
     # Minimum period only == lowpass filter
     elif min_period:
         st.filter("lowpass", freq=max_freq, corners=corners,
                   zerophase=zerophase, **kwargs)
-        logger.debug(f"lowpass filter: {min_period}s w/ {corners} corners")
+        logger.info(f"lowpass filter: {min_period}s w/ {corners} corners")
 
     # Maximum period only == highpass filter
     elif max_period:
         st.filter("highpass", freq=min_freq, corners=corners, 
                   zerophase=zerophase, **kwargs)
-        logger.debug(f"highpass filter: {max_period}s w/ {corners} corners")
+        logger.info(f"highpass filter: {max_period}s w/ {corners} corners")
 
     return st
 
@@ -231,11 +228,11 @@ def zero_pad(st, pad_length_in_seconds, before=True, after=True):
             pad_before = pad_width
         if after:
             pad_after = pad_width
-        logger.info(f"zero pad {tr.id} ({pad_before}, {pad_after}) samples")
+        logger.debug(f"zero pad {tr.id} ({pad_before}, {pad_after}) samples")
         # Constant value is default 0
         tr.data = np.pad(array, (pad_before, pad_after), mode='constant')
         tr.stats.starttime -= pad_length_in_seconds
-        logger.info(f"new starttime {tr.id}: {tr.stats.starttime}")
+        logger.debug(f"new starttime {tr.id}: {tr.stats.starttime}")
 
     return st_pad
 

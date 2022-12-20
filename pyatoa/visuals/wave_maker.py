@@ -222,17 +222,13 @@ class WaveMaker:
             obs.data /= np.abs(obs.data.max())
             syn.data /= np.abs(syn.data.max())
 
-        # Change the legend label depending on syn-syn or obs-syn case
-        if self.config.synthetics_only:
-            obs_tag = "TRUE"
-        else:
-            obs_tag = "OBS"
-
         # Convention of black for obs, red for syn
         a1, = ax.plot(self.time_axis, obs.data, obs_color, zorder=11, 
-                      label=f"{obs.id} ({obs_tag})", linewidth=linewidth)
+                      label=f"{obs.id} ({self.config.st_obs_type.upper()})",
+                      linewidth=linewidth)
         a2, = ax.plot(self.time_axis, syn.data, syn_color, zorder=10, 
-                      label=f"{syn.id} (SYN)", linewidth=linewidth)
+                      label=f"{syn.id} ({self.config.st_obs_type.upper()})",
+                      linewidth=linewidth)
 
         return [a1, a2]
 

@@ -20,9 +20,9 @@ from pyadjoint import Config as PyadjointConfig
 class Config:
     """
     The Config class is the main interaction object between the User and
-    workflow. It is used by the :doc:`Manager class <core.manager>` for workflow
-    management, and also for information sharing between Pyatoa objects and
-    functions. The Config can be read to and written from external files and
+    workflow. It is used by :class:`Manager <pyatoa.core.manager.Manager>` for
+    workflow management, and also for information sharing between Pyatoa objects
+    and functions. The Config can be read to and written from external files and
     ASDFDataSets.
     """
     def __init__(self, yaml_fid=None, ds=None, path=None, iteration=None,
@@ -82,10 +82,6 @@ class Config:
             - 'syn': as syntheitcs, which skips instrument response removal
                 and data gathering is based on simpler synthetic dir. structure
             Defaults to 'syn'
-        :type data_only: bool
-        :param data_only: If the user is doing a data-data misfit quant., this
-            will notify the data gaterer and preprocessing routines to treat
-             `st_syn` like observed data.
         :type observed_tag: str
         :param observed_tag: Tag to use for asdf dataset to label and search
             for obspy streams of observation data. Defaults 'observed'
@@ -279,9 +275,8 @@ class Config:
 
         # Set the component list. Rotate component list if necessary
         if self.rotate_to_rtz:
-            logger.debug("Components changed ZNE -> ZRT")
             if not self.component_list:
-                logger.debug("Component list set to R/T/Z")
+                logger.info("component list set to R/T/Z")
                 self.component_list = ["R", "T", "Z"]
             else:
                 for comp in ["N", "E"]:
@@ -289,7 +284,7 @@ class Config:
                             f"rotated component list cannot include '{comp}'"
         else:
             if not self.component_list:
-                logger.debug("Component list set to E/N/Z")
+                logger.info("component list set to E/N/Z")
                 self.component_list = ["E", "N", "Z"]
 
         # Check that the amplitude ratio is a reasonable number
