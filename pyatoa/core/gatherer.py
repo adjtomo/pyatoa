@@ -462,11 +462,10 @@ class Gatherer:
             raise AttributeError("`origintime` must be specified")
 
         net, sta, loc, cha = code.split('.')
-        # If waveforms contain midnight, multiple files need to be read
-        jdays = overlapping_days(origin_time=self.origintime,
-                                 start_pad=self.config.start_pad,
-                                 end_pad=self.config.end_pad
-                                 )
+        # If waveforms contain midnight, multiple files need to be read.
+        # Checks one hour before and after origintime
+        jdays = overlapping_days(origin_time=self.origintime, start_pad=3600,
+                                 end_pad=3600)
 
         # Ensure that the paths are a list so that iterating doesnt accidentally
         # try to iterate through a string.
@@ -495,9 +494,7 @@ class Gatherer:
         # Take care of gaps in data by converting to masked data
         if len(st) > 0:
             st.merge()
-            st.trim(starttime=self.origintime-self.config.start_pad,
-                    endtime=self.origintime+self.config.end_pad
-                    )
+
         # If empty stream either due to no data or trimming removes all data,
         # we will return None
         if len(st) == 0:
@@ -580,9 +577,6 @@ class Gatherer:
         # Take care of gaps in data by converting to masked data
         if len(st) > 0:
             st.merge()
-            st.trim(starttime=self.origintime - self.config.start_pad,
-                    endtime=self.origintime + self.config.end_pad
-                    )
         # If empty stream either due to no data or trimming removes all data,
         # we will return None
         if len(st) == 0:

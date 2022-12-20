@@ -8,19 +8,39 @@ import numpy as np
 from pyatoa import logger
 
 
-def default_process(mgmt, choice, **kwargs):
+def default_process(st, choice, inv=None, rotate_baz=None, min_period=None,
+                    max_period=None, unit_output=None, rotate_to_rtz=False,
+                    apply_filter=True, convolve_with_stf=True,
+                    remove_response=True, **kwargs):
     """
-    Default preprocessing function to process  waveform data from a Manager
+    Generalized, default preprocessing function to process waveform data.
     Preprocessing is slightly different for obs and syn waveforms. Each
     processing function is split into a separate function so that they can
     be called by custom preprocessing functions.
 
-    :type mgmt: pyatoa.core.manager.Manager
-    :param mgmt: Manager class that should contain a Config object as well as
-        waveform data and inventory
+    :type st: obspy.core.stream.Stream
+    :param st: Stream object to be preprocessed
+    :type inv: obspy.core.inventory.Inventory
+    :choice inv: Inventory containing response information for real waveform
+        data. If not provided, reseponse will not be removed. Also used for
+        stream rotation from ZNE -> RTZ
     :type choice: str
-    :param choice: option to preprocess observed, synthetic or both
-        available: 'obs', 'syn'
+    :param choice: 'obs' or 'syn' for observed or synthetic waveform. 'obs' will
+        attempt to remove response information with `inv`. 'syn' will attempt
+        to convolve with a half duration.
+    :type remove_response: bool
+    :param remove_response: flag, remove instrument response from choice=='obs'
+        data using the provided `inv`. Defaults to True
+    :type apply_filter: bool
+    :param apply_filter: flag, filter the waveforms using the
+        `min_period` and `max_period` parameters. Defaults to True
+    :type convolve_with_stf: bool
+    :param convolve_with_stf: flag, convolve choice=='syn' data with a Gaussian
+        source time function if a `half_dur` (half duration) is provided.
+        Defaults to true
+    :type rotate_to_rtz: bool
+    :param rotate_to_rtz: flag, use the `rotate_baz` variable to rotate streams
+        from ZNE components to RTZ
     :rtype: obspy.core.stream.Stream
     :return: preprocessed stream object pertaining to `choice`
 
@@ -30,90 +50,57 @@ def default_process(mgmt, choice, **kwargs):
             water level for response removal
         float taper_percentage:
             amount to taper ends of waveform
-        bool remove_response:
-            remove instrument response using the Manager's inventory object.
-            Defaults to True
-        bool :
-            filter the waveforms using the Config's min_period and max_period
-            parameters. Defaults to True
-        bool convolve_with_stf:
-            Convolve synthetic data with a Gaussian source time function if a
-            half duration is provided.
     """
-    assert choice in ["obs", "syn"], "choice must be 'obs' or 'syn"
-
+    filter_corners = kwargs.get("filter_corners", 2)
     water_level = kwargs.get("water_level", 60)
     taper_percentage = kwargs.get("taper_percentage", 0.05)
     zerophase = kwargs.get("zerophase", True)
-    remove_response = kwargs.get("remove_response", True)
-    apply_filter = kwargs.get("apply_filter", True)
-    convolve_with_stf = kwargs.get("convolve_with_stf", True)
 
-    # Copy the stream to avoid editing in place. Synthetic variable used to
-    # denote if the waveforms are synthetic or not, these require special
-    # processing steps.
-    if choice == "syn":
-        st = mgmt.st_syn.copy()
-        is_synthetic_data = True
-    elif choice == "obs":
-        st = mgmt.st_obs.copy()
-        is_synthetic_data = mgmt.config.synthetics_only
+    assert choice in ["obs", "syn"], f"preprocess `choice` must be 'obs', 'syn'"
 
     if is_preprocessed(st):
         logger.info("stream has already been preprocessed, skipping "
                     "processing step")
         return st
+    else:
+        st_out = st.copy()
 
     # Get rid of any long period trends that may affect that data
-    st.detrend("simple").detrend("demean").taper(taper_percentage)
-    st = taper_time_offset(st, taper_percentage, mgmt.stats.time_offset_sec)
+    st_out.detrend("simple").detrend("demean").taper(taper_percentage)
+    st_out = taper_time_offset(st_out, taper_percentage,
+                               mgmt.stats.time_offset_sec)
 
-    # Observed specific data preprocessing includes response and rotating to ZNE
-    # No response data (inventory) also means don't try to remove response
-    if not hasattr(mgmt, "inv") or mgmt.inv is None:
-        remove_response = False
-        logger.info("Manager has no inventory attribute, will not "
-                    "remove response")
-    elif mgmt.inv[0][0][0].response is None:
-        remove_response = False
-        logger.info("Manager Inventory has no response attribute, will not "
-                    "remove response")
-    elif is_synthetic_data == True:
-        remove_response = False
-        logger.info("data marked as type 'synthetic' will not "
-                    "remove response")
-
-    if remove_response:
-        logger.info(f"removing response, units to {mgmt.config.unit_output}")
-        st.remove_response(inventory=mgmt.inv, output=mgmt.config.unit_output,
-                           water_level=water_level, plot=False)
+    if choice == "obs" and remove_response:
+        logger.info(f"removing response, units set to: {unit_output}")
+        st_out.remove_response(inventory=mgmt.inv, output=unit_output,
+                               water_level=water_level, plot=False)
 
         # Rotate streams if not in ZNE, e.g. Z12. Only necessary for observed
         logger.info("rotating from generic coordinate system to ZNE")
-        st.rotate(method="->ZNE", inventory=mgmt.inv)
-        st.detrend("simple").detrend("demean").taper(taper_percentage)
+        st_out.rotate(method="->ZNE", inventory=mgmt.inv,
+                      components=["ZNE", "Z12", "123"])
+        st_out.detrend("simple").detrend("demean").taper(taper_percentage)
     else:
-        logger.info(f"skip remove response: no inventory or requested not to")
+        logger.info(f"skip remove response: no `inv` or requested not to")
 
     # Rotate the given stream from standard NEZ to RTZ if BAz given
-    if mgmt.baz:
-        logger.info(f"rotating NE->RT by {mgmt.baz} degrees")
-        st.rotate(method="NE->RT", back_azimuth=mgmt.baz)
+    if rotate_baz:
+        logger.info(f"rotating NE->RT by {rotate_baz} degrees")
+        st_out.rotate(method="NE->RT", back_azimuth=rotate_baz)
 
     # Filter data based on the given period bounds
-    if apply_filter:
-        st = filters(st, min_period=mgmt.config.min_period,
-                     max_period=mgmt.config.max_period, 
-                     corners=mgmt.config.filter_corners,
-                     zerophase=zerophase
-                     )
-        st.detrend("simple").detrend("demean").taper(taper_percentage)
+    if apply_filter and (min_period is not None or max_period is not None):
+        st_out = filters(st_out, min_period=min_period, max_period=max_period,
+                         corners=filter_corners, zerophase=zerophase
+                         )
+        st_out.detrend("simple").detrend("demean").taper(taper_percentage)
     else:
         logger.info(f"no filter applied to data")
 
     # Convolve synthetic data with a Gaussian source time function
-    if convolve_with_stf and is_synthetic_data and mgmt.stats.half_dur:
-        st = stf_convolve(st=st, half_duration=mgmt.stats.half_dur)
+    if choice == "syn":
+        if convolve_with_stf and half_dur is not None:
+            st_out= stf_convolve(st=st_out, half_duration=mgmt.stats.half_dur)
 
     return st
 

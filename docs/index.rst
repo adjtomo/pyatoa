@@ -25,10 +25,10 @@ Quickstart
 ~~~~~~~~~~~
 
 - Have a look at the `Overview <overview.html>`__ page to learn about Pyatoa.
-- `Getting Started <getting_started.html>`__ shows you how to run a
-  small misfit quantification example.
-- The `Gallery <gallery.html>`__ provides a number of figures which illustrate
-  how Pyatoa can be used to assess misfit during a seismic inversion.
+- `First Glance <first_glance.html>`__ shows you how to run a small misfit
+  quantification example.
+- The `Gallery <gallery.html>`__ displays figures and code illustrating
+  how Pyatoa can be used to visualize waveform misfit and inversions.
 
 --------------
 

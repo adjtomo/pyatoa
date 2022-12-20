@@ -17,32 +17,38 @@ to another set of (similar) wiggles. Core functionalities of the package are:
 - Built-in interface with the automated workflow tool:
   `SeisFlows <https://github.com/adjtomo/seisflows>`__
 
-**In a nutshell**: Feed Pyatoa two waveforms, metadata and some configuration
-parameters, it spits out misfit windows and adjoint sources. Feed it *more*
-waveforms and metadata, it spits out more windows and adjoint sources, while
-also neatly organizing the input data for later bulk analysis.
+**In a nutshell**: Provide two similar waveforms and some configuration
+parameters, receive misfit windows and adjoint sources. Do this in bulk and
+analyze all returned misfit in aggregate.
 
 Why is Pyatoa necessary?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-**Q**: If Pyatoa simply wraps a number of already-working dependencies, why
+If Pyatoa simply wraps a number of already-working dependencies, why
 do we need it?
 
-**A**: Pyatoa acts as a replacement for the inevitable scripts a User would
+Pyatoa acts in liue of the inevitable collection scripts a User would
 have to write to link the data collection capabilities of ObsPy with the
-windowing functions of Pyflex with the adjoint source generation of Pyadjoint.
+windowing functions of Flexwin/Pyflex with the adjoint source generation of
+Pyadjoint.
 
 It also provides internal checks along the way to make sure you're not feeding
 it garbage, and provides useful routines for performing and understanding
 seismic inversions.
 
-What can't Pyatoa?
-~~~~~~~~~~~~~~~~~~
+What doesn't Pyatoa do?
+~~~~~~~~~~~~~~~~~~~~~~~
 
-Pyatoa cannot generate sythetic waveforms, interface with HPC systems, or
+Pyatoa does not: generate sythetic waveforms, interface with HPC systems,
 gather seismic data. These capabilities are supplemented by other packages,
 some of which are hosted within the `adjTomo <https://github.com/adjtomo/>`__
 ecosystem.
+
+Recommended tools to use with Pyatoa:
+
+- Gather seismic data: `PySEP <https://github.com/adjtomo/pysep>`__
+- Generate synthetics: `SPECFEM <https://github.com/specfem>`__
+- Automate inversions on HPCs: `SeisFlows <https://github.com/adjtomo/seisflows>`__
 
 
 How do (I use) Pyatoa?
@@ -50,9 +56,7 @@ How do (I use) Pyatoa?
 
 Pyatoa was written following the design philosophy of ObsPy i.e., called
 through a Python interface or within Python scripts, Jupyter notebooks or other
-Python packages.
-
-In other words:
+Python packages. That is:
 
 .. code:: python
 
@@ -63,4 +67,3 @@ In other words:
 
 Check out `First Glance <first_glance.html>`__ for a short code-based
 introduction to Pyatoa.
-    

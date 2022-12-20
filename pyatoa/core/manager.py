@@ -673,6 +673,11 @@ class Manager:
             self.stats.time_offset_sec = 0
         logger.info(f"synthetic time offset is {self.stats.time_offset_sec}s")
 
+        # Calculate epicentral distance and backazimuth
+        if self.event and self.inv:
+            self.gcd, self.baz = gcd_and_baz(event=self.event,
+                                             sta=self.inv[0][0])
+
         self.stats.standardized = True
 
         return self
@@ -715,6 +720,9 @@ class Manager:
             bool convolve_with_stf:
                 Convolve synthetic data with a Gaussian source time function if
                 a half duration is provided.
+            bool rotate_to_rtz:
+                Use the `rotate_baz` variable to rotate streams
+                from ZNE components to RTZ
         """
         if overwrite:
             assert(hasattr(overwrite, '__call__')), "overwrite must be function"
@@ -722,26 +730,27 @@ class Manager:
         else:
             preproc_fx = default_process
 
-        # If required, will rotate based on source receiver lat/lon values
-        if self.config.rotate_to_rtz:
-            if not self.inv:
-                logger.warning("cannot rotate components, no inventory")
-            else:
-                self.gcd, self.baz = gcd_and_baz(event=self.event,
-                                                 sta=self.inv[0][0])
-
         # Preprocess observation waveforms
         if self.st_obs is not None and not self.stats.obs_processed and \
                 which.lower() in ["obs", "both"]:
-            logger.info("preprocessing observation data")
-            self.st_obs = preproc_fx(self, choice="obs", **kwargs)
+            logger.info(f"preprocessing observation data as "
+                        f"{self.config.st_obs_type}")
+            self.st_obs = preproc_fx(
+                st=self.st_obs, choice=self.config.st_obs_type,
+                inv=self.inv, rotate_baz=self.baz,
+                **{**vars(self.config), **kwargs}
+            )
             self.stats.obs_processed = True
 
         # Preprocess synthetic waveforms
         if self.st_syn is not None and not self.stats.syn_processed and \
                 which.lower() in ["syn", "both"]:
             logger.info("preprocessing synthetic data")
-            self.st_syn = preproc_fx(self, choice="syn", **kwargs)
+            self.st_syn = preproc_fx(
+                st=self.st_syn, choice=self.config.st_syn_type,
+                inv=self.inv, rotate_baz=self.baz,
+                **{**vars(self.config), **kwargs}
+                  **kwargs)
             self.stats.syn_processed = True
 
         # Set stats
@@ -1144,7 +1153,7 @@ class Manager:
 
         # Precheck for correct data to plot
         if choice in ["wav", "both"] and not self.stats.standardized:
-            raise ManagerError("cannot plot, waveforms not standardized")
+            raise ManagerError("cannot plot waveforms, not standardized")
 
         if choice in ["map", "both"] and (self.inv is None or
                                           self.event is None):

@@ -403,34 +403,27 @@ This can be achieved using the ``overwrite`` command.
 
 .. code:: python
 
-    def custom_preprocessing(mgmt, choice):
+    def custom_preprocessing(st, choice, inv, unit_output="disp", **kwargs):
         """
         This function performs a custom preprocessing for the Manager class.
 
-        :type mgmt: pyatoa.core.manager.Manager
-        :param mgmt: the Manager class, which contains standardized data
+        :type st: obspy.core.stream.Stream
+        :param st: Stream object to preprocess
         :type choice: str
         :param choice: choice of output, either "obs" or "syn"
         :rtype: obspy.core.stream.Stream
         :return: A preprocessed ObsPy Stream object
         """
+        # The `choice` argument for different processing of `st_obs`, `st_syn`
         if choice == "obs":
-            st = mgmt.st_obs
-        elif choice == "syn":
-            st = mgmt.st_syn
-
-        # The `choice` argument allows different preprocessing for `obs` and `syn`
-        if choice == "obs":
-            st.remove_response(inventory=mgmt.inv,
-                               output=mgmt.config.unit_output)
+            st.remove_response(inventory=inv, output=unit_output)
 
             # Here we add a random action to scale data
             for tr in st:
                 tr.data *= 2
 
         # Access to Config parameters is still possible
-        st.filter("bandpass", freqmin=1/mgmt.config.max_period,
-                  freqmax=1/mgmt.config.min_period)
+        st.filter("bandpass", freqmin=1/max_period, freqmax=1/min_period)
 
         # MUST output a Stream
         return st
