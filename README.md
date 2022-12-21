@@ -2,6 +2,7 @@
 
 [![SCOPED](https://img.shields.io/endpoint?url=https://runkit.io/wangyinz/scoped/branches/master/Pyatoa)](https://github.com/SeisSCOPED/container/pkgs/container/pyatoa)
 [![Documentation Status](https://readthedocs.org/projects/pyatoa/badge/?version=latest)](https://pyatoa.readthedocs.io/en/latest/?badge=latest)
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 
 ## Misfit assessment for the modern tomographer
 <p align="center">
