@@ -12,6 +12,7 @@
 tools for measurement aggregation, and visualizations of inversion results. 
 It is meant to facilitate the execution and assessment of seismic waveform 
 inversion.
+
 ---
 
 - Documentation, including install instructions, example problems and API, can 
