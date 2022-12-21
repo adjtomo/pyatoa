@@ -201,15 +201,11 @@ def test_preprocess_overwrite(mgmt_pre):
     with pytest.raises(AssertionError):
         mgmt_pre.preprocess(overwrite="not a function")
 
-    def preproc_fx(mgmt, choice, value=1):
+    def preproc_fx(st, choice, value=1, **kwargs):
         """Zero out the data for an easy check on results"""
-        if choice == "obs":
-            st_ = mgmt.st_obs.copy()
-        elif choice == "syn":
-            st_ = mgmt.st_syn.copy()
-        for tr in st_:
+        for tr in st:
             tr.data *= value
-        return st_
+        return st
 
     mgmt_pre.preprocess(overwrite=preproc_fx, value=0)
 
@@ -229,7 +225,7 @@ def test_select_window(mgmt_pre):
     mgmt_pre.standardize().preprocess().window()
 
     # Ensure the correct number of windows are chosen
-    for comp, nwin in {"N": 1, "E": 1, "Z": 1}.items():
+    for comp, nwin in {"N": 1, "E": 1}.items():
         assert(len(mgmt_pre.windows[comp]) == nwin)
 
 
