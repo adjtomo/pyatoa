@@ -1,5 +1,5 @@
-name: Feature request - Wrap a new GMT module
-description: Request PyGMT wrapper for a GMT module
+name: Feature request
+description: Request a new feature for Pyatoa
 title: "Wrapper for <module-name>"
 labels: ["feature request"]
 body:
@@ -12,7 +12,6 @@ body:
     attributes:
       label: Description of the desired module
       description: Please be as detailed as you can in your description. If possible, include an example of how you would like to use this feature (even better if it's a code example).
-      placeholder: Implement [`<module-name>`](https://docs.generic-mapping-tools.org/latest/<module-name>.html) which `<insert description of the GMT module>`.
     validations:
       required: true
   - type: dropdown
@@ -28,7 +27,3 @@ body:
         - "Maybe"
     validations:
       required: true
-  - type: markdown
-    attributes:
-      value: |
-        Progress on wrapping the module will be tracked in the [project board](https://github.com/GenericMappingTools/pygmt/projects/9).
