@@ -8,8 +8,8 @@ into the correct formats.
 """
 import os
 from pyasdf import ASDFDataSet
+from pysep.utils.mt import Source
 from obspy.core.event import Event
-from pyatoa.utils.srcrcv import Source
 
 
 def format_iter(iteration):
@@ -111,34 +111,6 @@ def format_event_name(ds_or_event):
                                   "Please raise a GitHub issue and the "
                                   "developers will address this")
 
-
-def channel_code(dt):
-    """
-    Specfem outputs seismograms with channel band codes set by IRIS. Instrument
-    codes are always X for synthetics, but band code will vary with the sampling
-    rate of the data, return the correct code given a sampling rate.
-    Taken from Appenix B of the Specfem3D cartesian manual (June 15, 2018)
-
-    :type dt: float
-    :param dt: sampling rate of the data in seconds
-    :rtype: str
-    :return: band code as specified by Iris
-    """
-    if dt >= 1:
-        return "L"  # long period
-    elif 0.1 < dt < 1:
-        return "M"  # mid period
-    elif 0.0125 < dt <= 0.1:
-        return "B"  # broad band
-    elif 0.001 <= dt <= 0.0125:
-        return "H"  # high broad band
-    elif 0.004 <= dt < 0.001:
-        return "C"
-    elif 0.001 <= dt < 0.0002:
-        return "F"
-    else:
-        print("Channel code does not exist for this value of 'dt'")
-        return None
 
 def convert_stations_to_seed(stations_file="./STATIONS",
                              path_to_save_seed="./seed", **kwargs):

@@ -1,30 +1,33 @@
-## Python's Adjoint Tomography Operations Assistant  
+# Python's Adjoint Tomography Operations Assistant  
 
-[![SCOPED](https://img.shields.io/endpoint?url=https://runkit.io/wangyinz/scoped/branches/master/adjTomo)](https://github.com/SeisSCOPED/container/pkgs/container/adjtomo)
-[![Join the chat at https://gitter.im/pyatoa/community](https://badges.gitter.im/pyatoa/community.svg)](https://gitter.im/pyatoa/community?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+[![SCOPED](https://img.shields.io/endpoint?url=https://runkit.io/wangyinz/scoped/branches/master/Pyatoa)](https://github.com/SeisSCOPED/container/pkgs/container/pyatoa)
 [![Documentation Status](https://readthedocs.org/projects/pyatoa/badge/?version=latest)](https://pyatoa.readthedocs.io/en/latest/?badge=latest)
 
-### Misfit assessment for the modern tomographer
-
----
-`Documentation` can be found on Read the Docs: https://pyatoa.readthedocs.io
-
----
+## Misfit assessment for the modern tomographer
 <p align="center">
-  <img src="pyatoa/docs/images/pyatoa_logo_w_text.png" />
+  <img src="docs/images/pyatoa_logo_w_text.png" />
 </p>
 
-**Pyatoa**\* is a waveform-based misfit quantification package, with additional tools for measurement aggregation, and visualizations of inversion results. It is meant to facilitate the assessment of seismic inversions. Under the hood, **Pyatoa** is built on, and provides a high-level interface for a few key Python packages:
+**Pyatoa**\* is a waveform-based misfit quantification package, with additional 
+tools for measurement aggregation, and visualizations of inversion results. 
+It is meant to facilitate the execution and assessment of seismic waveform 
+inversion.
+---
 
-**[ObsPy:](https://github.com/obspy/obspy/wiki)** for seismic data handling, processing and organization    
-**[Pyflex:](https://krischer.github.io/pyflex/)** a Python port of Flexwin, for automatic time window selection  
-**[Pyadjoint:](http://krischer.github.io/pyadjoint/)** evaluating misfit functions and creating adjoint sources  
-**[PyASDF:](https://seismicdata.github.io/pyasdf/)** heirarchical, self-describing storage of seismic data  
-**[Pandas:](https://pandas.pydata.org/)** large-scale aggregation and manipulation of measurement information
+- Documentation, including install instructions, example problems and API, can 
+  be found on [Read the Docs](https://pyatoa.readthedocs.io).
 
-**Pyatoa** can be used in scripting, interactive Python environments, or written into larger workflow tools. Although applicable in a standalone maner, Pyatoa is designed to be used in conjunction with [SeisFlows](https://github.com/adjtomo/seisflows), an automated workflow for seismic inversions, and [SPECFEM](https://github.com/specfem), numerical solvers for seismic wave propogation.
+- Pyatoa is under current active development, and is bundled with other
+  inversion software under the [adjTomo organization](https://github.com/adjtomo).
 
-The design philosophy of **Pyatoa** is easy-to-use custom-built objects that make tomography research flexible, rapid, and repeatable.
+- If you find any issues, have questions, or would like to join the community, 
+  please feel free to open up a [GitHub Issue](https://github.com/adjtomo/pyatoa/issues) or [start a discussion](https://github.com/orgs/adjtomo/discussions). 
+
+---
+
+
+The design philosophy of **Pyatoa** is easy-to-use interface that 
+make tomography research approachable, flexible, and repeatable.
 
 <sub> \**pronounced Py-uh-toe-uh (ˈpaɪəˈtoʊə), inspired by the famed volcano Krakatoa* </sub>
 

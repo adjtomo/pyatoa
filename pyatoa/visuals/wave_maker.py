@@ -35,6 +35,76 @@ class WaveMaker:
     Standardized waveform figures featuring observed and synthetic traces, 
     STA/LTA waveforms, misfit windows, rejected windows, adjoint sources and
     auxiliary information collected within the workflow.
+
+    WAVEFORM KEYWORD ARGUMENTS:
+        FIGURE:
+        figsize (tuple): size of the figure, defaults (800, 200) pixels
+            per channel
+        dpi (float): dots per inch of the figure, defaults 100
+        legend_fontsize (int): size
+        linewidth (float): line width for all lines on plot, default 1.6
+        axes_linewidth (float): line width for axis spines, default 1
+        xlim_s (list): time-axis bounds of the plot in seconds, def full trace
+        figure (pyplot.Figure): an existing figure object to plot to, rather
+            than generating a new figure
+        subplot_spec (gridspec.GridSpec): an overlying grid that waveforms
+            will be plotted into. Useful for combining waveform plots
+
+        FONTSIZE:
+        fontsize (int): font size of the title, axis labels, def 8
+        axes_fontsize (int): font size of the tick labels, def 8
+        rejected_window_fontsize (int): fontsize for the annotations that
+            describe the rejected windows, default 6
+        window_anno_fontsize (str): fontsize for window annotation, def 7
+
+        COLORS:
+        obs_color (str): color for observed waveform, defaults 'k'
+        syn_color (str): color for synthetic waveform, defaults 'r
+        stalta_color (str): color of stalta waveform, default 'gray'
+        window_color (str): color for misfit windows, default 'orange'
+        adj_src_color (str): color for adjoint sources, default 'g'
+
+        ADJOINT SOURCE
+        adj_src_linestyle (str, tuple): adjoint souce style, default tight dash
+        adj_src_alpha (float): opacity of adjoint source, default 0.4
+
+        WINDOW ANNOTATIONS:
+        window_anno (str): a custom string which can contain the optional
+            format arguemnts: [max_cc, cc_shift, dlnA, left, length]. None,
+            defaults to formatting all arguments
+        window_anno_alternate (str): custom string for all windows that
+            aren't the first window, useful for dropping the labels for
+            parameters, allows for cleaner annotations without
+            compromising readability
+        window_anno_height (float): annotation height, percentage of y axis,
+            default 0.7
+        alternate_anno_height (float): optional, shift the annotation height
+            each window to prevent overlapping annotations
+        window_anno_rotation (float): rotation of annotation (deg), def 0
+        window_anno_fontcolor (str): color of annotation text, def 'k'
+        window_anno_fontweight (str): weight of font, default 'normal'
+        window_anno_bbox (dict): bbox dict for window annotations, None means
+            no bounding box
+
+        TOGGLES:
+        plot_xaxis (bool): toggle the labels and ticks on the x axis, def True
+        plot_yaxis (bool): toggle the labels and ticks on the y axis, def True
+        plot_windows (bool): toggle window plotting, default True
+        plot_rejected_windows (bool): toggle rejected window plot, default T
+        plot_window_annos (bool): toggle window annotations, default True
+        plot_staltas (bool): toggle stalta plotting, default True
+        plot_adjsrcs (bool): toggle adjoint source plotting, default True
+        plot_waterlevel (bool): toggle stalta waterlevel plotting, def True
+        plot_arrivals (bool): toggle phase arrival plotting, default True
+        plot_legend (bool): toggle legend, default True
+
+        MISC:
+        normalize (bool): normalize waveform data before plotting
+        set_title (bool or str): create a default title using workflow
+            parameters, if str given, overwrites all title
+        append_title(str): User appended string to the end of the title.
+            useful to get extra information on top of the default title
+
     """
     def __init__(self, mgmt, **kwargs):
         """
@@ -152,17 +222,13 @@ class WaveMaker:
             obs.data /= np.abs(obs.data.max())
             syn.data /= np.abs(syn.data.max())
 
-        # Change the legend label depending on syn-syn or obs-syn case
-        if self.config.synthetics_only:
-            obs_tag = "TRUE"
-        else:
-            obs_tag = "OBS"
-
         # Convention of black for obs, red for syn
         a1, = ax.plot(self.time_axis, obs.data, obs_color, zorder=11, 
-                      label=f"{obs.id} ({obs_tag})", linewidth=linewidth)
+                      label=f"{obs.id} ({self.config.st_obs_type.upper()})",
+                      linewidth=linewidth)
         a2, = ax.plot(self.time_axis, syn.data, syn_color, zorder=10, 
-                      label=f"{syn.id} (SYN)", linewidth=linewidth)
+                      label=f"{syn.id} ({self.config.st_obs_type.upper()})",
+                      linewidth=linewidth)
 
         return [a1, a2]
 

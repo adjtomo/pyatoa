@@ -7,13 +7,13 @@ import obspy
 import pyflex
 import pyadjoint
 import warnings
+from pysep.utils.fmt import channel_code
 from copy import deepcopy
 from obspy.signal.filter import envelope
 from pyasdf import ASDFWarning
 from pyatoa import logger
 from pyatoa.core.config import Config
 from pyatoa.core.gatherer import Gatherer, GathererNoDataException
-from pyatoa.utils.form import channel_code
 from pyatoa.utils.process import is_preprocessed
 from pyatoa.utils.asdf.load import load_windows, load_adjsrcs
 from pyatoa.utils.window import reject_on_global_amplitude_ratio
@@ -23,7 +23,8 @@ from pyatoa.utils.process import (default_process, trim_streams, zero_pad,
                                   match_npts)
 from pyatoa.scripts.load_example_data import load_example_data
 
-from pyatoa.visuals.mgmt_plot import ManagerPlotter
+from pyatoa.visuals.wave_maker import WaveMaker
+from pyatoa.visuals.map_maker import MapMaker
 
 
 class ManagerError(Exception):
@@ -86,8 +87,7 @@ class Manager:
 
         .. note::
             If `ds` is not given in data can only be gathered via the
-            config.paths attribute or using the ObsPy client service.
-            Data will also not be saved.
+            config.paths attribute. Data will also not be saved.
 
         :type config: pyatoa.core.config.Config
         :param config: configuration object that contains necessary parameters
@@ -123,7 +123,7 @@ class Manager:
         if config is not None:
             self.config = config
         else:
-            logger.info("no config provided, initiating default")
+            logger.info("`config` not provided, initiating empty")
             self.config = Config()
 
         # Ensure any user-provided event is an Event object
@@ -244,22 +244,17 @@ class Manager:
 
         # Check that component list matches components in streams, else some
         # functions that rely on Stream.select() will fail to execute
-        if self.st_obs is not None:
+        if self.st_obs is not None and self.stats.obs_processed:
             st_obs_comps = [tr.stats.component for tr in self.st_obs]
             if not set(st_obs_comps).issubset(set(self.config.component_list)):
-                logger.warning(f"observed components {st_obs_comps} don't "
-                               f"match given Config component list "
-                               f"{self.config.component_list}, which may cause "
-                               f"unexpected behavior during workflow")
+                logger.warning(f"`st_obs` components {set(st_obs_comps)} != "
+                               f"component list {self.config.component_list}")
 
-
-        if self.st_syn is not None:
+        if self.st_syn is not None and self.stats.syn_processed:
             st_syn_comps = [tr.stats.component for tr in self.st_syn]
             if not set(st_syn_comps).issubset(set(self.config.component_list)):
-                logger.warning(f"synthetic components {st_syn_comps} don't "
-                               f"match given Config component list "
-                               f"{self.config.component_list}, which may cause "
-                               f"unexpected behavior during workflow")
+                logger.warning(f"`st_syn` components {set(st_syn_comps)} != "
+                               f"component list {self.config.component_list}")
 
         # Check standardization by comparing waveforms against the first
         if not self.stats.standardized and self.st_obs and self.st_syn:
@@ -305,24 +300,27 @@ class Manager:
             internal attribute `self.ds` to write to. Allows overwriting to
             new datasets
         """
-        # Allow using both default and input datasets for writing
+        # Allow using both default and input datasets for writing. Check if we
+        # can actually write to the dataset
         if ds is None:
             ds = self.ds
-
         if ds is None:
             logger.warning("no dataset found, cannot write")
+            return
+        elif ds._ASDFDataSet__file.mode == "r":  # NOQA
+            logger.warning("dataset opened in read-only mode, cannot write")
             return
 
         if self.event:
             try:
                 ds.add_quakeml(self.event)
             except ValueError:
-                logger.warning("Event already present, not added")
+                logger.debug("Event already present, not added")
         if self.inv:
             try:
                 ds.add_stationxml(self.inv)
             except TypeError:
-                logger.warning("StationXML already present, not added")
+                logger.debug("StationXML already present, not added")
         # Redirect PyASDF 'waveforms already present' warnings for cleaner look
         if self.st_obs:
             with warnings.catch_warnings():
@@ -331,8 +329,8 @@ class Manager:
                     ds.add_waveforms(waveform=self.st_obs,
                                      tag=self.config.observed_tag)
                 except ASDFWarning:
-                    logger.warning(f"{self.config.observed_tag} waveform "
-                                   f"already present, not added")
+                    logger.debug(f"{self.config.observed_tag} waveform already "
+                                 f"present, not added")
                     pass
         if self.st_syn:
             with warnings.catch_warnings():
@@ -341,17 +339,17 @@ class Manager:
                     ds.add_waveforms(waveform=self.st_obs,
                                      tag=self.config.synthetic_tag)
                 except ASDFWarning:
-                    logger.warning(f"{self.config.synthetic_tag} waveform "
-                                   f"already present, not added")
+                    logger.debug(f"{self.config.synthetic_tag} waveform "
+                                 f"already present, not added")
                     pass
         if self.windows:
-            self.save_windows(ds=ds)
+            self.save_windows(ds=ds, force=True)
         if self.adjsrcs:
-            self.save_adjsrcs(ds=ds)
+            self.save_adjsrcs(ds=ds, force=True)
 
     def write_adjsrcs(self, path="./", write_blanks=True):
         """
-        Write internally stored adjoint source traces into SPECFEM3D defined
+        Write internally stored adjoint source traces into SPECFEM defined
         two-column ascii files. Filenames are based on what is expected by
         Specfem, that is: 'NN.SSS.CCC.adj'
 
@@ -434,7 +432,7 @@ class Manager:
         :param adjsrcs: load adjoint sources from the dataset, defaults to False
         """
         if code is None:
-            logger.debug("no arguments given, returning example data")
+            logger.info("loading example data to Manager")
             self.cfg, self.st_obs, self.st_syn, self.event, self.inv = \
                                                             load_example_data() 
         else: 
@@ -632,7 +630,7 @@ class Manager:
         elif self.stats.standardized and not force:
             logger.info("data already standardized")
             return self
-        logger.info("standardizing streams")
+        logger.info("standardizing time series")
 
         # If observations starttime after synthetic, zero pad the front of obs
         dt_st = self.st_obs[0].stats.starttime - self.st_syn[0].stats.starttime
@@ -658,13 +656,22 @@ class Manager:
             )
 
         # Determine if synthetics start before the origintime
-        if self.event is not None:
+        if hasattr(self.st_syn[0].stats, "time_offset"):
+            self.stats.time_offset_sec = self.st_syn[0].stats.time_offset
+        elif self.event is not None:
             self.stats.time_offset_sec = (self.st_syn[0].stats.starttime -
                                           self.event.preferred_origin().time
                                           )
-            logger.debug(f"time offset is {self.stats.time_offset_sec}s")
         else:
+            logger.warning("cannot find information relating to synthetic time "
+                           "offset. Setting to 0")
             self.stats.time_offset_sec = 0
+        logger.info(f"syn time offset == {self.stats.time_offset_sec}s")
+
+        # Calculate epicentral distance and backazimuth
+        if self.event and self.inv:
+            self.gcd, self.baz = gcd_and_baz(event=self.event,
+                                             sta=self.inv[0][0])
 
         self.stats.standardized = True
 
@@ -708,6 +715,9 @@ class Manager:
             bool convolve_with_stf:
                 Convolve synthetic data with a Gaussian source time function if
                 a half duration is provided.
+            bool rotate_to_rtz:
+                Use the `rotate_baz` variable to rotate streams
+                from ZNE components to RTZ
         """
         if overwrite:
             assert(hasattr(overwrite, '__call__')), "overwrite must be function"
@@ -715,26 +725,26 @@ class Manager:
         else:
             preproc_fx = default_process
 
-        # If required, will rotate based on source receiver lat/lon values
-        if self.config.rotate_to_rtz:
-            if not self.inv:
-                logger.warning("cannot rotate components, no inventory")
-            else:
-                self.gcd, self.baz = gcd_and_baz(event=self.event,
-                                                 sta=self.inv[0][0])
-
         # Preprocess observation waveforms
         if self.st_obs is not None and not self.stats.obs_processed and \
                 which.lower() in ["obs", "both"]:
-            logger.info("preprocessing observation data")
-            self.st_obs = preproc_fx(self, choice="obs", **kwargs)
+            logger.info(f"preprocess `st_obs` as '{self.config.st_obs_type}'")
+            self.st_obs = preproc_fx(
+                st=self.st_obs, choice=self.config.st_obs_type,
+                inv=self.inv, baz=self.baz,
+                **{**vars(self.config), **kwargs}
+            )
             self.stats.obs_processed = True
 
         # Preprocess synthetic waveforms
         if self.st_syn is not None and not self.stats.syn_processed and \
                 which.lower() in ["syn", "both"]:
-            logger.info("preprocessing synthetic data")
-            self.st_syn = preproc_fx(self, choice="syn", **kwargs)
+            logger.info(f"preprocess `st_syn` as '{self.config.st_syn_type}'")
+            self.st_syn = preproc_fx(
+                st=self.st_syn, choice=self.config.st_syn_type,
+                inv=self.inv, baz=self.baz,
+                **{**vars(self.config), **kwargs}
+            )
             self.stats.syn_processed = True
 
         # Set stats
@@ -889,7 +899,7 @@ class Manager:
             waveforms, and running select_windows() again, but for now we just
             raise a ManagerError and allow processing to continue
         """
-        logger.info(f"running Pyflex w/ map: {self.config.pyflex_preset}")
+        logger.info(f"windowing w/ map: {self.config.pyflex_preset}")
 
         nwin, window_dict, reject_dict = 0, {}, {}
         for comp in self.config.component_list:
@@ -931,7 +941,7 @@ class Manager:
                 reject_dict[comp] = ws.rejects
 
             # Count windows and tell User
-            logger.info(f"{len(windows)} window(s) selected for comp {comp}")
+            logger.info(f"{comp}: {len(windows)} window(s)")
             nwin += len(windows)
 
         self.windows = window_dict
@@ -972,7 +982,7 @@ class Manager:
             raise ManagerError("cannot measure misfit, not standardized")
         elif self.stats.nwin == 0 and not force:
             raise ManagerError("cannot measure misfit, no windows recovered")
-        logger.debug(f"running Pyadjoint w/ type: {self.config.adj_src_type}")
+        logger.debug(f"measure misfit of type: {self.config.adj_src_type}")
 
         # Create list of windows needed for Pyadjoint
         adjoint_windows = self._format_windows()
@@ -994,7 +1004,7 @@ class Manager:
 
                 # Save adjoint sources in dictionary object. Sum total misfit
                 adjoint_sources[comp] = adj_src
-                logger.info(f"{adj_src.misfit:.3f} misfit for comp {comp}")
+                logger.info(f"{comp}: {adj_src.misfit:.3f} misfit")
                 total_misfit += adj_src.misfit
             except IndexError:
                 continue
@@ -1006,11 +1016,11 @@ class Manager:
 
         # Run check to get total misfit
         self.check()
-        logger.info(f"total misfit {self.stats.misfit:.3f}")
+        logger.info(f"total misfit == {self.stats.misfit:.3f}")
 
         return self
 
-    def save_windows(self, ds=None):
+    def save_windows(self, ds=None, force=False):
         """
         Convenience function to save collected misfit windows into an 
         ASDFDataSet with some preliminary checks
@@ -1020,22 +1030,25 @@ class Manager:
         :type ds: pyasdf.ASDFDataSet
         :param ds: allow replacement of the internal `ds` dataset. If None,
             will try to write to internal `ds`
+        :type force: bool
+        :param force: force saving windows even if Config says don't do it.
+            This is used by write() to bypass the default 'dont save' behavior
         """
         if ds is None:
             ds = self.ds
 
         if ds is None:
-            logger.warning("no ASDFDataSet, cannot save windows")
+            logger.debug("no ASDFDataSet, will not save windows")
         elif not self.windows:
-            logger.warning("Manager has no windows to save")
-        elif not self.config.save_to_ds:
-            logger.warning("config parameter save_to_ds is set False, "
+            logger.debug("Manager has no windows to save")
+        elif not self.config.save_to_ds and not force:
+            logger.debug("config parameter `save_to_ds` is set False, "
                            "will not save windows")
         else:
             logger.debug("saving misfit windows to ASDFDataSet")
             add_misfit_windows(self.windows, ds, path=self.config.aux_path)
 
-    def save_adjsrcs(self, ds=None):
+    def save_adjsrcs(self, ds=None, force=False):
         """
         Convenience function to save collected adjoint sources into an 
         ASDFDataSet with some preliminary checks
@@ -1045,16 +1058,19 @@ class Manager:
         :type ds: pyasdf.ASDFDataSet
         :param ds: allow replacement of the internal `ds` dataset. If None,
             will try to write to internal `ds`
+        :type force: bool
+        :param force: force saving windows even if Config says don't do it.
+            This is used by write() to bypass the default 'dont save' behavior
         """
         if ds is None:
             ds = self.ds
 
         if ds is None:
-            logger.warning("no ASDFDataSet, cannot save adjoint sources")
+            logger.debug("no ASDFDataSet, cannot save adjoint sources")
         elif not self.adjsrcs:
-            logger.warning("Manager has no adjoint sources to save")
-        elif not self.config.save_to_ds:
-            logger.warning("config parameter save_to_ds is set False, "
+            logger.debug("Manager has no adjoint sources to save")
+        elif not self.config.save_to_ds and not force:
+            logger.debug("config parameter `save_to_ds` is set False, "
                            "will not save adjoint sources")
         else:
             logger.debug("saving adjoint sources to ASDFDataSet")
@@ -1099,7 +1115,8 @@ class Manager:
 
         return adjoint_windows
 
-    def plot(self, choice="both", save=None, show=True, corners=None, **kwargs):
+    def plot(self, choice="both", save=None, show=True, corners=None,
+             figsize=None, dpi=100, **kwargs):
         """
         Plot observed and synthetics waveforms, misfit windows, STA/LTA and
         adjoint sources for all available components. Append information
@@ -1118,26 +1135,60 @@ class Manager:
             corners to cut the map to, otherwise a global map is provided
         :type choice: str
         :param choice: choice for what to plot:
-
             * 'wav': plot waveform figure only
             * 'map': plot a source-receiver map only
             * 'both' (default): plot waveform and source-receiver map together
+        :type figsize: tuple
+        :param figsize: optional size of the figure, set by plot()
+        :type dpi: int
+        :param dpi: optional dots per inch (resolution) of figure
         """
         self.check()
+
         # Precheck for correct data to plot
         if choice in ["wav", "both"] and not self.stats.standardized:
-            raise ManagerError("cannot plot, waveforms not standardized")
+            raise ManagerError("cannot plot waveforms, not standardized")
 
         if choice in ["map", "both"] and (self.inv is None or
                                           self.event is None):
-            raise ManagerError("cannot plot map, no event and/or inv found")
+            logger.warning("cannot plot map, no event and/or inv found")
+            choice = "wav"
 
-        mp = ManagerPlotter(mgmt=self)
+        # Plot only waveform
         if choice == "wav":
-            mp.plot_wav(show=show, save=save, **kwargs)
+            wm = WaveMaker(mgmt=self, **kwargs)
+            wm.plot(show=show, save=save)
+        # Plot only map
         elif choice == "map":
-            mp.plot_map(corners=corners, show=show, save=save,  **kwargs)
+            mm = MapMaker(inv=self.inv, cat=self.event, corners=corners,
+                          **kwargs)
+            mm.plot(show=show, save=save)
+        # Plot waveform and map on the same figure
         elif choice == "both":
-            mp.plot(corners=corners, show=show, save=save, **kwargs)
+            import matplotlib as mpl
+            import matplotlib.pyplot as plt
 
+            if figsize is None:
+                figsize = (1400 / dpi, 600 / dpi)
 
+            # Create an overlying GridSpec that will contain both plots
+            gs = mpl.gridspec.GridSpec(1, 2, wspace=0.25, hspace=0.)
+            fig = plt.figure(figsize=figsize, dpi=dpi)
+
+            # Plot the waveform on the left
+            wm = WaveMaker(mgmt=self)
+            wm.plot(figure=fig, subplot_spec=gs[0], show=False, save=False,
+                    **kwargs)
+
+            # Plot the map on the right
+            mm = MapMaker(cat=self.event, inv=self.inv, figsize=figsize,
+                          figure=fig, gridspec=gs, corners=corners,
+                          **kwargs)
+            mm.plot(figure=fig, gridspec=gs, show=False, save=None)
+
+            if save:
+                plt.savefig(save)
+            if show:
+                plt.show()
+            else:
+                plt.close()
