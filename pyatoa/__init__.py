@@ -10,6 +10,7 @@ FORMAT = "[%(asctime)s] - %(name)s - %(levelname)s: %(message)s"
 formatter = logging.Formatter(FORMAT, datefmt="%Y-%m-%d %H:%M:%S")
 ch.setFormatter(formatter)
 logger.addHandler(ch)
+logger.setLevel("INFO")
 
 from pyatoa.core.config import Config # NOQA
 from pyatoa.core.manager import Manager, ManagerError # NOQA

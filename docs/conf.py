@@ -17,25 +17,15 @@ import sys
 sys.path.insert(0, os.path.abspath('..'))
 
 import sphinx_rtd_theme
-
-
-# Hacky way to get PROJ_LIB set for a fresh conda install
-on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
-if on_rtd:
-    os.environ['PROJ_LIB'] = (
-        f"{os.environ['CONDA_ENVS_PATH']}/{os.environ['CONDA_DEFAULT_ENV']}/share/proj"
-    )
-else:
-    os.environ['PROJ_LIB'] = f"{os.environ['CONDA_PREFIX']}/share/proj"
     
 # -- Project information -----------------------------------------------------
 
 project = 'Pyatoa'
-copyright = '2022, Bryant Chow'
-author = 'Bryant Chow'
+copyright = '2022, adjTomo'
+author = 'adjTomo Dev Team'
 
 # The short X.Y version
-version = '0.1.0'
+version = '0.1.1'
 # The full version, including alpha/beta/rc tags
 release = ''
 
@@ -50,7 +40,6 @@ release = ''
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
-    # 'sphinx.ext.autodoc',
     'sphinx.ext.doctest',
     'sphinx.ext.intersphinx',
     'sphinx.ext.todo',
@@ -60,7 +49,8 @@ extensions = [
     'sphinx.ext.autosummary',
     'sphinx_rtd_theme',
     'autoapi.extension',
-    'nbsphinx'
+    'nbsphinx',
+    'myst_parser'
 ]
 
 # Need to tell the autoapi that our source code is one level up
@@ -74,8 +64,8 @@ templates_path = ['_templates']
 # The suffix(es) of source filenames.
 # You can specify multiple suffix as a list of string:
 #
-# source_suffix = ['.rst', '.md']
-source_suffix = '.rst'
+source_suffix = {'.rst': 'restructuredtext', 
+                 '.md': 'markdown'}
 
 # The master toctree document.
 master_doc = 'index'

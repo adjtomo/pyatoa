@@ -20,20 +20,19 @@ from pyadjoint import Config as PyadjointConfig
 class Config:
     """
     The Config class is the main interaction object between the User and
-    workflow. It is used by the :doc:`Manager class <core.manager>` for workflow
-    management, and also for information sharing between Pyatoa objects and
-    functions. The Config can be read to and written from external files and
+    workflow. It is used by :class:`Manager <pyatoa.core.manager.Manager>` for
+    workflow management, and also for information sharing between Pyatoa objects
+    and functions. The Config can be read to and written from external files and
     ASDFDataSets.
     """
-    def __init__(self, yaml_fid=None, seisflows_yaml=None, seisflows_par=None,
-                 ds=None, path=None, iteration=None, step_count=None,
-                 event_id=None, min_period=10, max_period=30, filter_corners=2,
-                 rotate_to_rtz=False, unit_output="DISP",
-                 pyflex_preset="default", component_list=None,
-                 adj_src_type="cc_traveltime_misfit", start_pad=20, end_pad=500,
+    def __init__(self, yaml_fid=None, ds=None, path=None, iteration=None,
+                 step_count=None, event_id=None, min_period=10, max_period=100,
+                 rotate_to_rtz=False, unit_output="DISP",  component_list=None,
+                 pyflex_preset="default", adj_src_type="cc_traveltime_misfit",
                  observed_tag="observed", synthetic_tag=None,
-                 synthetics_only=False, win_amp_ratio=0., paths=None,
-                 save_to_ds=True, **kwargs):
+                 st_obs_type="obs", st_syn_type="syn",
+                 win_amp_ratio=0., paths=None, save_to_ds=True,
+                 **kwargs):
         """
         Initiate the Config object either from scratch, or read from external.
 
@@ -60,8 +59,6 @@ class Config:
         :param min_period: minimum bandpass filter period
         :type max_period: float
         :param max_period: maximum bandpass filter period
-        :type filter_corners: int
-        :param filter_corners: filter steepness for obspy filter
         :type rotate_to_rtz: bool
         :param rotate_to_rtz: components from NEZ to RTZ
         :type unit_output: str
@@ -71,17 +68,20 @@ class Config:
         :param pyflex_preset: name to map to pyflex preset config
         :type adj_src_type: str
         :param adj_src_type: method of misfit quantification for Pyadjoint
-        :type start_pad: int
-        :param start_pad: seconds before event origintime to grab waveform data
-            for use by data gathering class
-        :type end_pad: int
-        :param end_pad: seconds after event origintime to grab waveform data
-        :type synthetics_only: bool
-        :param synthetics_only: If the user is doing a synthetic-synthetic
-            example, e.g. in a checkerboard test, this will tell the internal
-            fetcher to search for observation data in the 'waveforms' path
-            in the same manner that it searches for synthetic data. Also changes
-            tags on waveform plots so it's obvious that the 'data' is synthetic.
+        :type st_obs_type: str
+        :param st_obs_type: Tell Pyatoa how to treat `st_obs`, either
+            - 'data': as data, which involves instrument response removal and
+                data gathering based on SEED formatted directories
+            - 'syn': as syntheitcs, which skips instrument response removal
+                and data gathering is based on simpler synthetic dir. structure
+            Defaults to 'data'
+        :type st_syn_type: str
+        :param st_syn_type: Tell Pyatoa how to treat `st_syn`, either
+            - 'data': as data, which involves instrument response removal and
+                data gathering based on SEED formatted directories
+            - 'syn': as syntheitcs, which skips instrument response removal
+                and data gathering is based on simpler synthetic dir. structure
+            Defaults to 'syn'
         :type observed_tag: str
         :param observed_tag: Tag to use for asdf dataset to label and search
             for obspy streams of observation data. Defaults 'observed'
@@ -107,9 +107,8 @@ class Config:
         self.iteration = iteration
         self.step_count = step_count
         self.event_id = event_id
-        self.min_period = float(min_period)
-        self.max_period = float(max_period)
-        self.filter_corners = float(filter_corners)
+        self.min_period = min_period
+        self.max_period = max_period
         self.rotate_to_rtz = rotate_to_rtz
         self.unit_output = unit_output.upper()
         self.observed_tag = observed_tag
@@ -120,10 +119,9 @@ class Config:
 
         self.pyflex_preset = pyflex_preset
         self.adj_src_type = adj_src_type
-        self.synthetics_only = synthetics_only
+        self.st_obs_type = st_obs_type
+        self.st_syn_type = st_syn_type
         self.win_amp_ratio = win_amp_ratio
-        self.start_pad = int(start_pad)
-        self.end_pad = int(end_pad)
         self.component_list = component_list
 
         self.save_to_ds = save_to_ds
@@ -150,15 +148,10 @@ class Config:
                 self._read_asdf(ds, path=path)
             elif yaml_fid:
                 self._read_yaml(yaml_fid)
-
-        # If reading from SeisFlows or initiating normally, need to set external
-        # Configs based on map names and keyword arguments
+        # If initiating normally, need to set external Configs based on map
+        # names and keyword arguments
         else:
-            if seisflows_yaml or seisflows_par:
-                self._read_seisflows_yaml(filename=seisflows_yaml,
-                                          par=seisflows_par)
-
-            # Set Pyflex and Pyadjoint Config objects as attributes 
+            # Set Pyflex and Pyadjoint Config objects as attributes
             self._set_external_configs(**kwargs)
 
         # Run internal sanity checks
@@ -176,10 +169,10 @@ class Config:
                    f"    {'event_id:':<25}{self.event_id}\n"
                    )
         # Format the remainder of the keys identically
-        key_dict = {"Gather": ["start_pad", "end_pad", "save_to_ds"],
-                    "Process": ["min_period", "max_period", "filter_corners",
-                                "unit_output", "rotate_to_rtz", "win_amp_ratio",
-                                "synthetics_only"],
+        key_dict = {"Gather": ["save_to_ds"],
+                    "Process": ["min_period", "max_period",  "unit_output",
+                                "rotate_to_rtz", "win_amp_ratio", "st_obs_type",
+                                "st_obs_type"],
                     "Labels": ["component_list", "observed_tag",
                                "synthetic_tag", "paths"],
                     "External": ["pyflex_preset", "adj_src_type",
@@ -282,9 +275,8 @@ class Config:
 
         # Set the component list. Rotate component list if necessary
         if self.rotate_to_rtz:
-            logger.debug("Components changed ZNE -> ZRT")
             if not self.component_list:
-                logger.debug("Component list set to R/T/Z")
+                logger.info("component list set to R/T/Z")
                 self.component_list = ["R", "T", "Z"]
             else:
                 for comp in ["N", "E"]:
@@ -292,7 +284,7 @@ class Config:
                             f"rotated component list cannot include '{comp}'"
         else:
             if not self.component_list:
-                logger.debug("Component list set to E/N/Z")
+                logger.info("component list set to E/N/Z")
                 self.component_list = ["E", "N", "Z"]
 
         # Check that the amplitude ratio is a reasonable number
@@ -437,12 +429,7 @@ class Config:
             try:
                 self._read_yaml(read_from)
             except ValueError:
-                try:
-                    # We use init here to reset any parameters that were set by
-                    # the read_yaml function
-                    self.__init__(seisflows_yaml=read_from)
-                except Exception as e:
-                    print(f"Unknown yaml format for file {read_from}, {e}")
+                print(f"Unknown yaml format for file {read_from}, {e}")
         elif fmt.lower() == "asdf":
             assert(path is not None), "path must be defined"
             self._read_asdf(read_from, path=path)
@@ -556,52 +543,6 @@ class Config:
                              "keyword arguments for a Config yaml file. Maybe "
                              "you meant to use the parameter 'seisflows_yaml'"
                              )
-
-    def _read_seisflows_yaml(self, filename=None, par=None):
-        """
-        A mapping of intenral config parameters to a SeisFlows yaml file.
-        To be used during a SeisFlows workflow.
-
-        .. warning::
-            Does not assign paths, iteration, step or event id. These need to be
-            manually assigned during the workflow by SeisFlows.
-
-        :type filename: str
-        :param filename: filename to SeisFlows yaml file
-        :type par: seisflows.config.Dict
-        :param par: a seisflows Dict object
-        :rtype: dict
-        :return: key word arguments that do not belong to Pyatoa are passed back
-            as a dictionary object, these are expected to be arguments that are
-            to be used in Pyflex and Pyadjoint configs
-        """
-        assert((filename is not None) or (par is not None)), \
-            "filename or par required"
-
-        if filename is not None:
-            # Make it easier to access dict items
-            class Dict(dict):
-                """Similar characteristic for accessing SeisFlows Dict items"""
-                def __getattr__(self, key):
-                    return self[key]
-
-            with open(filename, "r") as f:
-                par = Dict(yaml.load(f, Loader=yaml.Loader))
-
-        # These parameters need to be manually parsed and assigned one by one
-        self.synthetics_only = bool(par.CASE.lower() == "synthetic")
-        self.component_list = list(par.COMPONENTS)
-        self.rotate_to_rtz = par.ROTATE
-        self.min_period = par.MIN_PERIOD
-        self.max_period = par.MAX_PERIOD
-        self.filter_corners = par.CORNERS
-        self.unit_output = par.UNIT_OUTPUT
-        self.start_pad = par.START_PAD
-        self.end_pad = par.END_PAD
-        self.adj_src_type = par.ADJ_SRC_TYPE
-        self.pyflex_preset = par.PYFLEX_PRESET
-
-        self._check()
 
     def _read_asdf(self, ds, path):
         """

@@ -53,47 +53,6 @@ def zero_pad_then_window(ws, pad_by_fraction_of_npts=.2):
     ws.select_windows()
 
 
-def compose_geographical_weights(cat, inv):
-    """
-    Create weights based on source-receiver distribution
-
-    :type cat: obspy.event.Catalog
-    :param cat: Catalog of events that should contain event locations
-    :type inv: obspy.core.inventory.Inventory
-    :param inv: Inventory of stations that should contain station locations
-    :return:
-    """
-    raise NotImplementedError
-
-
-def geographical_weights(windows):
-    """
-    Up-weight stations and receivers that are sparsely distributed,
-    down-weight stations and receivers that are densely distributed.
-    Decreases the weight that dense distributions carry and keeps the inversion
-    updates fair.
-
-    :type windows: list of pyflex.window.Window
-    :param windows: list of window objects to check
-    :rtype: list of pyflex.window.Window
-    :return: list of windows that have been suppressed
-    """
-    raise NotImplementedError
-
-
-def category_weights(windows):
-    """
-    Weight the measurement based on data category, e.g. direct arrival,
-    Love wave, Rayleigh wave.
-
-    :type window: list of pyflex.window.Window
-    :param window: list of window objects to check
-    :rtype: list of pyflex.window.Window
-    :return: list of windows that have been suppressed
-    """
-    raise NotImplementedError
-
-
 def reject_on_global_amplitude_ratio(data, windows, ratio=0.2):
     """
     Reject windows where peak amplitude falls below some threshold value. 

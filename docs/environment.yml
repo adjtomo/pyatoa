@@ -1,12 +1,13 @@
-name: pyatoa
+name: pyatoa-docs
 channels:
     - conda-forge
 dependencies:
-    - sphinx>=1.4
-    - sphinx_rtd_theme=0.4.3
-    - ipykernel=5.3.4
-    - nbsphinx=0.7.1
-    - python=3.7
+    - sphinx
+    - sphinx_rtd_theme
+    - ipykernel
+    - nbsphinx
+    - jupyter
+    - myst-parser
     - pip
     - pip:
       - sphinx-autoapi

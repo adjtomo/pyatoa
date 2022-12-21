@@ -8,7 +8,6 @@ by the User unless for bespoke data gathering functionality.
 """
 import os
 import glob
-import traceback
 import warnings
 
 from pyasdf import ASDFWarning
@@ -463,11 +462,10 @@ class Gatherer:
             raise AttributeError("`origintime` must be specified")
 
         net, sta, loc, cha = code.split('.')
-        # If waveforms contain midnight, multiple files need to be read
-        jdays = overlapping_days(origin_time=self.origintime,
-                                 start_pad=self.config.start_pad,
-                                 end_pad=self.config.end_pad
-                                 )
+        # If waveforms contain midnight, multiple files need to be read.
+        # Checks one hour before and after origintime
+        jdays = overlapping_days(origin_time=self.origintime, start_pad=3600,
+                                 end_pad=3600)
 
         # Ensure that the paths are a list so that iterating doesnt accidentally
         # try to iterate through a string.
@@ -496,9 +494,7 @@ class Gatherer:
         # Take care of gaps in data by converting to masked data
         if len(st) > 0:
             st.merge()
-            st.trim(starttime=self.origintime-self.config.start_pad,
-                    endtime=self.origintime+self.config.end_pad
-                    )
+
         # If empty stream either due to no data or trimming removes all data,
         # we will return None
         if len(st) == 0:
@@ -509,7 +505,7 @@ class Gatherer:
 
     def fetch_synthetic_by_dir(self, code, syn_cfgpath="synthetics",
                                syn_unit="?", syn_dir_template="",
-                               syn_fid_template="{net}.{sta}.*{cmp}.sem{dva}",
+                               syn_fid_template="{net}.{sta}.*{cmp}.sem{dva}*",
                                **kwargs):
         """
         Fetch synthetic waveforms from Specfem3D via directory structure on
@@ -573,7 +569,7 @@ class Gatherer:
                         # Convert the ASCII file to a miniseed
                         st += read_sem(filename, self.origintime)
                     except UnicodeDecodeError:
-                        # If the data file is for some reason already in miniseed
+                        # If the data file is already in miniseed
                         st += read(filename)
                     logger.info(f"retrieved synthetics locally: {filename}")
             else:
@@ -581,9 +577,6 @@ class Gatherer:
         # Take care of gaps in data by converting to masked data
         if len(st) > 0:
             st.merge()
-            st.trim(starttime=self.origintime - self.config.start_pad,
-                    endtime=self.origintime + self.config.end_pad
-                    )
         # If empty stream either due to no data or trimming removes all data,
         # we will return None
         if len(st) == 0:

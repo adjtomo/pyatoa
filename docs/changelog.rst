@@ -26,9 +26,6 @@ Version 0.2.0
 - Added hard requirements for Cartopy and Proj in requirements.txt as their 
   absence was causing some dependency conflicts
 
-Version 0.3.0
-~~~~~~~~~~~~~~
-
 - Removed all FDSN gathering routines from Pyatoa completely to keep the package
   more lightweight. This functionality has moved to PySEP.
 
@@ -38,3 +35,27 @@ Version 0.3.0
 - Removed tests and documentation related to the above 
 
 - Added PySEP as a dependency of Pyatoa
+
+- Overhauled documentation to minimize use of Jupyter notebooks and instead
+  hardcode code snippets. This leads to cleaner, more manageable code. Also
+  attempted to slim down documentation (read: less wordy)
+
+- Added example data reading functions
+
+- Bombed out pyatoa/scripts repository which contained unused or old scripts
+
+- `Config` class dropped seisflows parameter file reading functions as these 
+  were not used
+
+- `Config` class dropped 'start_pad' and 'end_pad' parameters which were tied 
+  in to the gathering functionality
+
+- Default preprocessing function changed inputs from Manager class to ObsPy
+  objects and soe flags to make it more general
+
+- Cleaned up logging messages by shortening overall log messages to make it
+  easier for users to determine what is going on (too wordy before)
+
+- Changes install procedure from the old-style 'setup.py' to a Conda-based
+  'environment.yml' file. Also introduces the new-style 'pyproject.toml' file
+  for Pip/PyPi

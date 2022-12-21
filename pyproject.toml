@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=61.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pyatoa"
+version = "0.1.1"
+description = "Python's Adjoint Tomography Operations Assistant"
+readme = "README.md"
+requires-python = ">=3.7"
+license = {file = "LICENSE.txt"}
+authors = [
+    {name = "adjTomo Dev Team"},
+    {email = "adjtomo@gmail.com"}
+]
+dependencies = [
+    "obspy",
+    "pyasdf",
+    "pandas", 
+    "cartopy",
+    "pyyaml",
+    "pypdf2",
+    "pyflex @ git+https://github.com/adjtomo/pyflex.git", 
+    "pyadjoint @ git+https://github.com/adjtomo/pyadjoint.git",
+    "pysep @ git+https://github.com/adjtomo/pysep.git" 
+]
+
+[project.optional-dependencies]
+test = ["pytest"]
+dev = ["pytest", "ipython", "ipdb"]
+
+[project.urls]
+homepage = "https://github.com/adjtomo/"
+documentation = "https://pyatoa.readthedocs.io"
+repository = "https://github.com/adjtomo/pyatoa"
+
