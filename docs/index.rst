@@ -35,8 +35,9 @@ Quickstart
 Installation
 ~~~~~~~~~~~~
 
-It is recommended that Pyatoa be installed inside a Conda environment.
-The 'devel' branch provides the latest codebase.
+It is recommended that Pyatoa be installed inside a `Conda 
+<https://docs.conda.io/en/latest/>`__ environment.
+The ``devel`` branch provides the latest codebase.
 
 .. code:: bash
 
@@ -50,7 +51,7 @@ Running Tests
 `````````````
 
 Tests ensure Pyatoa runs as expected after changes are made to the source code.
-You can run tests with Pytest
+You can run tests with Pytest.
 
 .. code:: bash
 

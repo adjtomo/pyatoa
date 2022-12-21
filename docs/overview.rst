@@ -27,14 +27,14 @@ Why is Pyatoa necessary?
 If Pyatoa simply wraps a number of already-working dependencies, why
 do we need it?
 
-Pyatoa acts in liue of the inevitable collection scripts a User would
-have to write to link the data collection capabilities of ObsPy with the
-windowing functions of Flexwin/Pyflex with the adjoint source generation of
-Pyadjoint.
+Pyatoa provides an easy-to-use tool that acts in liue of the inevitable 
+collection scripts a User would have to write to link the data collection 
+capabilities of ObsPy with the windowing functions of Flexwin/Pyflex with the 
+adjoint source generation of Pyadjoint.
 
-It also provides internal checks along the way to make sure you're not feeding
-it garbage, and provides useful routines for performing and understanding
-seismic inversions.
+It also provides structure for these processes, to ensure that data-synthetic 
+misfit is calculated properly. Similarly, useful routines within the package 
+provide assistance during seismic inversions.
 
 What doesn't Pyatoa do?
 ~~~~~~~~~~~~~~~~~~~~~~~

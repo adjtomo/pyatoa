@@ -30,8 +30,7 @@ simulation.
     event = c.get_events(eventid="10934221")[0]
     origintime = event.preferred_origin().time
 
-    # Then we grab station metadata for IM.IL31 and TA.K27K. Use a Pyatoa utility
-    # to combine the two inventories
+    # Then we grab station metadata, merging the two inventories
     inv = merge_inventories(
             inv_a=c.get_stations(network="TA", station="POKR", location="",
                                  channel="BH?", starttime=origintime,
@@ -41,7 +40,7 @@ simulation.
                                  endtime=origintime + 300, level="response")
     )
 
-    # Then we grab waveforms and station metadata
+    # Then we grab waveforms for both stations
     st_1 = c.get_waveforms(network="TA", station="POKR", location="",
                            channel="BH?", starttime=origintime,
                            endtime=origintime + 300)
@@ -60,7 +59,7 @@ simulation.
                  st_obs_type="obs", st_syn_type="obs", **pyflex_cfg
                  )
 
-    # Provide Manager with Config and data, let it do the rest
+    # Provide Manager with Config and data and let it do the rest
     mgmt = Manager(config=cfg, st_obs=st_1, st_syn=st_2,
                    inv=inv, event=event
                    )
