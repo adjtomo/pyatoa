@@ -55,3 +55,7 @@ Version 0.2.0
 
 - Cleaned up logging messages by shortening overall log messages to make it
   easier for users to determine what is going on (too wordy before)
+
+- Changes install procedure from the old-style 'setup.py' to a Conda-based
+  'environment.yml' file. Also introduces the new-style 'pyproject.toml' file
+  for Pip/PyPi
