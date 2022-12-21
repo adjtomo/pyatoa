@@ -25,6 +25,7 @@ inversion.
 
 ---
 
+
 The design philosophy of **Pyatoa** is easy-to-use interface that 
 make tomography research approachable, flexible, and repeatable.
 
