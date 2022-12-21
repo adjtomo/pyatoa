@@ -244,22 +244,17 @@ class Manager:
 
         # Check that component list matches components in streams, else some
         # functions that rely on Stream.select() will fail to execute
-        if self.st_obs is not None:
+        if self.st_obs is not None and self.stats.obs_processed:
             st_obs_comps = [tr.stats.component for tr in self.st_obs]
             if not set(st_obs_comps).issubset(set(self.config.component_list)):
-                logger.warning(f"observed components {st_obs_comps} don't "
-                               f"match given Config component list "
-                               f"{self.config.component_list}, which may cause "
-                               f"unexpected behavior during workflow")
+                logger.warning(f"`st_obs` components {set(st_obs_comps)} != "
+                               f"component list {self.config.component_list}")
 
-
-        if self.st_syn is not None:
+        if self.st_syn is not None and self.stats.syn_processed:
             st_syn_comps = [tr.stats.component for tr in self.st_syn]
             if not set(st_syn_comps).issubset(set(self.config.component_list)):
-                logger.warning(f"synthetic components {st_syn_comps} don't "
-                               f"match given Config component list "
-                               f"{self.config.component_list}, which may cause "
-                               f"unexpected behavior during workflow")
+                logger.warning(f"`st_syn` components {set(st_syn_comps)} != "
+                               f"component list {self.config.component_list}")
 
         # Check standardization by comparing waveforms against the first
         if not self.stats.standardized and self.st_obs and self.st_syn:
@@ -354,7 +349,7 @@ class Manager:
 
     def write_adjsrcs(self, path="./", write_blanks=True):
         """
-        Write internally stored adjoint source traces into SPECFEM3D defined
+        Write internally stored adjoint source traces into SPECFEM defined
         two-column ascii files. Filenames are based on what is expected by
         Specfem, that is: 'NN.SSS.CCC.adj'
 
@@ -736,7 +731,7 @@ class Manager:
             logger.info(f"preprocess `st_obs` as '{self.config.st_obs_type}'")
             self.st_obs = preproc_fx(
                 st=self.st_obs, choice=self.config.st_obs_type,
-                inv=self.inv, rotate_baz=self.baz,
+                inv=self.inv, baz=self.baz,
                 **{**vars(self.config), **kwargs}
             )
             self.stats.obs_processed = True

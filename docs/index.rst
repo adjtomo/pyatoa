@@ -84,21 +84,20 @@ publication:
 .. toctree::
    :maxdepth: 1
    :hidden:
-   :caption: Structure
+   :caption: Tutorials
 
    misfit
    discovery
    storage
    inspector
    standards
-   logging
 
 .. toctree:: 
    :maxdepth: 1
    :hidden:
    :caption: Examples
 
-   fresh_workflow
+   ex_data_data
    datasyn_misfit
 
 .. toctree::

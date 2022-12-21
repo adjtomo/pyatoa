@@ -18,17 +18,14 @@ waveforms alongside a source-receiver map.
 .. image:: images/first_glance_files/first_glance_1_1.png
 
 
-You can see the underlying information of the Manager class by printing
-it. Important relative to a given source-receiver pair is displayed, as
+You can see the underlying information of the
+:class:`Manager <pyatoa.core.manager.Manager>` class by printing it.
+Important relative to a given source-receiver pair is displayed, as
 well as the status of the processing workflow.
 
 .. code:: python
 
-    print(mgmt)
-
-
-.. parsed-literal::
-
+    >>> print(mgmt)
     Manager Data
         dataset   [ds]:        None
         quakeml   [event]:     smi:nz.org.geonet/2018p130600
@@ -52,13 +49,7 @@ waveforms through the ``st_obs`` attribute:
 
 .. code:: python
 
-    mgmt.st_obs  # the observed waveforms
-
-
-
-
-.. parsed-literal::
-
+    >>> mgmt.st_obs
     3 Trace(s) in Stream:
     NZ.BFZ.10.HHE | 2018-02-18T07:43:28.127644Z - 2018-02-18T07:48:28.097644Z | 33.3 Hz, 10000 samples
     NZ.BFZ.10.HHN | 2018-02-18T07:43:28.127644Z - 2018-02-18T07:48:28.097644Z | 33.3 Hz, 10000 samples
@@ -70,13 +61,7 @@ Or grab the adjoint source data array through the ``adjsrcs`` attribute:
 
 .. code:: python
 
-    mgmt.adjsrcs["E"].adjoint_source  # the East component adjoint source
-
-
-
-
-.. parsed-literal::
-
+    >>> mgmt.adjsrcs["E"].adjoint_source
     array([0., 0., 0., ..., 0., 0., 0.])
 
 
@@ -86,13 +71,7 @@ resulting outputs. The current set options are default values.
 
 .. code:: bash
 
-    mgmt.config
-
-
-
-
-.. parsed-literal::
-
+    >>> mgmt.config
     CONFIG
         iteration:               None
         step_count:              None
@@ -121,3 +100,6 @@ resulting outputs. The current set options are default values.
         pyadjoint_config:        <pyadjoint.config.Config object at 0x1655a2610>
 
 
+Have a look at the `Gallery <gallery.html>`__ for other visual examples of what
+Pyatoa can do. Or have a look at the `Data-Data Misfit example
+<ex_data_data.html>`__ to see a longer Pyatoa code example.

@@ -43,3 +43,15 @@ Version 0.2.0
 - Added example data reading functions
 
 - Bombed out pyatoa/scripts repository which contained unused or old scripts
+
+- `Config` class dropped seisflows parameter file reading functions as these 
+  were not used
+
+- `Config` class dropped 'start_pad' and 'end_pad' parameters which were tied 
+  in to the gathering functionality
+
+- Default preprocessing function changed inputs from Manager class to ObsPy
+  objects and soe flags to make it more general
+
+- Cleaned up logging messages by shortening overall log messages to make it
+  easier for users to determine what is going on (too wordy before)
