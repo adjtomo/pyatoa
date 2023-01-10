@@ -102,7 +102,7 @@ def add_adjoint_sources(adjsrcs, ds, path, time_offset):
 
             # Parameters saved as a dictionary object to match the variables of
             # the AdjointSource object, with additional identifiers
-            parameters = {"adj_src_type": adj_src.adj_src_type,
+            parameters = {"adj_src_type": adj_src.adjsrc_type,
                           "misfit": adj_src.misfit,
                           "dt": adj_src.dt,
                           "component": adj_src.component,

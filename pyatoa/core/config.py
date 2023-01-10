@@ -14,7 +14,7 @@ from pyatoa.utils.form import format_iter, format_step
 from pyatoa.plugins.pyflex_presets import pyflex_presets
 
 from pyflex import Config as PyflexConfig
-from pyadjoint import Config as PyadjointConfig
+from pyadjoint import get_config
 
 
 class Config:
@@ -316,6 +316,7 @@ class Config:
 
         # Set Pyadjoint Config
         self.pyadjoint_config, unused_kwargs_pa = set_pyadjoint_config(
+            adj_src_type=self.adj_src_type,
             min_period=self.min_period, max_period=self.max_period, **kwargs
         )
 
@@ -651,13 +652,13 @@ def set_pyflex_config(min_period, max_period, choice=None, **kwargs):
     return pfconfig, unused_kwargs
 
 
-def set_pyadjoint_config(min_period, max_period, **kwargs):
+def set_pyadjoint_config(adj_src_type, min_period, max_period, **kwargs):
     """
     Set the Pyadjoint config based on Pyatoa Config parameters.
     Kwargs can be fed to the Pyadjoint Config object. Returns unnused kwargs.
 
     Config parameters can be found at:
-    https://github.com/krischer/pyadjoint/blob/master/src/pyadjoint/config.py
+    http://adjtomo.github.io/pyadjoint/autoapi/pyadjoint/config/index.html
 
     :type min_period: float
     :param min_period: min period of the data
@@ -666,9 +667,8 @@ def set_pyadjoint_config(min_period, max_period, **kwargs):
     :rtype cfgout: pyadjoint.Config
     :return cfgout: properly set pyadjoint configuration object
     """
-    paconfig = PyadjointConfig(min_period=min_period,
-                               max_period=max_period
-                               )
+    paconfig = get_config(adj_src_type, min_period=min_period,
+                          max_period=max_period)
     unused_kwargs = []
     for key, item in kwargs.items():
         if hasattr(paconfig, key):
