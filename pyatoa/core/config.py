@@ -14,7 +14,7 @@ from pyatoa.utils.form import format_iter, format_step
 from pyatoa.plugins.pyflex_presets import pyflex_presets
 
 from pyflex import Config as PyflexConfig
-from pyadjoint import Config as PyadjointConfig
+from pyadjoint import get_config, ADJSRC_TYPES
 
 
 class Config:
@@ -28,7 +28,7 @@ class Config:
     def __init__(self, yaml_fid=None, ds=None, path=None, iteration=None,
                  step_count=None, event_id=None, min_period=10, max_period=100,
                  rotate_to_rtz=False, unit_output="DISP",  component_list=None,
-                 pyflex_preset="default", adj_src_type="cc_traveltime_misfit",
+                 pyflex_preset="default", adj_src_type="cc_traveltime",
                  observed_tag="observed", synthetic_tag=None,
                  st_obs_type="obs", st_syn_type="syn",
                  win_amp_ratio=0., paths=None, save_to_ds=True,
@@ -292,8 +292,8 @@ class Config:
             assert(self.win_amp_ratio < 1), \
                 "window amplitude ratio should be < 1"
 
-        # Make sure adjoint source type is formatted properly
-        self.adj_src_type = format_adj_src_type(self.adj_src_type)
+        assert(self.adj_src_type in ADJSRC_TYPES), \
+            f"Pyadjoint `adj_src_type` must be in {ADJSRC_TYPES}"
 
     def _set_external_configs(self, check_unused=False, **kwargs):
         """
@@ -316,6 +316,7 @@ class Config:
 
         # Set Pyadjoint Config
         self.pyadjoint_config, unused_kwargs_pa = set_pyadjoint_config(
+            adjsrc_type=self.adj_src_type,
             min_period=self.min_period, max_period=self.max_period, **kwargs
         )
 
@@ -467,7 +468,7 @@ class Config:
             if item is None:
                 # HDF doesn't support NoneType so convert to string
                 attrs[key] = "None"
-            elif isinstance(item, (dict, PyflexConfig, PyadjointConfig)):
+            elif isinstance(item, dict) or ("config" in key):
                 # Flatten dictionaries, add prefix, delete original
                 try:
                     # Config objects will need to be converted to dictionaries
@@ -651,13 +652,13 @@ def set_pyflex_config(min_period, max_period, choice=None, **kwargs):
     return pfconfig, unused_kwargs
 
 
-def set_pyadjoint_config(min_period, max_period, **kwargs):
+def set_pyadjoint_config(adjsrc_type, min_period, max_period, **kwargs):
     """
     Set the Pyadjoint config based on Pyatoa Config parameters.
     Kwargs can be fed to the Pyadjoint Config object. Returns unnused kwargs.
 
     Config parameters can be found at:
-    https://github.com/krischer/pyadjoint/blob/master/src/pyadjoint/config.py
+    http://adjtomo.github.io/pyadjoint/autoapi/pyadjoint/config/index.html
 
     :type min_period: float
     :param min_period: min period of the data
@@ -666,9 +667,8 @@ def set_pyadjoint_config(min_period, max_period, **kwargs):
     :rtype cfgout: pyadjoint.Config
     :return cfgout: properly set pyadjoint configuration object
     """
-    paconfig = PyadjointConfig(min_period=min_period,
-                               max_period=max_period
-                               )
+    paconfig = get_config(adjsrc_type, min_period=min_period,
+                          max_period=max_period)
     unused_kwargs = []
     for key, item in kwargs.items():
         if hasattr(paconfig, key):
@@ -678,27 +678,3 @@ def set_pyadjoint_config(min_period, max_period, **kwargs):
 
     return paconfig, unused_kwargs
 
-
-def format_adj_src_type(choice):
-    """
-    Pyadjoint requires that a standard adjoint source type is given in the
-    calculate_adjoint_source() function. This function acts as simple dictionary
-    input to provide the correct input for that function. Allows for various
-    spellings and variations of the same name.
-
-    :type choice: str
-    :param choice: pyatoa.Config.adj_src_type
-    :rtype: str
-    :return: pyadjoint adj_src_type
-    :raises ValueError:  if choice isn't in the provided lists
-    """
-    if choice in ["cc", "cc_traveltime_misfit", "cross_correlation"]:
-        adj_src_type = "cc_traveltime_misfit"
-    elif choice in ["mt", "mtm", "multitaper_misfit", "multitaper"]:
-        adj_src_type = "multitaper_misfit"
-    elif choice in ["wav", "wave", "waveform", "w"]:
-        adj_src_type = "waveform_misfit"
-    else:
-        raise ValueError(f"'{choice}' does not match available adjoint source "
-                         f"types, must be 'cc', 'mt', or 'wav'")
-    return adj_src_type

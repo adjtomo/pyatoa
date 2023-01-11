@@ -192,15 +192,12 @@ def test_load_windows(dataset):
     """
     Test the function that returns windows in the Pyflex output format from
     an ASDFDataSet
-
-    :param dataset:
-    :return:
     """
     windows = load.load_windows(ds=dataset, net="NZ", sta="BFZ",
                                 iteration="i01", step_count="s00")
     ds_windows = dataset.auxiliary_data.MisfitWindows.i01.s00
-    check_val = ds_windows.NZ_BFZ_E_0.parameters["max_cc_value"]
-    assert(windows["E"][0].max_cc_value == check_val)
+    check_val = ds_windows.NZ_BFZ_N_0.parameters["max_cc_value"]
+    assert(windows["N"][0].max_cc_value == check_val)
 
 
 def test_load_previous_windows(empty_dataset, mgmt_pre):
@@ -239,8 +236,8 @@ def test_load_adjsrcs(dataset):
     adjsrcs = load.load_adjsrcs(ds=dataset, net="NZ", sta="BFZ",
                                 iteration="i01", step_count="s00")
     ds_adjsrcs = dataset.auxiliary_data.AdjointSources.i01.s00
-    check_val = ds_adjsrcs.NZ_BFZ_BXE.parameters["misfit"]
-    assert(adjsrcs["E"].misfit == check_val)
+    check_val = ds_adjsrcs.NZ_BFZ_BXN.parameters["misfit"]
+    assert(adjsrcs["N"].misfit == check_val)
 
 
 

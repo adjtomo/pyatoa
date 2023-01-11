@@ -992,11 +992,10 @@ class Manager:
         for comp, adj_win in adjoint_windows.items():
             try:
                 adj_src = pyadjoint.calculate_adjoint_source(
-                    adj_src_type=self.config.adj_src_type,
                     config=self.config.pyadjoint_config,
                     observed=self.st_obs.select(component=comp)[0],
                     synthetic=self.st_syn.select(component=comp)[0],
-                    window=adj_win, plot=False
+                    windows=adj_win, plot=False
                     )
 
                 # Re-format component name to reflect SPECFEM convention
