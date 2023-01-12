@@ -297,3 +297,15 @@ def test_format_windows(mgmt_post):
             for value in values:
                 assert(isinstance(value, float))
 
+def test_flow_multiband(mgmt_pre):
+    """
+    Test that the workflow for multiple period bands returns a single
+    adjoint source
+    """
+    windows, adjsrcs = mgmt_pre.flow_multiband(
+        periods=[(1, 10), (10, 30), (15, 40)]
+    )
+    # Just check that the expected values don't change
+    assert(pytest.approx(adjsrcs["E"].max(), 2) == 16988.848)
+    assert(pytest.approx(adjsrcs["N"].max(), 2) == 11399.068)
+    assert(pytest.approx(adjsrcs["Z"].max(), 2) == 16827.365)

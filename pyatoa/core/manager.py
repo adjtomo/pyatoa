@@ -4,6 +4,7 @@ A class to control workflow and temporarily store and manipulate data
 """
 import os
 import obspy
+import numpy as np
 import pyflex
 import pyadjoint
 import warnings
@@ -69,6 +70,9 @@ class ManagerStats(dict):
             str_ += f"{key:>15}: {value}\n"
         return str_[:-1]
 
+    def reset(self):
+        """Convenience function to reset stats to None"""
+        self.__init__()
 
 class Manager:
     """
@@ -479,17 +483,14 @@ class Manager:
         self.check()
         return self
 
-    def flow(self, codes=None, **kwargs):
+    def flow(self, **kwargs):
         """
         A convenience function to run the full workflow with a single command.
         Does not include gathering. Takes kwargs related to all underlying
         functions.
-
         .. code:: python
-
             mgmt = Manager()
             mgmt.flow() == mgmt.standardize().preprocess().window().measure()
-
         :raises ManagerError: for any controlled exceptions
         """
         force = kwargs.get("force", False)
@@ -506,6 +507,93 @@ class Manager:
         self.window(fix_windows=fix_windows, iteration=iteration,
                     step_count=step_count, force=force, save=save)
         self.measure(force=force, save=save)
+
+    def flow_multiband(self, periods, plot=False, **kwargs):
+        """
+        Run the full workflow for a number of distinct period bands, returning
+        a final set of adjoint sources generated as a summation of adjoint
+        sources from each of these period bands.
+
+        .. rubric::
+            manager.flow_multiband(periods=[(1, 5), (10, 30), (40, 100)])
+
+        :type periods: list of tuples
+        :param periods: a list of tuples that define multiple period bands to
+            generate windows and adjoint sources for. Overwrites the Config's
+            internal `min_period` and `max_period` parameters. The final
+            adjoint source will be a summation of all adjoint sources generated.
+        :type plot: str
+        :param plot: name of figure if given, will plot waveform and map for
+            each period band and append period band to figure name `plot`
+        :rtype: tuple of dict
+        :return: (windows, adjoint_sources), returns all the collected
+            measurements from each of the period bands
+        :raises ManagerError: for any controlled exceptions
+        """
+        force = kwargs.get("force", False)
+        standardize_to = kwargs.get("standardize_to", "syn")
+        fix_windows = kwargs.get("fix_windows", False)
+        iteration = kwargs.get("iteration", None)
+        step_count = kwargs.get("step_count", None)
+        overwrite = kwargs.get("overwrite", None)
+        which = kwargs.get("which", "both")
+        save = kwargs.get("save", True)
+
+        # Copy these waveforms to overwrite for each new period band
+        st_obs_raw = self.st_obs.copy()
+        st_syn_raw = self.st_syn.copy()
+
+        tags = []
+        windows, adjsrcs  = {}, {}
+        for period in periods:
+            tag = f"{period[0]}_{period[1]}"  # e.g., 5_10
+            tags.append(tag)
+            logger.info(f"calculating adjoint source for period band {tag}s")
+
+            self.config.min_period, self.config.max_period = period
+
+            # Standard flow()
+            try:
+                self.check()
+                self.standardize(standardize_to=standardize_to, force=force)
+                self.preprocess(overwrite=overwrite, which=which, **kwargs)
+                self.window(fix_windows=fix_windows, iteration=iteration,
+                            step_count=step_count, force=force, save=save)
+                self.measure(force=force, save=save)
+                if plot:
+                    save = f"{plot}_{tag}.png"
+                    self.plot(choice="both", save=save)
+            except ManagerError as e:
+                logger.warning(f"period band {tag}s encountered error {e}, "
+                               f"cannot return adjoint source for {tag}s")
+
+            # Save results of the processing step
+            adjsrcs[tag] = self.adjsrcs
+            windows[tag] = self.windows
+
+            # Reset for the next run. Don't do a full reset because that gets
+            # rid of metadata too, which we need for response removal
+            self.windows = None
+            self.adjsrcs = None
+            self.st_obs = st_obs_raw.copy()
+            self.st_syn = st_syn_raw.copy()
+            self.stats.reset()
+
+        # Finally, combine all the adjoint sources into a single trace
+        for comp in [tr.stats.component for tr in self.st_syn]:
+            adjsrcs[comp] = np.zeros(len(self.st_syn[0].data))
+            n = 0  # used to average over the number of summed adjoint sources
+            for tag in tags:
+                # Accessing each component of each period band and summing
+                # together to generate the final adjoint source
+                if comp in adjsrcs[tag]:
+                    adjsrcs[comp] += adjsrcs[tag][comp].adjoint_source
+                    n += 1
+            # Average the summation over adjoint sources by the number of inputs
+            if n:
+                adjsrcs[comp] /= n
+
+        return windows, adjsrcs
 
     def gather(self, code=None, choice=None, event_id=None, **kwargs):
         """
