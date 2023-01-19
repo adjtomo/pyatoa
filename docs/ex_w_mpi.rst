@@ -60,6 +60,7 @@ download the example data below beforehand).
 
 .. code:: python
 
+    #!/usr/bin/env python3
     import os
     import numpy as np
     import matplotlib.pyplot as plt
