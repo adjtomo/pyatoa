@@ -99,7 +99,7 @@ publication:
    :caption: Examples
 
    ex_data_data
-   datasyn_misfit
+   ex_w_mpi
 
 .. toctree::
    :maxdepth: 1
