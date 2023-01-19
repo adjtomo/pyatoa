@@ -306,6 +306,6 @@ def test_flow_multiband(mgmt_pre):
         periods=[(1, 10), (10, 30), (15, 40)]
     )
     # Just check that the expected values don't change
-    assert(pytest.approx(adjsrcs["E"].max(), 2) == 16988.848)
-    assert(pytest.approx(adjsrcs["N"].max(), 2) == 11399.068)
-    assert(pytest.approx(adjsrcs["Z"].max(), 2) == 16827.365)
+    assert(pytest.approx(adjsrcs["E"].max(), .001) == 8914.48)
+    assert(pytest.approx(adjsrcs["N"].max(), .001) == 3173.05)
+    assert(pytest.approx(adjsrcs["Z"].max(), .001) == 2749.96)
