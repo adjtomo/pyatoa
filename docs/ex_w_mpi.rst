@@ -1,50 +1,62 @@
-Pyatoa w/ MPI
-================
+Processing w/ MPI
+=================
 
-The following code snippet processes (preprocess, window and generate
+The following code snippet processes (i.e., preprocess, window, generate
 adjoint source) a large amount of synthetic waveform data in parallel using
-Pyatoa and MPI (with mpi4py).
+Pyatoa and MPI (with `mpi4py <https://mpi4py.readthedocs.io/en/stable/>`_).
 
-The script writes out a text file with misfit values for each source-receiver
-pair, saves figures of waveform misfit for each pair, and generates adjoint
-sources for each of the source receiver pairs.
+The script generates figures, adjoint sources and a text file with misfit
+values for each source-receiver pair.
 
-.. note::
+.. warning::
 
-    This example requires `mpi4py` which is not a dependency of Pyatoa. To
-    install into your conda environment you can run:
+    This example requires `mpi4py <https://mpi4py.readthedocs.io/en/stable/>`_
+    which is **not** a dependency of Pyatoa. To install into mpi4py to the Conda
+    environment created from the Installation section, you can run:
 
-    $ conda install mpi4py
+    .. code:: bash
 
-
-To run this example on 4 cores:
-
-.. code:: bash
-
-    mpirun -n 4 process_data_w_mpi.py
+        $ conda activate pyatoa
+        $ conda install mpi4py
 
 Example Data
 ------------
 
 This code snippet requires example data stored in the Pyatoa repository. From
-a working directory, you grab the example data using the following
+a working directory, you can grab this data using the following commands:
 
-.. code:: python
+.. code:: bash
 
-    cd $PATH_TO_WORKDIR
-    cp -r $PATH_TO_PYATOA/pyatoa/tests/test_data/process_data_w_mpi.tar.gz .
+    cd ${PATH_TO_WORKDIR}
+    cp -r ${PATH_TO_PYATOA}/pyatoa/tests/test_data/process_data_w_mpi.tar.gz .
     tar xf process_data_w_mpi.tar.gz
 
-This will create a directory called ``data`` which stores synthetic waveforms to
-be used for the example problem.
+This will create a directory called ``data`` which contains synthetic waveforms
+generated from SeisFlows Example 2 using SPECFEM2D.
+
+In Example 2, synthetic data are generated using a homogeneous halfspace model,
+while the observed data are generated using a checkerboard perturbation model.
+
+See the `SeisFlows example documentation
+<https://seisflows.readthedocs.io/en/devel/specfem2d_example.html#example-2-checkerboard-inversion-w-pyaflowa-l-bfgs>`_ page for
+more information.
 
 Script
 ------
 
+To run this example on 4 cores, copy the script below to the filename
+``process_data_w_mpi.py`` and run the following (note: you will need to
+download the example data below beforehand).
+
+.. code:: bash
+
+    mpirun -n 4 process_data_w_mpi.py
+
 .. note::
 
-    This script is also located in:
-    `pyatoa/pyatoa/scripts/process_data_w_mpi.py`
+    This script is also in the repo here:
+    ``pyatoa/pyatoa/scripts/process_data_w_mpi.py``
+
 
 .. code:: python
 
