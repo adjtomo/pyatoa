@@ -84,7 +84,7 @@ download the example data below beforehand).
                               evenly-between-processes-in-mpi-despite-the-array-size
 
         :type ntask: int
-        :param ntask: total number of tasks to divy up
+        :param ntask: total number of tasks to divvy up
         :type nproc: int
         :param nproc: number of processors to split `ntask` over
         :rtype: list of tuples
@@ -136,7 +136,7 @@ download the example data below beforehand).
                 if not os.path.exists(adjsrc_path.format(ev=ev)):
                     os.mkdir(adjsrc_path.format(ev=ev))
 
-            # Determine how to divy up the event-station pairs among processors
+            # Determine how to divvy up the event-station pairs among processors
             indices = get_rank_start_stop(ntask=len(evsta_pairs), nproc=comm.size)
 
             # Generate Config object that controls processing
