@@ -82,8 +82,8 @@ if __name__ == "__main__":
         dummy_time = UTCDateTime("2000-01-01")
 
         # Create unique event and station pairs
-        _event_names = ["001", "002", "003", "004"]
-        _station_names = [f"AA.S{i:0>6}.BXY" for i in range(31)]
+        _event_names = ["001", "002", "003"]
+        _station_names = [f"AA.S{i:0>6}.BXY" for i in range(10)]
         evsta_pairs = []
         for event_name in _event_names:
             for sta_name in _station_names:
