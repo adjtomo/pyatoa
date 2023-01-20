@@ -1,8 +1,8 @@
 Processing w/ MPI
 =================
 
-The following code snippet processes (i.e., preprocess, window, generate
-adjoint source) a large amount of synthetic waveform data in parallel using
+The following example code processes (i.e., preprocess, window, generate
+adjoint source) a number of synthetic waveforms in parallel using
 Pyatoa and MPI (with `mpi4py <https://mpi4py.readthedocs.io/en/stable/>`_).
 
 The script generates figures, adjoint sources and a text file with misfit
@@ -12,7 +12,8 @@ values for each source-receiver pair.
 
     This example requires `mpi4py <https://mpi4py.readthedocs.io/en/stable/>`_
     which is **not** a dependency of Pyatoa. To install into mpi4py to the Conda
-    environment created from the Installation section, you can run:
+    environment created from the `installation <index.html#installation>`_ section, 
+    you can run:
 
     .. code:: bash
 
@@ -22,7 +23,7 @@ values for each source-receiver pair.
 Example Data
 ------------
 
-This code snippet requires example data stored in the Pyatoa repository. From
+This example requires data stored in the Pyatoa repository. From
 a working directory, you can grab this data using the following commands:
 
 .. code:: bash
@@ -32,21 +33,19 @@ a working directory, you can grab this data using the following commands:
     tar xf process_data_w_mpi.tar.gz
 
 This will create a directory called ``data`` which contains synthetic waveforms
-generated from SeisFlows Example 2 using SPECFEM2D.
+generated from `SeisFlows Example 2 
+<https://seisflows.readthedocs.io/en/devel/specfem2d_example.html#example-2-checkerboard-inversion-w-pyaflowa-l-bfgs>`_.
 
-In Example 2, synthetic data are generated using a homogeneous halfspace model,
-while the observed data are generated using a checkerboard perturbation model.
-
-See the `SeisFlows example documentation
-<https://seisflows.readthedocs.io/en/devel/specfem2d_example.html#example-2-checkerboard-inversion-w-pyaflowa-l-bfgs>`_ page for
-more information.
+In Example 2, which uses SPECFEM2D as a numerical solver, synthetic data are 
+generated using a homogeneous halfspace model, while observed data are 
+generated using a checkerboard perturbation model.
 
 Script
 ------
 
 To run this example on 4 cores, copy the script below to the filename
 ``process_data_w_mpi.py`` and run the following (note: you will need to
-download the example data below beforehand).
+download the example data beforehand).
 
 .. code:: bash
 
@@ -72,7 +71,7 @@ download the example data below beforehand).
     from pyatoa import logger as ptlogger
     from pyflex import logger as pflogger
 
-    # Avoid log statements which can be overly numerous
+    # Avoid overwhelming parallel log statements
     for logger in [ptlogger, pflogger]:
         logger.setLevel("CRITICAL")
 
@@ -120,11 +119,12 @@ download the example data below beforehand).
             fig_path = "./figures"
             results_fid = "./misfit_results.txt"
 
+            # Provides origin time for synthetic data which has none
             dummy_time = UTCDateTime("2000-01-01")
 
-            # Create unique event and station pairs
-            _event_names = ["001", "002", "003", "004"]
-            _station_names = [f"AA.S{i:0>6}.BXY" for i in range(31)]
+            # Create 30 unique event and station pairs
+            _event_names = ["001", "002", "003"]
+            _station_names = [f"AA.S{i:0>6}.BXY" for i in range(10)]
             evsta_pairs = []
             for event_name in _event_names:
                 for sta_name in _station_names:
@@ -168,13 +168,13 @@ download the example data below beforehand).
             print(f"{len(evsta_pairs)} total tasks to be accomplished with "
                   f"{comm.size} processors")
 
-        # Partition data between the number of chosen processors
+        # Each rank will process a different part of the event-station list
         start, stop = indices[comm.rank]
 
-        # Misfit and Number of windows will be gathered by Rank 0, initiate empty
+        # Initiate empty array to store misfit and measurement windows
         sendbuf = np.empty([stop - start + 1, 3], dtype=float)
 
-        # Main processing for each rank, read data, process, write adjoint sources
+        # Main processing for each rank: read data, process, write adjoint sources
         for i, evsta_pair in enumerate(evsta_pairs[start: stop + 1]):
             ev, sta = evsta_pair
 
@@ -200,7 +200,7 @@ download the example data below beforehand).
             sendbuf[i] = np.array([start + i, mgmt.stats.misfit, mgmt.stats.nwin],
                                   dtype=float)
 
-        # Collect all results and write to a single text file
+        # Empty receiving buffer to collect results from all other ranks
         if comm.rank == 0:
             recvbuf = np.empty([len(evsta_pairs), 3], dtype=float)
         else:
@@ -218,6 +218,18 @@ download the example data below beforehand).
                     f.write(f"{ev} {sta} {misfit:.2f} {int(nwin)}\n")
 
 
+Results
+-------
+
+After successfully running the script, the results of the processing workflow
+will be stored in multiple directories/files.
+
+- ``figures/``: Contains waveform figures showing observed and synthetic traces, 
+  misfit windows and adjoint sources for each source receiver pair.
+- ``data/*/adj/*.adj``: Adjoint source files that are formatted as two-column 
+  ASCII files (time v. amplitude), which are ready to be used by SPECFEM.
+- ``misfit_results.txt``: A text file with information about misfit and number 
+  of measurement windows used for each source-receiver pair.
 
 
 
