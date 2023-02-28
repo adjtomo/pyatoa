@@ -156,7 +156,7 @@ def test_write_utils(tmpdir, station_fid, sem_fid, ds):
     event_id = form.format_event_name(ds)
     write.write_misfit(ds, iteration=1, step_count=0, path=tmpdir)
     misfit = np.loadtxt(os.path.join(tmpdir, event_id), dtype=float)
-    assert(misfit == 10.8984)
+    assert(misfit == pytest.approx(0.2512, 3))
 
     # Test write_stations_adjoint
     # This will only write out NZ.BFZ because STATION file only contains BFZ
@@ -168,7 +168,7 @@ def test_write_utils(tmpdir, station_fid, sem_fid, ds):
     assert(sta_adj[0] == "BFZ")
 
     # Test write_adj_src_to_ascii
-    sta = "NZ_BFZ_BXE"
+    sta = "NZ_BFZ_BXN"
     fid = sta.replace("_", ".") + ".adj"
 
     write.write_adj_src_to_ascii(ds, iteration="i01", pathout=tmpdir)

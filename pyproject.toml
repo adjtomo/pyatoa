@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pyatoa"
-version = "0.2.0"
+version = "0.2.1"
 description = "Python's Adjoint Tomography Operations Assistant"
 readme = "README.md"
 requires-python = ">=3.7"
@@ -20,9 +20,9 @@ dependencies = [
     "cartopy",
     "pyyaml",
     "pypdf2",
-    "pyflex @ git+https://github.com/adjtomo/pyflex.git", 
-    "pyadjoint @ git+https://github.com/adjtomo/pyadjoint.git",
-    "pysep @ git+https://github.com/adjtomo/pysep.git" 
+    "pyflex",
+    "pyadjoint",
+    "pysep-adjtomo"
 ]
 
 [project.optional-dependencies]

@@ -111,6 +111,10 @@ def load_adjsrcs(ds, net, sta, iteration, step_count):
         # Convert back from str to UTCDateTime object
         parameters["starttime"] = UTCDateTime(parameters["starttime"])
 
+        # KLUDGE to get around pyadjoint mismatch in naming of `adjsrc_type`
+        parameters["adjsrc_type"] = parameters["adj_src_type"]
+        del parameters["adj_src_type"]
+
         # The parameter dicionary will have all the keywords necessary
         adjsrc_dict[component] = AdjointSource(**parameters)
 

@@ -1,7 +1,6 @@
 name: pyatoa
 channels:
     - conda-forge
-    - defaults
 dependencies:
     - pip
     - obspy
@@ -11,8 +10,5 @@ dependencies:
     - pyyaml
     - pypdf2
     - pip:
-      - git+https://github.com/adjtomo/pyflex.git
-      - git+https://github.com/adjtomo/pyadjoint.git
-      - git+https://github.com/adjtomo/pysep.git
       - -e .
        

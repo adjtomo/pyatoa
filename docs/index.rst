@@ -41,7 +41,7 @@ The ``devel`` branch provides the latest codebase.
 
 .. code:: bash
 
-   git clone --branch devel https://github.com/bch0w/pyatoa.git
+   git clone --branch devel https://github.com/adjtomo/pyatoa.git
    cd pyatoa
    conda env create -f environment.yml
    conda activate pyatoa
@@ -99,7 +99,7 @@ publication:
    :caption: Examples
 
    ex_data_data
-   datasyn_misfit
+   ex_w_mpi
 
 .. toctree::
    :maxdepth: 1

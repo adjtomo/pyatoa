@@ -8,7 +8,6 @@ from pyasdf import ASDFDataSet
 from pyatoa.core.config import Config
 
 
-
 def test_io_asdf(tmpdir):
     """
     Saving a Config object using an ASDFDataSet will flatten and distribute
@@ -21,14 +20,14 @@ def test_io_asdf(tmpdir):
 
     # Set some ridiculous values to check upon re-reading
     cfg = Config(paths={"waveforms": test_path}, c_0=test_value,
-                 phase_step=test_value)
+                 dt_sigma_min=test_value)
 
     with ASDFDataSet(os.path.join(tmpdir, "test_dataset.h5")) as ds:
         cfg.write(write_to=ds)
         cfg_check = Config(ds=ds, path="default")
         assert cfg_check.paths["waveforms"] == [test_path]
         assert cfg_check.pyflex_config.c_0 == test_value
-        assert cfg_check.pyadjoint_config.phase_step == test_value
+        assert cfg_check.pyadjoint_config.dt_sigma_min == test_value
 
 
 def test_io_yaml(tmpdir):
@@ -40,14 +39,14 @@ def test_io_yaml(tmpdir):
 
     # Set some ridiculous values to check upon re-reading
     cfg = Config(paths={"waveforms": test_path}, c_0=test_value,
-                 phase_step=test_value)
+                 dt_sigma_min=test_value)
     cfg.write(os.path.join(tmpdir, "test_config.yaml"))
 
     # Ensure ridiculous values read back in
     cfg_check = Config(yaml_fid=os.path.join(tmpdir, "test_config.yaml"))
     assert cfg_check.paths["waveforms"] == [test_path]
     assert cfg_check.pyflex_config.c_0 == test_value
-    assert cfg_check.pyadjoint_config.phase_step == test_value
+    assert cfg_check.pyadjoint_config.dt_sigma_min == test_value
 
 
 def test_incorrect_io_yaml(tmpdir):
