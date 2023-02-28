@@ -20,7 +20,7 @@ dependencies = [
     "cartopy",
     "pyyaml",
     "pypdf2",
-    "pyflex @ git+https://github.com/adjtomo/pyflex.git", 
+    "pyflex",
     "pyadjoint",
     "pysep-adjtomo"
 ]
