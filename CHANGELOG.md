@@ -6,4 +6,4 @@
 - Changed internal test ASDFDataSet and created a script to generate new dataset
   because the old one had no way of being remade.
 - New Docs + Example + Example data: Processing data with Pyatoa and MPI
-- Remove GitHub Pip install links for PySEP and Pyadjoint
+- Remove GitHub Pip install links for PySEP, Pyflex and Pyadjoint
