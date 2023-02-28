@@ -33,25 +33,52 @@ Quickstart
 --------------
 
 Installation
-~~~~~~~~~~~~
+------------
 
-It is recommended that Pyatoa be installed inside a `Conda 
-<https://docs.conda.io/en/latest/>`__ environment.
-The ``devel`` branch provides the latest codebase.
+We recommend installing Pyatoa into a `Conda <https://conda.io>`__ environment
+to avoid package or dependency conflicts with other Python packages. 
+Installation via Pip is recommended for the latest, stable version. 
+
+.. note::
+
+    Cartopy must be installed via Conda otherwise you may encounter Pip 
+    dependency errors
+
 
 .. code:: bash
 
-   git clone --branch devel https://github.com/adjtomo/pyatoa.git
-   cd pyatoa
-   conda env create -f environment.yml
-   conda activate pyatoa
+    conda create -n pyatoa
+    conda activate pyatoa
+    conda install cartopy
+    pip install pyatoa
+
+------------------------------------
+
+Installing Development Version
+``````````````````````````````
+
+Pyatoa is under an active state of development, so for the latest version of the
+codebase, installation must take place directly from the ``devel`` branch of the
+code.
+
+.. warning::
+
+    API and code stability is subject to change without warning when using the
+    ``devel`` branch
+
+.. code:: bash
+
+    git clone --branch devel https://github.com/adjtomo/pyatoa.git
+    cd pyatoa/
+    conda env create -f environment.yml
+    conda activate pyatoa
 
 
 Running Tests
 `````````````
 
 Tests ensure Pyatoa runs as expected after changes are made to the source code.
-You can run tests with Pytest.
+If working with the development version, You can run tests with Pytest.
 
 .. code:: bash
 
