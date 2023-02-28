@@ -21,8 +21,8 @@ dependencies = [
     "pyyaml",
     "pypdf2",
     "pyflex @ git+https://github.com/adjtomo/pyflex.git", 
-    "pyadjoint @ git+https://github.com/adjtomo/pyadjoint.git",
-    "pysep @ git+https://github.com/adjtomo/pysep.git" 
+    "pyadjoint"
+    "pysep-adjtomo"
 ]
 
 [project.optional-dependencies]
