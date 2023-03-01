@@ -4,6 +4,8 @@ A class to control workflow and temporarily store and manipulate data
 """
 import os
 import obspy
+import matplotlib as mpl
+import matplotlib.pyplot as plt
 import numpy as np
 import pyflex
 import pyadjoint
@@ -1245,15 +1247,15 @@ class Manager:
         if choice == "wav":
             wm = WaveMaker(mgmt=self, **kwargs)
             wm.plot(show=show, save=save)
+            plt.close()
         # Plot only map
         elif choice == "map":
             mm = MapMaker(inv=self.inv, cat=self.event, corners=corners,
                           **kwargs)
             mm.plot(show=show, save=save)
+            plt.close()
         # Plot waveform and map on the same figure
         elif choice == "both":
-            import matplotlib as mpl
-            import matplotlib.pyplot as plt
 
             if figsize is None:
                 figsize = (1400 / dpi, 600 / dpi)

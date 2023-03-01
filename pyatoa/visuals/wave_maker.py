@@ -690,8 +690,6 @@ class WaveMaker:
             plt.savefig(save)
         if show:
             plt.show()
-        else:
-            plt.close()
 
 
 def align_yaxes(ax1, ax2):
