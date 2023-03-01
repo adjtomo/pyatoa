@@ -11,3 +11,4 @@
 ## v0.2.2
 
 - Bugfix: Gatherer attempting to access a removed Config parameter
+- Resolve PyPDF2 -> PyPDF dependency deprecation warning
