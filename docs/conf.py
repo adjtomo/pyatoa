@@ -21,11 +21,11 @@ import sphinx_rtd_theme
 # -- Project information -----------------------------------------------------
 
 project = 'Pyatoa'
-copyright = '2023, adjTomo'
+copyright = '2022, adjTomo'
 author = 'adjTomo Dev Team'
 
 # The short X.Y version
-version = '0.2.1'
+version = '0.2.2'
 # The full version, including alpha/beta/rc tags
 release = ''
 
