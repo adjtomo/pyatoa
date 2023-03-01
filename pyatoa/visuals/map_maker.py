@@ -364,6 +364,8 @@ class MapMaker:
             plt.savefig(save)
         if show:
             plt.show()
+        else:
+            plt.close()
 
 
 def scale_bar(ax, length=None, location=(0.85, 0.95), linewidth=3, 
