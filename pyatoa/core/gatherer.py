@@ -158,7 +158,7 @@ class Gatherer:
         # looking for data or synthetic "data"
         if st_obs is None:
             logger.debug("searching local filesystem for observations")
-            if self.config.synthetics_only:
+            if self.config.st_obs_type == "syn":
                 st_obs = self.fetch_synthetic_by_dir(code,
                                                      syn_cfgpath="waveforms",
                                                      **kwargs)
