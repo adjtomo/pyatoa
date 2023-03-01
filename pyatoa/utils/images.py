@@ -6,7 +6,7 @@ to remove Pyatoa-wide dependencies on these packages for short functions.
 """
 import numpy as np
 from PIL import Image
-from PyPDF2 import PdfFileMerger
+from pypdf import PdfMerger
 
 
 def merge_pdfs(fids, fid_out):
