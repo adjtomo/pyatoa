@@ -22,7 +22,7 @@ def merge_pdfs(fids, fid_out):
     if not fids:
         return
 
-    merger = PdfFileMerger()
+    merger = PdfMerger()
     for fid in fids:
         merger.append(fid)
 
