@@ -19,7 +19,7 @@ dependencies = [
     "pandas", 
     "cartopy",
     "pyyaml",
-    "pypdf2",
+    "pypdf",
     "pyflex",
     "pyadjoint",
     "pysep-adjtomo"
