@@ -328,7 +328,7 @@ def test_resample_numerical_noise(mgmt_pre):
 
     # Take some parameters from the Issue
     mgmt_pre.config.adj_src_type = "waveform"
-    mgmt_pre.config.min_period = 0.05
+    mgmt_pre.config.min_period = 20
     mgmt_pre.config.max_period = 100.
     mgmt_pre.config.st_obs_type = "syn"
     mgmt_pre.config._set_external_configs()
@@ -340,7 +340,7 @@ def test_resample_numerical_noise(mgmt_pre):
     # mgmt_pre.plot(choice="wav")  # creates the figure shown in Issue #34 
 
     # adjoint sources should be zero because these are the same trace
-    for comp, adjsrc in mgmt_pre.adjsrcs:
+    for comp, adjsrc in mgmt_pre.adjsrcs.items():
         assert(adjsrc.adjoint_source.max() == 0)
         assert(adjsrc.adjoint_source.min() == 0)
 

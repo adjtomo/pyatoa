@@ -725,11 +725,13 @@ class Manager:
         if dt_st > 0:
             self.st_obs = zero_pad(self.st_obs, dt_st, before=True, after=False)
 
-        # Match sampling rates
-        if standardize_to == "syn":
-            self.st_obs.resample(self.st_syn[0].stats.sampling_rate)
-        else:
-            self.st_syn.resample(self.st_obs[0].stats.sampling_rate)
+        # Match sampling rates only if they differ
+        if self.st_syn[0].stats.sampling_rate != \
+                self.st_obs[0].stats.sampling_rate: 
+            if standardize_to == "syn":
+                self.st_obs.resample(self.st_syn[0].stats.sampling_rate)
+            else:
+                self.st_syn.resample(self.st_obs[0].stats.sampling_rate)
 
         # Match start and endtimes
         self.st_obs, self.st_syn = trim_streams(
