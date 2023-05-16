@@ -309,3 +309,40 @@ def test_flow_multiband(mgmt_pre):
     assert(pytest.approx(adjsrcs["E"].max(), .001) == 8914.48)
     assert(pytest.approx(adjsrcs["N"].max(), .001) == 3173.05)
     assert(pytest.approx(adjsrcs["Z"].max(), .001) == 2749.96)
+
+
+def test_resample_numerical_noise(mgmt_pre):
+    """
+    Raised in Issue #34 by Ridvan O. (rdno).
+    
+    Numerical noise can be introduced by resampling a trace that already has 
+    the correct sampling rate, which leads to non-zero adjoint sources/misfit 
+    when traces are identical due to very slight time shifts introduced from 
+    the resampling method.
+
+    This check ensures the fix (do not resample if sampling rates are the same)
+    continues to work.
+    """
+    # Ensure that both traces are the same 
+    mgmt_pre.st_obs = mgmt_pre.st_syn.copy()
+
+    # Take some parameters from the Issue
+    mgmt_pre.config.adj_src_type = "waveform"
+    mgmt_pre.config.min_period = 0.05
+    mgmt_pre.config.max_period = 100.
+    mgmt_pre.config.st_obs_type = "syn"
+    mgmt_pre.config._set_external_configs()
+
+    mgmt_pre.standardize()
+    mgmt_pre.preprocess()
+    mgmt_pre.measure()  # skip windowing as we get the same result without
+
+    # mgmt_pre.plot(choice="wav")  # creates the figure shown in Issue #34 
+
+    # adjoint sources should be zero because these are the same trace
+    for comp, adjsrc in mgmt_pre.adjsrcs:
+        assert(adjsrc.adjoint_source.max() == 0)
+        assert(adjsrc.adjoint_source.min() == 0)
+
+  
+
