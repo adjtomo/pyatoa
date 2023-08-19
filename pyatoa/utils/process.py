@@ -350,6 +350,57 @@ def match_npts(st_a, st_b, force=None):
         return st_change, st_const
 
 
+def normalize(st_a, st_b, choice):
+    """
+    Normalize amplitudes in traces to the absolute maximum amplitude of the
+    other, or normalize all traces so that their maximum value is a given value.
+
+    :type st_a: obspy.stream.Stream
+    :param st_a: one stream to match samples with
+    :type st_b: obspy.stream.Stream
+    :param st_b: one stream to match samples with
+    :type choice: str or int or float
+    :param choice: choose which stream to use as the default npts,
+        defaults to 'a', options: 'a', 'b' or a value that you want to set the
+        max amplitude to be equal to, e.g., 1
+    :rtype: tuple (obspy.stream.Stream, obspy.stream.Stream)
+    :return: streams that have been normalized based on `choice`
+    :raises NotImplementedError: If incorrect value of `choice` is provided
+    """
+    if isinstance(choice, str):
+        if choice == "a":
+            st_const = st_a.copy()
+            st_change = st_b.copy()
+        elif choice == "b":
+            st_change = st_a.copy()
+            st_const = st_b.copy()
+        else:
+            raise NotImplementedError("normalize `choice` must be 'a' or 'b'")
+
+        for tr_const, tr_change in zip(st_const, st_change):
+            tr_change.data *= (abs(tr_const.max()) /
+                               abs(tr_change.max())
+                               )
+
+        if choice == "a":
+            st_a_out = st_const
+            st_b_out = st_change
+        else:
+            st_a_out = st_change
+            st_b_out = st_const
+    elif isinstance(choice, (int, float)):
+        st_a_out = st_a.copy()
+        st_b_out = st_b.copy()
+
+        for tr_a, tr_b in zip(st_a, st_b):
+            tr_a.data *= (choice / abs(tr_a.max()))
+            tr_b.data *= (choice / abs(tr_b.max()))
+    else:
+        raise NotImplementedError(f"invalid choice {choice} for normalization")
+
+    return st_a_out, st_b_out
+
+
 def is_preprocessed(st, filter_only=True):
     """
     Check to make sure a stream object has not yet been run through

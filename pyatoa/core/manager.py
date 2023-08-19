@@ -21,7 +21,7 @@ from pyatoa.utils.window import reject_on_global_amplitude_ratio
 from pyatoa.utils.srcrcv import gcd_and_baz
 from pyatoa.utils.asdf.add import add_misfit_windows, add_adjoint_sources
 from pyatoa.utils.process import (default_process, trim_streams, zero_pad,
-                                  match_npts)
+                                  match_npts, normalize)
 from pyatoa.scripts.load_example_data import load_example_data
 
 from pyatoa.visuals.wave_maker import WaveMaker
@@ -698,7 +698,7 @@ class Manager:
             raise ManagerError(
                 f"Uncontrolled error in data gathering: {e}") from e
 
-    def standardize(self, force=False, standardize_to="syn"):
+    def standardize(self, force=False, standardize_to="syn", normalize_to=None):
         """
         Standardize the observed and synthetic traces in place. 
         Ensures Streams have the same starttime, endtime, sampling rate, npts.
@@ -710,7 +710,13 @@ class Manager:
         :param standardize_to: allows User to set which Stream conforms to which
             by default the Observed traces should conform to the Synthetic ones
             because exports to Specfem should be controlled by the Synthetic
-            sampling rate, npts, etc.
+            sampling rate, npts, etc. Choices are 'obs' and 'syn'.
+        :type normalize_to: str
+        :param normalize_to: allow for normalizing the amplitudes of the two
+            traces. Choices are:
+            'obs': normalize synthetic waveforms to the max amplitude of obs
+            'syn': normalize observed waveform to the max amplitude of syn
+            'one': normalize both waveforms so that their max amplitude is 1
         """
         self.check()
         if not self.stats.len_obs or not self.stats.len_syn:
@@ -743,6 +749,14 @@ class Manager:
         self.st_obs, self.st_syn = match_npts(
             st_a=self.st_obs, st_b=self.st_syn,
             force={"obs": "a", "syn": "b"}[standardize_to]
+            )
+
+        # Allow normalization of waveform amplitudes to one another or to
+        # a given value
+        if normalize_to is not None:
+            self.st_obs, self.st_syn = normalize(
+                st_a=self.st_obs, st_b=self.st_syn,
+                choice={"obs": "a", "syn": "b", "one": "one"}[normalize_to]
             )
 
         # Determine if synthetics start before the origintime
