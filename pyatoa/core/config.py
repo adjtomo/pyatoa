@@ -31,7 +31,7 @@ class Config:
                  pyflex_preset="default", adj_src_type="cc_traveltime",
                  observed_tag="observed", synthetic_tag=None,
                  st_obs_type="obs", st_syn_type="syn",
-                 win_amp_ratio=0., paths=None, save_to_ds=True,
+                 win_amp_ratio=0., save_to_ds=True,
                  **kwargs):
         """
         Initiate the Config object either from scratch, or read from external.
@@ -89,13 +89,6 @@ class Config:
         :param synthetic_tag: Tag to use for asdf dataset to label and search
             for obspy streams of synthetic data. Default 'synthetic_{model_num}'
             Tag must be formatted before use.
-        :type paths: dict of str
-        :param paths: any absolute paths for Pyatoa to search for
-            waveforms in. If path does not exist, it will automatically be
-            skipped. Allows for work on multiple machines, by giving multiple
-            paths for the same set of data, without needing to change config.
-            Waveforms must be saved in a specific directory structure with a
-            specific naming scheme
         :type save_to_ds: bool
         :param save_to_ds: allow toggling saving to the dataset when new data
             is gathered/collected. This is useful, e.g. if a dataset that
@@ -129,16 +122,6 @@ class Config:
         # Empty init because these are filled by self._check()
         self.pyflex_config = None
         self.pyadjoint_config = None
-
-        # Make sure User provided paths are list objects
-        if paths:
-            for key in paths:
-                if not isinstance(paths[key], list):
-                    paths[key] = [paths[key]]
-            self.paths = paths
-        else:
-            self.paths = {"waveforms": [], "synthetics": [], "responses": [],
-                          "events": []}
 
         # If reading from a YAML file or from a dataset, do not set the external
         # Configs (pyflex and pyadjoint) because these will be read in verbatim
@@ -174,7 +157,7 @@ class Config:
                                 "rotate_to_rtz", "win_amp_ratio", "st_obs_type",
                                 "st_obs_type"],
                     "Labels": ["component_list", "observed_tag",
-                               "synthetic_tag", "paths"],
+                               "synthetic_tag"],
                     "External": ["pyflex_preset", "adj_src_type",
                                  "pyflex_config", "pyadjoint_config"
                                  ]
@@ -260,18 +243,6 @@ class Config:
         acceptable_units = ['DISP', 'VEL', 'ACC']
         assert(self.unit_output in acceptable_units), \
             f"unit_output should be in {acceptable_units}"
-
-        # Check that paths are in the proper format, dictated by Pyatoa
-        required_keys = ['synthetics', 'waveforms', 'responses', 'events']
-        assert(isinstance(self.paths, dict)), "paths should be a dict"
-        for key in self.paths.keys():
-            assert(key in required_keys), \
-                f"path keys can only be in {required_keys}"
-
-        # Make sure that all the required keys are given in the dictionary
-        for key in required_keys:
-            if key not in self.paths.keys():
-                self.paths[key] = []
 
         # Set the component list. Rotate component list if necessary
         if self.rotate_to_rtz:
@@ -530,11 +501,6 @@ class Config:
         unused_kwargs = {}
         for key, item in attrs.items():
             if hasattr(self, key.lower()):
-                # Special case: ensure paths don't overwrite, but append
-
-                if key == "paths":
-                    for cfgkey, cfgitem in self.paths.items():
-                        item[cfgkey] += cfgitem
                 setattr(self, key.lower(), item)
             else:
                 unused_kwargs[key.lower()] = item
@@ -568,8 +534,6 @@ class Config:
             cfgin = ds.auxiliary_data.Configs[path].parameters
 
         # Parameters from flattened dictionaries will need special treatment
-        paths = {"waveforms": [], "synthetics": [], "responses": [], 
-                 "events": []}
         pyflex_config, pyadjoint_config = {}, {}
 
         for key, item in cfgin.items():
@@ -583,10 +547,7 @@ class Config:
                     item = item.tolist()
 
             # Put the item in the correct dictionary
-            if "paths" in key:
-                # e.g. paths_waveforms -> waveforms
-                paths[key.split('_')[1]].append(item)
-            elif "pyflex_config" in key:
+            if "pyflex_config" in key:
                 # Ensure that empties are set to NoneType
                 pyflex_config["_".join(key.split('_')[2:])] = item
             elif "pyadjoint_config" in key:
@@ -595,9 +556,6 @@ class Config:
             else:
                 # Normal Config attribute
                 setattr(self, key, item)
-
-        # Assign the flattened dictionaries back into nested dictionaries
-        setattr(self, "paths", paths)
 
         pyflex_config, _ = set_pyflex_config(**pyflex_config, choice=None)
         setattr(self, "pyflex_config", pyflex_config)
