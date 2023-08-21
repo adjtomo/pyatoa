@@ -378,9 +378,7 @@ def normalize(st_a, st_b, choice):
             raise NotImplementedError("normalize `choice` must be 'a' or 'b'")
 
         for tr_const, tr_change in zip(st_const, st_change):
-            tr_change.data *= (abs(tr_const.max()) /
-                               abs(tr_change.max())
-                               )
+            tr_change.data *= (abs(tr_const.max()) / abs(tr_change.max()) )
 
         if choice == "a":
             st_a_out = st_const

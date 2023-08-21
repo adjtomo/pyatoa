@@ -14,12 +14,13 @@ from obspy.signal.filter import envelope
 from pyasdf import ASDFWarning
 from pyatoa import logger
 from pyatoa.core.config import Config
-from pyatoa.core.gatherer import Gatherer, GathererNoDataException
 from pyatoa.utils.process import is_preprocessed
 from pyatoa.utils.asdf.load import load_windows, load_adjsrcs
 from pyatoa.utils.window import reject_on_global_amplitude_ratio
 from pyatoa.utils.srcrcv import gcd_and_baz
 from pyatoa.utils.asdf.add import add_misfit_windows, add_adjoint_sources
+from pyatoa.utils.form import format_event_name
+from pyatoa.utils.gather import read_events_plus
 from pyatoa.utils.process import (default_process, trim_streams, zero_pad,
                                   match_npts, normalize)
 from pyatoa.scripts.load_example_data import load_example_data
@@ -73,6 +74,7 @@ class ManagerStats(dict):
     def reset(self):
         """Convenience function to reset stats to None"""
         self.__init__()
+
 
 class Manager:
     """
@@ -141,13 +143,6 @@ class Manager:
             origintime = self.event.preferred_origin().time
         else:
             origintime = None
-
-        # Instantiate a Gatherer object and pass along info
-        if gatherer is None:
-            self.gatherer = Gatherer(config=self.config, ds=self.ds,
-                                     origintime=origintime)
-        else:
-            self.gatherer = gatherer
 
         # Copy Streams to avoid affecting original data
         if st_obs is not None:
@@ -292,8 +287,7 @@ class Manager:
         retain dataset, event, config, and gatherer so a new station can be
         processed with the same configuration as the previous workflow.
         """
-        self.__init__(ds=self.ds, event=self.event, config=self.config,
-                      gatherer=self.gatherer)
+        self.__init__(ds=self.ds, event=self.event, config=self.config)
 
     def write(self, ds=None):
         """
@@ -544,7 +538,7 @@ class Manager:
         st_syn_raw = self.st_syn.copy()
 
         tags = []
-        windows, adjsrcs  = {}, {}
+        windows, adjsrcs = {}, {}
         for period in periods:
             tag = f"{period[0]}_{period[1]}"  # e.g., 5_10
             tags.append(tag)
@@ -595,12 +589,12 @@ class Manager:
 
         return windows, adjsrcs
 
-    def gather(self, code=None, choice=None, event_id=None, **kwargs):
+    def gather_from_dataset(self, code=None, event_id=None, choice=None):
         """
-        Gather station dataless and waveform data using the Gatherer class.
-        In order collect observed waveforms, dataless, and finally synthetics.
-
-        For valid kwargs see methods in :doc:`core.gatherer`
+        Gather event and station metadata, as well as observed and synthetic
+        waveform data from the internally defined ASDFDataSet, given a
+        Station code. Flag `choice` allows gathering only certain pieces of
+        data.
 
         :type code: str
         :param code: Station code following SEED naming convention.
@@ -608,95 +602,98 @@ class Manager:
             L=location, C=channel). Allows for wildcard naming. By default
             the pyatoa workflow wants three orthogonal components in the N/E/Z
             coordinate system. Example station code: NZ.OPRZ.10.HH?
+        :type event_id: str
+        :param event_id: optional event identifier used to select the correct
+            event if multiple events are present in the ASDFDataSet. Typically
+            this should not be required because Pyatoa sets the standard that
+            there should only be one Event per ASDFDataSet. 
         :type choice: list
         :param choice: allows user to gather individual bits of data, rather
             than gathering all. Allowed: 'inv', 'st_obs', 'st_syn'
-        :raises ManagerError: if any part of the gathering fails.
-
-        Keyword Arguments
-        ::
-            bool try_fm:
-                Try to retrieve and append focal mechanism information to the
-                Event object.
-            str prefix:
-                Prefix for event id when searching for event information,
-                can be used to search ordered files e.g., CMTSOLUTION_001
-            str suffix:
-                Suffix for event id when searching for event information
-            str station_level:
-                The level of the station metadata if retrieved using the ObsPy
-                Client. Defaults to 'response'
-            str resp_dir_template:
-                Directory structure template to search for response files.
-                By default follows the SEED convention:
-                'path/to/RESPONSE/{sta}.{net}/'
-            str resp_fid_template:
-                Response file naming template to search for station dataless.
-                By default, follows the SEED convention
-                'RESP.{net}.{sta}.{loc}.{cha}'
-            str obs_dir_template:
-                directory structure to search for observation data. Follows the
-                SEED convention: 'path/to/obs_data/{year}/{net}/{sta}/{cha}'
-            str obs_fid_template:
-                File naming template to search for observation data. Follows the
-                SEED convention: '{net}.{sta}.{loc}.{cha}*{year}.{jday:0>3}'
-            str syn_cfgpath:
-                Config.cfgpaths key to search for synthetic data. Defaults to
-                'synthetics', but for the may need to be set to 'waveforms' in
-                certain use-cases, e.g. synthetics-synthetic inversions.
-            str syn_unit:
-                Optional argument to specify the letter used to identify the
-                units of the synthetic data: For Specfem3D: ["d", "v", "a", "?"]
-                'd' for displacement, 'v' for velocity,  'a' for acceleration.
-                Wildcards okay. Defaults to '?'
-            str syn_dir_template:
-                Directory structure template to search for synthetic waveforms.
-                Defaults to empty string
-            str syn_fid_template:
-                The naming template of synthetic waveforms defaults to:
-                "{net}.{sta}.*{cmp}.sem{syn_unit}"
         """
+        assert(self.ds is not None), \
+            "No internal ASDFDataset `ds`, cannot gather"
+
         # Default to gathering all data
         if choice is None:
             choice = ["event", "inv", "st_obs", "st_syn"]
-        try:
-            # Attempt to gather event information before waveforms/metadata
-            if "event" in choice and self.event is None:
-                if event_id is None:
-                    event_id = self.config.event_id
-                self.event = self.gatherer.gather_event(event_id, **kwargs)
-            if code is not None:
-                logger.info(f"gathering data for {code}")
-                if "st_obs" in choice:
-                    # Ensure observed waveforms gathered before synthetics and
-                    # metadata. If this fails, no point to gathering the rest
-                    self.st_obs = self.gatherer.gather_observed(code, **kwargs)
-                if "st_syn" in choice:
-                    self.st_syn = self.gatherer.gather_synthetic(code, **kwargs)
-                # Allow StationXML gathering to fail, e.g., with synthetic data
-                # we will not have/need response informatino
-                if "inv" in choice:
-                    try:
-                        self.inv = self.gatherer.gather_station(code, **kwargs)
-                    except GathererNoDataException as e:
-                        logger.warning(f"Could not find matching StationXML "
-                                       f"for {code}, setting 'inv' attribute "
-                                       f"to None")
-                        self.inv = None
 
+        # Attempt to gather event information before waveforms/metadata
+        if "event" in choice:
+            # No events
+            if len(self.ds.events) == 0:
+                logger.warning("no events in ASDFDatSet internal Catalog")
+            # Typical case - Only one event per ASDFDataSet
+            elif len(self.ds.events) == 1:
+                self.event = self.ds.events[0]
+                if event_id and event_id != format_event_name(self.event):
+                    logger.warning(
+                        f"provided `event_id` ({event_id}) does not match "
+                        f"event ID of ASDFDataSet event "
+                        f"{format_event_name(self.event)}"
+                    )
+            # Untypical case - Multiple Events in internal Catalog, weed through
+            else:
+                assert(event_id is not None), (
+                    f"multiple events found in ASDFDataSet "
+                    f"({len(self.ds.events)}), please provide "
+                    f"`event_id` to select the event"
+                )
+                for event in self.ds.events:
+                    if event_id == format_event_name(event):
+                        self.event = event
+                        break
+                else:
+                    logger.warning(f"no events with ID matching {event_id} "
+                                   "found in ASDFDataSet")
+            if self.event is not None:
+                logger.info(f"Event found in ASDFDataSet: "
+                            f"{format_event_name(self.event)}")
+
+        # `code` is required for StationXML and waveform data so if it is not
+        # given, return early without attempting to search for data
+        if code is not None:
+            net, sta, loc, cha = code.split(".")
+            comp = cha[-1]
+        else:
+            logger.warning("no `code` given, will not attempt to gather "
+                           "waveform or station metadata from ASDFDataSet")
             return self
-        except GathererNoDataException as e:
-            # Catch the Gatherer exception and redirect as ManagerError 
-            # so that it can be caught by flow()
-            logger.warning(e, exc_info=False)
-            raise ManagerError(
-                f"Data Gatherer could not find some data: {e}") from e
-        except Exception as e:
-            # Gathering should be robust, but if something slips through, dont
-            # let it kill a workflow, display and raise ManagerError
-            logger.warning(e, exc_info=True)
-            raise ManagerError(
-                f"Uncontrolled error in data gathering: {e}") from e
+
+        if "inv" in choice and code is not None:
+            net, sta, loc, cha = code.split(".")
+            try:
+                self.inv = self.ds.waveforms[f"{net}_{sta}"].StationXML
+                logger.debug("matching StationXML found in ASDFDataSet for"
+                             f"{net}_{sta}")
+            except (KeyError, AttributeError):
+                logger.warning("could not find matching StationXML in "
+                               f"ASDFDataSet for {net}_{sta}")
+                pass
+
+        if "st_obs" in choice and code is not None:
+            try:
+                self.st_obs = self.ds.waveforms[f"{net}_{sta}"][
+                    self.config.observed_tag].select(component=comp)
+                logger.debug("matching observed waveforms found in ASDFDataSet "
+                             f"for {net}_{sta}")
+            except KeyError:
+                logger.warning("could not find matching observed waveforms in "
+                               f"ASDFDataSet for {net}_{sta}")
+                pass
+
+        if "st_obs" in choice and code is not None:
+            try:
+                self.st_syn = self.ds.waveforms[f"{net}_{sta}"][
+                    self.config.synthetic_tag].select(component=comp)
+                logger.debug("matching synthetic waveforms found in ASDFDataSet "
+                             f"for {net}_{sta}")
+            except KeyError:
+                logger.warning("could not find matching synthetic waveforms in "
+                               f"ASDFDataSet for {net}_{sta}")
+                pass
+
+        return self
 
     def standardize(self, force=False, standardize_to="syn", normalize_to=None):
         """
