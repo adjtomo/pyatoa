@@ -20,7 +20,6 @@ from pyatoa.utils.window import reject_on_global_amplitude_ratio
 from pyatoa.utils.srcrcv import gcd_and_baz
 from pyatoa.utils.asdf.add import add_misfit_windows, add_adjoint_sources
 from pyatoa.utils.form import format_event_name
-from pyatoa.utils.gather import read_events_plus
 from pyatoa.utils.process import (default_process, trim_streams, zero_pad,
                                   match_npts, normalize)
 from pyatoa.scripts.load_example_data import load_example_data
@@ -589,7 +588,8 @@ class Manager:
 
         return windows, adjsrcs
 
-    def gather_from_dataset(self, code=None, event_id=None, choice=None):
+    def gather_from_dataset(self, ds=None, code=None, event_id=None,
+                            choice=None):
         """
         Gather event and station metadata, as well as observed and synthetic
         waveform data from the internally defined ASDFDataSet, given a
@@ -611,7 +611,10 @@ class Manager:
         :param choice: allows user to gather individual bits of data, rather
             than gathering all. Allowed: 'inv', 'st_obs', 'st_syn'
         """
-        assert(self.ds is not None), \
+        if ds is None:
+            ds = self.ds
+
+        assert(ds is not None), \
             "No internal ASDFDataset `ds`, cannot gather"
 
         # Default to gathering all data
@@ -621,11 +624,11 @@ class Manager:
         # Attempt to gather event information before waveforms/metadata
         if "event" in choice:
             # No events
-            if len(self.ds.events) == 0:
+            if len(ds.events) == 0:
                 logger.warning("no events in ASDFDatSet internal Catalog")
             # Typical case - Only one event per ASDFDataSet
-            elif len(self.ds.events) == 1:
-                self.event = self.ds.events[0]
+            elif len(ds.events) == 1:
+                self.event = ds.events[0]
                 if event_id and event_id != format_event_name(self.event):
                     logger.warning(
                         f"provided `event_id` ({event_id}) does not match "
@@ -636,10 +639,10 @@ class Manager:
             else:
                 assert(event_id is not None), (
                     f"multiple events found in ASDFDataSet "
-                    f"({len(self.ds.events)}), please provide "
+                    f"({len(ds.events)}), please provide "
                     f"`event_id` to select the event"
                 )
-                for event in self.ds.events:
+                for event in ds.events:
                     if event_id == format_event_name(event):
                         self.event = event
                         break
@@ -673,7 +676,7 @@ class Manager:
 
         if "st_obs" in choice and code is not None:
             try:
-                self.st_obs = self.ds.waveforms[f"{net}_{sta}"][
+                self.st_obs = ds.waveforms[f"{net}_{sta}"][
                     self.config.observed_tag].select(component=comp)
                 logger.debug("matching observed waveforms found in ASDFDataSet "
                              f"for {net}_{sta}")
@@ -684,7 +687,7 @@ class Manager:
 
         if "st_obs" in choice and code is not None:
             try:
-                self.st_syn = self.ds.waveforms[f"{net}_{sta}"][
+                self.st_syn = ds.waveforms[f"{net}_{sta}"][
                     self.config.synthetic_tag].select(component=comp)
                 logger.debug("matching synthetic waveforms found in ASDFDataSet "
                              f"for {net}_{sta}")
