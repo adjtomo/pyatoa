@@ -606,7 +606,7 @@ class Manager:
         :param event_id: optional event identifier used to select the correct
             event if multiple events are present in the ASDFDataSet. Typically
             this should not be required because Pyatoa sets the standard that
-            there should only be one Event per ASDFDataSet. 
+            there should only be one Event per ASDFDataSet.
         :type choice: list
         :param choice: allows user to gather individual bits of data, rather
             than gathering all. Allowed: 'inv', 'st_obs', 'st_syn'
