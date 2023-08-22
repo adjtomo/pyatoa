@@ -309,7 +309,13 @@ class Manager:
             'inv':  Inventory attribute as a StationXML
             'st_obs': Observed waveform under tag `config.observed_tag`
             'st_syn': Synthetic waveform under tag `config.synthetic_tag`
-            'windows': Misfit windows
+            'windows': Misfit windows collected by Pyflex are stored under
+                `auxiliary_data.MisfitWindow`
+            'adjsrcs': Adjoint sources created by Pyadjoint are stored under
+                `auxiliary_data.AdjointSources`
+            'config': the Pyatoa Config object is stored under
+                'auxiliary_data.Config' and can be used to re-load the Manager
+                and re-do processing
         """
         # Allow using both default and input datasets for writing. Check if we
         # can actually write to the dataset
@@ -323,20 +329,21 @@ class Manager:
             return
 
         if choice is None:
-            choice = ["event", "inv", "st_obs", "st_syn", "windows", "adjsrcs"]
+            choice = ["event", "inv", "st_obs", "st_syn", "windows", "adjsrcs",
+                      "config"]
 
-        if self.event:
+        if self.event and "event" in choice:
             try:
                 ds.add_quakeml(self.event)
             except ValueError:
                 logger.debug("Event already present, not added")
-        if self.inv:
+        if self.inv and "inv" in choice:
             try:
                 ds.add_stationxml(self.inv)
             except TypeError:
                 logger.debug("StationXML already present, not added")
         # Redirect PyASDF 'waveforms already present' warnings for cleaner look
-        if self.st_obs:
+        if self.st_obs and "st_obs" in choice:
             with warnings.catch_warnings():
                 warnings.filterwarnings("error")
                 try:
@@ -346,7 +353,7 @@ class Manager:
                     logger.debug(f"{self.config.observed_tag} waveform already "
                                  f"present, not added")
                     pass
-        if self.st_syn:
+        if self.st_syn and "st_syn" in choice:
             with warnings.catch_warnings():
                 warnings.filterwarnings("error")
                 try:
@@ -356,19 +363,17 @@ class Manager:
                     logger.debug(f"{self.config.synthetic_tag} waveform "
                                  f"already present, not added")
                     pass
-        if self.windows:
+        if self.windows and "windows" in choice:
             logger.debug("saving misfit windows to ASDFDataSet")
             add_misfit_windows(self.windows, ds, path=self.config.aux_path)
-        else:
-            logger.debug("Manager has no windows to save")
-
-        if self.adjsrcs:
+        if self.adjsrcs and "adjsrcs" in choice:
             logger.debug("saving adjoint sources to ASDFDataSet")
             add_adjoint_sources(adjsrcs=self.adjsrcs, ds=ds,
                                 path=self.config.aux_path,
                                 time_offset=self.stats.time_offset_sec)
-        else:
-            logger.debug("Manager has no adjoint sources to save")
+
+        if self.config and "config" in choice:
+            self.config.write(write_to=ds, fmt="asdf")
 
     def write_adjsrcs(self, path="./", write_blanks=True):
         """
@@ -987,6 +992,7 @@ class Manager:
         Saves resultant dictionary to a pyasdf dataset if given.
 
         .. note::
+
             Pyadjoint returns an unscaled misfit value for an entire set of
             windows. To return a "total misfit" value as defined by 
             Tape (2010) Eq. 6, the total summed misfit will need to be scaled by 
@@ -1044,11 +1050,9 @@ class Manager:
 
     def _format_windows(self):
         """
-        .. note::
-            In `pyadjoint.calculate_adjoint_source`, the window needs to be a
-            list of lists, with each list containing the
-            [left_window, right_window]; each window argument should be given in
-            units of time (seconds). This is not in the PyAdjoint docs.
+        In `pyadjoint.calculate_adjoint_source`, the window needs to be a
+        list of lists, with each list containing the [left_window, right_window]
+        Each window argument should be given in units of time (seconds).
 
         :rtype: dict of list of lists
         :return: dictionary with key related to individual components,
