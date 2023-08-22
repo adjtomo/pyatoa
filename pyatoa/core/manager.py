@@ -799,10 +799,6 @@ class Manager:
         # Pre-check to see if data has already been standardized
         self.check()
 
-        if self.config.pyflex_preset is None:
-            logger.info("pyflex preset is set to 'None', will not window")
-            return
-
         if not self.stats.standardized and not force:
             raise ManagerError("cannot window, waveforms not standardized")
 
@@ -914,7 +910,7 @@ class Manager:
             waveforms, and running select_windows() again, but for now we just
             raise a ManagerError and allow processing to continue
         """
-        logger.info(f"windowing w/ map: {self.config.pyflex_preset}")
+        logger.info(f"windowing waveforms with PyFlex")
 
         nwin, window_dict, reject_dict = 0, {}, {}
         for comp in self.config.component_list:

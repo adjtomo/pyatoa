@@ -2,9 +2,6 @@
 """
 Configuration of User-set parameters within the package.
 Contains external functions to set Config objects of Pyflex and Pyadjoint.
-
-To Do 02.04.21: Allow config to set pyflex and pyadjoint config as a function,
-    currently it's obscured behind some private functions
 """
 import yaml
 import numpy as np
@@ -85,11 +82,14 @@ class Config:
         :type pyflex_parameters: dict
         :param pyflex_parameters: overwrite for Pyflex parameters defined
             in the Pyflex.Config object. Incorrectly defined argument names
-            will raise a TypeError
+            will raise a TypeError. See Pyflex docs for detailed parameter defs:
+            http://adjtomo.github.io/pyflex/#config-object
         :type pyadjoint_parameters: dict
-        :param pyflex_parameters: overwrite for Pyadjoint parameters defined
+        :param pyadjoint_parameters: overwrite for Pyadjoint parameters defined
             in the Pyadjoint.Config object for the given `adj_src_type`.
-            Incorrectly defined argument names will raise a TypeError
+            Incorrectly defined argument names will raise a TypeError. See
+            Pyadjoint docs for detailed parameter definitions:
+            https://adjtomo.github.io/pyadjoint/
         :raises TypeError: If incorrect arguments provided to the underlying
             Pyflex or Pyadjoint Config objects.
         """
