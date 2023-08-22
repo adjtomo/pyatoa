@@ -4,14 +4,18 @@ A class to control workflow and temporarily store and manipulate data
 """
 import os
 import obspy
+import matplotlib as mpl
+import matplotlib.pyplot as plt
 import numpy as np
 import pyflex
 import pyadjoint
 import warnings
+
 from pysep.utils.fmt import channel_code
 from copy import deepcopy
 from obspy.signal.filter import envelope
 from pyasdf import ASDFWarning
+
 from pyatoa import logger
 from pyatoa.core.config import Config
 from pyatoa.utils.process import is_preprocessed
@@ -91,8 +95,10 @@ class Manager:
         Initiate the Manager class with or without pre-defined attributes.
 
         .. note::
-            If `ds` is not given in data can only be gathered via the
-            config.paths attribute. Data will also not be saved.
+
+            If `ds` is not given in data can only be provided through init
+            or by passing them directly to the Manager. Data will also not be
+            saved.
 
         :type config: pyatoa.core.config.Config
         :param config: configuration object that contains necessary parameters
@@ -671,7 +677,8 @@ class Manager:
 
         return self
 
-    def preprocess(self, which="both", overwrite=None, **kwargs):
+    def preprocess(self, which="both", normalize_to=None, overwrite=None,
+                   **kwargs):
         """
         Preprocess observed and synthetic waveforms in place.
         Default preprocessing tasks: Remove response (observed), rotate, filter,
@@ -693,6 +700,12 @@ class Manager:
             standard preprocessing function. All arguments that are given
             to the standard preprocessing function will be passed as kwargs to
             the new function. This allows for customized preprocessing
+        :type normalize_to: str
+        :param normalize_to: allow for normalizing the amplitudes of the two
+            traces. Choices are:
+            'obs': normalize synthetic waveforms to the max amplitude of obs
+            'syn': normalize observed waveform to the max amplitude of syn
+            'one': normalize both waveforms so that their max amplitude is 1
 
         Keyword Arguments
         ::
@@ -740,6 +753,14 @@ class Manager:
                 **{**vars(self.config), **kwargs}
             )
             self.stats.syn_processed = True
+
+        # Allow normalization of waveform amplitudes to one another or to
+        # a given value
+        if normalize_to is not None:
+            self.st_obs, self.st_syn = normalize(
+                st_a=self.st_obs, st_b=self.st_syn,
+                choice={"obs": "a", "syn": "b", "one": "one"}[normalize_to]
+            )
 
         # Set stats
         self.stats.len_obs = len(self.st_obs)
@@ -1034,9 +1055,6 @@ class Manager:
             logger.debug("no ASDFDataSet, will not save windows")
         elif not self.windows:
             logger.debug("Manager has no windows to save")
-        elif not self.config.save_to_ds and not force:
-            logger.debug("config parameter `save_to_ds` is set False, "
-                           "will not save windows")
         else:
             logger.debug("saving misfit windows to ASDFDataSet")
             add_misfit_windows(self.windows, ds, path=self.config.aux_path)
@@ -1062,9 +1080,6 @@ class Manager:
             logger.debug("no ASDFDataSet, cannot save adjoint sources")
         elif not self.adjsrcs:
             logger.debug("Manager has no adjoint sources to save")
-        elif not self.config.save_to_ds and not force:
-            logger.debug("config parameter `save_to_ds` is set False, "
-                           "will not save adjoint sources")
         else:
             logger.debug("saving adjoint sources to ASDFDataSet")
             add_adjoint_sources(adjsrcs=self.adjsrcs, ds=ds,
@@ -1158,9 +1173,6 @@ class Manager:
             mm.plot(show=show, save=save)
         # Plot waveform and map on the same figure
         elif choice == "both":
-            import matplotlib as mpl
-            import matplotlib.pyplot as plt
-
             if figsize is None:
                 figsize = (1400 / dpi, 600 / dpi)
 
@@ -1185,3 +1197,7 @@ class Manager:
                 plt.show()
             else:
                 plt.close()
+
+        # One final shutdown of all figures just incase
+        plt.close("all")
+

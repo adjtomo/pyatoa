@@ -64,8 +64,7 @@ def config(event_id):
     """
     Default Pyatoa Config object
     """
-    return Config(event_id=event_id, iteration=1, step_count=0,
-                  save_to_ds=False)
+    return Config(event_id=event_id, iteration=1, step_count=0)
 
 
 @pytest.fixture

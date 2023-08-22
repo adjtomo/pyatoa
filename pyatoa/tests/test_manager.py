@@ -241,7 +241,6 @@ def test_save_and_retrieve_windows(tmpdir, mgmt_post):
         # Explicitely set the model and step count
         mgmt_post.config.iteration = 0
         mgmt_post.config.step_count = 0
-        mgmt_post.config.save_to_ds = True
         saved_windows = mgmt_post.windows
         mgmt_post.save_windows()  # saved to path 'm00/s00'
 
