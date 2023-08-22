@@ -23,9 +23,8 @@ from pyatoa.utils.asdf.load import load_windows, load_adjsrcs
 from pyatoa.utils.window import reject_on_global_amplitude_ratio
 from pyatoa.utils.srcrcv import gcd_and_baz
 from pyatoa.utils.asdf.add import add_misfit_windows, add_adjoint_sources
-from pyatoa.utils.form import format_event_name
-from pyatoa.utils.process import (default_process, trim_streams, zero_pad,
-                                  match_npts, normalize)
+from pyatoa.utils.process import (apply_filter, trim_streams, zero_pad,
+                                  match_npts, normalize, stf_convolve)
 from pyatoa.scripts.load_example_data import load_example_data
 
 from pyatoa.visuals.wave_maker import WaveMaker
@@ -373,7 +372,13 @@ class Manager:
                                 time_offset=self.stats.time_offset_sec)
 
         if self.config and "config" in choice:
-            self.config.write(write_to=ds, fmt="asdf")
+            with warnings.catch_warnings():
+                warnings.filterwarnings("error")
+                try:
+                    self.config.write(write_to=ds, fmt="asdf")
+                except ASDFWarning:
+                    logger.debug(f"config already present, not added")
+                    pass
 
     def write_adjsrcs(self, path="./", write_blanks=True):
         """
@@ -702,82 +707,98 @@ class Manager:
 
         return self
 
-    def preprocess(self, which="both", normalize_to=None, overwrite=None,
-                   **kwargs):
+    def preprocess(self, which="both", filter_=True, corners=2,
+                   remove_response=False, taper_percentage=0.05, zerophase=True,
+                   normalize_to=None, convolve_with_stf=True,
+                   half_duration=None, **kwargs):
         """
-        Preprocess observed and synthetic waveforms in place.
-        Default preprocessing tasks: Remove response (observed), rotate, filter,
-        convolve with source time function (synthetic).
+        Apply a simple, default preprocessing scheme to observed and synthetic
+        waveforms in place.
 
-        .. note::
-            Default preprocessing can be overwritten using a
-            user-defined function that takes Manager and choice as inputs
-            and outputs an ObsPy Stream object.
+        Default preprocessing tasks: Remove response (optional),
+        rotate (optional), filter, convolve with source time function (optional)
 
-        .. note::
-            Documented kwargs only apply to default preprocessing.
+        User is free to skip this step and perform their own preprocessing on
+        `Manager.st_obs` and `Manager.st_syn` if they require their own unique
+        processing workflow.
 
         :type which: str
         :param which: "obs", "syn" or "both" to choose which stream to process
-            defaults to both
-        :type overwrite: function
-        :param overwrite: If a function is provided, it will overwrite the 
-            standard preprocessing function. All arguments that are given
-            to the standard preprocessing function will be passed as kwargs to
-            the new function. This allows for customized preprocessing
+            defaults to "both"
+        :type filter_: bool
+        :param filter_: filter data using Config.min_period and Config.max_period
+            with `corners` filter corners. Apply tapers and demeans before
+            and after application of filter.
+        :type taper_percentage: float
+        :param taper_percentage: percentage [0, 1] of taper to apply to head and
+            tail of the data before and after preprocessing
+        :type corners: int
+        :param corners: number of filter corners to apply if `filter`==True
+        :type zerophase: bool
+        :param zerophase: apply a zerophase filter (True) or not (False).
+            Zerophase filters are run back and forth meaning no phase shift
+            is applied, but more waveform distorition may be present.
+        :type remove_response: bool
+        :param remove_response: flag, remove instrument response from
+            'obs' type data using the provided `inv`. Defaults to False.
+            Kwargs are passed directly to the the ObsPy `remove_response`
+            function. See ObsPy docs for available options.
+        :type convolve_with_stf: bool
+        :param convolve_with_stf: flag, convolve 'syn' type data with a Gaussian
+            source time function to mimic a finite source. Used when half
+            half duration in seismic simulations is set to 0.
+            Defaults to True and relies on parameters `half_duration`
+        :type half_duration: float
+        :param half_duration: Source time function half duration in units of
+            seconds. Only used if `convolve_with_stf`==True
         :type normalize_to: str
         :param normalize_to: allow for normalizing the amplitudes of the two
             traces. Choices are:
             'obs': normalize synthetic waveforms to the max amplitude of obs
             'syn': normalize observed waveform to the max amplitude of syn
             'one': normalize both waveforms so that their max amplitude is 1
-
-        Keyword Arguments
-        ::
-            int water_level:
-                water level for response removal
-            float taper_percentage:
-                amount to taper ends of waveform
-            bool remove_response:
-                remove instrument response using the Manager's inventory object.
-                Defaults to True
-            bool apply_filter:
-                filter the waveforms using the Config's min_period and
-                max_period parameters. Defaults to True
-            bool convolve_with_stf:
-                Convolve synthetic data with a Gaussian source time function if
-                a half duration is provided.
-            bool rotate_to_rtz:
-                Use the `rotate_baz` variable to rotate streams
-                from ZNE components to RTZ
         """
-        if overwrite:
-            assert(hasattr(overwrite, '__call__')), "overwrite must be function"
-            preproc_fx = overwrite
+        if which.lower() == "obs":
+            preproc_list = {"obs": self.st_obs}
+        elif which.lower() == "syn":
+            preproc_list = {"syn": self.st_syn}
         else:
-            preproc_fx = default_process
+            preproc_list = {"obs": self.st_obs, "syn": self.st_syn}
 
-        # Preprocess observation waveforms
-        if self.st_obs is not None and not self.stats.obs_processed and \
-                which.lower() in ["obs", "both"]:
-            logger.info(f"preprocess `st_obs` as '{self.config.st_obs_type}'")
-            self.st_obs = preproc_fx(
-                st=self.st_obs, choice=self.config.st_obs_type,
-                inv=self.inv, baz=self.baz,
-                **{**vars(self.config), **kwargs}
-            )
-            self.stats.obs_processed = True
+        # Apply preprocessing in-place on streams
+        for key, st in preproc_list.items():
+            # Remove response from 'obs' type data only
+            if remove_response:
+                if (key == "obs" and self.config.st_obs_type == "obs") or (
+                        key == "syn" and self.config.st_syn_type == "obs"):
+                    st.remove_response(inventory=self.inv, plot=False, **kwargs)
 
-        # Preprocess synthetic waveforms
-        if self.st_syn is not None and not self.stats.syn_processed and \
-                which.lower() in ["syn", "both"]:
-            logger.info(f"preprocess `st_syn` as '{self.config.st_syn_type}'")
-            self.st_syn = preproc_fx(
-                st=self.st_syn, choice=self.config.st_syn_type,
-                inv=self.inv, baz=self.baz,
-                **{**vars(self.config), **kwargs}
-            )
-            self.stats.syn_processed = True
+            # Detrend and taper pre-filter
+            st.detrend("simple")
+            st.detrend("demean")
+            st.taper(taper_percentage)
+
+            if self.config.rotate_to_rtz and self.baz is not None:
+                logger.info(f"rotate {key} NE->RT by {self.baz} degrees")
+                st.rotate(method="NE->RT", back_azimuth=self.baz)
+
+            if filter_ and (self.config.min_period or self.config.max_period):
+                logger.info(f"filtering {key} {self.config.min_period}--"
+                            f"{self.config.max_period}")
+                apply_filter(st=st, min_period=self.config.min_period,
+                             max_period=self.config.max_period,
+                             corners=corners, zerophase=zerophase
+                             )
+                # Detrend and taper post filter
+                st.detrend("simple")
+                st.detrend("demean")
+                st.taper(taper_percentage)
+
+            # Convolve waveform with source time function for `syn` type data
+            if convolve_with_stf and half_duration:
+                if (key == "obs" and self.config.st_obs_type == "syn") or (
+                        key == "syn" and self.config.st_syn_type == "syn"):
+                    stf_convolve(st=st, half_duration=half_duration)
 
         # Allow normalization of waveform amplitudes to one another or to
         # a given value
@@ -787,7 +808,9 @@ class Manager:
                 choice={"obs": "a", "syn": "b", "one": "one"}[normalize_to]
             )
 
-        # Set stats
+        # Set stats post preprocessing
+        self.stats.obs_processed = is_preprocessed(self.st_obs)
+        self.stats.syn_processed = is_preprocessed(self.st_syn)
         self.stats.len_obs = len(self.st_obs)
         self.stats.len_syn = len(self.st_syn)
 
@@ -931,7 +954,7 @@ class Manager:
             waveforms, and running select_windows() again, but for now we just
             raise a ManagerError and allow processing to continue
         """
-        logger.info(f"windowing waveforms with PyFlex")
+        logger.info(f"windowing waveforms with Pyflex")
 
         nwin, window_dict, reject_dict = 0, {}, {}
         for comp in self.config.component_list:

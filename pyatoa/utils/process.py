@@ -8,102 +8,8 @@ import numpy as np
 from pyatoa import logger
 
 
-def default_process(st, choice, inv=None, baz=None, min_period=None,
-                    max_period=None, unit_output=None, half_dur=None,
-                    rotate_to_rtz=False, apply_filter=True,
-                    remove_response=True, convolve_with_stf=True, **kwargs):
-    """
-    Generalized, default preprocessing function to process waveform data.
-    Preprocessing is slightly different for obs and syn waveforms. Each
-    processing function is split into a separate function so that they can
-    be called by custom preprocessing functions.
-
-    :type st: obspy.core.stream.Stream
-    :param st: Stream object to be preprocessed
-    :type inv: obspy.core.inventory.Inventory
-    :choice inv: Inventory containing response information for real waveform
-        data. If not provided, reseponse will not be removed. Also used for
-        stream rotation from ZNE -> RTZ
-    :type choice: str
-    :param choice: 'obs' or 'syn' for observed or synthetic waveform. 'obs' will
-        attempt to remove response information with `inv`. 'syn' will attempt
-        to convolve with a half duration.
-    :type remove_response: bool
-    :param remove_response: flag, remove instrument response from choice=='obs'
-        data using the provided `inv`. Defaults to True
-    :type apply_filter: bool
-    :param apply_filter: flag, filter the waveforms using the
-        `min_period` and `max_period` parameters. Defaults to True
-    :type convolve_with_stf: bool
-    :param convolve_with_stf: flag, convolve choice=='syn' data with a Gaussian
-        source time function if a `half_dur` (half duration) is provided.
-        Defaults to true
-    :type rotate_to_rtz: bool
-    :param rotate_to_rtz: flag, use the `rotate_baz` variable to rotate streams
-        from ZNE components to RTZ
-    :rtype: obspy.core.stream.Stream
-    :return: preprocessed stream object pertaining to `choice`
-
-    Keyword Arguments
-    ::
-        int water_level:
-            water level for response removal
-        float taper_percentage:
-            amount to taper ends of waveform
-    """
-    filter_corners = kwargs.get("filter_corners", 2)
-    water_level = kwargs.get("water_level", 60)
-    taper_percentage = kwargs.get("taper_percentage", 0.05)
-    zerophase = kwargs.get("zerophase", True)
-
-    assert choice in ["obs", "syn"], f"preprocess `choice` must be 'obs', 'syn'"
-
-    if is_preprocessed(st):
-        logger.info("`st` already preprocessed, skipping")
-        return st
-    else:
-        st_out = st.copy()
-
-    # Get rid of any long period trends that may affect that data
-    st_out.detrend("simple").detrend("demean").taper(taper_percentage)
-
-    if choice == "obs" and remove_response:
-        logger.info(f"remove response, units: {unit_output}")
-        st_out.remove_response(inventory=inv, output=unit_output,
-                               water_level=water_level, plot=False)
-
-        # Rotate streams if not in ZNE, e.g. Z12. Only necessary for observed
-        logger.info("rotate -> ZNE")
-        st_out.rotate(method="->ZNE", inventory=inv,
-                      components=["ZNE", "Z12", "123"])
-        st_out.detrend("simple").detrend("demean").taper(taper_percentage)
-    else:
-        logger.info(f"skip remove response (no `inv`)")
-
-    # Rotate the given stream from standard NEZ to RTZ if BAz given
-    if rotate_to_rtz and baz is not None:
-        logger.info(f"rotate NE->RT by {baz} degrees")
-        st_out.rotate(method="NE->RT", back_azimuth=baz)
-
-    # Filter data based on the given period bounds
-    if apply_filter and (min_period is not None or max_period is not None):
-        st_out = filters(st_out, min_period=min_period, max_period=max_period,
-                         corners=filter_corners, zerophase=zerophase
-                         )
-        st_out.detrend("simple").detrend("demean").taper(taper_percentage)
-    else:
-        logger.info(f"no filter applied to data")
-
-    # Convolve synthetic data with a Gaussian source time function
-    if choice == "syn":
-        if convolve_with_stf and half_dur is not None:
-            st_out = stf_convolve(st=st_out, half_duration=half_dur)
-
-    return st_out
-
-
-def filters(st, min_period=None, max_period=None, min_freq=None, max_freq=None,
-            corners=2, zerophase=True, **kwargs):
+def apply_filter(st, min_period=None, max_period=None, min_freq=None,
+                 max_freq=None, corners=2, zerophase=True, **kwargs):
     """
     Choose the appropriate filter depending on the ranges given.
     Either periods or frequencies can be given. Periods will be prioritized.
@@ -151,7 +57,7 @@ def filters(st, min_period=None, max_period=None, min_freq=None, max_freq=None,
         st.filter("bandpass", corners=corners, zerophase=zerophase,
                   freqmin=min_freq, freqmax=max_freq, **kwargs)
         logger.info(f"bandpass filter: {min_period} - {max_period}s w/ "
-                     f"{corners} corners")
+                    f"{corners} corners")
 
     # Minimum period only == lowpass filter
     elif min_period:
@@ -476,14 +382,13 @@ def stf_convolve(st, half_duration, source_decay=4., time_shift=None,
         time_offset_in_samp = int(time_offset * sampling_rate)
 
     # convolve each trace with the soure time function and time shift if needed
-    st_out = st.copy()
-    for tr in st_out:
+    for tr in st:
         if time_shift:
             tr.stats.starttime += time_shift
         data_out = np.convolve(tr.data, gaussian_stf, mode="same")
         tr.data = data_out
 
-    return st_out
+    return st
 
 
 
