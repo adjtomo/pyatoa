@@ -217,8 +217,6 @@ def test_select_window(mgmt_pre):
     """
     Ensure windows functionality works as advertised
     """
-    assert(mgmt_pre.config.pyflex_preset == "default")
-
     # Check that error is raised if insufficient workflow progress
     with pytest.raises(ManagerError):
         mgmt_pre.window()

@@ -97,7 +97,7 @@ def default_process(st, choice, inv=None, baz=None, min_period=None,
     # Convolve synthetic data with a Gaussian source time function
     if choice == "syn":
         if convolve_with_stf and half_dur is not None:
-            st_out= stf_convolve(st=st_out, half_duration=half_dur)
+            st_out = stf_convolve(st=st_out, half_duration=half_dur)
 
     return st_out
 

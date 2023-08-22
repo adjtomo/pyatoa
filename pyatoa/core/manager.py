@@ -294,14 +294,22 @@ class Manager:
         """
         self.__init__(ds=self.ds, event=self.event, config=self.config)
 
-    def write(self, ds=None):
+    def write_to_dataset(self, ds=None, choice=None):
         """
-        Write the data collected inside Manager to an ASDFDataSet,
+        Write the data collected inside Manager to an ASDFDataSet
 
         :type ds: pyasdf.asdf_data_set.ASDFDataSet or None
         :param ds: write to a given ASDFDataSet. If None, will look for
             internal attribute `self.ds` to write to. Allows overwriting to
             new datasets
+        :type choice: list or None
+        :param choice: choose which internal attributes to write, by default
+            writes all of the following:
+            'event': Event atttribute as a QuakeML
+            'inv':  Inventory attribute as a StationXML
+            'st_obs': Observed waveform under tag `config.observed_tag`
+            'st_syn': Synthetic waveform under tag `config.synthetic_tag`
+            'windows': Misfit windows
         """
         # Allow using both default and input datasets for writing. Check if we
         # can actually write to the dataset
@@ -313,6 +321,9 @@ class Manager:
         elif ds._ASDFDataSet__file.mode == "r":  # NOQA
             logger.warning("dataset opened in read-only mode, cannot write")
             return
+
+        if choice is None:
+            choice = ["event", "inv", "st_obs", "st_syn", "windows", "adjsrcs"]
 
         if self.event:
             try:
@@ -346,9 +357,18 @@ class Manager:
                                  f"already present, not added")
                     pass
         if self.windows:
-            self.save_windows(ds=ds, force=True)
+            logger.debug("saving misfit windows to ASDFDataSet")
+            add_misfit_windows(self.windows, ds, path=self.config.aux_path)
+        else:
+            logger.debug("Manager has no windows to save")
+
         if self.adjsrcs:
-            self.save_adjsrcs(ds=ds, force=True)
+            logger.debug("saving adjoint sources to ASDFDataSet")
+            add_adjoint_sources(adjsrcs=self.adjsrcs, ds=ds,
+                                path=self.config.aux_path,
+                                time_offset=self.stats.time_offset_sec)
+        else:
+            logger.debug("Manager has no adjoint sources to save")
 
     def write_adjsrcs(self, path="./", write_blanks=True):
         """
@@ -504,8 +524,8 @@ class Manager:
         self.standardize(standardize_to=standardize_to, force=force)
         self.preprocess(overwrite=overwrite, which=which, **kwargs)
         self.window(fix_windows=fix_windows, iteration=iteration,
-                    step_count=step_count, force=force, save=save)
-        self.measure(force=force, save=save)
+                    step_count=step_count, force=force)
+        self.measure(force=force)
 
     def flow_multiband(self, periods, plot=False, **kwargs):
         """
@@ -769,7 +789,7 @@ class Manager:
         return self
 
     def window(self, fix_windows=False, iteration=None, step_count=None,
-               force=False, save=True):
+               force=False):
         """
         Evaluate misfit windows using Pyflex. Save windows to ASDFDataSet.
         Allows previously defined windows to be retrieved from ASDFDataSet.
@@ -793,8 +813,6 @@ class Manager:
         :type force: bool
         :param force: ignore flag checks and run function, useful if e.g.
             external preprocessing is used that doesn't meet flag criteria
-        :type save: bool
-        :param save: save the gathered windows to an ASDF Dataset
         """
         # Pre-check to see if data has already been standardized
         self.check()
@@ -835,8 +853,6 @@ class Manager:
         else:
             self.select_windows_plus()
 
-        if save:
-            self.save_windows()
         logger.info(f"{self.stats.nwin} window(s) total found")
 
         return self
@@ -959,7 +975,7 @@ class Manager:
         self.rejwins = reject_dict
         self.stats.nwin = nwin
 
-    def measure(self, force=False, save=True):
+    def measure(self, force=False):
         """
         Measure misfit and calculate adjoint sources using PyAdjoint.
 
@@ -979,8 +995,6 @@ class Manager:
         :type force: bool
         :param force: ignore flag checks and run function, useful if e.g.
             external preprocessing is used that doesn't meet flag criteria
-        :type save: bool
-        :param save: save adjoint sources to ASDFDataSet
         """
         self.check()
 
@@ -1021,66 +1035,12 @@ class Manager:
 
         # Save adjoint source internally and to dataset
         self.adjsrcs = adjoint_sources
-        if save:
-            self.save_adjsrcs()
 
         # Run check to get total misfit
         self.check()
         logger.info(f"total misfit == {self.stats.misfit:.3f}")
 
         return self
-
-    def save_windows(self, ds=None, force=False):
-        """
-        Convenience function to save collected misfit windows into an 
-        ASDFDataSet with some preliminary checks
-
-        Auxiliary data tag is hardcoded as 'MisfitWindows'
-
-        :type ds: pyasdf.ASDFDataSet
-        :param ds: allow replacement of the internal `ds` dataset. If None,
-            will try to write to internal `ds`
-        :type force: bool
-        :param force: force saving windows even if Config says don't do it.
-            This is used by write() to bypass the default 'dont save' behavior
-        """
-        if ds is None:
-            ds = self.ds
-
-        if ds is None:
-            logger.debug("no ASDFDataSet, will not save windows")
-        elif not self.windows:
-            logger.debug("Manager has no windows to save")
-        else:
-            logger.debug("saving misfit windows to ASDFDataSet")
-            add_misfit_windows(self.windows, ds, path=self.config.aux_path)
-
-    def save_adjsrcs(self, ds=None, force=False):
-        """
-        Convenience function to save collected adjoint sources into an 
-        ASDFDataSet with some preliminary checks
-
-        Auxiliary data tag is hardcoded as 'AdjointSources'
-
-        :type ds: pyasdf.ASDFDataSet
-        :param ds: allow replacement of the internal `ds` dataset. If None,
-            will try to write to internal `ds`
-        :type force: bool
-        :param force: force saving windows even if Config says don't do it.
-            This is used by write() to bypass the default 'dont save' behavior
-        """
-        if ds is None:
-            ds = self.ds
-
-        if ds is None:
-            logger.debug("no ASDFDataSet, cannot save adjoint sources")
-        elif not self.adjsrcs:
-            logger.debug("Manager has no adjoint sources to save")
-        else:
-            logger.debug("saving adjoint sources to ASDFDataSet")
-            add_adjoint_sources(adjsrcs=self.adjsrcs, ds=ds,
-                                path=self.config.aux_path,
-                                time_offset=self.stats.time_offset_sec)
 
     def _format_windows(self):
         """
