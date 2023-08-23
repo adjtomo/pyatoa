@@ -19,13 +19,13 @@ def test_io_asdf(tmpdir):
     test_value = 9999.
 
     # Set some ridiculous values to check upon re-reading
-    cfg = Config(paths={"waveforms": test_path}, c_0=test_value,
-                 dt_sigma_min=test_value)
-
+    cfg = Config(pyflex_parameters={'c_0': 'test_value'}, 
+                 pyadjoint_parameters={'dt_sigma_min': 'test_value'}
+                 )
+ 
     with ASDFDataSet(os.path.join(tmpdir, "test_dataset.h5")) as ds:
         cfg.write(write_to=ds)
         cfg_check = Config(ds=ds, path="default")
-        assert cfg_check.paths["waveforms"] == [test_path]
         assert cfg_check.pyflex_config.c_0 == test_value
         assert cfg_check.pyadjoint_config.dt_sigma_min == test_value
 

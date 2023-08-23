@@ -11,8 +11,8 @@ from pysep.utils.io import read_stations
 from obspy import UTCDateTime, read_inventory
 from obspy.core.util.testing import streams_almost_equal
 from pyasdf import ASDFDataSet
-from pyatoa.utils import (adjoint, calculate, form, images, read, srcrcv,
-                          window, write)
+from pyatoa.utils import (adjoint, calculate, form, images, srcrcv, window, 
+                          write)
 
 
 @pytest.fixture

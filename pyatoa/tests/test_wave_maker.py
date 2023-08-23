@@ -65,7 +65,7 @@ def config():
     """
     Default Pyatoa Config object
     """
-    return Config(event_id="2018p130600", client="GEONET")
+    return Config(event_id="2018p130600")
 
 
 @pytest.fixture
