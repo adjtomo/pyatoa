@@ -325,7 +325,6 @@ class MapMaker:
 
         region = FlinnEngdahl().get_region(self.ev_lon, self.ev_lat)
 
-        # Need to use plot because basemap object has no annotate method
         self.ax.text(s=(f"{region.title()}\n"
                         f"{'-'*len(region)}\n"
                         f"{event_id} / {sta_id}\n"
