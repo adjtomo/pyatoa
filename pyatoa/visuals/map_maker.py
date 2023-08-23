@@ -45,8 +45,8 @@ class MapMaker:
         # Set up a few useful parameters that will be called repeatedly
         self.ev_lat = self.event.preferred_origin().latitude
         self.ev_lon = self.event.preferred_origin().longitude
-        self.sta_lat = inv[0][0][0].latitude
-        self.sta_lon = inv[0][0][0].longitude
+        self.sta_lat = inv[0][0].latitude
+        self.sta_lon = inv[0][0].longitude
 
         # Used for coordinate transforms between lat/lon and projection
         self.ref_proj = ccrs.PlateCarree()

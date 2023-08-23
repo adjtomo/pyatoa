@@ -2,10 +2,8 @@
 For writing various output files used by Pyatoa, Specfem and Seisflows
 """
 import os
-import glob
 import numpy as np
 from obspy.core.inventory.channel import Channel
-from pysep.utils.fmt import channel_code
 from pyatoa import logger
 from pyatoa.utils.form import format_event_name, format_iter, format_step
 
@@ -34,9 +32,10 @@ def write_inv_seed(inv, path="./", dir_structure="{sta}.{net}",
     :type file_template: str
     :param file_template: template for file naming, likely should not change 
         from default template
-    :type channels: str
-    :param channels: OPTIONAL, if inventory does not contain channels (e.g.,
-        if read from a SPECFEM STATIONS file), channels will be generated here.
+    :type components: str
+    :param components: OPTIONAL, if inventory does not contain components (e.g.,
+        if read from a SPECFEM STATIONS file), components will be filled in
+        automatically.
     :type channel_code: str
     :param channel_code: Explicitely defined default channel values for
     generating channels on the fly when none are provided by the inventory
