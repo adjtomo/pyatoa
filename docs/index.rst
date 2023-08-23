@@ -115,7 +115,7 @@ publication:
    :caption: Tutorials
 
    misfit
-   discovery
+   windows
    storage
    inspector
    standards
