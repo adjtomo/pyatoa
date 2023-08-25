@@ -3,41 +3,45 @@ Windowing Parameters
 
 `Pyflex <adjtomo.github.io/pyflex>`__ is a Python port of the FLEXWIN
 algorithm for automatically selecting windows between data and synthetic 
-waveforms for the purposes of seismic tomography.
+waveforms for seismic tomography.
 
-Below are a number of 'presets' for Pyflex which have been used for various
-tomography studies. They are provided as reference and starting points for
-determining the optimal set of windowing parameters for your own study.
-
-A small description is provided for each Pyflex preset. Only values which
-differ from the default values are provided.
+Below are a number of presets values for Pyflex which have been used for various
+tomography studies. They are provided as reference starting points for Users to
+determine the parameters required for their own studies.
 
 Descriptions of a few commonly used parameters that are not self explanatory:
 
-    1. Short Term Average Long Term Average
-        - ``stalta_waterlevel``: reject windows where sta/lta waveform dips
-          below this threshold value. Values between 0 and 1
-    2. Water level rejection
-        - ``c_0`` reject if window.stalta.min() < c_0 * stalta_waterlevel
-        - ``c_1`` min_acceptable_window_length = c_1 * T_min
-    3. Prominence rejection
-        - ``c_2`` reject if window.stalta.min() < c_2 * window.stalta.max()
-    4. Separation height in phase separation
-        - ``c_3a`` `d_stlta > c_3a * d_stalta_center * f_time`
-          where *d_stalta* is the current max height above min and
-          *d_stalta_center* is the central max height above min and
-          *f_time* is the time decay function
-        - ``c_3b`` d_time = separation between center of window and internal
-          maxima if `d_time > c_3b` then *f_time* is a time decay function else
-          it is 1 if `c_3b` goes down
-    5. Emergent start/stops and coda wave curtailing
-        - ``c_4a``: *time_decay_left = T_min * c_4a / dt*
-        - ``c_4b``: *time_decay_right: T_min * c_4b / dt*
+    - ``stalta_waterlevel``: reject windows where short term average over
+      long term average (STA/LTA) waveform dips below this threshold value.
+      Values between 0 and 1
+    - ``c_0``: STA/LTA water level; reject if
+      **window.stalta.min() < c_0 * stalta_waterlevel**
+    - ``c_1``: minimum acceptable window length; reject if
+      **min_acceptable_window_length = c_1 * T_min**
+    - ``c_2``: STA/LTA prominence rejection, reject if
+      **window.stalta.min() < c_2 * window.stalta.max()**
+    - ``c_3a``: Separation height in phase separation; reject if
+      **d_stlta > c_3a * d_stalta_center * f_time**
+      where *d_stalta* is the current max height above min and
+      *d_stalta_center* is the central max height above min and
+      *f_time* is the time decay function
+    - ``c_3b``: Separation height in phase separation; where
+      *d_time* = separation between center of window and internal
+      maxima. If **d_time > c_3b then *f_time* is a time decay function, else
+      it is 1 if `c_3b` goes down
+    - ``c_4a``: Curtail emergent signals; reject if
+      **time_decay_left = T_min * c_4a / dt**
+    - ``c_4b``: Curtail coda waves and decaying signals; reject if
+      **time_decay_right: T_min * c_4b / dt**
 
 Default
 ~~~~~~~
-The default windowing parameters set in ``pyflex.core.config.Config()``. All the
-remaining presets override the parameter values set here.
+The default windowing parameters set in ``pyflex.core.config.Config()``.
+
+.. note::
+
+    All the remaining presets only provide parameters if they overwrite the
+    Default parameters shown here.
 
 .. code:: yaml
 
@@ -71,29 +75,12 @@ remaining presets override the parameter values set here.
 
 -----------------------
 
-Homogeneous Halfspace
-~~~~~~~~~~~~~~~~~~~~~
-Very relaxed windowing parameters that should work with simple synthetics
-generated using a homogeneous halfspace 
-
-.. code:: yaml
-
-    stalta_waterlevel: 0.05
-    tshift_acceptance_level: 15.0
-    dlna_acceptance_level: 2.0
-    s2n_limit: 3.
-    min_surface_wave_velocity: 1.5
-    c_0: 0.7
-    c_1: 2.
-    c_3a: 3.0
-    c_3b: 2.0
-    c_4a: 2.5
-    c_4b: 12.0
 
 Maggi et al. (2009)
 ~~~~~~~~~~~~~~~~~~~
-The following windowing parameters are defined in Table 3 of Maggi et al. (2009)
-for various regions globally.
+The following windowing parameters are defined in Table 3 of
+`Maggi et al. (2009) <https://onlinelibrary.wiley.com/doi/abs/10.1111/j.1365-246X.2009.04099.x>`__
+for various regions and scales.
 
 Global (50--150s)
 `````````````````
@@ -196,16 +183,16 @@ Southern California (2--30s)
     c_4b: 6.0
 
 
-NZATOM_NORTH
-~~~~~~~~~~~~
+Chow et al. (2022)
+~~~~~~~~~~~~~~~~~~
 The following parameter sets were used to derive NZATOM_NORTH an adjoint
 tomography model for the North Island of New Zealand. The results of this study
-are published in Chow et al. (2020) and Chow etal. (2022a).
+are published in `Chow et al. (2022a) <https://agupubs.onlinelibrary.wiley.com/doi/epdf/10.1029/2021JB022865>`__.
 
 The parameter set is split into various inversion legs which tackle different
 passbands of the dataset.
 
-LEG 1 (15--30s)
+Leg 1 (15--30s)
 ```````````````````````
 .. code:: yaml
 
@@ -224,7 +211,7 @@ LEG 1 (15--30s)
     c_4a: 3.0
     c_4b: 10.0
 
-LEG 2 (10--30s)
+Leg 2 (10--30s)
 ```````````````````````
 .. code:: yaml
 
@@ -243,7 +230,7 @@ LEG 2 (10--30s)
     c_4a: 2.5
     c_4b: 12.0
 
-LEG 3 (8--30s)
+Leg 3 (8--30s)
 ``````````````````````
 .. code:: yaml
 
@@ -262,7 +249,7 @@ LEG 3 (8--30s)
     c_4a: 2.5
     c_4b: 12.0
 
-LEG 4 (6--30s)
+Leg 4 (6--30s)
 ``````````````````````
 .. code:: yaml
 
@@ -282,7 +269,7 @@ LEG 4 (6--30s)
     c_4a: 2.5
     c_4b: 12.0
 
-LEG 5 (4--30s)
+Leg 5 (4--30s)
 ``````````````````````
 .. code:: yaml
 
@@ -302,7 +289,7 @@ LEG 5 (4--30s)
     c_4a: 2.25
     c_4b: 9.0
 
-POSTHOC (6--30s) 
+Posthoc Analysis (6--30s)
 ````````````````````````
 This was used for posthoc evaluation of the final model using events not
 inverted for during the inversion.
@@ -325,15 +312,17 @@ inverted for during the inversion.
     c_4a: 2.5
     c_4b: 12.0
 
-RISTAU 1D (10--30s) 
+
+Ristau 1D (10--30s)
 ```````````````````````````
 Used for windowing synthetic waveforms generated using the 1D model of the
-North Island of New Zealand from Ristau (2008)
+North Island of New Zealand generated from `Ristau (2008) <https://pubs.geoscienceworld.org/ssa/srl/article/79/3/400/367690/Implementation-of-Routine-Regional-Moment-Tensor>`__
+and analyzed in `Chow et al. (2020) <https://doi.org/10.1093/gji/ggaa381>`__.
 
 .. code:: yaml
 
     stalta_waterlevel: 0.10
-    tshift_acceptance_level: 120  # based on sign-flip
+    tshift_acceptance_level: 120
     dlna_acceptance_level: 20
     cc_acceptance_level: 0675
     s2n_limit: 3
@@ -362,26 +351,6 @@ RISTAU 1D (8--30s)
     check_global_data_quality: True
     c_0: 0.7
     c_1: 2.5 
-    c_3a: 3.0
-    c_3b: 2.0
-    c_4a: 2.5
-    c_4b: 12.0
-
-ALASKA
-~~~~~~
-Values from group at University of Alaska Fairbanks performing regional studies
-of Alaska
-
-General
-```````
-.. code:: yaml
-
-    stalta_waterlevel: 0.18
-    tshift_acceptance_level: 4.0
-    dlna_acceptance_level: 1.5
-    cc_acceptance_level: 0.71
-    c_0: 0.7
-    c_1: 2.0
     c_3a: 3.0
     c_3b: 2.0
     c_4a: 2.5
