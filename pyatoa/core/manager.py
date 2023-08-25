@@ -11,20 +11,23 @@ import pyflex
 import pyadjoint
 import warnings
 
-from pysep.utils.fmt import channel_code
 from copy import deepcopy
 from obspy.signal.filter import envelope
 from pyasdf import ASDFWarning
 
 from pyatoa import logger
 from pyatoa.core.config import Config
-from pyatoa.utils.process import is_preprocessed
-from pyatoa.utils.asdf.load import load_windows, load_adjsrcs
-from pyatoa.utils.window import reject_on_global_amplitude_ratio
-from pyatoa.utils.srcrcv import gcd_and_baz
 from pyatoa.utils.asdf.add import add_misfit_windows, add_adjoint_sources
+
+from pyatoa.utils.asdf.load import load_windows, load_adjsrcs
+from pyatoa.utils.form import channel_code
+
 from pyatoa.utils.process import (apply_filter, trim_streams, zero_pad,
-                                  match_npts, normalize, stf_convolve)
+                                  match_npts, normalize, stf_convolve,
+                                  is_preprocessed)
+from pyatoa.utils.srcrcv import gcd_and_baz
+from pyatoa.utils.window import reject_on_global_amplitude_ratio
+
 from pyatoa.scripts.load_example_data import load_example_data
 
 from pyatoa.visuals.wave_maker import WaveMaker
