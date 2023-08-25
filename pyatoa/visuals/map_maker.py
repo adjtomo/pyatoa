@@ -45,8 +45,8 @@ class MapMaker:
         # Set up a few useful parameters that will be called repeatedly
         self.ev_lat = self.event.preferred_origin().latitude
         self.ev_lon = self.event.preferred_origin().longitude
-        self.sta_lat = inv[0][0][0].latitude
-        self.sta_lon = inv[0][0][0].longitude
+        self.sta_lat = inv[0][0].latitude
+        self.sta_lon = inv[0][0].longitude
 
         # Used for coordinate transforms between lat/lon and projection
         self.ref_proj = ccrs.PlateCarree()
@@ -60,7 +60,6 @@ class MapMaker:
         self.fig, self.ax, self.projection = self.initiate_figure(
             figsize, dpi, figure, gridspec
         )
-
 
     def define_bounding_box(self, corners=None, corner_buffer_deg=2):
         """
@@ -317,16 +316,20 @@ class MapMaker:
         gc_dist, baz = gcd_and_baz(self.event, self.inv[0][0])
         origin_time = self.event.origins[0].time
         depth = self.event.preferred_origin().depth * 1E-3
-        magnitude = self.event.preferred_magnitude().mag
-        mag_type = self.event.preferred_magnitude().magnitude_type
+        if self.event.preferred_magnitude() is not None:
+            magnitude = self.event.preferred_magnitude().mag
+            mag_type = self.event.preferred_magnitude().magnitude_type
+            mag_str = f"{mag_type} {magnitude:.2f}\n"
+        else:
+            mag_str = "Magnitude info unavailable\n"
+
         region = FlinnEngdahl().get_region(self.ev_lon, self.ev_lat)
 
-        # Need to use plot because basemap object has no annotate method
         self.ax.text(s=(f"{region.title()}\n"
                         f"{'-'*len(region)}\n"
                         f"{event_id} / {sta_id}\n"
                         f"{origin_time.format_iris_web_service()}\n"
-                        f"{mag_type} {magnitude:.2f}\n"
+                        f"{mag_str}"
                         f"Depth: {depth:.2f} km\n"
                         f"Dist: {gc_dist:.2f} km\n"
                         f"BAz: {baz:.2f}{DEGREE_CHAR}\n"

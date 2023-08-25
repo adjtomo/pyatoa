@@ -6,10 +6,37 @@ various bits of data required, as well as a few standardized string formatters
 to keep everything playing nice. Functions here will aid in reshaping data
 into the correct formats.
 """
-import os
 from pyasdf import ASDFDataSet
-from pysep.utils.mt import Source
 from obspy.core.event import Event
+
+
+def channel_code(dt):
+    """
+    Specfem outputs seismograms with channel band codes set by IRIS. Instrument
+    codes are always X for synthetics, but band code will vary with the sampling
+    rate of the data, return the correct code given a sampling rate.
+    Taken from Appenix B of the Specfem3D cartesian manual (June 15, 2018)
+
+    :type dt: float
+    :param dt: sampling rate of the data in seconds
+    :rtype: str
+    :return: band code as specified by Iris
+    :raises KeyError: when dt is specified incorrectly
+    """
+    if dt >= 1:
+        return "L"  # long period
+    elif 0.1 < dt < 1:
+        return "M"  # mid period
+    elif 0.0125 < dt <= 0.1:
+        return "B"  # broad band
+    elif 0.001 <= dt <= 0.0125:
+        return "H"  # high broad band
+    elif 0.004 <= dt < 0.001:
+        return "C"
+    elif 0.001 <= dt < 0.0002:
+        return "F"
+    else:
+        raise KeyError("Channel code does not exist for this value of 'dt'")
 
 
 def format_iter(iteration):
@@ -71,7 +98,7 @@ def format_event_name(ds_or_event):
     :return: the event name to be used for naming schema in the workflow
     """
     # Extract the resource id dependent on the input file type
-    if isinstance(ds_or_event, (Event, Source)):
+    if isinstance(ds_or_event, Event):
         rid = ds_or_event.resource_id.id
     elif isinstance(ds_or_event, str):
         rid = ds_or_event
@@ -100,44 +127,8 @@ def format_event_name(ds_or_event):
     # USGS ANSS ComCat: quakeml:us.anss.org/event/20005ysu
     elif "ANSS" in rid_up:
         return rid.split("event/")[-1]
-    # SOURCE pyatoa.read.read_specfem2d_source: pyatoa:source/*/event
-    elif "SOURCE" in rid_up:
-        return rid.split("/")[-2]
-    # PYATOA pyatoa.read.read_force_solution: pyatoa:source/
-    elif "PYATOA" in rid_up:
-        return rid.split("source/")[-1]
     else:
         raise NotImplementedError(f"Unexpected resource id format '{rid}', "
                                   "Please raise a GitHub issue and the "
                                   "developers will address this")
-
-
-def convert_stations_to_seed(stations_file="./STATIONS",
-                             path_to_save_seed="./seed", **kwargs):
-    """
-    A convenience function to format a SPECFEM file into SeisFlows3 ready files.
-    Convert a SPECFEM STATIONS file into a directory of SEED formatted
-    StationXML files which are REQUIRED by a Pyatoa + SeisFlows3 workflow.\
-
-    Kwargs are passed to pyatoa.utils.write.write_inv_seed()
-    See above function for available options on writing SEED StationXML files
-
-    :type stations_file: str
-    :param stations_file: path to the STATIONS file defined in SPECFEM format
-    :type path_to_save_seed: str
-    :param path_to_save_seed: path to save the output SEED formatted
-        StationXML files
-    """
-    # Late imports to avoid circular ImportErrors
-    from pyatoa.utils.read import read_stations
-    from pyatoa.utils.write import write_inv_seed
-
-    if not os.path.exists(path_to_save_seed):
-        os.mkdir(path_to_save_seed)
-
-    # Read SPECFEM Stations file
-    inv = read_stations(stations_file)
-
-    # Write inventory as a collection of StationXML files
-    write_inv_seed(inv=inv, path=path_to_save_seed, **kwargs)
 

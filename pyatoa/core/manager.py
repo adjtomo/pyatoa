@@ -4,24 +4,30 @@ A class to control workflow and temporarily store and manipulate data
 """
 import os
 import obspy
+import matplotlib as mpl
+import matplotlib.pyplot as plt
 import numpy as np
 import pyflex
 import pyadjoint
 import warnings
-from pysep.utils.fmt import channel_code
+
 from copy import deepcopy
 from obspy.signal.filter import envelope
 from pyasdf import ASDFWarning
+
 from pyatoa import logger
 from pyatoa.core.config import Config
-from pyatoa.core.gatherer import Gatherer, GathererNoDataException
-from pyatoa.utils.process import is_preprocessed
-from pyatoa.utils.asdf.load import load_windows, load_adjsrcs
-from pyatoa.utils.window import reject_on_global_amplitude_ratio
-from pyatoa.utils.srcrcv import gcd_and_baz
 from pyatoa.utils.asdf.add import add_misfit_windows, add_adjoint_sources
-from pyatoa.utils.process import (default_process, trim_streams, zero_pad,
-                                  match_npts)
+
+from pyatoa.utils.asdf.load import load_windows, load_adjsrcs
+from pyatoa.utils.form import channel_code
+
+from pyatoa.utils.process import (apply_filter, trim_streams, zero_pad,
+                                  match_npts, normalize, stf_convolve,
+                                  is_preprocessed)
+from pyatoa.utils.srcrcv import gcd_and_baz
+from pyatoa.utils.window import reject_on_global_amplitude_ratio
+
 from pyatoa.scripts.load_example_data import load_example_data
 
 from pyatoa.visuals.wave_maker import WaveMaker
@@ -74,6 +80,7 @@ class ManagerStats(dict):
         """Convenience function to reset stats to None"""
         self.__init__()
 
+
 class Manager:
     """
     Pyatoas core workflow object.
@@ -85,13 +92,15 @@ class Manager:
     """
     def __init__(self, config=None, ds=None, event=None, st_obs=None,
                  st_syn=None, inv=None, windows=None, staltas=None,
-                 adjsrcs=None, gcd=None, baz=None, gatherer=None):
+                 adjsrcs=None, gcd=None, baz=None):
         """
         Initiate the Manager class with or without pre-defined attributes.
 
         .. note::
-            If `ds` is not given in data can only be gathered via the
-            config.paths attribute. Data will also not be saved.
+
+            If `ds` is not given in data can only be provided through init
+            or by passing them directly to the Manager. Data will also not be
+            saved.
 
         :type config: pyatoa.core.config.Config
         :param config: configuration object that contains necessary parameters
@@ -116,9 +125,6 @@ class Manager:
         :param gcd: great circle distance between source and receiver in km
         :type baz: float
         :param baz: Backazimuth between source and receiver in units of degrees
-        :type gatherer: pyatoa.core.gatherer.Gatherer
-        :param gatherer: A previously instantiated Gatherer class.
-            Should not have to be passed in by User, but is used for reset()
         """
         self.ds = ds
         self.inv = inv
@@ -141,13 +147,6 @@ class Manager:
             origintime = self.event.preferred_origin().time
         else:
             origintime = None
-
-        # Instantiate a Gatherer object and pass along info
-        if gatherer is None:
-            self.gatherer = Gatherer(config=self.config, ds=self.ds,
-                                     origintime=origintime)
-        else:
-            self.gatherer = gatherer
 
         # Copy Streams to avoid affecting original data
         if st_obs is not None:
@@ -289,20 +288,33 @@ class Manager:
     def reset(self):
         """
         Restart workflow by deleting all collected data in the Manager, but
-        retain dataset, event, config, and gatherer so a new station can be
+        retain dataset, event, config, so a new station can be
         processed with the same configuration as the previous workflow.
         """
-        self.__init__(ds=self.ds, event=self.event, config=self.config,
-                      gatherer=self.gatherer)
+        self.__init__(ds=self.ds, event=self.event, config=self.config)
 
-    def write(self, ds=None):
+    def write_to_dataset(self, ds=None, choice=None):
         """
-        Write the data collected inside Manager to an ASDFDataSet,
+        Write the data collected inside Manager to an ASDFDataSet
 
         :type ds: pyasdf.asdf_data_set.ASDFDataSet or None
         :param ds: write to a given ASDFDataSet. If None, will look for
             internal attribute `self.ds` to write to. Allows overwriting to
             new datasets
+        :type choice: list or None
+        :param choice: choose which internal attributes to write, by default
+            writes all of the following:
+            'event': Event atttribute as a QuakeML
+            'inv':  Inventory attribute as a StationXML
+            'st_obs': Observed waveform under tag `config.observed_tag`
+            'st_syn': Synthetic waveform under tag `config.synthetic_tag`
+            'windows': Misfit windows collected by Pyflex are stored under
+                `auxiliary_data.MisfitWindow`
+            'adjsrcs': Adjoint sources created by Pyadjoint are stored under
+                `auxiliary_data.AdjointSources`
+            'config': the Pyatoa Config object is stored under
+                'auxiliary_data.Config' and can be used to re-load the Manager
+                and re-do processing
         """
         # Allow using both default and input datasets for writing. Check if we
         # can actually write to the dataset
@@ -315,18 +327,22 @@ class Manager:
             logger.warning("dataset opened in read-only mode, cannot write")
             return
 
-        if self.event:
+        if choice is None:
+            choice = ["event", "inv", "st_obs", "st_syn", "windows", "adjsrcs",
+                      "config"]
+
+        if self.event and "event" in choice:
             try:
                 ds.add_quakeml(self.event)
             except ValueError:
                 logger.debug("Event already present, not added")
-        if self.inv:
+        if self.inv and "inv" in choice:
             try:
                 ds.add_stationxml(self.inv)
             except TypeError:
                 logger.debug("StationXML already present, not added")
         # Redirect PyASDF 'waveforms already present' warnings for cleaner look
-        if self.st_obs:
+        if self.st_obs and "st_obs" in choice:
             with warnings.catch_warnings():
                 warnings.filterwarnings("error")
                 try:
@@ -336,7 +352,7 @@ class Manager:
                     logger.debug(f"{self.config.observed_tag} waveform already "
                                  f"present, not added")
                     pass
-        if self.st_syn:
+        if self.st_syn and "st_syn" in choice:
             with warnings.catch_warnings():
                 warnings.filterwarnings("error")
                 try:
@@ -346,10 +362,23 @@ class Manager:
                     logger.debug(f"{self.config.synthetic_tag} waveform "
                                  f"already present, not added")
                     pass
-        if self.windows:
-            self.save_windows(ds=ds, force=True)
-        if self.adjsrcs:
-            self.save_adjsrcs(ds=ds, force=True)
+        if self.windows and "windows" in choice:
+            logger.debug("saving misfit windows to ASDFDataSet")
+            add_misfit_windows(self.windows, ds, path=self.config.aux_path)
+        if self.adjsrcs and "adjsrcs" in choice:
+            logger.debug("saving adjoint sources to ASDFDataSet")
+            add_adjoint_sources(adjsrcs=self.adjsrcs, ds=ds,
+                                path=self.config.aux_path,
+                                time_offset=self.stats.time_offset_sec)
+
+        if self.config and "config" in choice:
+            with warnings.catch_warnings():
+                warnings.filterwarnings("error")
+                try:
+                    self.config.write(write_to=ds, fmt="asdf")
+                except ASDFWarning:
+                    logger.debug(f"config already present, not added")
+                    pass
 
     def write_adjsrcs(self, path="./", write_blanks=True):
         """
@@ -483,38 +512,64 @@ class Manager:
         self.check()
         return self
 
-    def flow(self, **kwargs):
+    def flow(self, standardize_to="syn", fix_windows=False, iteration=None,
+             step_count=None, **kwargs):
         """
         A convenience function to run the full workflow with a single command.
         Does not include gathering. Takes kwargs related to all underlying
         functions.
+
         .. code:: python
+
             mgmt = Manager()
             mgmt.flow() == mgmt.standardize().preprocess().window().measure()
+
+        :type standardize_to: str
+        :param standardize_to: choice of 'obs' or 'syn' to use one of the time
+            series to standardize (resample, trim etc.) the other.
+        :type fix_windows: bool
+        :param fix_windows: if True, will attempt to retrieve saved windows from
+            an ASDFDataSet under the `iteration` and `step_count` tags to use
+            during misfit quantification rather than measuring new windows
+        :type iteration: int or str
+        :param iteration: if 'fix_windows' is True, look for windows in this
+            iteration. If None, will check the latest iteration/step_count
+            in the given dataset
+        :type step_count: int or str
+        :param step_count: if 'fix_windows' is True, look for windows in this
+            step_count. If None, will check the latest iteration/step_count
+            in the given dataset
         :raises ManagerError: for any controlled exceptions
         """
-        force = kwargs.get("force", False)
-        standardize_to = kwargs.get("standardize_to", "syn")
-        fix_windows = kwargs.get("fix_windows", False)
-        iteration = kwargs.get("iteration", None)
-        step_count = kwargs.get("step_count", None)
-        overwrite = kwargs.get("overwrite", None)
-        which = kwargs.get("which", "both")
-        save = kwargs.get("save", True)
+        if fix_windows:
+            assert(self.ds is not None), \
+                f"`fix_windows` requires ASDFDataSet `ds`"
+            assert(iteration is not None and step_count is not None), (
+                f"`fix_windows` requires 'iteration' and 'step_count' to access"
+                f"windows from ASDFDataSet"
+            )
 
-        self.standardize(standardize_to=standardize_to, force=force)
-        self.preprocess(overwrite=overwrite, which=which, **kwargs)
+        self.standardize(standardize_to=standardize_to)
+        self.preprocess(**kwargs)
         self.window(fix_windows=fix_windows, iteration=iteration,
-                    step_count=step_count, force=force, save=save)
-        self.measure(force=force, save=save)
+                    step_count=step_count)
+        self.measure()
 
-    def flow_multiband(self, periods, plot=False, **kwargs):
+    def flow_multiband(self, periods, standardize_to="syn", fix_windows=False,
+                       iteration=None, step_count=None, plot=False, **kwargs):
         """
         Run the full workflow for a number of distinct period bands, returning
         a final set of adjoint sources generated as a summation of adjoint
-        sources from each of these period bands.
+        sources from each of these period bands. Allows for re-using windows
+        collected from the first set of period bands to evaluate adjoint sources
+        from the remaining period bands.
+
+        .. note::
+
+            Kwargs are passed through to Manager.preprocess() function only
 
         .. rubric::
+
             manager.flow_multiband(periods=[(1, 5), (10, 30), (40, 100)])
 
         :type periods: list of tuples
@@ -522,6 +577,21 @@ class Manager:
             generate windows and adjoint sources for. Overwrites the Config's
             internal `min_period` and `max_period` parameters. The final
             adjoint source will be a summation of all adjoint sources generated.
+        :type standardize_to: str
+        :param standardize_to: choice of 'obs' or 'syn' to use one of the time
+            series to standardize (resample, trim etc.) the other.
+        :type fix_windows: bool
+        :param fix_windows: if True, will attempt to retrieve saved windows from
+            an ASDFDataSet under the `iteration` and `step_count` tags to use
+            during misfit quantification rather than measuring new windows
+        :type iteration: int or str
+        :param iteration: if 'fix_windows' is True, look for windows in this
+            iteration. If None, will check the latest iteration/step_count
+            in the given dataset
+        :type step_count: int or str
+        :param step_count: if 'fix_windows' is True, look for windows in this
+            step_count. If None, will check the latest iteration/step_count
+            in the given dataset
         :type plot: str
         :param plot: name of figure if given, will plot waveform and map for
             each period band and append period band to figure name `plot`
@@ -530,46 +600,42 @@ class Manager:
             measurements from each of the period bands
         :raises ManagerError: for any controlled exceptions
         """
-        force = kwargs.get("force", False)
-        standardize_to = kwargs.get("standardize_to", "syn")
-        fix_windows = kwargs.get("fix_windows", False)
-        iteration = kwargs.get("iteration", None)
-        step_count = kwargs.get("step_count", None)
-        overwrite = kwargs.get("overwrite", None)
-        which = kwargs.get("which", "both")
-        save = kwargs.get("save", True)
-
         # Copy these waveforms to overwrite for each new period band
         st_obs_raw = self.st_obs.copy()
         st_syn_raw = self.st_syn.copy()
 
+        # Do preprocessing once since
+        self.check()
+        self.standardize(standardize_to=standardize_to)
+        self.preprocess(**kwargs)
+
         tags = []
-        windows, adjsrcs  = {}, {}
+        multiband_adjsrcs, multiband_windows = {}, {}
         for period in periods:
-            tag = f"{period[0]}_{period[1]}"  # e.g., 5_10
+            tag = f"{period[0]}-{period[1]}"  # e.g., '5-10s'
             tags.append(tag)
-            logger.info(f"calculating adjoint source for period band {tag}s")
+            logger.info(f"calculating adjoint source period band {tag}s")
 
             self.config.min_period, self.config.max_period = period
 
             # Standard flow()
             try:
                 self.check()
-                self.standardize(standardize_to=standardize_to, force=force)
-                self.preprocess(overwrite=overwrite, which=which, **kwargs)
+                self.standardize(standardize_to=standardize_to)
+                self.preprocess(**kwargs)
                 self.window(fix_windows=fix_windows, iteration=iteration,
-                            step_count=step_count, force=force, save=save)
-                self.measure(force=force, save=save)
+                            step_count=step_count)
+                self.measure()
                 if plot:
                     save = f"{plot}_{tag}.png"
                     self.plot(choice="both", save=save)
             except ManagerError as e:
-                logger.warning(f"period band {tag}s encountered error {e}, "
-                               f"cannot return adjoint source for {tag}s")
+                logger.warning(f"period band {tag}s error {e}, "
+                               f"cannot return adjoint source for {tag}")
 
             # Save results of the processing step
-            adjsrcs[tag] = self.adjsrcs
-            windows[tag] = self.windows
+            multiband_adjsrcs[tag] = self.adjsrcs or None
+            multiband_windows[tag] = self.windows or None
 
             # Reset for the next run. Don't do a full reset because that gets
             # rid of metadata too, which we need for response removal
@@ -579,126 +645,76 @@ class Manager:
             self.st_syn = st_syn_raw.copy()
             self.stats.reset()
 
-        # Finally, combine all the adjoint sources into a single trace
-        for comp in [tr.stats.component for tr in self.st_syn]:
-            adjsrcs[comp] = np.zeros(len(self.st_syn[0].data))
-            n = 0  # used to average over the number of summed adjoint sources
-            for tag in tags:
-                # Accessing each component of each period band and summing
-                # together to generate the final adjoint source
-                if comp in adjsrcs[tag]:
-                    adjsrcs[comp] += adjsrcs[tag][comp].adjoint_source
-                    n += 1
-            # Average the summation over adjoint sources by the number of inputs
-            if n:
-                adjsrcs[comp] /= n
+        # Average all adjoint sources into a single object and collect windows
+        self.windows, self.adjsrcs = \
+            self._combine_mutliband_results(multiband_windows,
+                                            multiband_adjsrcs)
 
-        return windows, adjsrcs
-
-    def gather(self, code=None, choice=None, event_id=None, **kwargs):
+    def _combine_mutliband_results(self, windows, adjsrcs):
         """
-        Gather station dataless and waveform data using the Gatherer class.
-        In order collect observed waveforms, dataless, and finally synthetics.
+        Function flow_multiband() generates multiple sets of adjoint sources
+        for a variety of period bands, however the User is only interested in a
+        single adjoint source which is the average of all of these adjoint
+        sources.
 
-        For valid kwargs see methods in :doc:`core.gatherer`
+        This function will take the multiple sets of adjoint sources and sum
+        them accordingly, returning a single set of AdjointSource objects which
+        can be used the same as any `adjsrc` attribute returned from `measure`.
 
-        :type code: str
-        :param code: Station code following SEED naming convention.
-            This must be in the form NN.SSSS.LL.CCC (N=network, S=station,
-            L=location, C=channel). Allows for wildcard naming. By default
-            the pyatoa workflow wants three orthogonal components in the N/E/Z
-            coordinate system. Example station code: NZ.OPRZ.10.HH?
-        :type choice: list
-        :param choice: allows user to gather individual bits of data, rather
-            than gathering all. Allowed: 'inv', 'st_obs', 'st_syn'
-        :raises ManagerError: if any part of the gathering fails.
-
-        Keyword Arguments
-        ::
-            bool try_fm:
-                Try to retrieve and append focal mechanism information to the
-                Event object.
-            str prefix:
-                Prefix for event id when searching for event information,
-                can be used to search ordered files e.g., CMTSOLUTION_001
-            str suffix:
-                Suffix for event id when searching for event information
-            str station_level:
-                The level of the station metadata if retrieved using the ObsPy
-                Client. Defaults to 'response'
-            str resp_dir_template:
-                Directory structure template to search for response files.
-                By default follows the SEED convention:
-                'path/to/RESPONSE/{sta}.{net}/'
-            str resp_fid_template:
-                Response file naming template to search for station dataless.
-                By default, follows the SEED convention
-                'RESP.{net}.{sta}.{loc}.{cha}'
-            str obs_dir_template:
-                directory structure to search for observation data. Follows the
-                SEED convention: 'path/to/obs_data/{year}/{net}/{sta}/{cha}'
-            str obs_fid_template:
-                File naming template to search for observation data. Follows the
-                SEED convention: '{net}.{sta}.{loc}.{cha}*{year}.{jday:0>3}'
-            str syn_cfgpath:
-                Config.cfgpaths key to search for synthetic data. Defaults to
-                'synthetics', but for the may need to be set to 'waveforms' in
-                certain use-cases, e.g. synthetics-synthetic inversions.
-            str syn_unit:
-                Optional argument to specify the letter used to identify the
-                units of the synthetic data: For Specfem3D: ["d", "v", "a", "?"]
-                'd' for displacement, 'v' for velocity,  'a' for acceleration.
-                Wildcards okay. Defaults to '?'
-            str syn_dir_template:
-                Directory structure template to search for synthetic waveforms.
-                Defaults to empty string
-            str syn_fid_template:
-                The naming template of synthetic waveforms defaults to:
-                "{net}.{sta}.*{cmp}.sem{syn_unit}"
+        :type adjsrcs: dict of dicts
+        :param adjsrcs: a collection of dictionaries whose keys are the
+            period band set in `flow_multiband(periods)` and whose values are
+            dictionaries returned in `Manager.adjsrcs` from `Manager.measure()`
+        :rtype: (dict of Windows, dict of AdjointSource)
+        :return: a dictionary of Windows, and AdjointSource objects for each
+            component in the componet list. Adjoint sources and misfits
+            are the average of all input `adjsrcs` for the given `periods` range
         """
-        # Default to gathering all data
-        if choice is None:
-            choice = ["event", "inv", "st_obs", "st_syn"]
-        try:
-            # Attempt to gather event information before waveforms/metadata
-            if "event" in choice and self.event is None:
-                if event_id is None:
-                    event_id = self.config.event_id
-                self.event = self.gatherer.gather_event(event_id, **kwargs)
-            if code is not None:
-                logger.info(f"gathering data for {code}")
-                if "st_obs" in choice:
-                    # Ensure observed waveforms gathered before synthetics and
-                    # metadata. If this fails, no point to gathering the rest
-                    self.st_obs = self.gatherer.gather_observed(code, **kwargs)
-                if "st_syn" in choice:
-                    self.st_syn = self.gatherer.gather_synthetic(code, **kwargs)
-                # Allow StationXML gathering to fail, e.g., with synthetic data
-                # we will not have/need response informatino
-                if "inv" in choice:
-                    try:
-                        self.inv = self.gatherer.gather_station(code, **kwargs)
-                    except GathererNoDataException as e:
-                        logger.warning(f"Could not find matching StationXML "
-                                       f"for {code}, setting 'inv' attribute "
-                                       f"to None")
-                        self.inv = None
+        adjsrcs_out = {}
+        windows_out = {}
+        for comp in self.config.component_list:
+            n = 0
+            windows_out[comp] = []
+            for tag, adjsrc_dict in adjsrcs.items():
+                # Sometimes adjoint sources are empty for a given period range
+                # which likely means windows are also empty
+                if not adjsrc_dict:
+                    continue
 
-            return self
-        except GathererNoDataException as e:
-            # Catch the Gatherer exception and redirect as ManagerError 
-            # so that it can be caught by flow()
-            logger.warning(e, exc_info=False)
-            raise ManagerError(
-                f"Data Gatherer could not find some data: {e}") from e
-        except Exception as e:
-            # Gathering should be robust, but if something slips through, dont
-            # let it kill a workflow, display and raise ManagerError
-            logger.warning(e, exc_info=True)
-            raise ManagerError(
-                f"Uncontrolled error in data gathering: {e}") from e
+                adjsrc = adjsrc_dict[comp]
+                # Set a template adjoint source whose attrs. that will change
+                if comp not in adjsrcs_out:
+                    adjsrcs_out[comp] = deepcopy(adjsrc)
+                    adjsrcs_out[comp].min_period = 1E6  # very large number
+                    adjsrcs_out[comp].max_period = 0
+                    adjsrcs_out[comp].misfit = 0
+                    adjsrcs_out[comp].window_stats = []
+                    adjsrcs_out[comp].windows = []
+                    adjsrcs_out[comp].adjoint_source = adjsrc.adjoint_source * 0
 
-    def standardize(self, force=False, standardize_to="syn"):
+                # Windows are easy, simply append Windows objects to a list
+                try:
+                    windows_out[comp] += windows[tag][comp]
+                except TypeError:
+                    pass
+
+                # Set internal attributes as collections of other attributes
+                adjsrcs_out[comp].min_period = min(adjsrc.min_period,
+                                                   adjsrcs_out[comp].min_period)
+                adjsrcs_out[comp].max_period = max(adjsrc.max_period,
+                                                   adjsrcs_out[comp].max_period)
+                adjsrcs_out[comp].misfit += adjsrc.misfit
+                adjsrcs_out[comp].windows += adjsrc.windows
+                adjsrcs_out[comp].window_stats += adjsrc.window_stats
+                adjsrcs_out[comp].adjoint_source += adjsrc.adjoint_source
+                n += 1
+            # Normalize based on the number of input adjoint sources
+            adjsrcs_out[comp].misfit /= n
+            adjsrcs_out[comp].adjoint_source /= n
+
+        return windows_out, adjsrcs_out
+
+    def standardize(self, force=False, standardize_to="syn", normalize_to=None):
         """
         Standardize the observed and synthetic traces in place. 
         Ensures Streams have the same starttime, endtime, sampling rate, npts.
@@ -710,7 +726,13 @@ class Manager:
         :param standardize_to: allows User to set which Stream conforms to which
             by default the Observed traces should conform to the Synthetic ones
             because exports to Specfem should be controlled by the Synthetic
-            sampling rate, npts, etc.
+            sampling rate, npts, etc. Choices are 'obs' and 'syn'.
+        :type normalize_to: str
+        :param normalize_to: allow for normalizing the amplitudes of the two
+            traces. Choices are:
+            'obs': normalize synthetic waveforms to the max amplitude of obs
+            'syn': normalize observed waveform to the max amplitude of syn
+            'one': normalize both waveforms so that their max amplitude is 1
         """
         self.check()
         if not self.stats.len_obs or not self.stats.len_syn:
@@ -745,6 +767,14 @@ class Manager:
             force={"obs": "a", "syn": "b"}[standardize_to]
             )
 
+        # Allow normalization of waveform amplitudes to one another or to
+        # a given value
+        if normalize_to is not None:
+            self.st_obs, self.st_syn = normalize(
+                st_a=self.st_obs, st_b=self.st_syn,
+                choice={"obs": "a", "syn": "b", "one": "one"}[normalize_to]
+            )
+
         # Determine if synthetics start before the origintime
         if hasattr(self.st_syn[0].stats, "time_offset"):
             self.stats.time_offset_sec = self.st_syn[0].stats.time_offset
@@ -767,84 +797,117 @@ class Manager:
 
         return self
 
-    def preprocess(self, which="both", overwrite=None, **kwargs):
+    def preprocess(self, which="both", filter_=True, corners=2,
+                   remove_response=False, taper_percentage=0.05, zerophase=True,
+                   normalize_to=None, convolve_with_stf=True,
+                   half_duration=None, **kwargs):
         """
-        Preprocess observed and synthetic waveforms in place.
-        Default preprocessing tasks: Remove response (observed), rotate, filter,
-        convolve with source time function (synthetic).
+        Apply a simple, default preprocessing scheme to observed and synthetic
+        waveforms in place.
 
-        .. note::
-            Default preprocessing can be overwritten using a
-            user-defined function that takes Manager and choice as inputs
-            and outputs an ObsPy Stream object.
+        Default preprocessing tasks: Remove response (optional),
+        rotate (optional), filter, convolve with source time function (optional)
 
-        .. note::
-            Documented kwargs only apply to default preprocessing.
+        User is free to skip this step and perform their own preprocessing on
+        `Manager.st_obs` and `Manager.st_syn` if they require their own unique
+        processing workflow.
 
         :type which: str
         :param which: "obs", "syn" or "both" to choose which stream to process
-            defaults to both
-        :type overwrite: function
-        :param overwrite: If a function is provided, it will overwrite the 
-            standard preprocessing function. All arguments that are given
-            to the standard preprocessing function will be passed as kwargs to
-            the new function. This allows for customized preprocessing
-
-        Keyword Arguments
-        ::
-            int water_level:
-                water level for response removal
-            float taper_percentage:
-                amount to taper ends of waveform
-            bool remove_response:
-                remove instrument response using the Manager's inventory object.
-                Defaults to True
-            bool apply_filter:
-                filter the waveforms using the Config's min_period and
-                max_period parameters. Defaults to True
-            bool convolve_with_stf:
-                Convolve synthetic data with a Gaussian source time function if
-                a half duration is provided.
-            bool rotate_to_rtz:
-                Use the `rotate_baz` variable to rotate streams
-                from ZNE components to RTZ
+            defaults to "both"
+        :type filter_: bool
+        :param filter_: filter data using Config.min_period and Config.max_period
+            with `corners` filter corners. Apply tapers and demeans before
+            and after application of filter.
+        :type taper_percentage: float
+        :param taper_percentage: percentage [0, 1] of taper to apply to head and
+            tail of the data before and after preprocessing
+        :type corners: int
+        :param corners: number of filter corners to apply if `filter`==True
+        :type zerophase: bool
+        :param zerophase: apply a zerophase filter (True) or not (False).
+            Zerophase filters are run back and forth meaning no phase shift
+            is applied, but more waveform distorition may be present.
+        :type remove_response: bool
+        :param remove_response: flag, remove instrument response from
+            'obs' type data using the provided `inv`. Defaults to False.
+            Kwargs are passed directly to the the ObsPy `remove_response`
+            function. See ObsPy docs for available options.
+        :type convolve_with_stf: bool
+        :param convolve_with_stf: flag, convolve 'syn' type data with a Gaussian
+            source time function to mimic a finite source. Used when half
+            half duration in seismic simulations is set to 0.
+            Defaults to True and relies on parameters `half_duration`
+        :type half_duration: float
+        :param half_duration: Source time function half duration in units of
+            seconds. Only used if `convolve_with_stf`==True
+        :type normalize_to: str
+        :param normalize_to: allow for normalizing the amplitudes of the two
+            traces. Choices are:
+            'obs': normalize synthetic waveforms to the max amplitude of obs
+            'syn': normalize observed waveform to the max amplitude of syn
+            'one': normalize both waveforms so that their max amplitude is 1
         """
-        if overwrite:
-            assert(hasattr(overwrite, '__call__')), "overwrite must be function"
-            preproc_fx = overwrite
+        if which.lower() == "obs":
+            preproc_list = {"obs": self.st_obs}
+        elif which.lower() == "syn":
+            preproc_list = {"syn": self.st_syn}
         else:
-            preproc_fx = default_process
+            preproc_list = {"obs": self.st_obs, "syn": self.st_syn}
 
-        # Preprocess observation waveforms
-        if self.st_obs is not None and not self.stats.obs_processed and \
-                which.lower() in ["obs", "both"]:
-            logger.info(f"preprocess `st_obs` as '{self.config.st_obs_type}'")
-            self.st_obs = preproc_fx(
-                st=self.st_obs, choice=self.config.st_obs_type,
-                inv=self.inv, baz=self.baz,
-                **{**vars(self.config), **kwargs}
+        # Apply preprocessing in-place on streams
+        for key, st in preproc_list.items():
+            # Remove response from 'obs' type data only
+            if remove_response:
+                if (key == "obs" and self.config.st_obs_type == "obs") or (
+                        key == "syn" and self.config.st_syn_type == "obs"):
+                    st.remove_response(inventory=self.inv, plot=False, **kwargs)
+
+            # Detrend and taper pre-filter
+            st.detrend("simple")
+            st.detrend("demean")
+            st.taper(taper_percentage)
+
+            if self.config.rotate_to_rtz and self.baz is not None:
+                logger.info(f"rotate {key} NE->RT by {self.baz} degrees")
+                st.rotate(method="NE->RT", back_azimuth=self.baz)
+
+            if filter_ and (self.config.min_period or self.config.max_period):
+                logger.info(f"filtering {key} {self.config.min_period}--"
+                            f"{self.config.max_period}")
+                apply_filter(st=st, min_period=self.config.min_period,
+                             max_period=self.config.max_period,
+                             corners=corners, zerophase=zerophase
+                             )
+                # Detrend and taper post filter
+                st.detrend("simple")
+                st.detrend("demean")
+                st.taper(taper_percentage)
+
+            # Convolve waveform with source time function for `syn` type data
+            if convolve_with_stf and half_duration:
+                if (key == "obs" and self.config.st_obs_type == "syn") or (
+                        key == "syn" and self.config.st_syn_type == "syn"):
+                    stf_convolve(st=st, half_duration=half_duration)
+
+        # Allow normalization of waveform amplitudes to one another or to
+        # a given value
+        if normalize_to is not None:
+            self.st_obs, self.st_syn = normalize(
+                st_a=self.st_obs, st_b=self.st_syn,
+                choice={"obs": "a", "syn": "b", "one": "one"}[normalize_to]
             )
-            self.stats.obs_processed = True
 
-        # Preprocess synthetic waveforms
-        if self.st_syn is not None and not self.stats.syn_processed and \
-                which.lower() in ["syn", "both"]:
-            logger.info(f"preprocess `st_syn` as '{self.config.st_syn_type}'")
-            self.st_syn = preproc_fx(
-                st=self.st_syn, choice=self.config.st_syn_type,
-                inv=self.inv, baz=self.baz,
-                **{**vars(self.config), **kwargs}
-            )
-            self.stats.syn_processed = True
-
-        # Set stats
+        # Set stats post preprocessing
+        self.stats.obs_processed = is_preprocessed(self.st_obs)
+        self.stats.syn_processed = is_preprocessed(self.st_syn)
         self.stats.len_obs = len(self.st_obs)
         self.stats.len_syn = len(self.st_syn)
 
         return self
 
     def window(self, fix_windows=False, iteration=None, step_count=None,
-               force=False, save=True):
+               force=False):
         """
         Evaluate misfit windows using Pyflex. Save windows to ASDFDataSet.
         Allows previously defined windows to be retrieved from ASDFDataSet.
@@ -868,15 +931,9 @@ class Manager:
         :type force: bool
         :param force: ignore flag checks and run function, useful if e.g.
             external preprocessing is used that doesn't meet flag criteria
-        :type save: bool
-        :param save: save the gathered windows to an ASDF Dataset
         """
         # Pre-check to see if data has already been standardized
         self.check()
-
-        if self.config.pyflex_preset is None:
-            logger.info("pyflex preset is set to 'None', will not window")
-            return
 
         if not self.stats.standardized and not force:
             raise ManagerError("cannot window, waveforms not standardized")
@@ -914,8 +971,6 @@ class Manager:
         else:
             self.select_windows_plus()
 
-        if save:
-            self.save_windows()
         logger.info(f"{self.stats.nwin} window(s) total found")
 
         return self
@@ -989,7 +1044,7 @@ class Manager:
             waveforms, and running select_windows() again, but for now we just
             raise a ManagerError and allow processing to continue
         """
-        logger.info(f"windowing w/ map: {self.config.pyflex_preset}")
+        logger.info(f"windowing waveforms with Pyflex")
 
         nwin, window_dict, reject_dict = 0, {}, {}
         for comp in self.config.component_list:
@@ -1038,7 +1093,7 @@ class Manager:
         self.rejwins = reject_dict
         self.stats.nwin = nwin
 
-    def measure(self, force=False, save=True):
+    def measure(self, force=False):
         """
         Measure misfit and calculate adjoint sources using PyAdjoint.
 
@@ -1050,6 +1105,7 @@ class Manager:
         Saves resultant dictionary to a pyasdf dataset if given.
 
         .. note::
+
             Pyadjoint returns an unscaled misfit value for an entire set of
             windows. To return a "total misfit" value as defined by 
             Tape (2010) Eq. 6, the total summed misfit will need to be scaled by 
@@ -1058,8 +1114,6 @@ class Manager:
         :type force: bool
         :param force: ignore flag checks and run function, useful if e.g.
             external preprocessing is used that doesn't meet flag criteria
-        :type save: bool
-        :param save: save adjoint sources to ASDFDataSet
         """
         self.check()
 
@@ -1100,8 +1154,6 @@ class Manager:
 
         # Save adjoint source internally and to dataset
         self.adjsrcs = adjoint_sources
-        if save:
-            self.save_adjsrcs()
 
         # Run check to get total misfit
         self.check()
@@ -1109,71 +1161,11 @@ class Manager:
 
         return self
 
-    def save_windows(self, ds=None, force=False):
-        """
-        Convenience function to save collected misfit windows into an 
-        ASDFDataSet with some preliminary checks
-
-        Auxiliary data tag is hardcoded as 'MisfitWindows'
-
-        :type ds: pyasdf.ASDFDataSet
-        :param ds: allow replacement of the internal `ds` dataset. If None,
-            will try to write to internal `ds`
-        :type force: bool
-        :param force: force saving windows even if Config says don't do it.
-            This is used by write() to bypass the default 'dont save' behavior
-        """
-        if ds is None:
-            ds = self.ds
-
-        if ds is None:
-            logger.debug("no ASDFDataSet, will not save windows")
-        elif not self.windows:
-            logger.debug("Manager has no windows to save")
-        elif not self.config.save_to_ds and not force:
-            logger.debug("config parameter `save_to_ds` is set False, "
-                           "will not save windows")
-        else:
-            logger.debug("saving misfit windows to ASDFDataSet")
-            add_misfit_windows(self.windows, ds, path=self.config.aux_path)
-
-    def save_adjsrcs(self, ds=None, force=False):
-        """
-        Convenience function to save collected adjoint sources into an 
-        ASDFDataSet with some preliminary checks
-
-        Auxiliary data tag is hardcoded as 'AdjointSources'
-
-        :type ds: pyasdf.ASDFDataSet
-        :param ds: allow replacement of the internal `ds` dataset. If None,
-            will try to write to internal `ds`
-        :type force: bool
-        :param force: force saving windows even if Config says don't do it.
-            This is used by write() to bypass the default 'dont save' behavior
-        """
-        if ds is None:
-            ds = self.ds
-
-        if ds is None:
-            logger.debug("no ASDFDataSet, cannot save adjoint sources")
-        elif not self.adjsrcs:
-            logger.debug("Manager has no adjoint sources to save")
-        elif not self.config.save_to_ds and not force:
-            logger.debug("config parameter `save_to_ds` is set False, "
-                           "will not save adjoint sources")
-        else:
-            logger.debug("saving adjoint sources to ASDFDataSet")
-            add_adjoint_sources(adjsrcs=self.adjsrcs, ds=ds,
-                                path=self.config.aux_path,
-                                time_offset=self.stats.time_offset_sec)
-
     def _format_windows(self):
         """
-        .. note::
-            In `pyadjoint.calculate_adjoint_source`, the window needs to be a
-            list of lists, with each list containing the
-            [left_window, right_window]; each window argument should be given in
-            units of time (seconds). This is not in the PyAdjoint docs.
+        In `pyadjoint.calculate_adjoint_source`, the window needs to be a
+        list of lists, with each list containing the [left_window, right_window]
+        Each window argument should be given in units of time (seconds).
 
         :rtype: dict of list of lists
         :return: dictionary with key related to individual components,
@@ -1254,9 +1246,6 @@ class Manager:
             mm.plot(show=show, save=save)
         # Plot waveform and map on the same figure
         elif choice == "both":
-            import matplotlib as mpl
-            import matplotlib.pyplot as plt
-
             if figsize is None:
                 figsize = (1400 / dpi, 600 / dpi)
 
@@ -1281,3 +1270,7 @@ class Manager:
                 plt.show()
             else:
                 plt.close()
+
+        # One final shutdown of all figures just incase
+        plt.close("all")
+

@@ -544,9 +544,7 @@ class WaveMaker:
         if self.config.step_tag is not None:
             title += self.config.step_tag
 
-        # Add information about the Pyflex and Pyadjoint parameters used
-        if self.kwargs.get("plot_stalta", True):
-            title += f" pyflex={self.config.pyflex_preset}, "
+        # Add information about the Pyadjoint parameters used
         if self.kwargs.get("plot_adjsrc", True):
             title += f" pyadjoint={self.config.adj_src_type}, "
 

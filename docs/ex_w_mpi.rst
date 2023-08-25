@@ -11,7 +11,8 @@ values for each source-receiver pair.
 .. warning::
 
     This example requires `mpi4py <https://mpi4py.readthedocs.io/en/stable/>`_
-    which is **not** a dependency of Pyatoa. To install mpi4py to the Conda
+    and `PySEP <https://github.com/adjtomo/pysep>`__
+    which are **not** a dependency of Pyatoa. To install to the Conda
     environment created from the `installation <index.html#installation>`_ section, 
     you can run:
 
@@ -19,6 +20,7 @@ values for each source-receiver pair.
 
         $ conda activate pyatoa
         $ conda install mpi4py
+        $ pip install pysep-adjtomo
 
 Example Data
 ------------

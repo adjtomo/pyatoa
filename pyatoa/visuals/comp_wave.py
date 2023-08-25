@@ -90,7 +90,6 @@ class CompWave:
             # Use the Manager class to load in waveform data
             mgmt = Manager(ds=ds)
             mgmt.load(code=self.station, path=model)
-            mgmt.config.save_to_ds = False
 
             # !!! NZ Temp network skip remove response
             net, sta = self.station.split(".")

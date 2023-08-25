@@ -255,11 +255,17 @@ class Inspector(InspectorPlotter):
         """
         # Create a dataframe with source information, ignore duplicates
         event_id = format_event_name(ds.events[0])
+        # Some events, like FORCESOLUTIONS, do not contain information on magni.
+        try:
+            magnitude = ds.events[0].preferred_magnitude().mag
+        except AttributeError:
+            magnitude = None
+
         if event_id not in self.sources.index:
             src = {
                 "event_id": format_event_name(ds.events[0]),
                 "time": str(ds.events[0].preferred_origin().time),
-                "magnitude": ds.events[0].preferred_magnitude().mag,
+                "magnitude": magnitude,
                 "depth_km": ds.events[0].preferred_origin().depth * 1E-3,
                 "latitude": ds.events[0].preferred_origin().latitude,
                 "longitude": ds.events[0].preferred_origin().longitude,

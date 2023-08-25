@@ -2,19 +2,15 @@
 """
 Configuration of User-set parameters within the package.
 Contains external functions to set Config objects of Pyflex and Pyadjoint.
-
-To Do 02.04.21: Allow config to set pyflex and pyadjoint config as a function,
-    currently it's obscured behind some private functions
 """
 import yaml
 import numpy as np
 from copy import deepcopy
-from pyatoa import logger
 from pyatoa.utils.form import format_iter, format_step
-from pyatoa.plugins.pyflex_presets import pyflex_presets
 
 from pyflex import Config as PyflexConfig
-from pyadjoint import get_config, ADJSRC_TYPES
+from pyadjoint import get_config as get_pyadjoint_config
+from pyadjoint import ADJSRC_TYPES
 
 
 class Config:
@@ -28,11 +24,10 @@ class Config:
     def __init__(self, yaml_fid=None, ds=None, path=None, iteration=None,
                  step_count=None, event_id=None, min_period=10, max_period=100,
                  rotate_to_rtz=False, unit_output="DISP",  component_list=None,
-                 pyflex_preset="default", adj_src_type="cc_traveltime",
-                 observed_tag="observed", synthetic_tag=None,
-                 st_obs_type="obs", st_syn_type="syn",
-                 win_amp_ratio=0., paths=None, save_to_ds=True,
-                 **kwargs):
+                 adj_src_type="cc_traveltime", observed_tag="observed",
+                 synthetic_tag=None, st_obs_type="obs", st_syn_type="syn",
+                 win_amp_ratio=0., pyflex_parameters=None,
+                 pyadjoint_parameters=None):
         """
         Initiate the Config object either from scratch, or read from external.
 
@@ -42,15 +37,12 @@ class Config:
 
         :type yaml_fid: str
         :param yaml_fid: id for .yaml file if config is to be loaded externally
-        :type seisflows_yaml: str
-        :param seisflows_yaml: id for the seisflows parameters.yaml file that
-            needs a special read function. Used in conjunction with SeisFlows.
         :type iteration: int
         :param iteration: if running an inversion, the current iteration. Used
             for internal path naming, as well as interaction with Seisflows via
             Pyaflowa.
         :type step_count: int
-        :param step: if running an inversion, the current step count in the
+        :param step_count: if running an inversion, the current step count in the
             line search, will be used for internal path naming, and interaction
             with Seisflows via Pyaflowa.
         :type event_id: str
@@ -64,8 +56,6 @@ class Config:
         :type unit_output: str
         :param unit_output: units of stream, to be fed into preprocessor for
             instrument response removal. Available: 'DISP', 'VEL', 'ACC'
-        :type pyflex_preset: str
-        :param pyflex_preset: name to map to pyflex preset config
         :type adj_src_type: str
         :param adj_src_type: method of misfit quantification for Pyadjoint
         :type st_obs_type: str
@@ -89,20 +79,19 @@ class Config:
         :param synthetic_tag: Tag to use for asdf dataset to label and search
             for obspy streams of synthetic data. Default 'synthetic_{model_num}'
             Tag must be formatted before use.
-        :type paths: dict of str
-        :param paths: any absolute paths for Pyatoa to search for
-            waveforms in. If path does not exist, it will automatically be
-            skipped. Allows for work on multiple machines, by giving multiple
-            paths for the same set of data, without needing to change config.
-            Waveforms must be saved in a specific directory structure with a
-            specific naming scheme
-        :type save_to_ds: bool
-        :param save_to_ds: allow toggling saving to the dataset when new data
-            is gathered/collected. This is useful, e.g. if a dataset that
-            contains data is passed to the Manager, but you don't want to
-            overwrite the data inside while you do some temporary processing.
-        :raises ValueError: If kwargs do not match Pyatoa, Pyflex or Pyadjoint
-            attribute names.
+        :type pyflex_parameters: dict
+        :param pyflex_parameters: overwrite for Pyflex parameters defined
+            in the Pyflex.Config object. Incorrectly defined argument names
+            will raise a TypeError. See Pyflex docs for detailed parameter defs:
+            http://adjtomo.github.io/pyflex/#config-object
+        :type pyadjoint_parameters: dict
+        :param pyadjoint_parameters: overwrite for Pyadjoint parameters defined
+            in the Pyadjoint.Config object for the given `adj_src_type`.
+            Incorrectly defined argument names will raise a TypeError. See
+            Pyadjoint docs for detailed parameter definitions:
+            https://adjtomo.github.io/pyadjoint/
+        :raises TypeError: If incorrect arguments provided to the underlying
+            Pyflex or Pyadjoint Config objects.
         """
         self.iteration = iteration
         self.step_count = step_count
@@ -117,28 +106,15 @@ class Config:
         # on calling property for actual value
         self._synthetic_tag = synthetic_tag
 
-        self.pyflex_preset = pyflex_preset
         self.adj_src_type = adj_src_type
         self.st_obs_type = st_obs_type
         self.st_syn_type = st_syn_type
         self.win_amp_ratio = win_amp_ratio
         self.component_list = component_list
 
-        self.save_to_ds = save_to_ds
-
-        # Empty init because these are filled by self._check()
+        # To be filled in by reading or with default parameters
         self.pyflex_config = None
         self.pyadjoint_config = None
-
-        # Make sure User provided paths are list objects
-        if paths:
-            for key in paths:
-                if not isinstance(paths[key], list):
-                    paths[key] = [paths[key]]
-            self.paths = paths
-        else:
-            self.paths = {"waveforms": [], "synthetics": [], "responses": [],
-                          "events": []}
 
         # If reading from a YAML file or from a dataset, do not set the external
         # Configs (pyflex and pyadjoint) because these will be read in verbatim
@@ -152,7 +128,16 @@ class Config:
         # names and keyword arguments
         else:
             # Set Pyflex and Pyadjoint Config objects as attributes
-            self._set_external_configs(**kwargs)
+            pyflex_parameters = pyflex_parameters or {}
+            self.pyflex_config = PyflexConfig(min_period=min_period,
+                                              max_period=max_period,
+                                              **pyflex_parameters)
+            pyadjoint_parameters = pyadjoint_parameters or {}
+            # Double difference flag will be set by the adjoint source type
+            self.pyadjoint_config = get_pyadjoint_config(
+                adjsrc_type=adj_src_type, min_period=min_period,
+                max_period=max_period, **pyadjoint_parameters
+            )
 
         # Run internal sanity checks
         self._check()
@@ -169,14 +154,13 @@ class Config:
                    f"    {'event_id:':<25}{self.event_id}\n"
                    )
         # Format the remainder of the keys identically
-        key_dict = {"Gather": ["save_to_ds"],
-                    "Process": ["min_period", "max_period",  "unit_output",
+        key_dict = {"Process": ["min_period", "max_period",  "unit_output",
                                 "rotate_to_rtz", "win_amp_ratio", "st_obs_type",
-                                "st_obs_type"],
+                                "st_syn_type"],
                     "Labels": ["component_list", "observed_tag",
-                               "synthetic_tag", "paths"],
-                    "External": ["pyflex_preset", "adj_src_type",
-                                 "pyflex_config", "pyadjoint_config"
+                               "synthetic_tag"],
+                    "External": ["adj_src_type", "pyflex_config",
+                                 "pyadjoint_config"
                                  ]
                     }
         for key, items in key_dict.items():
@@ -261,22 +245,9 @@ class Config:
         assert(self.unit_output in acceptable_units), \
             f"unit_output should be in {acceptable_units}"
 
-        # Check that paths are in the proper format, dictated by Pyatoa
-        required_keys = ['synthetics', 'waveforms', 'responses', 'events']
-        assert(isinstance(self.paths, dict)), "paths should be a dict"
-        for key in self.paths.keys():
-            assert(key in required_keys), \
-                f"path keys can only be in {required_keys}"
-
-        # Make sure that all the required keys are given in the dictionary
-        for key in required_keys:
-            if key not in self.paths.keys():
-                self.paths[key] = []
-
         # Set the component list. Rotate component list if necessary
         if self.rotate_to_rtz:
             if not self.component_list:
-                logger.info("component list set to R/T/Z")
                 self.component_list = ["R", "T", "Z"]
             else:
                 for comp in ["N", "E"]:
@@ -284,7 +255,6 @@ class Config:
                             f"rotated component list cannot include '{comp}'"
         else:
             if not self.component_list:
-                logger.info("component list set to E/N/Z")
                 self.component_list = ["E", "N", "Z"]
 
         # Check that the amplitude ratio is a reasonable number
@@ -294,38 +264,6 @@ class Config:
 
         assert(self.adj_src_type in ADJSRC_TYPES), \
             f"Pyadjoint `adj_src_type` must be in {ADJSRC_TYPES}"
-
-    def _set_external_configs(self, check_unused=False, **kwargs):
-        """
-        Set the Pyflex and Pyadjoint Config parameters using kwargs provided
-        to the init function. Allows the user to request unused kwargs be
-        returned with an Error statement.
-
-        :type check_unnused: bool
-        :param check_unnused: check if kwargs passed to Pyadjoint and Pyflex 
-            do not match config parameters for either, which may mean 
-            misspelled parameter names, or just kwargs that were not meant for
-            either
-        :raises ValueError: if check_unnused is True and unnused kwargs found
-        """
-        # Set Pyflex confict through wrapper function
-        self.pyflex_config, unused_kwargs_pf = set_pyflex_config(
-            choice=self.pyflex_preset, min_period=self.min_period,
-            max_period=self.max_period, **kwargs
-        )
-
-        # Set Pyadjoint Config
-        self.pyadjoint_config, unused_kwargs_pa = set_pyadjoint_config(
-            adjsrc_type=self.adj_src_type,
-            min_period=self.min_period, max_period=self.max_period, **kwargs
-        )
-
-        if check_unused:
-            # See if both Pyflex and Pyadjoint threw the same unacceptable kwarg
-            unused_kwargs = set(unused_kwargs_pf) & set(unused_kwargs_pa)
-            if unused_kwargs:
-                raise ValueError(f"{list(unused_kwargs)} are not keyword "
-                                 f"arguments in Pyatoa, Pyflex or Pyadjoint.")
 
     def _get_aux_path(self, default="default", separator="/"):
         """
@@ -429,7 +367,7 @@ class Config:
         if fmt.lower() == "yaml":
             try:
                 self._read_yaml(read_from)
-            except ValueError:
+            except ValueError as e:
                 print(f"Unknown yaml format for file {read_from}, {e}")
         elif fmt.lower() == "asdf":
             assert(path is not None), "path must be defined"
@@ -530,11 +468,6 @@ class Config:
         unused_kwargs = {}
         for key, item in attrs.items():
             if hasattr(self, key.lower()):
-                # Special case: ensure paths don't overwrite, but append
-
-                if key == "paths":
-                    for cfgkey, cfgitem in self.paths.items():
-                        item[cfgkey] += cfgitem
                 setattr(self, key.lower(), item)
             else:
                 unused_kwargs[key.lower()] = item
@@ -568,8 +501,6 @@ class Config:
             cfgin = ds.auxiliary_data.Configs[path].parameters
 
         # Parameters from flattened dictionaries will need special treatment
-        paths = {"waveforms": [], "synthetics": [], "responses": [], 
-                 "events": []}
         pyflex_config, pyadjoint_config = {}, {}
 
         for key, item in cfgin.items():
@@ -583,10 +514,7 @@ class Config:
                     item = item.tolist()
 
             # Put the item in the correct dictionary
-            if "paths" in key:
-                # e.g. paths_waveforms -> waveforms
-                paths[key.split('_')[1]].append(item)
-            elif "pyflex_config" in key:
+            if "pyflex_config" in key:
                 # Ensure that empties are set to NoneType
                 pyflex_config["_".join(key.split('_')[2:])] = item
             elif "pyadjoint_config" in key:
@@ -596,85 +524,9 @@ class Config:
                 # Normal Config attribute
                 setattr(self, key, item)
 
-        # Assign the flattened dictionaries back into nested dictionaries
-        setattr(self, "paths", paths)
-
-        pyflex_config, _ = set_pyflex_config(**pyflex_config, choice=None)
-        setattr(self, "pyflex_config", pyflex_config)
-
-        pyadjoint_config, _ = set_pyadjoint_config(**pyadjoint_config)
-        setattr(self, "pyadjoint_config", pyadjoint_config)
-
-
-def set_pyflex_config(min_period, max_period, choice=None, **kwargs):
-    """
-    Overwriting the default Pyflex parameters with User-defined criteria
-
-    :type choice: str or dict
-    :param choice: name of map to choose the Pyflex config options, if None,
-        default values are used. Kwargs can still overload default values.
-        Also dicts can be passed in as User-defined preset
-    :type min_period: float
-    :param min_period: min period of the data
-    :type max_period: float
-    :param max_period: max period of the data
-    :rtype: pyflex.Config
-    :return: the pyflex Config option to use when running Pyflex
-    """
-    # Instantiate the pyflex Config object
-    pfconfig = PyflexConfig(min_period=min_period, max_period=max_period)
-
-    # Set preset configuration parameters based on hard-coded presets
-    if isinstance(choice, str):
-        if choice in pyflex_presets.keys():
-            preset = pyflex_presets[choice]
-            for key, item in preset.items():
-                setattr(pfconfig, key, item)
-        else:
-            raise KeyError(
-                f"'{choice}' does not match any available presets for Pyflex. "
-                f"Presets include {list(pyflex_presets.keys())}"
-            )
-    # Allow dictionary object to be passed in as a preset
-    elif isinstance(choice, dict):
-        for key, item in choice.items():
-            setattr(pfconfig, key, item)
-
-    # Kwargs can also be passed from the pyatoa.Config object to avoid having to
-    # define pre-set values. Kwargs will override preset values
-    unused_kwargs = []
-    for key, item in kwargs.items():
-        if hasattr(pfconfig, key):
-            setattr(pfconfig, key, item)
-        else:
-            unused_kwargs.append(key)
-
-    return pfconfig, unused_kwargs
-
-
-def set_pyadjoint_config(adjsrc_type, min_period, max_period, **kwargs):
-    """
-    Set the Pyadjoint config based on Pyatoa Config parameters.
-    Kwargs can be fed to the Pyadjoint Config object. Returns unnused kwargs.
-
-    Config parameters can be found at:
-    http://adjtomo.github.io/pyadjoint/autoapi/pyadjoint/config/index.html
-
-    :type min_period: float
-    :param min_period: min period of the data
-    :type max_period: float
-    :param max_period: max period of the data
-    :rtype cfgout: pyadjoint.Config
-    :return cfgout: properly set pyadjoint configuration object
-    """
-    paconfig = get_config(adjsrc_type, min_period=min_period,
-                          max_period=max_period)
-    unused_kwargs = []
-    for key, item in kwargs.items():
-        if hasattr(paconfig, key):
-            setattr(paconfig, key, item)
-        else:
-            unused_kwargs.append(key)
-
-    return paconfig, unused_kwargs
+        # Set Pyflex and Pyadjoint Config objects as attributes
+        self.pyflex_config = PyflexConfig(**pyflex_config)
+        # Double difference is stored but not required
+        pyadjoint_config.pop("double_difference")
+        self.pyadjoint_config = get_pyadjoint_config(**pyadjoint_config)
 
