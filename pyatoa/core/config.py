@@ -22,7 +22,7 @@ class Config:
     ASDFDataSets.
     """
     def __init__(self, yaml_fid=None, ds=None, path=None, iteration=None,
-                 step_count=None, event_id=None, min_period=1, max_period=100,
+                 step_count=None, event_id=None, min_period=10, max_period=100,
                  rotate_to_rtz=False, unit_output="DISP",  component_list=None,
                  adj_src_type="cc_traveltime", observed_tag="observed",
                  synthetic_tag=None, st_obs_type="obs", st_syn_type="syn",

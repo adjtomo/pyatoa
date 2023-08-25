@@ -39,8 +39,6 @@
   converted to a docs page for easier accessibility.
 - Created Docs page for Pyflex presets that can be copy-pasted into misfit 
   quantification routines
-- Changed the default values for ``min_period`` and ``max_period`` in the Config
-  class
 - Added a ``plt.close('all')`` to the end of the Manager's plot routine as
   as a final precaution against leaving an excessive number of Matplotlib 
   figures open

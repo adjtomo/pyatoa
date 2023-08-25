@@ -7,8 +7,8 @@ import os
 import pytest
 from obspy import read, read_events, read_inventory
 from pyasdf import ASDFDataSet
-from pyatoa import Config, Manager, logger
-from pyatoa.utils.asdf import (add, clean, load, write)
+from pyatoa import Config, Manager
+from pyatoa.utils.asdf import (add, clean, load)
 
 
 @pytest.fixture
@@ -93,7 +93,7 @@ def mgmt_post(mgmt_pre):
     A manager that has completed the full workflow
     """
     mgmt_pre.standardize()
-    mgmt_pre.preprocess()
+    mgmt_pre.preprocess(remove_response=True, output="DISP")
     mgmt_pre.window()
     mgmt_pre.measure()
 
@@ -155,32 +155,29 @@ def test_add_adjoint_sources(empty_dataset, mgmt_post):
         assert(adjsrc.misfit == misfit_check)
 
 
-def test_clean_dataset(empty_dataset, mgmt_pre):
+def test_clean_dataset(empty_dataset, mgmt_post):
     """
     Test dataset clean functions. Need to perform tasks on a dataset we create
     here, otherwise we may permanently affect test data if we use a pre-built
     ASDFDataSet
-    :return:
     """
     assert(not hasattr(empty_dataset.auxiliary_data, "MisfitWindows"))
-    mgmt_pre.ds = empty_dataset
-    mgmt_pre.flow()
 
+    mgmt_post.write_to_dataset(ds=empty_dataset)
     assert(hasattr(empty_dataset.auxiliary_data, "MisfitWindows"))
     clean.clean_dataset(empty_dataset, fix_windows=False)
 
     assert(not hasattr(empty_dataset.auxiliary_data, "MisfitWindows"))
 
 
-def test_clean_dataset_fix_windows(empty_dataset, mgmt_pre):
+def test_clean_dataset_fix_windows(empty_dataset, mgmt_post):
     """
     Test cleaning a dataset but retaining windows
     :return:
     """
     assert(not hasattr(empty_dataset.auxiliary_data, "MisfitWindows"))
-    mgmt_pre.ds = empty_dataset
-    mgmt_pre.flow()
 
+    mgmt_post.write_to_dataset(ds=empty_dataset)
     assert(hasattr(empty_dataset.auxiliary_data, "MisfitWindows"))
     clean.clean_dataset(empty_dataset, fix_windows=True)
 
@@ -200,20 +197,16 @@ def test_load_windows(dataset):
     assert(windows["N"][0].max_cc_value == check_val)
 
 
-def test_load_previous_windows(empty_dataset, mgmt_pre):
+def test_load_previous_windows(empty_dataset, mgmt_post):
     """
     Test the function that returns windows in the Pyflex output format from
     an ASDFDataSet
-
-    :param dataset:
-    :return:
     """
     # Add two sets of windows to the dataset
     for iter_ in ["i01", "i02"]:
-        mgmt_pre.ds = empty_dataset
-        mgmt_pre.config.iteration = iter_
-        mgmt_pre.config.step_count = "s00"
-        mgmt_pre.flow()
+        mgmt_post.config.iteration = iter_
+        mgmt_post.config.step_count = "s00"
+        mgmt_post.write_to_dataset(ds=empty_dataset)
 
     windows = empty_dataset.auxiliary_data.MisfitWindows
     check = load.previous_windows(windows, iteration="i02", step_count="s00")

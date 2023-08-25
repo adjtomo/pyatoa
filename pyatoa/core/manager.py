@@ -527,12 +527,10 @@ class Manager:
         fix_windows = kwargs.get("fix_windows", False)
         iteration = kwargs.get("iteration", None)
         step_count = kwargs.get("step_count", None)
-        overwrite = kwargs.get("overwrite", None)
         which = kwargs.get("which", "both")
-        save = kwargs.get("save", True)
 
         self.standardize(standardize_to=standardize_to, force=force)
-        self.preprocess(overwrite=overwrite, which=which, **kwargs)
+        self.preprocess(which=which, **kwargs)
         self.window(fix_windows=fix_windows, iteration=iteration,
                     step_count=step_count, force=force)
         self.measure(force=force)
