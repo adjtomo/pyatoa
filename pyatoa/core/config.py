@@ -112,6 +112,10 @@ class Config:
         self.win_amp_ratio = win_amp_ratio
         self.component_list = component_list
 
+        # To be filled in by reading or with default parameters
+        self.pyflex_config = None
+        self.pyadjoint_config = None
+
         # If reading from a YAML file or from a dataset, do not set the external
         # Configs (pyflex and pyadjoint) because these will be read in verbatim
         if ds or yaml_fid:
@@ -129,6 +133,7 @@ class Config:
                                               max_period=max_period,
                                               **pyflex_parameters)
             pyadjoint_parameters = pyadjoint_parameters or {}
+            # Double difference flag will be set by the adjoint source type
             self.pyadjoint_config = get_pyadjoint_config(
                 adjsrc_type=adj_src_type, min_period=min_period,
                 max_period=max_period, **pyadjoint_parameters
@@ -521,5 +526,7 @@ class Config:
 
         # Set Pyflex and Pyadjoint Config objects as attributes
         self.pyflex_config = PyflexConfig(**pyflex_config)
+        # Double difference is stored but not required
+        pyadjoint_config.pop("double_difference")
         self.pyadjoint_config = get_pyadjoint_config(**pyadjoint_config)
 
