@@ -76,7 +76,7 @@ def mgmt(config, event, st_obs, st_syn, inv):
     mgmt = Manager(config=config, event=event, st_obs=st_obs, st_syn=st_syn, 
                    inv=inv)
     mgmt.standardize()
-    mgmt.preprocess()
+    mgmt.preprocess(remove_response=True, output="DISP")
     mgmt.window()
     mgmt.measure()
     return mgmt
