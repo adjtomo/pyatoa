@@ -512,34 +512,61 @@ class Manager:
         self.check()
         return self
 
-    def flow(self, **kwargs):
+    def flow(self, standardize_to="syn", fix_windows=False, iteration=None,
+             step_count=None, **kwargs):
         """
         A convenience function to run the full workflow with a single command.
         Does not include gathering. Takes kwargs related to all underlying
         functions.
+
         .. code:: python
+
             mgmt = Manager()
             mgmt.flow() == mgmt.standardize().preprocess().window().measure()
+
+        :type standardize_to: str
+        :param standardize_to: choice of 'obs' or 'syn' to use one of the time
+            series to standardize (resample, trim etc.) the other.
+        :type fix_windows: bool
+        :param fix_windows: if True, will attempt to retrieve saved windows from
+            an ASDFDataSet under the `iteration` and `step_count` tags to use
+            during misfit quantification rather than measuring new windows
+        :type iteration: int or str
+        :param iteration: if 'fix_windows' is True, look for windows in this
+            iteration. If None, will check the latest iteration/step_count
+            in the given dataset
+        :type step_count: int or str
+        :param step_count: if 'fix_windows' is True, look for windows in this
+            step_count. If None, will check the latest iteration/step_count
+            in the given dataset
         :raises ManagerError: for any controlled exceptions
         """
-        force = kwargs.get("force", False)
-        standardize_to = kwargs.get("standardize_to", "syn")
-        fix_windows = kwargs.get("fix_windows", False)
-        iteration = kwargs.get("iteration", None)
-        step_count = kwargs.get("step_count", None)
-        which = kwargs.get("which", "both")
+        if fix_windows:
+            assert(self.ds is not None), \
+                f"`fix_windows` requires ASDFDataSet `ds`"
+            assert(iteration is not None and step_count is not None), (
+                f"`fix_windows` requires 'iteration' and 'step_count' to access"
+                f"windows from ASDFDataSet"
+            )
 
-        self.standardize(standardize_to=standardize_to, force=force)
-        self.preprocess(which=which, **kwargs)
+        self.standardize(standardize_to=standardize_to)
+        self.preprocess(**kwargs)
         self.window(fix_windows=fix_windows, iteration=iteration,
-                    step_count=step_count, force=force)
-        self.measure(force=force)
+                    step_count=step_count)
+        self.measure()
 
-    def flow_multiband(self, periods, plot=False, **kwargs):
+    def flow_multiband(self, periods, standardize_to="syn", fix_windows=False,
+                       iteration=None, step_count=None, plot=False, **kwargs):
         """
         Run the full workflow for a number of distinct period bands, returning
         a final set of adjoint sources generated as a summation of adjoint
-        sources from each of these period bands.
+        sources from each of these period bands. Allows for re-using windows
+        collected from the first set of period bands to evaluate adjoint sources
+        from the remaining period bands.
+
+        .. note::
+
+            Kwargs are passed through to Manager.preprocess() function only
 
         .. rubric::
 
@@ -550,6 +577,21 @@ class Manager:
             generate windows and adjoint sources for. Overwrites the Config's
             internal `min_period` and `max_period` parameters. The final
             adjoint source will be a summation of all adjoint sources generated.
+        :type standardize_to: str
+        :param standardize_to: choice of 'obs' or 'syn' to use one of the time
+            series to standardize (resample, trim etc.) the other.
+        :type fix_windows: bool
+        :param fix_windows: if True, will attempt to retrieve saved windows from
+            an ASDFDataSet under the `iteration` and `step_count` tags to use
+            during misfit quantification rather than measuring new windows
+        :type iteration: int or str
+        :param iteration: if 'fix_windows' is True, look for windows in this
+            iteration. If None, will check the latest iteration/step_count
+            in the given dataset
+        :type step_count: int or str
+        :param step_count: if 'fix_windows' is True, look for windows in this
+            step_count. If None, will check the latest iteration/step_count
+            in the given dataset
         :type plot: str
         :param plot: name of figure if given, will plot waveform and map for
             each period band and append period band to figure name `plot`
@@ -558,16 +600,14 @@ class Manager:
             measurements from each of the period bands
         :raises ManagerError: for any controlled exceptions
         """
-        force = kwargs.get("force", False)
-        standardize_to = kwargs.get("standardize_to", "syn")
-        fix_windows = kwargs.get("fix_windows", False)
-        iteration = kwargs.get("iteration", None)
-        step_count = kwargs.get("step_count", None)
-        which = kwargs.get("which", "both")
-
         # Copy these waveforms to overwrite for each new period band
         st_obs_raw = self.st_obs.copy()
         st_syn_raw = self.st_syn.copy()
+
+        # Do preprocessing once since
+        self.check()
+        self.standardize(standardize_to=standardize_to)
+        self.preprocess(**kwargs)
 
         tags = []
         windows, adjsrcs = {}, {}
@@ -581,11 +621,11 @@ class Manager:
             # Standard flow()
             try:
                 self.check()
-                self.standardize(standardize_to=standardize_to, force=force)
-                self.preprocess(which=which, **kwargs)
+                self.standardize(standardize_to=standardize_to)
+                self.preprocess(**kwargs)
                 self.window(fix_windows=fix_windows, iteration=iteration,
-                            step_count=step_count, force=force,)
-                self.measure(force=force)
+                            step_count=step_count)
+                self.measure()
                 if plot:
                     save = f"{plot}_{tag}.png"
                     self.plot(choice="both", save=save)
