@@ -610,11 +610,11 @@ class Manager:
         self.preprocess(**kwargs)
 
         tags = []
-        windows, adjsrcs = {}, {}
+        multiband_adjsrcs, multiband_windows = {}, {}
         for period in periods:
-            tag = f"{period[0]}_{period[1]}"  # e.g., 5_10
+            tag = f"{period[0]}-{period[1]}"  # e.g., '5-10s'
             tags.append(tag)
-            logger.info(f"calculating adjoint source for period band {tag}s")
+            logger.info(f"calculating adjoint source period band {tag}s")
 
             self.config.min_period, self.config.max_period = period
 
@@ -630,12 +630,12 @@ class Manager:
                     save = f"{plot}_{tag}.png"
                     self.plot(choice="both", save=save)
             except ManagerError as e:
-                logger.warning(f"period band {tag}s encountered error {e}, "
-                               f"cannot return adjoint source for {tag}s")
+                logger.warning(f"period band {tag}s error {e}, "
+                               f"cannot return adjoint source for {tag}")
 
             # Save results of the processing step
-            adjsrcs[tag] = self.adjsrcs
-            windows[tag] = self.windows
+            multiband_adjsrcs[tag] = self.adjsrcs or None
+            multiband_windows[tag] = self.windows or None
 
             # Reset for the next run. Don't do a full reset because that gets
             # rid of metadata too, which we need for response removal
@@ -645,21 +645,74 @@ class Manager:
             self.st_syn = st_syn_raw.copy()
             self.stats.reset()
 
-        # Finally, combine all the adjoint sources into a single trace
-        for comp in [tr.stats.component for tr in self.st_syn]:
-            adjsrcs[comp] = np.zeros(len(self.st_syn[0].data))
-            n = 0  # used to average over the number of summed adjoint sources
-            for tag in tags:
-                # Accessing each component of each period band and summing
-                # together to generate the final adjoint source
-                if comp in adjsrcs[tag]:
-                    adjsrcs[comp] += adjsrcs[tag][comp].adjoint_source
-                    n += 1
-            # Average the summation over adjoint sources by the number of inputs
-            if n:
-                adjsrcs[comp] /= n
+        # Average all adjoint sources into a single object and collect windows
+        self.windows, self.adjsrcs = \
+            self._combine_mutliband_results(multiband_windows,
+                                            multiband_adjsrcs)
 
-        return windows, adjsrcs
+    def _combine_mutliband_results(self, windows, adjsrcs):
+        """
+        Function flow_multiband() generates multiple sets of adjoint sources
+        for a variety of period bands, however the User is only interested in a
+        single adjoint source which is the average of all of these adjoint
+        sources.
+
+        This function will take the multiple sets of adjoint sources and sum
+        them accordingly, returning a single set of AdjointSource objects which
+        can be used the same as any `adjsrc` attribute returned from `measure`.
+
+        :type adjsrcs: dict of dicts
+        :param adjsrcs: a collection of dictionaries whose keys are the
+            period band set in `flow_multiband(periods)` and whose values are
+            dictionaries returned in `Manager.adjsrcs` from `Manager.measure()`
+        :rtype: (dict of Windows, dict of AdjointSource)
+        :return: a dictionary of Windows, and AdjointSource objects for each
+            component in the componet list. Adjoint sources and misfits
+            are the average of all input `adjsrcs` for the given `periods` range
+        """
+        adjsrcs_out = {}
+        windows_out = {}
+        for comp in self.config.component_list:
+            n = 0
+            windows_out[comp] = []
+            for tag, adjsrc_dict in adjsrcs.items():
+                # Sometimes adjoint sources are empty for a given period range
+                # which likely means windows are also empty
+                if not adjsrc_dict:
+                    continue
+
+                adjsrc = adjsrc_dict[comp]
+                # Set a template adjoint source whose attrs. that will change
+                if comp not in adjsrcs_out:
+                    adjsrcs_out[comp] = deepcopy(adjsrc)
+                    adjsrcs_out[comp].min_period = 1E6  # very large number
+                    adjsrcs_out[comp].max_period = 0
+                    adjsrcs_out[comp].misfit = 0
+                    adjsrcs_out[comp].window_stats = []
+                    adjsrcs_out[comp].windows = []
+                    adjsrcs_out[comp].adjoint_source = adjsrc.adjoint_source * 0
+
+                # Windows are easy, simply append Windows objects to a list
+                try:
+                    windows_out[comp] += windows[tag][comp]
+                except TypeError:
+                    pass
+
+                # Set internal attributes as collections of other attributes
+                adjsrcs_out[comp].min_period = min(adjsrc.min_period,
+                                                   adjsrcs_out[comp].min_period)
+                adjsrcs_out[comp].max_period = max(adjsrc.max_period,
+                                                   adjsrcs_out[comp].max_period)
+                adjsrcs_out[comp].misfit += adjsrc.misfit
+                adjsrcs_out[comp].windows += adjsrc.windows
+                adjsrcs_out[comp].window_stats += adjsrc.window_stats
+                adjsrcs_out[comp].adjoint_source += adjsrc.adjoint_source
+                n += 1
+            # Normalize based on the number of input adjoint sources
+            adjsrcs_out[comp].misfit /= n
+            adjsrcs_out[comp].adjoint_source /= n
+
+        return windows_out, adjsrcs_out
 
     def standardize(self, force=False, standardize_to="syn", normalize_to=None):
         """
