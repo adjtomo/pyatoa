@@ -542,6 +542,7 @@ class Manager:
         sources from each of these period bands.
 
         .. rubric::
+
             manager.flow_multiband(periods=[(1, 5), (10, 30), (40, 100)])
 
         :type periods: list of tuples
@@ -562,9 +563,7 @@ class Manager:
         fix_windows = kwargs.get("fix_windows", False)
         iteration = kwargs.get("iteration", None)
         step_count = kwargs.get("step_count", None)
-        overwrite = kwargs.get("overwrite", None)
         which = kwargs.get("which", "both")
-        save = kwargs.get("save", True)
 
         # Copy these waveforms to overwrite for each new period band
         st_obs_raw = self.st_obs.copy()
@@ -583,10 +582,10 @@ class Manager:
             try:
                 self.check()
                 self.standardize(standardize_to=standardize_to, force=force)
-                self.preprocess(overwrite=overwrite, which=which, **kwargs)
+                self.preprocess(which=which, **kwargs)
                 self.window(fix_windows=fix_windows, iteration=iteration,
-                            step_count=step_count, force=force, save=save)
-                self.measure(force=force, save=save)
+                            step_count=step_count, force=force,)
+                self.measure(force=force)
                 if plot:
                     save = f"{plot}_{tag}.png"
                     self.plot(choice="both", save=save)

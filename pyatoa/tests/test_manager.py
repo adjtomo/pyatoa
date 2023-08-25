@@ -3,8 +3,6 @@ Test the functionalities of the Pyaflowa Manager class
 """
 import pytest
 import os
-import json
-import numpy as np
 from pyasdf import ASDFDataSet
 from pyatoa import Config, Manager, logger
 from pyatoa.core.manager import ManagerError
@@ -103,7 +101,7 @@ def mgmt_post(mgmt_pre):
     A manager that has completed the full workflow
     """
     mgmt_pre.standardize()
-    mgmt_pre.preprocess()
+    mgmt_pre.preprocess(remove_response=True, output="DISP")
     mgmt_pre.window()
     mgmt_pre.measure()
 
@@ -115,8 +113,7 @@ def test_read_write_from_asdfdataset(tmpdir, mgmt_pre, config):
     Write a Manager into an ASDFDataSet and then read it back
     """
     with ASDFDataSet(os.path.join(tmpdir, "test_dataset.h5")) as ds:
-        mgmt_pre.ds = ds
-        mgmt_pre.write()
+        mgmt_pre.write_to_dataset(ds=ds)
 
         # Load data back from dataset
         mgmt_loaded = Manager(ds=ds, config=config)
@@ -193,26 +190,6 @@ def test_preprocess_rotate_to_rtz(mgmt_pre):
     assert(float(f"{mgmt_pre.baz:.2f}") == 3.21)
 
 
-def test_preprocess_overwrite(mgmt_pre):
-    """
-    Apply an overwriting preprocessing function to ensure functionality works
-    """
-    # First ensure that only functions can be passed
-    with pytest.raises(AssertionError):
-        mgmt_pre.preprocess(overwrite="not a function")
-
-    def preproc_fx(st, choice, value=1, **kwargs):
-        """Zero out the data for an easy check on results"""
-        for tr in st:
-            tr.data *= value
-        return st
-
-    mgmt_pre.preprocess(overwrite=preproc_fx, value=0)
-
-    for tr in mgmt_pre.st:
-        assert(not tr.data.any())
-
-
 def test_select_window(mgmt_pre):
     """
     Ensure windows functionality works as advertised
@@ -220,7 +197,8 @@ def test_select_window(mgmt_pre):
     # Check that error is raised if insufficient workflow progress
     with pytest.raises(ManagerError):
         mgmt_pre.window()
-    mgmt_pre.standardize().preprocess().window()
+    mgmt_pre.standardize().preprocess(
+        remove_response=True, output="DISP").window()
 
     # Ensure the correct number of windows are chosen
     for comp, nwin in {"N": 1, "E": 1}.items():
@@ -240,7 +218,7 @@ def test_save_and_retrieve_windows(tmpdir, mgmt_post):
         mgmt_post.config.iteration = 0
         mgmt_post.config.step_count = 0
         saved_windows = mgmt_post.windows
-        mgmt_post.save_windows()  # saved to path 'm00/s00'
+        mgmt_post.write_to_dataset(choice=["windows"])  # saved to path 'm00/s00'
 
         # Delete windows, iterate step, retrieve fixed windows
         mgmt_post.windows = None
@@ -275,7 +253,7 @@ def test_save_adjsrcs(tmpdir, mgmt_post):
     """
     with ASDFDataSet(os.path.join(tmpdir, "test_dataset.h5")) as ds:
         mgmt_post.ds = ds
-        mgmt_post.save_adjsrcs()
+        mgmt_post.write_to_dataset(choice=["adjsrcs"])
         assert(hasattr(ds.auxiliary_data.AdjointSources.default, "NZ_BFZ_BXN"))
 
 
@@ -293,6 +271,7 @@ def test_format_windows(mgmt_post):
             assert(len(values) == 2)
             for value in values:
                 assert(isinstance(value, float))
+
 
 def test_flow_multiband(mgmt_pre):
     """
