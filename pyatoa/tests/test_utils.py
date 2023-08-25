@@ -117,20 +117,11 @@ def test_form_utils():
         "quakeml:earthquake.usgs.gov/fdsnws/event/1/query?eventid={eid}"
                                                     "&format=quakeml",  # USGS
         "quakeml:us.anss.org/event/{eid}",  # USGS COMCAT,
-        "smi:local/source/{eid}/source"
                   ]
     for test_case in test_cases:
         test_case = test_case.format(eid=eid)
         assert(form.format_event_name(test_case) == eid)
 
-
-# ============================= TEST IMAGE UTILS ===============================
-def test_images_utils():
-    """
-    Test image processing utilities
-    """
-    # !!! TO DO: add .pdf and .png files to test data to test this functionality
-    pass
 
 
 # ============================= TEST READ/ WRITE UTILS =========================
