@@ -92,7 +92,7 @@ class Manager:
     """
     def __init__(self, config=None, ds=None, event=None, st_obs=None,
                  st_syn=None, inv=None, windows=None, staltas=None,
-                 adjsrcs=None, gcd=None, baz=None, gatherer=None):
+                 adjsrcs=None, gcd=None, baz=None):
         """
         Initiate the Manager class with or without pre-defined attributes.
 
@@ -125,9 +125,6 @@ class Manager:
         :param gcd: great circle distance between source and receiver in km
         :type baz: float
         :param baz: Backazimuth between source and receiver in units of degrees
-        :type gatherer: pyatoa.core.gatherer.Gatherer
-        :param gatherer: A previously instantiated Gatherer class.
-            Should not have to be passed in by User, but is used for reset()
         """
         self.ds = ds
         self.inv = inv
@@ -291,7 +288,7 @@ class Manager:
     def reset(self):
         """
         Restart workflow by deleting all collected data in the Manager, but
-        retain dataset, event, config, and gatherer so a new station can be
+        retain dataset, event, config, so a new station can be
         processed with the same configuration as the previous workflow.
         """
         self.__init__(ds=self.ds, event=self.event, config=self.config)

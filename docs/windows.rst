@@ -9,7 +9,9 @@ Below are a number of presets values for Pyflex which have been used for various
 tomography studies. They are provided as reference starting points for Users to
 determine the parameters required for their own studies.
 
-Descriptions of a few commonly used parameters that are not self explanatory:
+See the `Pyflex Config class <https://adjtomo.github.io/pyflex/#pyflex.config.Config>`__
+for detailed descriptions of parameters. A few descriptions of a commonly used
+but non-intuitive parameters are below:
 
     - ``stalta_waterlevel``: reject windows where short term average over
       long term average (STA/LTA) waveform dips below this threshold value.
@@ -78,9 +80,9 @@ The default windowing parameters set in ``pyflex.core.config.Config()``.
 
 Maggi et al. (2009)
 ~~~~~~~~~~~~~~~~~~~
-The following windowing parameters are defined in Table 3 of
-`Maggi et al. (2009) <https://onlinelibrary.wiley.com/doi/abs/10.1111/j.1365-246X.2009.04099.x>`__
-for various regions and scales.
+The following windowing parameters are defined for various regions and scales
+in Table 3 of the original FLEXWIN publication of
+`Maggi et al. (2009) <https://onlinelibrary.wiley.com/doi/abs/10.1111/j.1365-246X.2009.04099.x>`__.
 
 Global (50--150s)
 `````````````````
@@ -182,11 +184,12 @@ Southern California (2--30s)
     c_4a: 2.
     c_4b: 6.0
 
+------------------------------------
 
 Chow et al. (2022)
 ~~~~~~~~~~~~~~~~~~
-The following parameter sets were used to derive NZATOM_NORTH an adjoint
-tomography model for the North Island of New Zealand. The results of this study
+The following parameter sets were used to derive `NZATOM_NORTH <http://ds.iris.edu/ds/products/emc-nz_atom_north_chow_etal_2021_vpvs/>`__
+an adjoint tomography model for the North Island of New Zealand. The results of this study
 are published in `Chow et al. (2022a) <https://agupubs.onlinelibrary.wiley.com/doi/epdf/10.1029/2021JB022865>`__.
 
 The parameter set is split into various inversion legs which tackle different
@@ -336,7 +339,7 @@ and analyzed in `Chow et al. (2020) <https://doi.org/10.1093/gji/ggaa381>`__.
     c_4a: 25
     c_4b: 120
 
-RISTAU 1D (8--30s) 
+Ristau 1D (8--30s)
 ```````````````````````````
 
 .. code:: yaml

@@ -56,10 +56,6 @@ parameters.
         iteration:               None
         step_count:              None
         event_id:                None
-    GATHER
-        start_pad:               20
-        end_pad:                 500
-        save_to_ds:              True
     PROCESS
         min_period:              10.0
         max_period:              30.0
