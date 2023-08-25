@@ -4,6 +4,7 @@ Test the functionalities of the Pyaflowa Manager class
 import pytest
 import os
 from pyasdf import ASDFDataSet
+from pyadjoint import get_config as get_pyadjoint_config
 from pyatoa import Config, Manager, logger
 from pyatoa.core.manager import ManagerError
 from obspy import read, read_events, read_inventory
@@ -302,12 +303,14 @@ def test_resample_numerical_noise(mgmt_pre):
     # Ensure that both traces are the same 
     mgmt_pre.st_obs = mgmt_pre.st_syn.copy()
 
-    # Take some parameters from the Issue
-    mgmt_pre.config.adj_src_type = "waveform"
-    mgmt_pre.config.min_period = 20
-    mgmt_pre.config.max_period = 100.
+    # Using synthetic data
     mgmt_pre.config.st_obs_type = "syn"
-    mgmt_pre.config._set_external_configs()
+
+    # Take some parameters from the Issue
+    mgmt_pre.config.pyadjoint_config = get_pyadjoint_config(
+        adjsrc_type="waveform", min_period=20.,
+        max_period=100.
+    )
 
     mgmt_pre.standardize()
     mgmt_pre.preprocess()

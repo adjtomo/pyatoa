@@ -42,6 +42,14 @@
 - Added a ``plt.close('all')`` to the end of the Manager's plot routine as
   as a final precaution against leaving an excessive number of Matplotlib 
   figures open
+- Overhauled ``pyatoa.core.manager.Manager.flow_multiband`` to mimic behavior 
+  the standard behavior of ``Manager.flow``, that is: return internal attributes
+  ``windows`` and ``adjsrcs`` which are component-wise dictionaries that each
+  contain Pyflex Windows and Pyadjoint AdjointSource objects, respectively. 
+  Previously this function returned dictionaries of dictionaries which needed 
+  to be further manipulated, now the function averages all adjoint sources 
+  from all period bands, and also collects all windows.
+- Adjusted and fixed tests based on all the above changes.
 
 ## v0.2.2
 
