@@ -5,6 +5,7 @@ dependencies:
     - sphinx
     - sphinx_rtd_theme
     - myst-parser
+    - nbsphinx
     - pip
     - pip:
       - sphinx-autoapi
