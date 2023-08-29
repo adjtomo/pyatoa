@@ -64,3 +64,8 @@
   because the old one had no way of being remade.
 - New Docs + Example + Example data: Processing data with Pyatoa and MPI
 - Remove GitHub Pip install links for PySEP, Pyflex and Pyadjoint
+
+## v0.2.2
+
+- Bugfix: Gatherer attempting to access a removed Config parameter
+- Resolve PyPDF2 -> PyPDF dependency deprecation warning

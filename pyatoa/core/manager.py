@@ -1239,11 +1239,13 @@ class Manager:
         if choice == "wav":
             wm = WaveMaker(mgmt=self, **kwargs)
             wm.plot(show=show, save=save)
+            plt.close()
         # Plot only map
         elif choice == "map":
             mm = MapMaker(inv=self.inv, cat=self.event, corners=corners,
                           **kwargs)
             mm.plot(show=show, save=save)
+            plt.close()
         # Plot waveform and map on the same figure
         elif choice == "both":
             if figsize is None:
