@@ -22,7 +22,7 @@ def mgmt():
     """
     mgmt = Manager()
     mgmt.load()
-    mgmt.flow()
+    mgmt.flow(remove_response=True, output="DISP")
     return mgmt
 
 

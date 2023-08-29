@@ -3,9 +3,8 @@ Test the functionalities of the Pyaflowa Manager class
 """
 import pytest
 import os
-import json
-import numpy as np
 from pyasdf import ASDFDataSet
+from pyadjoint import get_config as get_pyadjoint_config
 from pyatoa import Config, Manager, logger
 from pyatoa.core.manager import ManagerError
 from obspy import read, read_events, read_inventory
@@ -64,7 +63,7 @@ def config():
     """
     Default Pyatoa Config object
     """
-    return Config(event_id="2018p130600", client="GEONET")
+    return Config(event_id="2018p130600")
 
 
 # @pytest.fixture
@@ -103,7 +102,7 @@ def mgmt_post(mgmt_pre):
     A manager that has completed the full workflow
     """
     mgmt_pre.standardize()
-    mgmt_pre.preprocess()
+    mgmt_pre.preprocess(remove_response=True, output="DISP")
     mgmt_pre.window()
     mgmt_pre.measure()
 
@@ -114,19 +113,20 @@ def test_read_write_from_asdfdataset(tmpdir, mgmt_pre, config):
     """
     Write a Manager into an ASDFDataSet and then read it back
     """
-    with ASDFDataSet(os.path.join(tmpdir, "test_dataset.h5")) as ds:
-        mgmt_pre.ds = ds
-        mgmt_pre.write()
+    ds = ASDFDataSet(os.path.join(tmpdir, "test_dataset.h5")) 
+    mgmt_pre.write_to_dataset(ds=ds)
 
-        # Load data back from dataset
-        mgmt_loaded = Manager(ds=ds, config=config)
-        mgmt_loaded.load("NZ.BFZ", path="default")
+    # Load data back from dataset
+    mgmt_loaded = Manager(ds=ds, config=config)
+    mgmt_loaded.load("NZ.BFZ", path="default")
 
-        # Manager has no equivalence represenation so just check some ids
-        assert(mgmt_pre.stats.event_id == mgmt_loaded.stats.event_id)
-        assert(mgmt_pre.stats.len_obs == mgmt_loaded.stats.len_obs)
-        assert(mgmt_pre.stats.len_syn == mgmt_loaded.stats.len_syn)
-        assert(mgmt_pre.stats.inv_name == mgmt_loaded.stats.inv_name)
+    # Manager has no equivalence represenation so just check some ids
+    assert(mgmt_pre.stats.event_id == mgmt_loaded.stats.event_id)
+    assert(mgmt_pre.stats.len_obs == mgmt_loaded.stats.len_obs)
+    assert(mgmt_pre.stats.len_syn == mgmt_loaded.stats.len_syn)
+    assert(mgmt_pre.stats.inv_name == mgmt_loaded.stats.inv_name)
+
+    del ds
 
 
 def test_standardize_to_synthetics(mgmt_pre):
@@ -193,36 +193,15 @@ def test_preprocess_rotate_to_rtz(mgmt_pre):
     assert(float(f"{mgmt_pre.baz:.2f}") == 3.21)
 
 
-def test_preprocess_overwrite(mgmt_pre):
-    """
-    Apply an overwriting preprocessing function to ensure functionality works
-    """
-    # First ensure that only functions can be passed
-    with pytest.raises(AssertionError):
-        mgmt_pre.preprocess(overwrite="not a function")
-
-    def preproc_fx(st, choice, value=1, **kwargs):
-        """Zero out the data for an easy check on results"""
-        for tr in st:
-            tr.data *= value
-        return st
-
-    mgmt_pre.preprocess(overwrite=preproc_fx, value=0)
-
-    for tr in mgmt_pre.st:
-        assert(not tr.data.any())
-
-
 def test_select_window(mgmt_pre):
     """
     Ensure windows functionality works as advertised
     """
-    assert(mgmt_pre.config.pyflex_preset == "default")
-
     # Check that error is raised if insufficient workflow progress
     with pytest.raises(ManagerError):
         mgmt_pre.window()
-    mgmt_pre.standardize().preprocess().window()
+    mgmt_pre.standardize().preprocess(
+        remove_response=True, output="DISP").window()
 
     # Ensure the correct number of windows are chosen
     for comp, nwin in {"N": 1, "E": 1}.items():
@@ -236,39 +215,41 @@ def test_save_and_retrieve_windows(tmpdir, mgmt_post):
     recalculated but since the waveforms are the same, the values will be the
     same as before.
     """
-    with ASDFDataSet(os.path.join(tmpdir, "test_dataset.h5")) as ds:
-        mgmt_post.ds = ds
-        # Explicitely set the model and step count
-        mgmt_post.config.iteration = 0
-        mgmt_post.config.step_count = 0
-        mgmt_post.config.save_to_ds = True
-        saved_windows = mgmt_post.windows
-        mgmt_post.save_windows()  # saved to path 'm00/s00'
+    ds = ASDFDataSet(os.path.join(tmpdir, "test_dataset.h5"))
 
-        # Delete windows, iterate step, retrieve fixed windows
-        mgmt_post.windows = None
-        mgmt_post.config.step_count += 1
-        mgmt_post.window(fix_windows=True)
+    mgmt_post.ds = ds
+    # Explicitely set the model and step count
+    mgmt_post.config.iteration = 0
+    mgmt_post.config.step_count = 0
+    saved_windows = mgmt_post.windows
+    mgmt_post.write_to_dataset(choice=["windows"])  # saved to path 'm00/s00'
 
-        # Just check some parameter for each window to make sure all goods
-        for comp in mgmt_post.windows:
-            for w, window in enumerate(mgmt_post.windows[comp]):
-                for attr in ["left", "right", "cc_shift"]:
-                    assert(getattr(window, attr) ==
-                           getattr(saved_windows[comp][w], attr))
+    # Delete windows, iterate step, retrieve fixed windows
+    mgmt_post.windows = None
+    mgmt_post.config.step_count += 1
+    mgmt_post.window(fix_windows=True)
 
-        # Delete windows, slightly change synthetic waveforms and check to make
-        # sure that recalculated criteria are different
-        mgmt_post.windows = None
-        for tr in mgmt_post.st_syn:
-            tr.data *= 2
-        mgmt_post.window(fix_windows=True)
+    # Just check some parameter for each window to make sure all goods
+    for comp in mgmt_post.windows:
+        for w, window in enumerate(mgmt_post.windows[comp]):
+            for attr in ["left", "right", "cc_shift"]:
+                assert(getattr(window, attr) ==
+                       getattr(saved_windows[comp][w], attr))
 
-        for comp in mgmt_post.windows:
-            for w, window in enumerate(mgmt_post.windows[comp]):
-                # Amplitude ratios will be different since we multipled them
-                assert (getattr(window, "dlnA") !=
-                        getattr(saved_windows[comp][w], "dlnA"))
+    # Delete windows, slightly change synthetic waveforms and check to make
+    # sure that recalculated criteria are different
+    mgmt_post.windows = None
+    for tr in mgmt_post.st_syn:
+        tr.data *= 2
+    mgmt_post.window(fix_windows=True)
+
+    for comp in mgmt_post.windows:
+        for w, window in enumerate(mgmt_post.windows[comp]):
+            # Amplitude ratios will be different since we multipled them
+            assert (getattr(window, "dlnA") !=
+                    getattr(saved_windows[comp][w], "dlnA"))
+
+    del ds
 
 
 def test_save_adjsrcs(tmpdir, mgmt_post):
@@ -276,10 +257,12 @@ def test_save_adjsrcs(tmpdir, mgmt_post):
     Checks that adjoint sources can be written to dataset and will match the 
     formatting required by Specfem3D
     """
-    with ASDFDataSet(os.path.join(tmpdir, "test_dataset.h5")) as ds:
-        mgmt_post.ds = ds
-        mgmt_post.save_adjsrcs()
-        assert(hasattr(ds.auxiliary_data.AdjointSources.default, "NZ_BFZ_BXN"))
+    ds = ASDFDataSet(os.path.join(tmpdir, "test_dataset.h5"))
+    mgmt_post.ds = ds
+    mgmt_post.write_to_dataset(choice=["adjsrcs"])
+    assert(hasattr(ds.auxiliary_data.AdjointSources.default, "NZ_BFZ_BXN"))
+
+    del ds
 
 
 def test_format_windows(mgmt_post):
@@ -297,15 +280,55 @@ def test_format_windows(mgmt_post):
             for value in values:
                 assert(isinstance(value, float))
 
+
 def test_flow_multiband(mgmt_pre):
     """
     Test that the workflow for multiple period bands returns a single
     adjoint source
     """
-    windows, adjsrcs = mgmt_pre.flow_multiband(
-        periods=[(1, 10), (10, 30), (15, 40)]
-    )
+    mgmt_pre.flow_multiband(periods=[(1, 10), (10, 30), (15, 40)],
+                            remove_response=True, output="DISP")
+
     # Just check that the expected values don't change
-    assert(pytest.approx(adjsrcs["E"].max(), .001) == 8914.48)
-    assert(pytest.approx(adjsrcs["N"].max(), .001) == 3173.05)
-    assert(pytest.approx(adjsrcs["Z"].max(), .001) == 2749.96)
+    assert(pytest.approx(mgmt_pre.adjsrcs["E"].misfit, .001) == 0.33739)
+    assert(pytest.approx(mgmt_pre.adjsrcs["N"].misfit, .001) == 0.52064)
+    assert(pytest.approx(mgmt_pre.adjsrcs["Z"].misfit, .001) == 0.29031)
+
+
+def test_resample_numerical_noise(mgmt_pre):
+    """
+    Raised in Issue #34 by Ridvan O. (rdno).
+    
+    Numerical noise can be introduced by resampling a trace that already has 
+    the correct sampling rate, which leads to non-zero adjoint sources/misfit 
+    when traces are identical due to very slight time shifts introduced from 
+    the resampling method.
+
+    This check ensures the fix (do not resample if sampling rates are the same)
+    continues to work.
+    """
+    # Ensure that both traces are the same 
+    mgmt_pre.st_obs = mgmt_pre.st_syn.copy()
+
+    # Using synthetic data
+    mgmt_pre.config.st_obs_type = "syn"
+
+    # Take some parameters from the Issue
+    mgmt_pre.config.pyadjoint_config = get_pyadjoint_config(
+        adjsrc_type="waveform", min_period=20.,
+        max_period=100.
+    )
+
+    mgmt_pre.standardize()
+    mgmt_pre.preprocess()
+    mgmt_pre.measure()  # skip windowing as we get the same result without
+
+    # mgmt_pre.plot(choice="wav")  # creates the figure shown in Issue #34 
+
+    # adjoint sources should be zero because these are the same trace
+    for comp, adjsrc in mgmt_pre.adjsrcs.items():
+        assert(adjsrc.adjoint_source.max() == 0)
+        assert(adjsrc.adjoint_source.min() == 0)
+
+  
+

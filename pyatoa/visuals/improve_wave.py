@@ -109,7 +109,6 @@ class ImproveWave:
             mgmt.load(sta, path)
 
             # Overwrite some config parameters
-            mgmt.config.save_to_ds = False
             mgmt.config.min_period = min_period
             mgmt.config.max_period = max_period
             if rotate_to_rtz:
@@ -166,7 +165,6 @@ class ImproveWave:
             with asdf(ds_fid, mode="r") as ds:
                 mgmt = Manager(ds=ds)
                 mgmt.load(sta, path)
-                mgmt.config.save_to_ds = False
                 mgmt.config.min_period = min_period
                 mgmt.config.max_period = max_period
                 mgmt.standardize().preprocess()

@@ -78,10 +78,14 @@ def test_filters(st_obs):
     min_period = 10
     max_period = 30
     outputs = [
-        process.filters(st_obs, min_period=min_period, max_period=max_period),
-        process.filters(st_obs, min_period=min_period, min_freq=1/max_period),
-        process.filters(st_obs, max_freq=1/min_period, min_freq=1/max_period),
-        process.filters(st_obs, max_freq=1 / min_period, max_period=max_period)
+        process.apply_filter(st_obs, min_period=min_period,
+                             max_period=max_period),
+        process.apply_filter(st_obs, min_period=min_period,
+                             min_freq=1/max_period),
+        process.apply_filter(st_obs, max_freq=1/min_period,
+                             min_freq=1/max_period),
+        process.apply_filter(st_obs, max_freq=1 / min_period,
+                             max_period=max_period)
     ]
     check_result = outputs[0][0].data
     for output in outputs:

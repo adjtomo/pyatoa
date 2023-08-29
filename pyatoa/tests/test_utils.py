@@ -7,12 +7,11 @@ import shutil
 import pytest
 import numpy as np
 from glob import glob
-from pysep.utils.io import read_stations
 from obspy import UTCDateTime, read_inventory
 from obspy.core.util.testing import streams_almost_equal
 from pyasdf import ASDFDataSet
-from pyatoa.utils import (adjoint, calculate, form, images, read, srcrcv,
-                          window, write)
+from pyatoa.utils import (adjoint, calculate, form, images, srcrcv, window, 
+                          write)
 
 
 @pytest.fixture
@@ -117,20 +116,11 @@ def test_form_utils():
         "quakeml:earthquake.usgs.gov/fdsnws/event/1/query?eventid={eid}"
                                                     "&format=quakeml",  # USGS
         "quakeml:us.anss.org/event/{eid}",  # USGS COMCAT,
-        "smi:local/source/{eid}/source"
                   ]
     for test_case in test_cases:
         test_case = test_case.format(eid=eid)
         assert(form.format_event_name(test_case) == eid)
 
-
-# ============================= TEST IMAGE UTILS ===============================
-def test_images_utils():
-    """
-    Test image processing utilities
-    """
-    # !!! TO DO: add .pdf and .png files to test data to test this functionality
-    pass
 
 
 # ============================= TEST READ/ WRITE UTILS =========================
@@ -142,13 +132,11 @@ def test_write_utils(tmpdir, station_fid, sem_fid, ds):
     """
     # Test write_inv_seed with edited dir structure
     # Mess with the default template naming schema and see if it returns goodly
-    inv = read_stations(station_fid)
-    write.write_inv_seed(inv, path=tmpdir, dir_structure="{net}+{sta}",
-                         file_template="TEST-{loc}.{cha}_{sta}-{net}",
-                         components="TZR", channel_code="BX{comp}")
+    inv = read_inventory()
+    write.write_inv_seed(inv, path=tmpdir)
 
-    check_fids = ["NZ+BFZ/TEST-.BXR_BFZ-NZ", "NZ+BFZ/TEST-.BXT_BFZ-NZ",
-                  "NZ+BFZ/TEST-.BXZ_BFZ-NZ"]
+    check_fids = ["FUR.GR/RESP.GR.FUR..BHE", "RJOB.BW/RESP.BW.RJOB..EHZ",
+                  "WET.GR/RESP.GR.WET..LHN"]
     for check_fid in check_fids:
         assert(os.path.exists(os.path.join(tmpdir, check_fid)))
 

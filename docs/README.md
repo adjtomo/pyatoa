@@ -13,12 +13,15 @@ In order to build the Docs locally, you will first need to create a separate
 Conda environment with a few packages, you can do this by running:
 
 ``` bash
-conda env create --file environment.yaml
+conda env create --file environment_local.yml
 conda activate pyatoa-docs
 ```
 
 You can then run the make command to generate the .html files. You can find your 
 local docs in the *_build/html* directory
+
+Note that the file ``environment.yml`` is used for building docs on ReadTheDocs,
+but does not contain all required dependencies to build locally.
 
 ```bash
 make html

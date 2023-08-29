@@ -25,7 +25,13 @@ copyright = '2022, adjTomo'
 author = 'adjTomo Dev Team'
 
 # The short X.Y version
-version = '0.2.2'
+# Grab version number from 'pyproject.toml'
+with open("../pyproject.toml", "r") as f:
+    _lines = f.readlines()
+for _line in _lines:
+    if _line.startswith("version"):
+        version = _line.split('"')[1].strip()
+
 # The full version, including alpha/beta/rc tags
 release = ''
 
@@ -75,7 +81,7 @@ master_doc = 'index'
 #
 # This is also used if you do content translation via gettext catalogs.
 # Usually you set "language" from the command line for these cases.
-language = None
+language = "en"
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
