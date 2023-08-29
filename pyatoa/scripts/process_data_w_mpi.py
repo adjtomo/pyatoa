@@ -16,8 +16,8 @@ for each of the source receiver pairs.
 
 .. rubric:: usage
 
-    # To run this on 4 cores
-    mpirun -n 4 process_data_w_mpi.py
+# To run this on 4 cores
+mpirun -n 4 process_data_w_mpi.py
 """
 import os
 import numpy as np

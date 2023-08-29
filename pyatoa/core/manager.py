@@ -309,9 +309,9 @@ class Manager:
             'st_obs': Observed waveform under tag `config.observed_tag`
             'st_syn': Synthetic waveform under tag `config.synthetic_tag`
             'windows': Misfit windows collected by Pyflex are stored under
-                `auxiliary_data.MisfitWindow`
+              `auxiliary_data.MisfitWindow`
             'adjsrcs': Adjoint sources created by Pyadjoint are stored under
-                `auxiliary_data.AdjointSources`
+              `auxiliary_data.AdjointSources`
             'config': the Pyatoa Config object is stored under
                 'auxiliary_data.Config' and can be used to re-load the Manager
                 and re-do processing
@@ -568,9 +568,9 @@ class Manager:
 
             Kwargs are passed through to Manager.preprocess() function only
 
-        .. rubric::
+        .. rubric:: Basic Usage
 
-            manager.flow_multiband(periods=[(1, 5), (10, 30), (40, 100)])
+        Manager.flow_multiband(periods=[(1, 5), (10, 30), (40, 100)])
 
         :type periods: list of tuples
         :param periods: a list of tuples that define multiple period bands to
