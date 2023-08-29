@@ -22,11 +22,13 @@ def test_io_asdf(tmpdir):
                  pyadjoint_parameters={'dt_sigma_min': test_value}
                  )
  
-    with ASDFDataSet(os.path.join(tmpdir, "test_dataset.h5")) as ds:
-        cfg.write(write_to=ds)
-        cfg_check = Config(ds=ds, path="default")
-        assert cfg_check.pyflex_config.c_0 == test_value
-        assert cfg_check.pyadjoint_config.dt_sigma_min == test_value
+    ds = ASDFDataSet(os.path.join(tmpdir, "test_dataset.h5"))
+    cfg.write(write_to=ds)
+    cfg_check = Config(ds=ds, path="default")
+    assert cfg_check.pyflex_config.c_0 == test_value
+    assert cfg_check.pyadjoint_config.dt_sigma_min == test_value
+
+    del ds
 
 
 def test_io_yaml(tmpdir):
