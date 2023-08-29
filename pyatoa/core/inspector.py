@@ -868,7 +868,8 @@ class Inspector(InspectorPlotter):
         """
         group_list = ["iteration", "step", level]
 
-        df = getattr(self.windows.groupby(group_list), choice)()
+        df = getattr(self.windows.groupby(group_list), choice)(
+                numeric_only=True)
         if iteration is not None:
             df = df.loc[iteration]
             if step_count is not None:
