@@ -25,7 +25,13 @@ copyright = '2023, adjTomo'
 author = 'adjTomo Dev Team'
 
 # The short X.Y version
-version = '0.3.0'
+# Grab version number from 'pyproject.toml'
+with open("../pyproject.toml", "r") as f:
+    _lines = f.readlines()
+for _line in _lines:
+    if _line.startswith("version"):
+        version = _line.split('"')[1].strip()
+
 # The full version, including alpha/beta/rc tags
 release = ''
 

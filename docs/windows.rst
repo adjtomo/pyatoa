@@ -293,7 +293,7 @@ Leg 5 (4--30s)
     c_4b: 9.0
 
 Posthoc Analysis (6--30s)
-````````````````````````
+``````````````````````````
 This was used for posthoc evaluation of the final model using events not
 inverted for during the inversion.
 
