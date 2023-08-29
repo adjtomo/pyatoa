@@ -113,18 +113,20 @@ def test_read_write_from_asdfdataset(tmpdir, mgmt_pre, config):
     """
     Write a Manager into an ASDFDataSet and then read it back
     """
-    with ASDFDataSet(os.path.join(tmpdir, "test_dataset.h5")) as ds:
-        mgmt_pre.write_to_dataset(ds=ds)
+    ds = ASDFDataSet(os.path.join(tmpdir, "test_dataset.h5")) 
+    mgmt_pre.write_to_dataset(ds=ds)
 
-        # Load data back from dataset
-        mgmt_loaded = Manager(ds=ds, config=config)
-        mgmt_loaded.load("NZ.BFZ", path="default")
+    # Load data back from dataset
+    mgmt_loaded = Manager(ds=ds, config=config)
+    mgmt_loaded.load("NZ.BFZ", path="default")
 
-        # Manager has no equivalence represenation so just check some ids
-        assert(mgmt_pre.stats.event_id == mgmt_loaded.stats.event_id)
-        assert(mgmt_pre.stats.len_obs == mgmt_loaded.stats.len_obs)
-        assert(mgmt_pre.stats.len_syn == mgmt_loaded.stats.len_syn)
-        assert(mgmt_pre.stats.inv_name == mgmt_loaded.stats.inv_name)
+    # Manager has no equivalence represenation so just check some ids
+    assert(mgmt_pre.stats.event_id == mgmt_loaded.stats.event_id)
+    assert(mgmt_pre.stats.len_obs == mgmt_loaded.stats.len_obs)
+    assert(mgmt_pre.stats.len_syn == mgmt_loaded.stats.len_syn)
+    assert(mgmt_pre.stats.inv_name == mgmt_loaded.stats.inv_name)
+
+    del ds
 
 
 def test_standardize_to_synthetics(mgmt_pre):
@@ -213,38 +215,41 @@ def test_save_and_retrieve_windows(tmpdir, mgmt_post):
     recalculated but since the waveforms are the same, the values will be the
     same as before.
     """
-    with ASDFDataSet(os.path.join(tmpdir, "test_dataset.h5")) as ds:
-        mgmt_post.ds = ds
-        # Explicitely set the model and step count
-        mgmt_post.config.iteration = 0
-        mgmt_post.config.step_count = 0
-        saved_windows = mgmt_post.windows
-        mgmt_post.write_to_dataset(choice=["windows"])  # saved to path 'm00/s00'
+    ds = ASDFDataSet(os.path.join(tmpdir, "test_dataset.h5"))
 
-        # Delete windows, iterate step, retrieve fixed windows
-        mgmt_post.windows = None
-        mgmt_post.config.step_count += 1
-        mgmt_post.window(fix_windows=True)
+    mgmt_post.ds = ds
+    # Explicitely set the model and step count
+    mgmt_post.config.iteration = 0
+    mgmt_post.config.step_count = 0
+    saved_windows = mgmt_post.windows
+    mgmt_post.write_to_dataset(choice=["windows"])  # saved to path 'm00/s00'
 
-        # Just check some parameter for each window to make sure all goods
-        for comp in mgmt_post.windows:
-            for w, window in enumerate(mgmt_post.windows[comp]):
-                for attr in ["left", "right", "cc_shift"]:
-                    assert(getattr(window, attr) ==
-                           getattr(saved_windows[comp][w], attr))
+    # Delete windows, iterate step, retrieve fixed windows
+    mgmt_post.windows = None
+    mgmt_post.config.step_count += 1
+    mgmt_post.window(fix_windows=True)
 
-        # Delete windows, slightly change synthetic waveforms and check to make
-        # sure that recalculated criteria are different
-        mgmt_post.windows = None
-        for tr in mgmt_post.st_syn:
-            tr.data *= 2
-        mgmt_post.window(fix_windows=True)
+    # Just check some parameter for each window to make sure all goods
+    for comp in mgmt_post.windows:
+        for w, window in enumerate(mgmt_post.windows[comp]):
+            for attr in ["left", "right", "cc_shift"]:
+                assert(getattr(window, attr) ==
+                       getattr(saved_windows[comp][w], attr))
 
-        for comp in mgmt_post.windows:
-            for w, window in enumerate(mgmt_post.windows[comp]):
-                # Amplitude ratios will be different since we multipled them
-                assert (getattr(window, "dlnA") !=
-                        getattr(saved_windows[comp][w], "dlnA"))
+    # Delete windows, slightly change synthetic waveforms and check to make
+    # sure that recalculated criteria are different
+    mgmt_post.windows = None
+    for tr in mgmt_post.st_syn:
+        tr.data *= 2
+    mgmt_post.window(fix_windows=True)
+
+    for comp in mgmt_post.windows:
+        for w, window in enumerate(mgmt_post.windows[comp]):
+            # Amplitude ratios will be different since we multipled them
+            assert (getattr(window, "dlnA") !=
+                    getattr(saved_windows[comp][w], "dlnA"))
+
+    del ds
 
 
 def test_save_adjsrcs(tmpdir, mgmt_post):
@@ -252,10 +257,12 @@ def test_save_adjsrcs(tmpdir, mgmt_post):
     Checks that adjoint sources can be written to dataset and will match the 
     formatting required by Specfem3D
     """
-    with ASDFDataSet(os.path.join(tmpdir, "test_dataset.h5")) as ds:
-        mgmt_post.ds = ds
-        mgmt_post.write_to_dataset(choice=["adjsrcs"])
-        assert(hasattr(ds.auxiliary_data.AdjointSources.default, "NZ_BFZ_BXN"))
+    ds = ASDFDataSet(os.path.join(tmpdir, "test_dataset.h5"))
+    mgmt_post.ds = ds
+    mgmt_post.write_to_dataset(choice=["adjsrcs"])
+    assert(hasattr(ds.auxiliary_data.AdjointSources.default, "NZ_BFZ_BXN"))
+
+    del ds
 
 
 def test_format_windows(mgmt_post):
