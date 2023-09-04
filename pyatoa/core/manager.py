@@ -949,7 +949,7 @@ class Manager:
                 continue
 
         # If no windows provided, gather windows using waveform data
-        if windows is not None:
+        if not windows:
             self._select_windows_plus()
 
         logger.info(f"{self.stats.nwin} window(s) total found")
