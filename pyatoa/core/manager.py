@@ -906,8 +906,7 @@ class Manager:
 
         return self
 
-    def window(self, fix_windows=False, iteration=None, step_count=None,
-               force=False):
+    def window(self, windows=None, force=False):
         """
         Evaluate misfit windows using Pyflex. Save windows to ASDFDataSet.
         Allows previously defined windows to be retrieved from ASDFDataSet.
@@ -938,22 +937,6 @@ class Manager:
         if not self.stats.standardized and not force:
             raise ManagerError("cannot window, waveforms not standardized")
 
-        # Determine how to treat fixed windows
-        if fix_windows and not self.ds:
-            logger.warning("cannot fix window, no dataset")
-            fix_windows = False
-        elif fix_windows and (iteration is None or step_count is None):
-            # If no iteration/step_count values are given, automatically search
-            # the previous step_count for windows in relation to the current
-            # iteration/step_count
-            iteration = self.config.iteration
-            step_count = self.config.step_count
-            return_previous = True
-        else:
-            # If fix windows and iteration/step_count are given, search the
-            # dataset for windows under the current iteration/step_count
-            return_previous = False
-
         # Synthetic STA/LTA as Pyflex WindowSelector.calculate_preliminaries()
         for comp in self.config.component_list:
             try:
@@ -965,37 +948,55 @@ class Manager:
             except IndexError:
                 continue
 
-        # Find misfit windows, from a dataset or through window selection
-        if fix_windows:
-            self.retrieve_windows(iteration, step_count, return_previous)
-        else:
-            self.select_windows_plus()
+        # If no windows provided, gather windows using waveform data
+        if windows is not None:
+            self._select_windows_plus()
 
         logger.info(f"{self.stats.nwin} window(s) total found")
 
         return self
 
-    def retrieve_windows(self, iteration, step_count, return_previous):
+    def retrieve_windows_from_dataset(self, ds=None, iteration=None,
+                                      step_count=None):
         """
-        Mid-level window selection function that retrieves windows from a 
-        PyASDF Dataset, recalculates window criteria, and attaches window 
-        information to Manager. No access to rejected window information.
+        Window selection function that retrieves previously saved windows from a
+        PyASDF ASDFDataset, recalculates window criteria using the old windows
+        with the current data, and attaches window information to Manager.
 
+        :type ds: pyasdf.ASDFDataSet
+        :param ds: ASDFDataSet with windows to select. If None given, will
+            search for internal definition of `ds`
         :type iteration: int or str
-        :param iteration: retrieve windows from the given iteration
+        :param iteration: retrieve windows from the given iteration. If None,
+            will search for the previous evaluation to select windows from
         :type step_count: int or str
         :param step_count: retrieve windows from the given step count
-            in the given dataset
-        :type return_previous: bool
-        :param return_previous: if True: return windows from the previous
-            step count in relation to the given iteration/step_count.
-            if False: return windows from the given iteration/step_count
+            in the given dataset. If None, will search for previous evaluation
+            to select windows from
         """
-        logger.info(f"retrieving windows from dataset")
+        if ds is None:
+            ds = self.ds
+        assert(ds is not None), f"ASDFDataSet `ds` required to retrieve windows"
+
+        # Determine how to treat fixed windows
+        if (iteration is None) or (step_count is None):
+            # If no iteration/step_count values are given, automatically search
+            # the previous step_count for windows in relation to the current
+            # iteration/step_count
+            iteration = self.config.iteration
+            step_count = self.config.step_count
+            return_previous = True
+        else:
+            # If fix windows and iteration/step_count are given, search the
+            # dataset for windows under the current iteration/step_count
+            return_previous = False
+
+        logger.info(f"retrieving windows from dataset "
+                    f"i{iteration:0>2} s{step_count:0>2}")
 
         net, sta, _, _ = self.st_obs[0].get_id().split(".")
         # Function will return empty dictionary if no acceptable windows found
-        windows = load_windows(ds=self.ds, net=net, sta=sta,
+        windows = load_windows(ds=ds, net=net, sta=sta,
                                iteration=iteration, step_count=step_count,
                                return_previous=return_previous
                                )
@@ -1024,7 +1025,7 @@ class Manager:
         self.windows = windows
         self.stats.nwin = sum(len(_) for _ in self.windows.values())
 
-    def select_windows_plus(self):
+    def _select_windows_plus(self):
         """
         Mid-level custom window selection function that calls Pyflex select 
         windows, but includes additional window suppression functionality.
