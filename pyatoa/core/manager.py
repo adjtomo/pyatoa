@@ -551,8 +551,7 @@ class Manager:
 
         self.standardize(standardize_to=standardize_to)
         self.preprocess(**kwargs)
-        self.window(fix_windows=fix_windows, iteration=iteration,
-                    step_count=step_count)
+        self.window()
         self.measure()
 
     def flow_multiband(self, periods, standardize_to="syn", fix_windows=False,
