@@ -356,7 +356,7 @@ class Manager:
             with warnings.catch_warnings():
                 warnings.filterwarnings("error")
                 try:
-                    ds.add_waveforms(waveform=self.st_obs,
+                    ds.add_waveforms(waveform=self.st_syn,
                                      tag=self.config.synthetic_tag)
                 except ASDFWarning:
                     logger.debug(f"{self.config.synthetic_tag} waveform "
