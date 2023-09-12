@@ -862,8 +862,7 @@ class Manager:
                         key == "syn" and self.config.st_syn_type == "obs"):
                     st.remove_response(inventory=self.inv, plot=False, **kwargs)
 
-            # Detrend and taper pre-filter
-            st.detrend("simple")
+            # Set mean to 0 and taper ends to prep for filtering
             st.detrend("demean")
             st.taper(taper_percentage)
 
