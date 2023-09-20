@@ -55,19 +55,19 @@ def load_windows(ds, net, sta, iteration, step_count, return_previous=False,
     window_dict = {}    
     if return_previous:
         # Retrieve windows from previous iter/step
-        windows = previous_windows(windows=windows, iteration=iteration,
-                                   step_count=step_count)
+        window_attr = previous_windows(windows=windows, iteration=iteration,
+                                       step_count=step_count)
     else:
         if hasattr(windows, iteration) and \
                             hasattr(windows[iteration], step_count):
-             Attempt to retrieve windows from the given iter/step
+            # Attempt to retrieve windows from the given iter/step
             logger.debug(f"searching for windows in {iteration}{step_count}")
-            windows = windows[iteration][step_count]
+            window_attr = windows[iteration][step_count]
 
     # Convert the Windows axiliary data into PyFlex Windows objects
-    window_dict = dataset_windows_to_pyflex_windows(windows=prev_windows,
+    window_dict = dataset_windows_to_pyflex_windows(windows=window_attr,
                                                     network=net, station=sta,
-                                                    compenents=components)
+                                                    components=components)
 
     return window_dict
 

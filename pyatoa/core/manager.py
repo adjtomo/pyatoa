@@ -990,11 +990,12 @@ class Manager:
             return_previous = False
 
         logger.info(f"retrieving windows from dataset "
-                    f"i{iteration:0>2} s{step_count:0>2}")
+                    f"i{iteration:0>2}s{step_count:0>2}")
 
         net, sta, _, _ = self.st_obs[0].get_id().split(".")
         # Function will return empty dictionary if no acceptable windows found
-        windows = load_windows(ds=ds, net=net, sta=sta,
+        windows = load_windows(ds=ds, net=net, sta=sta, 
+                               components=self.config.component_list,
                                iteration=iteration, step_count=step_count,
                                return_previous=return_previous
                                )
