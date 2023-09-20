@@ -9,7 +9,8 @@ from pyadjoint.adjoint_source import AdjointSource
 from pyatoa.utils.form import format_iter, format_step
 
 
-def load_windows(ds, net, sta, iteration, step_count, return_previous=False):
+def load_windows(ds, net, sta, iteration, step_count, return_previous=False,
+                 components=None):
     """
     Returns misfit windows from an ASDFDataSet for a given iteration, step,
     network and station, as well as a count of windows returned.
@@ -38,6 +39,10 @@ def load_windows(ds, net, sta, iteration, step_count, return_previous=False):
     :type return_previous: bool
     :param return_previous: search the dataset for available windows
         from the previous iteration/step given the current iteration/step
+    :type components: str or list of str
+    :param components: if not None, only select windows by a given component,
+        else, just load all possible components. Can be a string like 'ZNE' or
+        a list of strings like ['Z', 'N', 'E']
     :rtype window_dict: dict
     :return window_dict: dictionary containing misfit windows, in a format
         expected by Pyatoa Manager class
@@ -50,21 +55,19 @@ def load_windows(ds, net, sta, iteration, step_count, return_previous=False):
     window_dict = {}    
     if return_previous:
         # Retrieve windows from previous iter/step
-        prev_windows = previous_windows(windows=windows, iteration=iteration,
-                                        step_count=step_count
-                                        )
-        window_dict = dataset_windows_to_pyflex_windows(windows=prev_windows,
-                                                        network=net, station=sta
-                                                        )
+        windows = previous_windows(windows=windows, iteration=iteration,
+                                   step_count=step_count)
     else:
         if hasattr(windows, iteration) and \
                             hasattr(windows[iteration], step_count):
-            # Attempt to retrieve windows from the given iter/step
+             Attempt to retrieve windows from the given iter/step
             logger.debug(f"searching for windows in {iteration}{step_count}")
-            window_dict = dataset_windows_to_pyflex_windows(
-                windows=windows[iteration][step_count], network=net, 
-                station=sta
-                )
+            windows = windows[iteration][step_count]
+
+    # Convert the Windows axiliary data into PyFlex Windows objects
+    window_dict = dataset_windows_to_pyflex_windows(windows=prev_windows,
+                                                    network=net, station=sta,
+                                                    compenents=components)
 
     return window_dict
 
@@ -121,7 +124,8 @@ def load_adjsrcs(ds, net, sta, iteration, step_count):
     return adjsrc_dict
 
 
-def dataset_windows_to_pyflex_windows(windows, network, station):
+def dataset_windows_to_pyflex_windows(windows, network, station, 
+                                      components=None):
     """
     Convert the parameter dictionary of an ASDFDataSet MisfitWindow into a 
     dictionary of Pyflex Window objects, in the same format as Manager.windows
@@ -134,6 +138,10 @@ def dataset_windows_to_pyflex_windows(windows, network, station):
     :param network: network of the station related to the windows
     :type station: str
     :param station: station related to the windows
+    :type components: str or list of str
+    :param components: if not None, only select windows by a given component,
+        else, just load all possible components. Can be a string like 'ZNE' or
+        a list of strings like ['Z', 'N', 'E']
     :rtype: dict
     :return: dictionary of window attributes in the same format that Pyflex 
         outputs
@@ -144,6 +152,8 @@ def dataset_windows_to_pyflex_windows(windows, network, station):
 
         # Check the title of the misfit window to see if applicable
         if (net == network) and (sta == station):
+            if components is not None and comp not in components:
+                continue
             par = windows[window_name].parameters
 
             # Create a Pyflex Window object
