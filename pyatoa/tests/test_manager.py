@@ -66,16 +66,16 @@ def config():
     return Config(event_id="2018p130600")
 
 
-# @pytest.fixture
-# def window():
-#     """
-#     Pre-gathered window for this specific source-receiver configuration
-#     This doesn't actually match the data... strange. Not used.
-#     """
-#     return json.load(open(
-#         "./test_data/test_window_NZ_BFZ_N_0_2018p130600.json"))["windows"][0]
-#
-#
+@pytest.fixture
+def windows():
+    """
+    Pre-gathered window for this specific source-receiver configuration
+    This doesn't actually match the data... strange. Not used.
+    """
+    return json.load(open(
+        "./test_data/test_window_NZ_BFZ_N_0_2018p130600.json"))
+
+
 # @pytest.fixture
 # def adjoint_source():
 #     """
@@ -206,6 +206,11 @@ def test_select_window(mgmt_pre):
     # Ensure the correct number of windows are chosen
     for comp, nwin in {"N": 1, "E": 1}.items():
         assert(len(mgmt_pre.windows[comp]) == nwin)
+
+def test_provide_windows(mgmt_pre, windows):
+    """
+    Test User-provided windows given to the window function
+    """
 
 
 def test_save_and_retrieve_windows(tmpdir, mgmt_post):

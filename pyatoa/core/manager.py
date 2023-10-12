@@ -551,7 +551,11 @@ class Manager:
 
         self.standardize(standardize_to=standardize_to)
         self.preprocess(**kwargs)
-        self.window()
+        if fix_windows:
+            self.retrieve_windows_from_dataset(iteration=iteration,
+                                               step_count=step_count)
+        else:
+            self.window()
         self.measure()
 
     def flow_multiband(self, periods, standardize_to="syn", fix_windows=False,
@@ -599,6 +603,14 @@ class Manager:
             measurements from each of the period bands
         :raises ManagerError: for any controlled exceptions
         """
+        if fix_windows:
+            assert(self.ds is not None), \
+                f"`fix_windows` requires ASDFDataSet `ds`"
+            assert(iteration is not None and step_count is not None), (
+                f"`fix_windows` requires 'iteration' and 'step_count' to access"
+                f"windows from ASDFDataSet"
+            )
+
         # Copy these waveforms to overwrite for each new period band
         st_obs_raw = self.st_obs.copy()
         st_syn_raw = self.st_syn.copy()
@@ -622,8 +634,11 @@ class Manager:
                 self.check()
                 self.standardize(standardize_to=standardize_to)
                 self.preprocess(**kwargs)
-                self.window(fix_windows=fix_windows, iteration=iteration,
-                            step_count=step_count)
+                if fix_windows:
+                    self.retrieve_windows_from_dataset(iteration=iteration,
+                                                       step_count=step_count)
+                else:
+                    self.window()
                 self.measure()
                 if plot:
                     save = f"{plot}_{tag}.png"
@@ -914,17 +929,11 @@ class Manager:
             * All windows are saved into the ASDFDataSet, even if retrieved.
             * STA/LTA information is collected and stored internally.
 
-        :type fix_windows: bool
-        :param fix_windows: do not pick new windows, but load windows from the
-            given dataset from 'iteration' and 'step_count'
-        :type iteration: int or str
-        :param iteration: if 'fix_windows' is True, look for windows in this
-            iteration. If None, will check the latest iteration/step_count
-            in the given dataset
-        :type step_count: int or str
-        :param step_count: if 'fix_windows' is True, look for windows in this
-            step_count. If None, will check the latest iteration/step_count
-            in the given dataset
+        :type windows: dict
+        :param windows: optional argument for User to provide their own windows
+            to the window function. This will override the window selection
+            process and simply apply the window directly to the class and
+            adjust the stats `nwin` for the total number of windows.
         :type force: bool
         :param force: ignore flag checks and run function, useful if e.g.
             external preprocessing is used that doesn't meet flag criteria
@@ -949,6 +958,13 @@ class Manager:
         # If no windows provided, gather windows using waveform data
         if not windows:
             self._select_windows_plus()
+        else:
+            nwin = 0
+            for comp, window in windows.items():
+                nwin += len(window)
+
+            self.windows = windows
+            self.stats.nwin = sum(len(_) for _ in self.windows.values())
 
         logger.info(f"{self.stats.nwin} window(s) total found")
 
