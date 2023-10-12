@@ -1048,6 +1048,7 @@ class Manager:
         will be used internally for plotting.
 
         .. note::
+
             Pyflex will throw a ValueError if the arrival of the P-wave
             is too close to the initial portion of the waveform, considered the
             'noise' section. This happens for short source-receiver distances
