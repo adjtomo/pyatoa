@@ -236,6 +236,26 @@ class Inspector(InspectorPlotter):
         """Return a dictionary of event depths in units of meters"""
         return self._try_print("depth_km")
 
+    def generate_report(self, path_report="./report", iteration=None,
+                        step_count=None):
+        """
+        An aggregate function that generates a "report" by creating a number
+        of figures that summarize the misfit of the inversion. Makes it easier
+        for the User as they don't have to remember each of the functions in
+        the Inspector's wheelhouse, all relevant figures will be generated
+        automatically.
+        """
+        # You can modify this list to determine which figures will be generated
+        plot_functions = ["raypath_density", "travel_times"]
+
+        if not os.path.exists(path_report):
+            os.makedirs(path_report)
+
+        # Generate some geographic information, only needs to be done once
+        for plot_function in plot_functions:
+            getattr(self, plot_function)(iteration=iteration,
+                                         step_count=step_count)
+
     def _get_srcrcv_from_dataset(self, ds):
         """
         Get source and receiver information from dataset, this includes
@@ -435,7 +455,7 @@ class Inspector(InspectorPlotter):
             raise ValueError("'step_count' cannot be provided by itself, you "
                              "must also set the variable: 'iteration'")
         return iteration, step_count
-    
+
     def discover(self, path="./", ignore_symlinks=True):
         """
         Allow the Inspector to scour through a path and find relevant files,
@@ -652,6 +672,19 @@ class Inspector(InspectorPlotter):
         self.windows = pd.DataFrame()
         self.sources = pd.DataFrame()
         self.receivers = pd.DataFrame()
+
+    def report(self, path_out="./insp_report"):
+        """
+        Convenince function that generates a "report" of misfit information for
+        a given inversion. Creates and fills a directory composed of misfit
+        figures and a text file describing important misfit information that a
+        researcher/analyst can quickly browse through to get an idea of
+        inversion health.
+        """
+        if not os.path.exists(path_out):
+            os.mkdir(path_out)
+
+
 
     def isolate(self, iteration=None, step_count=None,  event=None,
                 network=None, station=None, channel=None, component=None,

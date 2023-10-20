@@ -365,6 +365,7 @@ class Manager:
         if self.windows and "windows" in choice:
             logger.debug("saving misfit windows to ASDFDataSet")
             add_misfit_windows(self.windows, ds, path=self.config.aux_path)
+
         if self.adjsrcs and "adjsrcs" in choice:
             logger.debug("saving adjoint sources to ASDFDataSet")
             add_adjoint_sources(adjsrcs=self.adjsrcs, ds=ds,

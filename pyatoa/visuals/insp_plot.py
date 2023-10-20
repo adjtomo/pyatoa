@@ -302,7 +302,6 @@ class InspectorPlotter:
             if show:
                 plt.show()
 
-
     def event_depths(self, xaxis="longitude", show=True, save=None, **kwargs):
         """
         Create a scatter plot of events at depth. Compresses all events onto a
@@ -390,6 +389,9 @@ class InspectorPlotter:
 
         # Get lat/lon information from sources and receivers
         stations = self.receivers.droplevel(0)  # remove network index
+        # Drop duplicate station names, assuming that they will have the same
+        # coordinates. This is to deal with e.g., TA -> AK networks
+        stations = stations[~stations.index.duplicated(keep="first")]
         events = self.sources.drop(["time", "magnitude", "depth_km"], axis=1)
 
         # Set up the normalized colorbar 
@@ -485,6 +487,9 @@ class InspectorPlotter:
 
         # Get lat/lon information from sources and receivers
         stations = self.receivers.droplevel(0)  # remove network index
+        # Drop duplicate station names, assuming that they will have the same
+        # coordinates. This is to deal with e.g., TA -> AK networks
+        stations = stations[~stations.index.duplicated(keep="first")]
         events = self.sources.drop(["time", "magnitude", "depth_km"], axis=1)
 
         # Determine grid bounds and required number of bins for histograms
@@ -508,6 +513,7 @@ class InspectorPlotter:
         for event, sta in df.index.to_numpy():
             elon, elat = events.loc[event].longitude, events.loc[event].latitude
             slon, slat = stations.loc[sta].longitude, stations.loc[sta].latitude
+
 
             # Plot a marker for each event and station
             if event not in plotted:
@@ -1035,8 +1041,9 @@ class InspectorPlotter:
     def plot_windows(self, iteration=None, step_count=None, iteration_comp=None,
                      step_count_comp=None, choice="cc_shift_in_seconds",
                      event=None, network=None, station=None, component=None,
-                     no_overlap=True, distances=False, annotate=False,
-                     bounds=False, show=True, save=False, **kwargs):
+                     no_overlap=True, abs_distances=False, annotate=False,
+                     bounds=False, show=True, save=False,
+                     **kwargs):
         """
         Show lengths of windows chosen based on source-receiver distance, akin
         to Tape's Thesis or to the LASIF plots. These are useful for showing
@@ -1071,11 +1078,11 @@ class InspectorPlotter:
             function will try to shift the distance to a value that hasn't yet
             been plotted. It will alternate larger positive and negative values
             until something is found. Will lead to non-real distances.
-        :type distances: bool
-        :param distances: If set False, just plot one window atop the other,
-            which makes for more concise, easier to view plots, but
+        :type abs_distances: bool
+        :param abs_distances: If set False (default), just plot one window atop
+            the other, which makes for more concise, easier to view plots, but
             then real distance information is lost, only relative distance
-            kept.
+            kept. If True, the y-axis corresponds to actual source rec. distance
         :type annotate: bool
         :param annotate: If True, will annotate event and station information
             for each window. May get messy if `distances == True` and
@@ -1105,12 +1112,16 @@ class InspectorPlotter:
                 The distance in seconds to shift the plot to accomodate
                 annotations. This needs to be played as its based on the length
                 of the strings that are used in the annotations.
+            str facecolor:
+                Set the background color of the figure. Defaults to 'w'hite but
+                some colorscales may be more vibrant with darker color faces
         """
-        alpha = kwargs.get("alpha", 0.6)
+        alpha = kwargs.get("alpha", 1)
         cmap = kwargs.get("cmap", "viridis")
         cbar_label = kwargs.get("cbar_label", None)
         rectangle_height = kwargs.get("rectangle_height", 1.0)
         anno_shift = kwargs.get("anno_shift", 50)
+        facecolor = kwargs.get("facecolor", "w")
 
         iteration, step_count = self._parse_nonetype_eval(iteration, step_count)
 
@@ -1167,6 +1178,7 @@ class InspectorPlotter:
 
         # Plotting begins here
         f, ax = plt.subplots(figsize=(8, 6))
+        ax.set_facecolor(facecolor)
 
         # Create a custom color scale based on the min and max values of choice
         if cbar_label is None:
@@ -1202,38 +1214,21 @@ class InspectorPlotter:
         for window in df.to_numpy():
             ev, sta, comp, start, end, dist, value = window
 
-            if not distances:
+            if not abs_distances:
                 # Ignore distances and simply plot linearly
                 dist_ = y_value
                 y_value += rectangle_height
             else:
-                # Try not to overlap windows that are very close in distance
-                dist_ = int(dist)
-                if no_overlap:
-                    if dist_ in dist_values:
-                        shift, sign = 1, -1
-                        while dist_ in dist_values:
-                            dist_ += shift
-                            # Alternate shift so that we search
-                            # 1, -1, 2, -2, 3, -3, etc...
-                            shift = sign * (abs(shift) + rectangle_height)
-                            sign *= -1
-                        dist_values.append(dist_)
-                        logger.warning(f"Shifted {ev} {sta}: {dist - dist_}km")
-                    else:
-                        dist_values.append(dist_)
+                dist_ = dist
 
             # Plot the windows as rectangles to sort of match waveform plots
             ax.add_patch(Rectangle(xy=(start, dist_ - rectangle_height / 2),
-                                   width=end - start, ec="k", alpha=alpha,
+                                   width=end - start, alpha=alpha,
                                    height=rectangle_height, 
                                    fc=sm.cmap(norm(value)),
                                    zorder=12)
                          )
-            # Black background line for frame of reference / gridding
-            ax.hlines(y=dist_, xmin=xmin, xmax=xmax, colors="k",
-                      alpha=0.3, linewidth=0.3, zorder=10
-                      )
+
             # Annotate event, station, component, distance and value for
             # easier identification. Can be messy with a lot of windows
             if annotate:
@@ -1250,7 +1245,7 @@ class InspectorPlotter:
         plt.xlabel("Time [s]")
         plt.xlim([xmin, xmax])
 
-        if distances:
+        if abs_distances:
             plt.ylabel("Distance [km]")
             plt.ylim([df.distance_km.min() - 10, df.distance_km.max() + 10])
         else:
