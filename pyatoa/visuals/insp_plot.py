@@ -561,8 +561,11 @@ class InspectorPlotter:
 
     def event_hist(self, choice, show=True, save=None):
         """
-        Make a histogram of event information
-        :return:
+        Make a histogram of event information for a given parameter `choice`.
+
+        :type choice: str
+        :param choice: event parameter choice. For available choice see the keys
+            of the Inspector `sources` dataframe
         """
         assert choice in self.sources.keys(), \
             f"Choice must be in {self.sources.keys()}"
@@ -627,7 +630,7 @@ class InspectorPlotter:
                         c="k", linestyle=":", zorder=15, alpha=0.5)
 
         default_axes(plt.gca())
-        plt.xlabel(f"{choice} number of measurements")
+        plt.xlabel(f"number of measurements per {choice}")
         plt.ylabel("count")
         plt.title(f"{iteration}{step_count}; N={len(arr)}\n"
                   f"solid line = mean; dashed line = 1 std")
@@ -639,8 +642,9 @@ class InspectorPlotter:
         else:
             plt.close()
 
-    def station_event_misfit_map(self, station, iteration, step_count, choice,
-                                 show=True, save=False, **kwargs):
+    def station_event_misfit_map(self, station, iteration=None, step_count=None,
+                                 choice="misfit", cmap="viridis", show=True,
+                                 save=False, **kwargs):
         """
         Plot a single station and all events that it has measurements for.
         Events will be colored by choice of value: misfit or nwin (num windows)
@@ -653,14 +657,16 @@ class InspectorPlotter:
         :param step_count: step count e.g. 's00'
         :type choice: str
         :param choice: choice of misfit value, either 'misfit' or 'nwin'
+        :type cmap: str
+        :param cmpa: matplotlib colormap to represent misfit choice
         :type show: bool
         :param show: Show the plot
         :type save: str
         :param save: fid to save the given figure
         """
-        assert (station in self.stations), "station name not found"
-        cmap = kwargs.get("cmap", "viridis")
+        iteration, step_count = self._parse_nonetype_eval(iteration, step_count)
 
+        assert (station in self.stations), f"station not found: {self.stations}"
         sta = self.receivers.droplevel(0).loc[station]
 
         # Get misfit on a per-station basis 
@@ -677,10 +683,20 @@ class InspectorPlotter:
 
         f, ax = plt.subplots()
         src = plt.scatter(sta.longitude, sta.latitude, marker="v", c="orange",
-                          edgecolors="k", s=25, zorder=100)
+                          edgecolors="k", s=40, zorder=100)
+        # Plot each station colored by its respective misfit
         plt.scatter(df.longitude.to_numpy(), df.latitude.to_numpy(),
-                    c=df[choice].to_numpy(), marker="o", s=25, zorder=99,
-                    cmap=cmap)
+                    c=df[choice].to_numpy(), marker="o", s=50, zorder=99,
+                    cmap=cmap, ec="k", linewidth=1.5)
+        # Plot connecting lines for source to receiver with the same color
+        norm = mpl.colors.Normalize(vmin=df[choice].min(),
+                                    vmax=df[choice].max(), clip=True)
+        mapper = mpl.cm.ScalarMappable(norm=norm, cmap=cmap)
+        for lon, lat, val in zip(df.longitude.to_numpy(),
+                                 df.latitude.to_numpy(),
+                                 df[choice].to_numpy()):
+            plt.plot([sta.longitude, lon], [sta.latitude, lat], "-", alpha=0.5,
+                      zorder=98, c=mapper.to_rgba(val), lw=1.5)
 
         plt.xlabel("Longitude")
         plt.ylabel("Latitude")
@@ -700,7 +716,8 @@ class InspectorPlotter:
 
         return f, ax
 
-    def event_station_misfit_map(self, event, iteration, step_count, choice,
+    def event_station_misfit_map(self, event, iteration=None, step_count=None,
+                                 choice="misfit", cmap="viridis",
                                  show=True, save=False, **kwargs):
         """
         Plot a single event and all stations with measurements. Stations are
@@ -720,7 +737,7 @@ class InspectorPlotter:
         :param save: fid to save the given figure
         """
         assert (event in self.sources.index), "event name not found"
-        cmap = kwargs.get("cmap", "viridis")
+        iteration, step_count = self._parse_nonetype_eval(iteration, step_count)
 
         f, ax = plt.subplots()
         source = self.sources.loc[event]
@@ -735,9 +752,19 @@ class InspectorPlotter:
         df = df.merge(self.receivers, on="station")
         misfit_values = df[choice].to_numpy()
         rcvs = plt.scatter(df.longitude.to_numpy(), df.latitude.to_numpy(),
-                           c=misfit_values, marker="v", s=15, zorder=100,
-                           cmap=cmap
+                           c=misfit_values, marker="v", s=50, zorder=100,
+                           cmap=cmap, ec="k", lw=1.5
                            )
+
+        # Plot connecting lines for source to receiver with the same color
+        norm = mpl.colors.Normalize(vmin=df[choice].min(),
+                                    vmax=df[choice].max(), clip=True)
+        mapper = mpl.cm.ScalarMappable(norm=norm, cmap=cmap)
+        for lon, lat, val in zip(df.longitude.to_numpy(),
+                                 df.latitude.to_numpy(),
+                                 df[choice].to_numpy()):
+            plt.plot([source.longitude, lon], [source.latitude, lat], "-",
+                     alpha=0.5, zorder=98, c=mapper.to_rgba(val), lw=1.5)
 
         plt.xlabel("Longitude")
         plt.ylabel("Latitude")

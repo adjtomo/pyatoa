@@ -256,6 +256,11 @@ class Inspector(InspectorPlotter):
             getattr(self, plot_function)(iteration=iteration,
                                          step_count=step_count)
 
+        # Generate a multi-panel figure of histograms of measurement params
+        # !!! See simutils.summary_misfit
+
+        # Generate event misfit maps
+
     def _get_srcrcv_from_dataset(self, ds):
         """
         Get source and receiver information from dataset, this includes
