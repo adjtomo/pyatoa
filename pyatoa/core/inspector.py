@@ -432,25 +432,36 @@ class Inspector(InspectorPlotter):
             self.windows = pd.concat([self.windows, pd.DataFrame(window)],
                                      ignore_index=True)
 
-    def _parse_nonetype_eval(self, iteration, step_count):
+    def validate_evaluation(self, iteration, step_count, choice="final"):
         """
+        Provide acceptable values for 'iteration' and 'step_count' to underlying
+        functions that require it.
         Whenever a user does not choose an iteration or step count, e.g., in
         plotting functions, this function defines default values based on the
         initial model (if neither given), or the last step count for a given
-        iteration (if only iteration is given). Only step count is not allowed
+        iteration (if only iteration is given). Only step count is not allowed.
+        If both iteration and step count are provided, just check that these
+        are acceptable values
 
         :type iteration: str
         :param iteration: chosen iteration, formatted as e.g., 'i01'
         :type step_count: str
         :param step_count: chosen step count, formatted as e.g., 's00'
+        :type choice: str
+        :param choice: 'initial' or 'final' to set the default behavior of
+            NoneType iteration and step_count returning either the initial
+            model or the final model evaluation
         :rtype: tuple of str
         :return: (iteration, step_count) default values for the iteration
             and step_count
         """
         # Default iteration and step count if None are given
         if iteration is None and step_count is None:
-            iteration, step_count = self.initial_model
-            print(f"No iteration or step count given, defaulting to initial "
+            if choice == "initial":
+                iteration, step_count = self.initial_model
+            elif choice == "final":
+                iteration, step_count = self.final_model
+            print(f"No iteration or step count given, defaulting to {choice} "
                   f"model: {iteration}{step_count}")
         elif iteration and (step_count is None):
             step_count = self.steps[iteration][-1]
@@ -459,6 +470,10 @@ class Inspector(InspectorPlotter):
         elif (iteration is None) and (step_count is not None):
             raise ValueError("'step_count' cannot be provided by itself, you "
                              "must also set the variable: 'iteration'")
+        else:
+            assert (iteration in self.iterations and
+                    step_count in self.steps[iteration]), \
+                f"{iteration}{step_count} does not exist in Inspector"
         return iteration, step_count
 
     def discover(self, path="./", ignore_symlinks=True):

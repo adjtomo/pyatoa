@@ -133,10 +133,7 @@ class InspectorPlotter:
         :type step_coutn: str
         :param step_count: chosen step count. If None, defaults to latest
         """
-        if iteration is None:
-            iteration, _ = self.initial_model
-        if step_count is None:
-            step_count = self.steps.loc[iteration][-1]
+        iteration, step_count = self.validate_evaluation(iteration, step_count)
 
         # Ensure we have distance and backazimuth values in the dataframe
         df = self.isolate(iteration=iteration, step_count=step_count, **kwargs)
@@ -201,10 +198,7 @@ class InspectorPlotter:
         ylim = kwargs.get("ylim", None)
         xlim = kwargs.get("xlim", None)
 
-        if iteration is None:
-            iteration, _ = self.final_model
-        if step_count is None:
-            step_count = self.steps.loc[iteration][-1]
+        iteration, step_count = self.validate_evaluation(iteration, step_count)
 
         # Ensure we have distance and backazimuth values in the dataframe
         df = self.isolate(iteration=iteration, step_count=step_count,
@@ -382,9 +376,7 @@ class InspectorPlotter:
         markersize = kwargs.get("markersize", 25)
 
         f, ax = plt.subplots(figsize=figsize)
-
-        iteration, step_count = self._parse_nonetype_eval(iteration, step_count)
-
+        iteration, step_count = self.validate_evaluation(iteration, step_count)
         df = self.misfit(level="station").loc[iteration, step_count]
 
         # Get lat/lon information from sources and receivers
@@ -480,7 +472,7 @@ class InspectorPlotter:
         station_color = kwargs.get("station_color", "cyan")
         markersize = kwargs.get("markersize", 26)
 
-        iteration, step_count = self._parse_nonetype_eval(iteration, step_count)
+        iteration, step_count = self.validate_evaluation(iteration, step_count)
 
         f, ax = plt.subplots(figsize=figsize)
         df = self.misfit(level="station").loc[iteration, step_count]
@@ -611,7 +603,7 @@ class InspectorPlotter:
         :type save: str
         :param save: fid to save the given figure
         """
-        iteration, step_count = self._parse_nonetype_eval(iteration, step_count)
+        iteration, step_count = self.validate_evaluation(iteration, step_count)
 
         arr = self.nwin(
             level=choice).loc[iteration, step_count].nwin.to_numpy()
@@ -664,7 +656,7 @@ class InspectorPlotter:
         :type save: str
         :param save: fid to save the given figure
         """
-        iteration, step_count = self._parse_nonetype_eval(iteration, step_count)
+        iteration, step_count = self.validate_evaluation(iteration, step_count)
 
         assert (station in self.stations), f"station not found: {self.stations}"
         sta = self.receivers.droplevel(0).loc[station]
@@ -737,7 +729,7 @@ class InspectorPlotter:
         :param save: fid to save the given figure
         """
         assert (event in self.sources.index), "event name not found"
-        iteration, step_count = self._parse_nonetype_eval(iteration, step_count)
+        iteration, step_count = self.validate_evaluation(iteration, step_count)
 
         f, ax = plt.subplots()
         source = self.sources.loc[event]
@@ -805,9 +797,7 @@ class InspectorPlotter:
         markersize = kwargs.get("markersize", 20)
         marker = kwargs.get("marker", "o")
 
-        if iteration is None:
-            iteration, step_count = self.final_model
-
+        iteration, step_count = self.validate_evaluation(iteration, step_count)
         if choice is None:
             choice = "misfit"
 
@@ -839,6 +829,17 @@ class InspectorPlotter:
             plt.show()
 
         return f, ax
+
+    def event_summary(self, iteration=None, step_count=None,):
+        """
+        Create a scatterplot where the X axis is the event index and the Y axis
+        is a summary statistic for that event, either misfit or window number or
+        lengths. Useful for a quick-glance view of how events compare to one
+        another to determine if outlier events are under or overperforming the
+        average.
+        """
+        iteration, step_count = self.validate_evaluation(iteration, step_count)
+
 
     def hist(self, iteration=None, step_count=None, iteration_comp=None,
              step_count_comp=None, f=None, ax=None, event=None, station=None,
@@ -898,22 +899,10 @@ class InspectorPlotter:
         label = kwargs.get("label", None)
         label_comp = kwargs.get("label_comp", None)
 
-        # If no arguments are given, default to first and last evaluations
-        if iteration is None and iteration_comp is None:
-            iteration, step_count = self.initial_model
-            iteration_comp, step_count_comp = self.final_model
-
-        # Check that the provided values are available in the Inspector
-        assert iteration in self.iterations, \
-            f"iteration must be in {self.iterations}"
-        if step_count is None:
-            assert step_count in self.steps.loc[iteration], \
-                f"step must be in {self.steps.loc[iteration]}"
-        if iteration_comp is not None:
-            assert iteration_comp in self.iterations, \
-                f"iteration_comp must be in {self.iterations}"
-            assert step_count_comp in self.steps.loc[iteration_comp], \
-                f"step_comp must be in {self.steps.loc[iteration_comp]}"
+        iteration, step_count = self.validate_evaluation(iteration, step_count,
+                                                         choice="initial")
+        iteration_comp, step_count_comp = self.validate_evaluation(
+            iteration, step_count, choice="final")
 
         # Try to set a default binsize that may or may not work 
         if binsize is None:
@@ -1150,11 +1139,7 @@ class InspectorPlotter:
         anno_shift = kwargs.get("anno_shift", 50)
         facecolor = kwargs.get("facecolor", "w")
 
-        iteration, step_count = self._parse_nonetype_eval(iteration, step_count)
-
-        assert(iteration in self.iterations and
-               step_count in self.steps[iteration]), \
-            f"{iteration}{step_count} does not exist in Inspector"
+        iteration, step_count = self.validate_evaluation(iteration, step_count)
 
         assert(choice in self.windows.keys()), (f"Color by choice {choice} not "
                                                 f"in list of available keys")
@@ -1280,6 +1265,9 @@ class InspectorPlotter:
             plt.ylabel("Relative Distance")
             plt.ylim([-rectangle_height, dist_ + rectangle_height])
             ax.yaxis.set_ticks([])
+
+        default_axes(ax, **kwargs)
+        ax.grid(which="major", axis="x")
 
         if save:
             plt.savefig(save)
