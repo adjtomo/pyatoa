@@ -830,16 +830,60 @@ class InspectorPlotter:
 
         return f, ax
 
-    def event_summary(self, iteration=None, step_count=None,):
+    def event_comparison(self, iteration=None, step_count=None, choice="misfit",
+                         show=True, save=None, **kwargs):
         """
         Create a scatterplot where the X axis is the event index and the Y axis
         is a summary statistic for that event, either misfit or window number or
         lengths. Useful for a quick-glance view of how events compare to one
         another to determine if outlier events are under or overperforming the
         average.
+
+        :type iteration: str
+        :param iteration: iteration to choose for misfit
+        :type step_count: str
+        :param step_count: step count to query, e.g. 's00'
         """
+        cmap = kwargs.get("cmap", "inferno")
         iteration, step_count = self.validate_evaluation(iteration, step_count)
 
+        if choice == "misfit":
+            other_choice = "nwin"
+        elif choice == "nwin":
+            other_choice = "misfit"
+
+        f, ax = plt.subplots(figsize=(8, 6))
+        # Assuming that the values are ordered by event-name alphabetical
+        arr = self.misfit(level="event")[choice].to_numpy()
+        # Color the markers by the other choice that wasn't selected
+        carr = self.misfit(level="event")[other_choice].to_numpy()
+        sc = plt.scatter(range(0, len(arr)), arr, c=carr, marker="o",
+                         ec="k", lw=1.5, zorder=99, cmap=cmap)
+        # Colorbar to show the 'other choice'
+        cbar = plt.colorbar(label=other_choice, shrink=0.9, pad=0.025)
+        # Plot statistics (mean and 1 std. deviation)
+        mean = np.mean(arr)
+        std = np.std(arr)
+        plt.axhline(mean, c="k", ls="-", lw=2, zorder=95)
+        plt.text(x=0, y=mean, s=f"mean={mean:.2f}", fontsize=12, zorder=96)
+        for sign in [1, -1]:
+            plt.axhline(mean + sign * std, c="k", ls='--', lw=1.75, zorder=95)
+        # Plot accoutrements
+        plt.xlim([-2, len(arr)+2])
+        plt.xlabel("Event Index")
+        plt.ylabel(choice)
+        plt.title(f"Event Comparison {iteration}{step_count} N={len(arr)}")
+        plt.grid(which="both", axis="both")
+        default_axes(ax, cbar=cbar, **kwargs)
+
+        if save:
+            plt.savefig(save)
+        if show:
+            # Get index names assuming indices go iter, step, name
+            names = self.misfit(
+                level="event")["misfit"].index.get_level_values(2)
+            hover_on_plot(f, ax, sc, names)
+            plt.show()
 
     def hist(self, iteration=None, step_count=None, iteration_comp=None,
              step_count_comp=None, f=None, ax=None, event=None, station=None,

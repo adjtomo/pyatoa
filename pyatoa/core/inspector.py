@@ -26,7 +26,7 @@ class Inspector(InspectorPlotter):
     Inherits plotting capabilities from InspectorPlotter class to reduce clutter
     """
 
-    def __init__(self, tag="default", verbose=True):
+    def __init__(self, tag="inspector", verbose=True):
         """
         Inspector will automatically search for relevant file names using the
         tag attribute. If nothing is found, internal dataframes will be empty.
