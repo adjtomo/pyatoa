@@ -885,6 +885,56 @@ class InspectorPlotter:
             hover_on_plot(f, ax, sc, names)
             plt.show()
 
+    def event_station_hist2d(self, iteration=None, step_count=None,
+                             choice="misfit", minval=None, maxval=None,
+                             show=True, save=None, **kwargs):
+        """
+        2D histogram of misfit or window number where one axis represents
+        event indices, and the other axis represents station indices. That way
+        a User can get an overview of all event-station pairs in one figure
+        where colors will help distinguish good or bad event-station pairs,
+        and entire rows and columns will help show if an event or station has
+        missing data or entires.
+        """
+        cmap = kwargs.get("cmap", "inferno")
+        iteration, step_count = self.validate_evaluation(iteration, step_count)
+
+        f, ax = plt.subplots(figsize=(10, 10))
+
+        # Get a misfit dataframe that contains only event and station as index
+        df = self.misfit(level="station")[choice].droplevel([0, 1])
+        # Initialize empty matrix that we will fill
+        nx = len(self.events)
+        ny = len(self.stations)
+        data = np.zeros(shape=(nx, ny))
+        # Loop through all misfit data and assign to matrix location
+        for i, src in enumerate(sorted(self.events)):
+            try:
+                src_df = df[src]
+            except KeyError:
+                continue
+            for j, rcv in enumerate(sorted(self.stations)):
+                try:
+                    val = src_df[rcv]
+                except KeyError:
+                    continue
+
+                data[i, j] = val
+
+        ims = plt.imshow(data, cmap="viridis", vmin=0, vmax=1)
+        cbar = plt.colorbar(label=choice, shrink=0.9, pad=0.025)
+        plt.xlim([0, nx])
+        plt.ylim([0, ny])
+        plt.xlabel("Event Index")
+        plt.ylabel("Receiver Index")
+        ax.set_aspect("equal")
+
+        if save:
+            plt.savefig(save)
+        if show:
+            plt.show()
+
+
     def hist(self, iteration=None, step_count=None, iteration_comp=None,
              step_count_comp=None, f=None, ax=None, event=None, station=None,
              choice="cc_shift_in_seconds", binsize=None, show=True, save=None,

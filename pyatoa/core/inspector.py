@@ -846,8 +846,8 @@ class Inspector(InspectorPlotter):
                 return self._event_misfit
 
         # Various levels to sort the misfit by
-        group_list = ["iteration", "step", "event", "station", "component", 
-                      "misfit"]
+        group_list = ["iteration", "step", "event", "network", "station",
+                      "component", "misfit"]
         misfits = self.windows.loc[:, tuple(group_list)]
 
         # Count the number of windows on a per station basis
