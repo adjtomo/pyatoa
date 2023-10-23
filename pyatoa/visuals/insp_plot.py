@@ -895,39 +895,87 @@ class InspectorPlotter:
         where colors will help distinguish good or bad event-station pairs,
         and entire rows and columns will help show if an event or station has
         missing data or entires.
+
+        The figure is generated assuming that there are more receivers than
+        events used, so we are making a long rectangle of a plot
+
+        .. note::
+
+            Takes advantage of some index merging operations that are not
+            easily readable:
+            https://stackoverflow.com/questions/41987743/\
+                merge-two-multiindex-levels-into-one-in-pandas
         """
-        cmap = kwargs.get("cmap", "inferno")
+        cmap = kwargs.get("cmap", "RdYlBu_r")
+        nstd = kwargs.get("nstd", 2)
+        vmax_color = kwargs.get("vmax_color", "purple")
+        zero_color = kwargs.get("zero_color", "gray")
         iteration, step_count = self.validate_evaluation(iteration, step_count)
 
-        f, ax = plt.subplots(figsize=(10, 10))
+        f, ax = plt.subplots(figsize=(16, 10), dpi=125)
 
         # Get a misfit dataframe that contains only event and station as index
         df = self.misfit(level="station")[choice].droplevel([0, 1])
+        # Rearranging the index so that the separate multi indices of 'network'
+        # and 'station' are combined to become 'network'.'station'. See note
+        df.index = [df.index.get_level_values(0),
+                    df.index.map('{0[1]}.{0[2]}'.format)]
         # Initialize empty matrix that we will fill
-        nx = len(self.events)
-        ny = len(self.stations)
-        data = np.zeros(shape=(nx, ny))
+        ny = len(self.events)
+        nx = len(self.netsta)
+        data = np.zeros(shape=(ny, nx))
+
+        netstas = self.netsta.to_numpy()
+        netstas = [f"{net}.{sta}" for net, sta in netstas]
+
+        # Use mean and 2std to get bounds of colormap, values that fall outside
+        # will be colored differently to make them stand out more
+        # Values of zero will be set to white
+        mean = df.to_numpy().mean()
+        std = df.to_numpy().std()
+        vmax = mean + nstd * std
+
         # Loop through all misfit data and assign to matrix location
         for i, src in enumerate(sorted(self.events)):
             try:
                 src_df = df[src]
             except KeyError:
                 continue
-            for j, rcv in enumerate(sorted(self.stations)):
+            for j, rcv in enumerate(sorted(netstas)):
                 try:
                     val = src_df[rcv]
                 except KeyError:
                     continue
-
                 data[i, j] = val
 
-        ims = plt.imshow(data, cmap="viridis", vmin=0, vmax=1)
-        cbar = plt.colorbar(label=choice, shrink=0.9, pad=0.025)
-        plt.xlim([0, nx])
-        plt.ylim([0, ny])
-        plt.xlabel("Event Index")
-        plt.ylabel("Receiver Index")
+        n = len(data[np.where(data!=0)])
+        data[np.where(data==0)] = -999
+        # Create a colormap that highlights over and under values
+        cmap = plt.get_cmap(cmap, 17)
+        cmap.set_under(zero_color)
+        cmap.set_over(vmax_color)
+
+        ims = plt.imshow(data, cmap=cmap, vmin=0, vmax=vmax)
+        cbar = plt.colorbar(label=choice, shrink=0.75, pad=0.025,
+                            extend="both")
+
+        # Grid out every data point
+        ax.set_xticks(np.arange(0, nx, 5), minor=False)
+        ax.set_yticks(np.arange(0, ny, 5), minor=False)
+        ax.set_xticks(np.arange(0.5, nx, 1), minor=True)
+        ax.set_yticks(np.arange(0.5, ny, 1), minor=True)
+        plt.xticks(rotation=90)
+        plt.grid(c="k", alpha=0.5, which="minor")
+
+        # Labels and such
+        plt.xlim([-0.5, nx-0.5])
+        plt.ylim([-0.5, ny-0.5])
+        plt.xlabel("Receiver Index")
+        plt.ylabel("Event Index")
+        plt.title(f"N={n}; mean={mean:.2f}; std={std:.2f}; vmax={nstd}*std")
         ax.set_aspect("equal")
+
+        default_axes(ax, tick_length=0, cbar=cbar)
 
         if save:
             plt.savefig(save)
