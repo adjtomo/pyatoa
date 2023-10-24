@@ -6,6 +6,7 @@ using Pandas.
 import os
 import pyasdf
 import traceback
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from glob import glob
@@ -237,7 +238,7 @@ class Inspector(InspectorPlotter):
         return self._try_print("depth_km")
 
     def generate_report(self, path_report="./report", iteration=None,
-                        step_count=None, geographic=False, outliers=True,
+                        step_count=None, geographic=True, outliers=True,
                         summary=False, histograms=False):
         """
         An aggregate function that generates a "report" by creating a number
@@ -252,34 +253,42 @@ class Inspector(InspectorPlotter):
         # Generate some geographic information
         if geographic:
             geographic_plot_functions = ["map", "travel_times",
-                                         "raypath_density",  "raypaths",
-                                         "event_depths", ]
-            for plot_function in plot_functions:
+                                         "raypath_density",
+                                         "raypaths", "event_depths",]
+            for plot_function in geographic_plot_functions:
+                save = os.path.join(path_report, f"{plot_function}.png")
+                if os.path.exists(save):
+                    continue
                 getattr(self, plot_function)(iteration=iteration,
-                                             step_count=step_count)
+                                             step_count=step_count, show=False,
+                                             save=save
+                                             )
 
-        # Plot outlier events
+        # Plot misfit spider plots of event misfit for events that are outside
+        # N standard deviations of the mean w.r.t misfit value
         if outliers:
             upper_outliers, lower_outliers, mean ,std = \
-                self.event_outliers(iteration, step_count)
+                self.event_outliers(iteration, step_count, nstd=2)
             for outliers, tag in zip([upper_outliers, lower_outliers],
                                       ["upper_outlier", "lower_outlier"]):
                 for event_name in outliers.index.to_list():
                     self.event_station_misfit_map(
                         event=event_name, iteration=iteration,
                         step_count=step_count, show=False,
-                        save=f"{tag}_{event_name}.png"
+                        save=os.path.join(path_report,
+                                          f"{tag}_{event_name}.png"),
                     )
-        # Plot summary figures that try to show all source receivers together
+                    plt.close()
+
+        # Plot summary that try to show all source receivers together
         if summary:
             summary_functions = ["event_station_hist2d", "event_comparison",
                                  "window_stack"]
 
-        # Generate a multi-panel figure of histograms of measurement params
+        # Generate a multi-panel figure of histograms of important measurement
+        # parameters
         if histograms:
-        # !!! See simutils.summary_misfit
-
-        # Generate event misfit maps
+            self.summary_hist()
 
     def _get_srcrcv_from_dataset(self, ds):
         """
@@ -481,12 +490,14 @@ class Inspector(InspectorPlotter):
                 iteration, step_count = self.initial_model
             elif choice == "final":
                 iteration, step_count = self.final_model
-            print(f"No iteration or step count given, defaulting to {choice} "
-                  f"model: {iteration}{step_count}")
+            if self.verbose:
+                print(f"No iteration or step count given, defaulting to "
+                      f"{choice} model: {iteration}{step_count}")
         elif iteration and (step_count is None):
             step_count = self.steps[iteration][-1]
-            print(f"No step count given, defaulting to final step count within"
-                  f"given iteration: {iteration}{step_count}")
+            if self.verbose:
+                print(f"No step count given, defaulting to final step count "
+                      f"within given iteration: {iteration}{step_count}")
         elif (iteration is None) and (step_count is not None):
             raise ValueError("'step_count' cannot be provided by itself, you "
                              "must also set the variable: 'iteration'")

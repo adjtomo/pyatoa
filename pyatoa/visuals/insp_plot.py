@@ -377,10 +377,18 @@ class InspectorPlotter:
 
         f, ax = plt.subplots(figsize=figsize)
         iteration, step_count = self.validate_evaluation(iteration, step_count)
+
         df = self.misfit(level="station").loc[iteration, step_count]
+        # Rearranging the index so that the separate multi indices of 'network'
+        # and 'station' are combined to become 'network'.'station'
+        df.index = [df.index.get_level_values(0),
+                    df.index.map('{0[1]}.{0[2]}'.format)]
 
         # Get lat/lon information from sources and receivers
-        stations = self.receivers.droplevel(0)  # remove network index
+        stations = self.receivers
+        netstas = self.netsta.to_numpy()
+        netstas = [f"{net}.{sta}" for net, sta in netstas]
+
         # Drop duplicate station names, assuming that they will have the same
         # coordinates. This is to deal with e.g., TA -> AK networks
         stations = stations[~stations.index.duplicated(keep="first")]
@@ -408,9 +416,12 @@ class InspectorPlotter:
                                                )
 
         plotted, names = [], []
-        for event, sta in df.index.to_numpy():
+        for event, netsta in df.index.to_numpy():
             elon, elat = events.loc[event].longitude, events.loc[event].latitude
-            slon, slat = stations.loc[sta].longitude, stations.loc[sta].latitude
+
+            net, sta = netsta.split(".")
+            slon = stations.loc[net].loc[sta].longitude
+            slat = stations.loc[net].loc[sta].latitude
             # Plot a marker for each event and station
             if event not in plotted:
                 plt.scatter(elon, elat, marker="o", c=event_color,
@@ -426,7 +437,7 @@ class InspectorPlotter:
 
             # Connect source and receiver with a line
             plt.plot([elon, slon], [elat, slat], color=ray_color, linestyle="-",
-                     alpha=0.1, zorder=50, linewidth=ray_linewidth)
+                     alpha=0.05, zorder=50, linewidth=ray_linewidth)
 
         plt.xlabel("Longitude")
         plt.ylabel("Latitude")
@@ -437,6 +448,7 @@ class InspectorPlotter:
         # Calculate aspect ratio based on latitude
         w = 1 / np.cos(np.radians(elat))
         plt.gca().set_aspect(w)
+        default_axes(ax, **kwargs)
 
         if save:
             plt.savefig(save)
@@ -476,12 +488,20 @@ class InspectorPlotter:
 
         f, ax = plt.subplots(figsize=figsize)
         df = self.misfit(level="station").loc[iteration, step_count]
+        # Rearranging the index so that the separate multi indices of 'network'
+        # and 'station' are combined to become 'network'.'station'
+        df.index = [df.index.get_level_values(0),
+                    df.index.map('{0[1]}.{0[2]}'.format)]
 
         # Get lat/lon information from sources and receivers
-        stations = self.receivers.droplevel(0)  # remove network index
+        stations = self.receivers
+
+        # Get lat/lon information from sources and receivers
+        netstas = self.netsta.to_numpy()
+        netstas = [f"{net}.{sta}" for net, sta in netstas]
+
         # Drop duplicate station names, assuming that they will have the same
         # coordinates. This is to deal with e.g., TA -> AK networks
-        stations = stations[~stations.index.duplicated(keep="first")]
         events = self.sources.drop(["time", "magnitude", "depth_km"], axis=1)
 
         # Determine grid bounds and required number of bins for histograms
@@ -502,10 +522,12 @@ class InspectorPlotter:
         x = np.array([])
         y = np.array([])
         plotted = []
-        for event, sta in df.index.to_numpy():
+        for event, netsta in df.index.to_numpy():
             elon, elat = events.loc[event].longitude, events.loc[event].latitude
-            slon, slat = stations.loc[sta].longitude, stations.loc[sta].latitude
 
+            net, sta = netsta.split(".")
+            slon = stations.loc[net].loc[sta].longitude
+            slat = stations.loc[net].loc[sta].latitude
 
             # Plot a marker for each event and station
             if event not in plotted:
@@ -531,7 +553,7 @@ class InspectorPlotter:
         # Create the 2D histogram of raypath density
         plt.hist2d(x, y, bins=(x_bins, y_bins), cmap=plt.get_cmap(cmap), 
                    zorder=5)
-        cbar = plt.colorbar(label="counts", shrink=0.9, pad=0.025)
+        cbar = plt.colorbar(label="counts", shrink=0.75, pad=0.025)
 
         plt.title(f"Raypath Density {iteration}{step_count} "
                   f"(N={len(df)} src-rcv pairs)")
@@ -709,8 +731,8 @@ class InspectorPlotter:
         return f, ax
 
     def event_station_misfit_map(self, event, iteration=None, step_count=None,
-                                 choice="misfit", cmap="viridis",
-                                 show=True, save=False, **kwargs):
+                                 choice="misfit", cmap="viridis", vmin=None,
+                                 vmax=None, show=True, save=False, **kwargs):
         """
         Plot a single event and all stations with measurements. Stations are
         colored by choice of value: misfit or nwin (number of windows)
@@ -745,12 +767,12 @@ class InspectorPlotter:
         misfit_values = df[choice].to_numpy()
         rcvs = plt.scatter(df.longitude.to_numpy(), df.latitude.to_numpy(),
                            c=misfit_values, marker="v", s=50, zorder=100,
-                           cmap=cmap, ec="k", lw=1.5
+                           cmap=cmap, ec="k", lw=1.5, vmin=vmin, vmax=vmax
                            )
 
         # Plot connecting lines for source to receiver with the same color
-        norm = mpl.colors.Normalize(vmin=df[choice].min(),
-                                    vmax=df[choice].max(), clip=True)
+        norm = mpl.colors.Normalize(vmin=vmin or df[choice].min(),
+                                    vmax=vmax or df[choice].max(), clip=True)
         mapper = mpl.cm.ScalarMappable(norm=norm, cmap=cmap)
         for lon, lat, val in zip(df.longitude.to_numpy(),
                                  df.latitude.to_numpy(),
@@ -762,8 +784,8 @@ class InspectorPlotter:
         plt.ylabel("Latitude")
         plt.title(f"{event} {iteration}{step_count}; {len(df)} stations")
 
-        _, _, cbar = colormap_colorbar(cmap, vmin=misfit_values.min(),
-                                       vmax=misfit_values.max(), 
+        _, _, cbar = colormap_colorbar(cmap, vmin=vmin or misfit_values.min(),
+                                       vmax=vmax or misfit_values.max(),
                                        cbar_label=choice,)
 
         default_axes(ax, cbar, **kwargs)
@@ -912,16 +934,16 @@ class InspectorPlotter:
             https://stackoverflow.com/questions/41987743/\
                 merge-two-multiindex-levels-into-one-in-pandas
         """
-        cmap = kwargs.get("cmap", "RdYlBu_r")
-        nstd = kwargs.get("nstd", 2)
-        vmax_color = kwargs.get("vmax_color", "purple")
+        cmap = kwargs.get("cmap", "Blues")
+        nstd = kwargs.get("nstd", 5)
+        vmax_color = kwargs.get("vmax_color", "lime")
         zero_color = kwargs.get("zero_color", "gray")
         iteration, step_count = self.validate_evaluation(iteration, step_count)
 
         f, ax = plt.subplots(figsize=(16, 10), dpi=125)
 
         # Get a misfit dataframe that contains only event and station as index
-        df = self.misfit(level="station")[choice].droplevel([0, 1])
+        df = self.misfit(level="station")[choice][iteration][step_count]
         # Rearranging the index so that the separate multi indices of 'network'
         # and 'station' are combined to become 'network'.'station'. See note
         df.index = [df.index.get_level_values(0),
@@ -989,10 +1011,10 @@ class InspectorPlotter:
             plt.show()
 
 
-    def hist(self, iteration=None, step_count=None, iteration_comp=None,
-             step_count_comp=None, f=None, ax=None, event=None, station=None,
-             choice="cc_shift_in_seconds", binsize=None, show=True, save=None,
-             **kwargs):
+    def hist(self, iteration=None, step_count=None, compare=True,
+             iteration_comp=None, step_count_comp=None, f=None, ax=None,
+             event=None, station=None, choice="cc_shift_in_seconds",
+             binsize=None, show=True, save=None, **kwargs):
         """
         Create a histogram of misfit information for either time shift or
         amplitude differences. Option to compare against different iterations,
@@ -1004,6 +1026,12 @@ class InspectorPlotter:
         :param iteration: iteration to choose for misfit
         :type step_count: str
         :param step_count: step count to query, e.g. 's00'
+        :type compare: bool
+        :param compare: compare two superimposed histograms from different
+            evaluations. will use parameters `iteration_comp` and
+            `step_count_comp` to choose the second histogram, which default to
+            the final model. If False, only plot one histogram, defined by
+            `iteration` and `step_count`
         :type iteration_comp: str
         :param iteration_comp: iteration to compare with, will be plotted in
             front of `iteration`
@@ -1049,18 +1077,22 @@ class InspectorPlotter:
 
         iteration, step_count = self.validate_evaluation(iteration, step_count,
                                                          choice="initial")
+
         iteration_comp, step_count_comp = self.validate_evaluation(
             iteration, step_count, choice="final")
 
-        # Try to set a default binsize that may or may not work 
+        # Try to set a default binsize that may or may not work
         if binsize is None:
             try:
                 binsize = {"cc_shift_in_seconds": 1,
-                           "dlnA": 0.25,
+                           "dlnA": 0.1,
                            "max_cc_value": 0.05,
-                           "misfit": 10,
-                           "relative_starttime": 15,
-                           "relative_endtime": 15}[choice]
+                           "misfit": 1,
+                           "relative_starttime": 50,
+                           "relative_endtime": 25,
+                           "length_s": 50,
+                           "max_cc_value": 0.1
+                           }[choice]
             except KeyError:
                 binsize = 1
 
@@ -1082,14 +1114,14 @@ class InspectorPlotter:
 
         val, lim = get_values(iteration, step_count, event, station)
 
-        if iteration_comp:
+        if compare:
             val_comp, lim_comp = get_values(iteration_comp, step_count_comp,
                                             event, station)
 
             # Reset the limit to be the greater of the two
             lim = max(lim, lim_comp)
 
-            # Compare iterations, plot original iteration on top 
+            # Compare iterations, plot original iteration on top
             n, bins, patches = plt.hist(
                 x=val, bins=np.arange(-1 * lim, lim + .1, binsize),
                 color=color, histtype="bar", edgecolor="black",
@@ -1161,7 +1193,7 @@ class InspectorPlotter:
         if not title:
             tit_fmt = "mean: {mean:.2f} / std: {std:.2f} / med: {med:.2f}"
             title = tit_fmt.format(mean=mean, std=std, med=med)
-            if iteration_comp:
+            if compare:
                 tit_comp = tit_fmt.format(mean=mean_comp, std=std_comp,
                                           med=med_comp)
                 title = " ".join([f"[{label or iteration}]", title, "\n",
@@ -1182,7 +1214,7 @@ class InspectorPlotter:
         plt.ylabel("Count", fontsize=fontsize)
         plt.title(title)
         if label_range:
-            plt.xticks(np.arange(-1 * label_range, label_range + .1, 
+            plt.xticks(np.arange(-1 * label_range, label_range + .1,
                                  step=xstep))
 
         if legend:
@@ -1193,14 +1225,46 @@ class InspectorPlotter:
 
         default_axes(ax, **kwargs)
 
-        plt.tight_layout()
-
         if save:
             plt.savefig(save)
         if show:
             plt.show()
 
         return f, ax
+
+    def histogram_summary(self, iteration=None, step_count=None, compare=False,
+                          iteration_comp=None, step_count_comp=None,
+                          show=True, save=False):
+        """
+        Generate a multi-panel figure of different histrograms that represent
+        a few key measurements that is useful for understanding the statistical
+        misfit characteristics
+        """
+        choices = [
+            ["cc_shift_in_seconds", "dlnA", "max_cc_value"],
+            [ "relative_starttime", "length_s", "misfit"],
+        ]
+        nrows = len(choices)
+        ncols = max([len(_) for _ in choices])
+
+        f = plt.figure()
+        gs = mpl.gridspec.GridSpec(nrows, ncols, wspace=0.5, hspace=0.5)
+
+        for row in range(0, nrows):
+            for col in range(0, ncols):
+                ax = plt.subplot(gs[row, col])
+                self.hist(choice=choices[row][col], iteration=iteration,
+                          step_count=step_count, compare=compare,
+                          iteration_comp=iteration_comp,
+                          step_count_comp=step_count_comp, f=f, ax=ax,
+                          show=False, figsize=(3 * nrows , 3 * ncols),
+                          fontsize=10, title_fontsize=10
+                          )
+
+        if save:
+            plt.savefig(save)
+        if show:
+            plt.show()
 
     def window_stack(self, iteration=None, step_count=None, iteration_comp=None,
                      step_count_comp=None, choice="cc_shift_in_seconds",
