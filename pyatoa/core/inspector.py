@@ -237,7 +237,8 @@ class Inspector(InspectorPlotter):
         return self._try_print("depth_km")
 
     def generate_report(self, path_report="./report", iteration=None,
-                        step_count=None):
+                        step_count=None, geographic=False, outliers=True,
+                        summary=False, histograms=False):
         """
         An aggregate function that generates a "report" by creating a number
         of figures that summarize the misfit of the inversion. Makes it easier
@@ -245,18 +246,37 @@ class Inspector(InspectorPlotter):
         the Inspector's wheelhouse, all relevant figures will be generated
         automatically.
         """
-        # You can modify this list to determine which figures will be generated
-        plot_functions = ["raypath_density", "travel_times"]
-
         if not os.path.exists(path_report):
             os.makedirs(path_report)
 
-        # Generate some geographic information, only needs to be done once
-        for plot_function in plot_functions:
-            getattr(self, plot_function)(iteration=iteration,
-                                         step_count=step_count)
+        # Generate some geographic information
+        if geographic:
+            geographic_plot_functions = ["map", "travel_times",
+                                         "raypath_density",  "raypaths",
+                                         "event_depths", ]
+            for plot_function in plot_functions:
+                getattr(self, plot_function)(iteration=iteration,
+                                             step_count=step_count)
+
+        # Plot outlier events
+        if outliers:
+            upper_outliers, lower_outliers, mean ,std = \
+                self.event_outliers(iteration, step_count)
+            for outliers, tag in zip([upper_outliers, lower_outliers],
+                                      ["upper_outlier", "lower_outlier"]):
+                for event_name in outliers.index.to_list():
+                    self.event_station_misfit_map(
+                        event=event_name, iteration=iteration,
+                        step_count=step_count, show=False,
+                        save=f"{tag}_{event_name}.png"
+                    )
+        # Plot summary figures that try to show all source receivers together
+        if summary:
+            summary_functions = ["event_station_hist2d", "event_comparison",
+                                 "window_stack"]
 
         # Generate a multi-panel figure of histograms of measurement params
+        if histograms:
         # !!! See simutils.summary_misfit
 
         # Generate event misfit maps
@@ -1162,6 +1182,48 @@ class Inspector(InspectorPlotter):
 
         return sources
 
+    def event_outliers(self, iteration=None, step_count=None, choice="misfit",
+                       nstd=1):
+        """
+        Returns outliers for a given misfit measure (misfit or window number)
+        by calculating mean and standard deviation and finding events that
+        fall outside some integer multiple of standard deviations from the mean.
+        Used for plotting in `event_comparison` but also useful for quickly
+        assessing which events have anomalously low or high misfit values
+
+        :type iteration: str
+        :param iteration: iteration to choose for misfit
+        :type step_count: str
+        :param step_count: step count to query, e.g. 's00'
+        :type choice: str
+        :param choice: choice of misfit value, either 'misfit' or 'nwin' or
+            'unscaled_misfit'
+        :type nstd: int
+        :param nstd: number of standard deviations to set upper and lower
+            thresholds. Defaults to 1
+        :rtype: (Pandas.series, Pandas.series, float, float)
+        :return: (events above upper threshold, events below lower threshold,
+                  mean, standard deviation)
+        """
+        iteration, step_count = self.validate_evaluation(iteration, step_count)
+
+        arr = self.misfit(
+            level="event")[choice][iteration][step_count].to_numpy()
+        index = self.misfit(level="event")[choice][iteration][step_count]
+        mean = np.mean(arr)
+        std = np.std(arr)
+
+        upper_thresh = mean + (nstd * std)
+        lower_thresh = mean - (nstd * std)
+
+        idx_upper_outliers = np.where(arr >= upper_thresh)
+        idx_lower_outliers = np.where(arr <= lower_thresh)
+
+        upper_outliers = index.iloc[idx_upper_outliers]
+        lower_outliers = index.iloc[idx_lower_outliers]
+
+        return upper_outliers, lower_outliers, mean, std
+
     def get_models(self):
         """
         Return a sorted list of misfits which correspond to accepted models,
@@ -1275,3 +1337,29 @@ class Inspector(InspectorPlotter):
         models.reset_index(drop=True, inplace=True)
 
         return models
+
+
+if __name__ == "__main__":
+    """
+    Here we define a simple command-line tool for using the Inspector. Useful 
+    for Users who have already generated the inspector, and want to quickly 
+    make figures to explore the misfit of their inversion. Must be run in the
+    directory containing your '.csv' Inspector files. Kwargs can be passed as
+    later arguments in the format 'key=val'
+    
+    .. rubric::
+        
+        $ python inspector.py <function_name> <kwarg_key=kwarg_val> ...
+        e.g.,
+        $ python inspector.py event_station_hist2d iteration=1 step_count=2
+    """
+    import sys
+    insp = Inspector()
+    kwargs = {}
+    if len(sys.argv) > 2:
+        for arg in sys.argv[2:]:
+            key, val = arg.split("=")
+            kwargs[key] = val
+    getattr(insp, sys.argv[1])(**kwargs)
+
+

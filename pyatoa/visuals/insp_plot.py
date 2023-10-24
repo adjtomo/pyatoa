@@ -118,6 +118,57 @@ class InspectorPlotter:
 
         return f, ax
 
+    def event_depths(self, xaxis="longitude", show=True, save=None, **kwargs):
+        """
+        Create a scatter plot of events at depth. Compresses all events onto a
+        single slice, optional choice of showing the x-axis or the y-axis
+
+        :type xaxis: str
+        :param xaxis: variable to use as the x-axis on the plot
+            'latitude' or 'longitude'
+        :type show: bool
+        :param show: show the plot
+        :type save: str
+        :param save: fid to save the figure
+        """
+        if xaxis == "latitude":
+            x_vals = self.sources.latitude.to_numpy()
+        elif xaxis == "longitude":
+            x_vals = self.sources.longitude.to_numpy()
+        else:
+            raise NotImplementedError(
+                "'xaxis' must be 'latitude' or 'longitude"
+            )
+
+        # Plot initializations
+        f, ax = plt.subplots(figsize=(8, 6))
+        depths = self.sources.depth_km.to_numpy()
+        mags = self.sources.magnitude.to_numpy()
+        mags = normalize_a_to_b(mags, 100, 500)
+        names = self.sources.index
+
+        # Inverted axis for positive depth values
+        if depths[0] > 0:
+            plt.gca().invert_yaxis()
+
+        # Scatter plot
+        sc = plt.scatter(x_vals, depths, s=mags, c="None", marker="o",
+                         edgecolors="k")
+        plt.xlabel(xaxis.capitalize())
+        plt.ylabel("Depth (km)")
+        plt.title(f"N={len(depths)}")
+        plt.grid(which="both", linestyle=":", alpha=0.5)
+        hover_on_plot(f, ax, sc, names, dissapear=True)
+
+        default_axes(ax, **kwargs)
+
+        if save:
+            plt.savefig(save)
+        if show:
+            plt.show
+
+        return f, ax
+
     def scatter(self, x, y, iteration=None, step_count=None, save=None,
                 show=True, **kwargs):
         """
@@ -295,57 +346,6 @@ class InspectorPlotter:
                 plt.savefig(f"hist_{save}")
             if show:
                 plt.show()
-
-    def event_depths(self, xaxis="longitude", show=True, save=None, **kwargs):
-        """
-        Create a scatter plot of events at depth. Compresses all events onto a
-        single slice, optional choice of showing the x-axis or the y-axis
-
-        :type xaxis: str
-        :param xaxis: variable to use as the x-axis on the plot
-            'latitude' or 'longitude'
-        :type show: bool
-        :param show: show the plot
-        :type save: str
-        :param save: fid to save the figure
-        """
-        if xaxis == "latitude":
-            x_vals = self.sources.latitude.to_numpy()
-        elif xaxis == "longitude":
-            x_vals = self.sources.longitude.to_numpy()
-        else:
-            raise NotImplementedError(
-                "'xaxis' must be 'latitude' or 'longitude"
-            )
-
-        # Plot initializations
-        f, ax = plt.subplots(figsize=(8, 6))
-        depths = self.sources.depth_km.to_numpy()
-        mags = self.sources.magnitude.to_numpy()
-        mags = normalize_a_to_b(mags, 100, 500)
-        names = self.sources.index
-
-        # Inverted axis for positive depth values
-        if depths[0] > 0:
-            plt.gca().invert_yaxis()
-
-        # Scatter plot
-        sc = plt.scatter(x_vals, depths, s=mags, c="None", marker="o",
-                         edgecolors="k")
-        plt.xlabel(xaxis.capitalize())
-        plt.ylabel("Depth (km)")
-        plt.title(f"N={len(depths)}")
-        plt.grid(which="both", linestyle=":", alpha=0.5)
-        hover_on_plot(f, ax, sc, names, dissapear=True)
-
-        default_axes(ax, **kwargs)
-
-        if save:
-            plt.savefig(save)
-        if show:
-            plt.show
-
-        return f, ax
 
     def raypaths(self, iteration=None, step_count=None, color_by=None,
                  show=True, save=False, vmin=None, vmax=None, **kwargs):
@@ -831,7 +831,7 @@ class InspectorPlotter:
         return f, ax
 
     def event_comparison(self, iteration=None, step_count=None, choice="misfit",
-                         show=True, save=None, **kwargs):
+                          show=True, save=None, **kwargs):
         """
         Create a scatterplot where the X axis is the event index and the Y axis
         is a summary statistic for that event, either misfit or window number or
@@ -843,6 +843,9 @@ class InspectorPlotter:
         :param iteration: iteration to choose for misfit
         :type step_count: str
         :param step_count: step count to query, e.g. 's00'
+        :type choice: str
+        :param choice: choice of misfit value, either 'misfit' or 'nwin' or
+            'unscaled_misfit'
         """
         cmap = kwargs.get("cmap", "inferno")
         iteration, step_count = self.validate_evaluation(iteration, step_count)
@@ -854,9 +857,12 @@ class InspectorPlotter:
 
         f, ax = plt.subplots(figsize=(8, 6))
         # Assuming that the values are ordered by event-name alphabetical
-        arr = self.misfit(level="event")[choice].to_numpy()
+        arr = self.misfit(
+            level="event")[choice][iteration][step_count].to_numpy()
         # Color the markers by the other choice that wasn't selected
-        carr = self.misfit(level="event")[other_choice].to_numpy()
+        carr = self.misfit(
+            level="event")[other_choice][iteration][step_count].to_numpy()
+
         sc = plt.scatter(range(0, len(arr)), arr, c=carr, marker="o",
                          ec="k", lw=1.5, zorder=99, cmap=cmap)
         # Colorbar to show the 'other choice'
@@ -1196,7 +1202,7 @@ class InspectorPlotter:
 
         return f, ax
 
-    def plot_windows(self, iteration=None, step_count=None, iteration_comp=None,
+    def window_stack(self, iteration=None, step_count=None, iteration_comp=None,
                      step_count_comp=None, choice="cc_shift_in_seconds",
                      event=None, network=None, station=None, component=None,
                      no_overlap=True, abs_distances=False, annotate=False,
