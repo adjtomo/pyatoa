@@ -27,7 +27,7 @@ class Inspector(InspectorPlotter):
     Inherits plotting capabilities from InspectorPlotter class to reduce clutter
     """
 
-    def __init__(self, tag="inspector", verbose=True):
+    def __init__(self, tag="inspector", verbose=False):
         """
         Inspector will automatically search for relevant file names using the
         tag attribute. If nothing is found, internal dataframes will be empty.
@@ -42,7 +42,6 @@ class Inspector(InspectorPlotter):
         self.sources = pd.DataFrame()
         self.receivers = pd.DataFrame()
         self.tag = tag
-        self.verbose = verbose
 
         # Placeholder attributes for getters
         self._models = None
@@ -50,6 +49,11 @@ class Inspector(InspectorPlotter):
         self._step_misfit = None
         self._event_misfit = None
         self._station_misfit = None
+
+        if verbose:
+            logger.setLevel("DEBUG")
+        else:
+            logger.setLevel("CRITICAL")
 
         # Try to load an already created Inspector
         try:
@@ -239,7 +243,7 @@ class Inspector(InspectorPlotter):
 
     def generate_report(self, path_report="./report", iteration=None,
                         step_count=None, geographic=True, outliers=True,
-                        summary=False, histograms=False):
+                        summary=True, histograms=True, nstd=2, dpi=200):
         """
         An aggregate function that generates a "report" by creating a number
         of figures that summarize the misfit of the inversion. Makes it easier
@@ -253,22 +257,22 @@ class Inspector(InspectorPlotter):
         # Generate some geographic information
         if geographic:
             geographic_plot_functions = ["map", "travel_times",
-                                         "raypath_density",
-                                         "raypaths", "event_depths",]
+                                         # "raypath_density", "raypaths",
+                                         "event_depths",]
             for plot_function in geographic_plot_functions:
                 save = os.path.join(path_report, f"{plot_function}.png")
                 if os.path.exists(save):
                     continue
                 getattr(self, plot_function)(iteration=iteration,
                                              step_count=step_count, show=False,
-                                             save=save
+                                             save=save, dpi=dpi
                                              )
 
         # Plot misfit spider plots of event misfit for events that are outside
         # N standard deviations of the mean w.r.t misfit value
         if outliers:
             upper_outliers, lower_outliers, mean ,std = \
-                self.event_outliers(iteration, step_count, nstd=2)
+                self.event_outliers(iteration, step_count, nstd=nstd)
             for outliers, tag in zip([upper_outliers, lower_outliers],
                                       ["upper_outlier", "lower_outlier"]):
                 for event_name in outliers.index.to_list():
@@ -277,18 +281,25 @@ class Inspector(InspectorPlotter):
                         step_count=step_count, show=False,
                         save=os.path.join(path_report,
                                           f"{tag}_{event_name}.png"),
+                        dpi=dpi
                     )
                     plt.close()
 
         # Plot summary that try to show all source receivers together
         if summary:
             summary_functions = ["event_station_hist2d", "event_comparison",
-                                 "window_stack"]
+                                 "window_stack", "histogram_summary"]
+            for plot_function in summary_functions:
+                save = os.path.join(path_report, f"{plot_function}.png")
+                if os.path.exists(save):
+                    continue
+                getattr(self, plot_function)(iteration=iteration,
+                                             step_count=step_count, show=False,
+                                             save=save, dpi=dpi
+                                             )
 
-        # Generate a multi-panel figure of histograms of important measurement
-        # parameters
-        if histograms:
-            self.summary_hist()
+        # Generate a text report of poorly performing events and stations
+
 
     def _get_srcrcv_from_dataset(self, ds):
         """
@@ -431,8 +442,7 @@ class Inspector(InspectorPlotter):
                     window["misfit"].append(adjoint_source_eval[
                                                 adj_tag].parameters["misfit"])
                 except IndexError:
-                    if self.verbose:
-                        print(f"No matching adjoint source for {cha_id}")
+                    logger.warning(f"No matching adjoint source for {cha_id}")
                     window["misfit"].append(np.nan)
 
                 # winfo keys match the keys of the Pyflex Window objects
@@ -490,14 +500,13 @@ class Inspector(InspectorPlotter):
                 iteration, step_count = self.initial_model
             elif choice == "final":
                 iteration, step_count = self.final_model
-            if self.verbose:
-                print(f"No iteration or step count given, defaulting to "
-                      f"{choice} model: {iteration}{step_count}")
+            logger.debug(f"No iteration or step count given, defaulting to "
+                         f"{choice} model: {iteration}{step_count}")
         elif iteration and (step_count is None):
             step_count = self.steps[iteration][-1]
-            if self.verbose:
-                print(f"No step count given, defaulting to final step count "
-                      f"within given iteration: {iteration}{step_count}")
+
+            logger.debug(f"No step count given, defaulting to final step count "
+                         f"within given iteration: {iteration}{step_count}")
         elif (iteration is None) and (step_count is not None):
             raise ValueError("'step_count' cannot be provided by itself, you "
                              "must also set the variable: 'iteration'")
@@ -523,18 +532,17 @@ class Inspector(InspectorPlotter):
         if ignore_symlinks:
             dsfids = [_ for _ in dsfids if not os.path.islink(_)]
         for i, dsfid in enumerate(dsfids):
-            if self.verbose:
-                print(f"{os.path.basename(dsfid):<25} "
-                      f"{i+1:0>3}/{len(dsfids):0>3}",  end="..."
-                      )
+
             try:
                 self.append(dsfid)
-                if self.verbose:
-                    print("done")
+                logger.info(f"{os.path.basename(dsfid):<25} "
+                            f"{i + 1:0>3}/{len(dsfids):0>3}: done",
+                            )
             except KeyError as e:
-                if self.verbose:
-                    print(f"error: {e}")
-                    traceback.print_exc()
+                logger.info(f"{os.path.basename(dsfid):<25} "
+                            f"{i + 1:0>3}/{len(dsfids):0>3}: error {e}",
+                            )
+                traceback.print_exc()
                 continue
 
         return self
@@ -560,13 +568,11 @@ class Inspector(InspectorPlotter):
                     try:
                         self._get_windows_from_dataset(ds)
                     except AttributeError as e:
-                        if self.verbose:
-                            print("error reading dataset: "
-                                  "missing auxiliary data")
+                        logger.warning("error reading dataset: missing "
+                                       "auxiliary data")
                 return
         except OSError:
-            if self.verbose:
-                print(f"error reading dataset: already open")
+            logger.warning(f"error reading dataset: already open")
             return
 
     def extend(self, windows):

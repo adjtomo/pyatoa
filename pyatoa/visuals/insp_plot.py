@@ -45,6 +45,10 @@ class InspectorPlotter:
         :type save: str
         :param save: fid to save the given figure
         """
+        markersize = kwargs.get("markersize", 10)
+        figsize = kwargs.get("figsize", (8, 8))
+        dpi = kwargs.get("dpi", 200)
+
         # For isolating parameters, ensure they are lists. quack
         if isinstance(event, str):
             event = [event]
@@ -53,8 +57,7 @@ class InspectorPlotter:
         if isinstance(station, str):
             station = [station]
 
-        markersize = kwargs.get("markersize", 10)
-        f, ax = plt.subplots()
+        f, ax = plt.subplots(figsize=figsize, dpi=dpi)
 
         if not self.sources.empty:
             # Allow for isolation of particular events
@@ -131,6 +134,9 @@ class InspectorPlotter:
         :type save: str
         :param save: fid to save the figure
         """
+        figsize = kwargs.get("figsize", (8, 8))
+        dpi = kwargs.get("dpi", 200)
+
         if xaxis == "latitude":
             x_vals = self.sources.latitude.to_numpy()
         elif xaxis == "longitude":
@@ -141,7 +147,7 @@ class InspectorPlotter:
             )
 
         # Plot initializations
-        f, ax = plt.subplots(figsize=(8, 6))
+        f, ax = plt.subplots(figsize=figsize, dpi=dpi)
         depths = self.sources.depth_km.to_numpy()
         mags = self.sources.magnitude.to_numpy()
         mags = normalize_a_to_b(mags, 100, 500)
@@ -184,6 +190,9 @@ class InspectorPlotter:
         :type step_coutn: str
         :param step_count: chosen step count. If None, defaults to latest
         """
+        figsize = kwargs.get("figsize", (8, 8))
+        dpi = kwargs.get("dpi", 200)
+
         iteration, step_count = self.validate_evaluation(iteration, step_count)
 
         # Ensure we have distance and backazimuth values in the dataframe
@@ -193,7 +202,7 @@ class InspectorPlotter:
         assert(x in df.keys()), f"X value {x} does not match keys {df.keys()}"
         assert(y in df.keys()), f"Y value {y} does not match keys {df.keys()}"
 
-        f, ax = plt.subplots(figsize=(8, 6))
+        f, ax = plt.subplots(figsize=figsize, dpi=dpi)
         plt.scatter(df[x].to_numpy(), df[y].to_numpy(), **kwargs)
         plt.xlabel(x)
         plt.ylabel(y)
@@ -240,6 +249,9 @@ class InspectorPlotter:
             window as a vertical line. If False, plots only the beginning of 
             the misfit window
         """
+        figsize = kwargs.get("figsize", (8, 8))
+        dpi = kwargs.get("dpi", 200)
+
         hist_color = kwargs.get("hist_color", "deepskyblue")
         title_plot = kwargs.get("title_plot", None)
         title_hist = kwargs.get("title_hist", None)
@@ -270,7 +282,7 @@ class InspectorPlotter:
         # size of the markers based on the length of the window
         length = normalize_a_to_b(length, .5, .5)
 
-        f, ax = plt.subplots(figsize=(8, 6))
+        f, ax = plt.subplots(figsize=figsize, dpi=dpi)
        
         # Either plot the window start only, or plot the entire window
         if not plot_end:
@@ -366,16 +378,17 @@ class InspectorPlotter:
         :type save: str
         :param save: fid to save the figure
         """
+        figsize = kwargs.get("figsize", (8, 8))
+        dpi = kwargs.get("dpi", 200)
         cmap = kwargs.get("cmap", "viridis")
         ray_color = kwargs.get("ray_color", "k")
         ray_linewidth = kwargs.get("ray_linewidth", 1)
         ray_alpha = kwargs.get("ray_alpha", 0.1)
         station_color = kwargs.get("station_color", "c")
         event_color = kwargs.get("event_color", "orange")
-        figsize = kwargs.get("figsize", (8, 8))
         markersize = kwargs.get("markersize", 25)
 
-        f, ax = plt.subplots(figsize=figsize)
+        f, ax = plt.subplots(figsize=figsize, dpi=dpi)
         iteration, step_count = self.validate_evaluation(iteration, step_count)
 
         df = self.misfit(level="station").loc[iteration, step_count]
@@ -480,13 +493,14 @@ class InspectorPlotter:
             contour plot looking feel.
         """
         figsize = kwargs.get("figsize", (8, 8))
+        dpi = kwargs.get("dpi", 200)
         event_color = kwargs.get("event_color", "orange")
         station_color = kwargs.get("station_color", "cyan")
         markersize = kwargs.get("markersize", 26)
 
         iteration, step_count = self.validate_evaluation(iteration, step_count)
 
-        f, ax = plt.subplots(figsize=figsize)
+        f, ax = plt.subplots(figsize=figsize, dpi=dpi)
         df = self.misfit(level="station").loc[iteration, step_count]
         # Rearranging the index so that the separate multi indices of 'network'
         # and 'station' are combined to become 'network'.'station'
@@ -581,10 +595,13 @@ class InspectorPlotter:
         :param choice: event parameter choice. For available choice see the keys
             of the Inspector `sources` dataframe
         """
+        figsize = kwargs.get("figsize", (8, 8))
+        dpi = kwargs.get("dpi", 200)
+
         assert choice in self.sources.keys(), \
             f"Choice must be in {self.sources.keys()}"
 
-        f, ax = plt.subplots()
+        f, ax = plt.subplots(figsize=figsize, dpi=dpi)
         arr = self.sources[choice].to_numpy()
 
         # Compare iterations, plot original iteration on top
@@ -625,7 +642,11 @@ class InspectorPlotter:
         :type save: str
         :param save: fid to save the given figure
         """
+        figsize = kwargs.get("figsize", (8, 8))
+        dpi = kwargs.get("dpi", 200)
+
         iteration, step_count = self.validate_evaluation(iteration, step_count)
+        f, ax = plt.subplots(figsize=figsize, dpi=dpi)
 
         arr = self.nwin(
             level=choice).loc[iteration, step_count].nwin.to_numpy()
@@ -678,6 +699,9 @@ class InspectorPlotter:
         :type save: str
         :param save: fid to save the given figure
         """
+        figsize = kwargs.get("figsize", (8, 8))
+        dpi = kwargs.get("dpi", 200)
+
         iteration, step_count = self.validate_evaluation(iteration, step_count)
 
         assert (station in self.stations), f"station not found: {self.stations}"
@@ -695,7 +719,7 @@ class InspectorPlotter:
         # This is a dataframe of events corresponding to a single station
         df = df.merge(src, on="event")
 
-        f, ax = plt.subplots()
+        f, ax = plt.subplots(figsize=figsize, dpi=dpi)
         src = plt.scatter(sta.longitude, sta.latitude, marker="v", c="orange",
                           edgecolors="k", s=40, zorder=100)
         # Plot each station colored by its respective misfit
@@ -750,10 +774,13 @@ class InspectorPlotter:
         :type save: str
         :param save: fid to save the given figure
         """
+        figsize = kwargs.get("figsize", (8, 8))
+        dpi = kwargs.get("dpi", 200)
+
         assert (event in self.sources.index), "event name not found"
         iteration, step_count = self.validate_evaluation(iteration, step_count)
 
-        f, ax = plt.subplots()
+        f, ax = plt.subplots(figsize=figsize, dpi=dpi)
         source = self.sources.loc[event]
         src = plt.scatter(source.longitude, source.latitude, marker="o", c="r",
                           edgecolors="k", s=20, zorder=100)
@@ -815,6 +842,8 @@ class InspectorPlotter:
         :type save: str
         :param save: fid to save the given figure
         """
+        figsize = kwargs.get("figsize", (8, 8))
+        dpi = kwargs.get("dpi", 200)
         cmap = kwargs.get("cmap", "viridis")
         markersize = kwargs.get("markersize", 20)
         marker = kwargs.get("marker", "o")
@@ -823,7 +852,7 @@ class InspectorPlotter:
         if choice is None:
             choice = "misfit"
 
-        f, ax = plt.subplots()
+        f, ax = plt.subplots(figsize=figsize, dpi=dpi)
         sources = self.sources.drop(["time", "magnitude", "depth_km"], axis=1)
         # Rename from event_id to event to match the naming of the dataframe
         sources.rename_axis("event", inplace=True)
@@ -869,6 +898,8 @@ class InspectorPlotter:
         :param choice: choice of misfit value, either 'misfit' or 'nwin' or
             'unscaled_misfit'
         """
+        figsize = kwargs.get("figsize", (8, 8))
+        dpi = kwargs.get("dpi", 200)
         cmap = kwargs.get("cmap", "inferno")
         iteration, step_count = self.validate_evaluation(iteration, step_count)
 
@@ -877,7 +908,7 @@ class InspectorPlotter:
         elif choice == "nwin":
             other_choice = "misfit"
 
-        f, ax = plt.subplots(figsize=(8, 6))
+        f, ax = plt.subplots(figsize=figsize, dpi=dpi)
         # Assuming that the values are ordered by event-name alphabetical
         arr = self.misfit(
             level="event")[choice][iteration][step_count].to_numpy()
@@ -934,13 +965,15 @@ class InspectorPlotter:
             https://stackoverflow.com/questions/41987743/\
                 merge-two-multiindex-levels-into-one-in-pandas
         """
+        figsize = kwargs.get("figsize", (16, 10))
+        dpi = kwargs.get("dpi", 200)
         cmap = kwargs.get("cmap", "Blues")
-        nstd = kwargs.get("nstd", 5)
+        nstd = kwargs.get("nstd", 3)
         vmax_color = kwargs.get("vmax_color", "lime")
         zero_color = kwargs.get("zero_color", "gray")
         iteration, step_count = self.validate_evaluation(iteration, step_count)
 
-        f, ax = plt.subplots(figsize=(16, 10), dpi=125)
+        f, ax = plt.subplots(figsize=figsize, dpi=dpi)
 
         # Get a misfit dataframe that contains only event and station as index
         df = self.misfit(level="station")[choice][iteration][step_count]
@@ -1056,12 +1089,13 @@ class InspectorPlotter:
         :param save: fid to save the figure
         """
         # Optional kwargs for fine tuning figure parameters
+        figsize = kwargs.get("figsize", (8, 6))
+        dpi = kwargs.get("dpi", 200)
         title = kwargs.get("title", "")
         xlim = kwargs.get("xlim", None)
         color = kwargs.get("color", "darkorange")
         color_comp = kwargs.get("color_comp", "deepskyblue")
         fontsize = kwargs.get("fontsize", 12)
-        figsize = kwargs.get("figsize", (8, 6))
         legend = kwargs.get("legend", True)
         legend_loc = kwargs.get("legend_loc", "best")
         label_range = kwargs.get("label_range", False)
@@ -1108,7 +1142,7 @@ class InspectorPlotter:
 
         # Instantiate the plot objects and 'goforyourlifemate'
         if f is None:
-            f, ax = plt.subplots(figsize=figsize)
+            f, ax = plt.subplots(figsize=figsize, dpi=dpi)
         if ax is None:
             ax = plt.gca()
 
@@ -1234,12 +1268,16 @@ class InspectorPlotter:
 
     def histogram_summary(self, iteration=None, step_count=None, compare=False,
                           iteration_comp=None, step_count_comp=None,
-                          show=True, save=False):
+                          show=True, save=False, **kwargs):
         """
         Generate a multi-panel figure of different histrograms that represent
         a few key measurements that is useful for understanding the statistical
         misfit characteristics
         """
+        figsize = kwargs.get("figsize", (8, 8))
+        dpi = kwargs.get("dpi", 200)
+
+
         choices = [
             ["cc_shift_in_seconds", "dlnA", "max_cc_value"],
             [ "relative_starttime", "length_s", "misfit"],
@@ -1247,7 +1285,7 @@ class InspectorPlotter:
         nrows = len(choices)
         ncols = max([len(_) for _ in choices])
 
-        f = plt.figure()
+        f = plt.figure(figsize=figsize, dpi=dpi)
         gs = mpl.gridspec.GridSpec(nrows, ncols, wspace=0.5, hspace=0.5)
 
         for row in range(0, nrows):
@@ -1257,8 +1295,9 @@ class InspectorPlotter:
                           step_count=step_count, compare=compare,
                           iteration_comp=iteration_comp,
                           step_count_comp=step_count_comp, f=f, ax=ax,
-                          show=False, figsize=(3 * nrows , 3 * ncols),
-                          fontsize=10, title_fontsize=10
+                          show=False, figsize=(figsize[0] / nrows,
+                                               figsize[1] / ncols),
+                          fontsize=10, title_fontsize=10, **kwargs
                           )
 
         if save:
@@ -1773,28 +1812,45 @@ class InspectorPlotter:
         return f, ax
 
 
-def default_axes(ax, cbar=None, **kwargs):
+def default_axes(ax, cbar=None, tick_fontsize=10, tick_linewidth=1.5,
+                 tick_length=5, tick_direction="in", label_fontsize=12,
+                 axis_linewidth=2, title_fontsize=14, cbar_tick_fontsize=10,
+                 cbar_label_fontsize=12, cbar_outline_color="k",
+                 cbar_linewidth=2., **kwargs):
     """
     Ensure that all plots have the same default look. Should be more flexible
     than setting rcParams or having a style sheet. Also allows the same kwargs 
     to be thrown by all functions so that the function calls have the same 
     format.
 
-    Keyword Arguments
-    ::
+    :type ax: matplotlib.axes.Axes
+    :param ax: Axes object that should be modified
+    :type cbar: matplotlib.cbar
+    :param cbar: if the figure has a colorbar, also provide a default look
+    :type tick_fontsize: float
+    :param tick_fontsize: fontsize for the tick labels on the X and Y axes
+    :type tick_linewidth: float
+    :param tick_linewidth: thickness of the tick marks on your axis
+    :type tick_length: float
+    :param tick_length: how far the ticks extend from the axis line
+    :type tick_direction: str
+    :param tick_direction: which way the ticks face, 'in' or 'out' from the axis
+        line
+    :type label_fontsize: float
+    :param label_fontsize: how big the labels for the X and Y axis are
+    :type axis_linewidth: float
+    :param axis_linewidth: thickness of the spines of the axis bounding your fig
+    :type title_fontsize: float
+    :param title_fontsize: fontsize for the title object
+    :type cbar_tick_fontsize: if `cbar` is given, the fontsize of the tick
+        labels accompanying the cbar
+    :type cbar_label_fontsize: float
+    :param cbar_label_fontsize: font size for the single label of the cbar
+    type cbar_outline_color: str
+    :param cbar_outline_color: color of the outline bounding box for the cbar
+    :type cbar_linewidth: float
+    :param cbar_linewidth: thickness of the bounding box on the cbar
     """
-    tick_fontsize = kwargs.get("tick_fontsize", 10)
-    tick_linewidth = kwargs.get("tick_linewidth", 1.5)
-    tick_length = kwargs.get("tick_length", 5)
-    tick_direction = kwargs.get("tick_direction", "in")
-    label_fontsize = kwargs.get("label_fontsize", 12)
-    axis_linewidth = kwargs.get("axis_linewidth", 2.)
-    title_fontsize = kwargs.get("title_fontsize", 14)
-    cbar_tick_fontsize = kwargs.get("cbar_tick_fontsize", 10)
-    cbar_label_fontsize = kwargs.get("cbar_label_fontsize", 12)
-    cbar_outline_color = kwargs.get("cbar_outline_color", "k")
-    cbar_linewidth = kwargs.get("cbar_linewdith", 2.)
-
     # Re-set font sizes for labels already created
     ax.title.set_fontsize(title_fontsize)
     ax.xaxis.label.set_fontsize(label_fontsize)
