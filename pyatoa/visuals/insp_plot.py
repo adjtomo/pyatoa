@@ -20,6 +20,8 @@ common_labels = {"cc_shift_in_seconds": "Time Shift (s)",
                  "relative_starttime": "Relative Start Time (s)",
                  "relative_endtime": "Relative End Time (s)",
                  }
+# Allow quick adjustment of the dots per inch for figures
+DEFAULT_DPI = 150
 
 
 class InspectorPlotter:
@@ -47,7 +49,7 @@ class InspectorPlotter:
         """
         markersize = kwargs.get("markersize", 10)
         figsize = kwargs.get("figsize", (8, 8))
-        dpi = kwargs.get("dpi", 200)
+        dpi = kwargs.get("dpi", DEFAULT_DPI)
 
         # For isolating parameters, ensure they are lists. quack
         if isinstance(event, str):
@@ -135,7 +137,7 @@ class InspectorPlotter:
         :param save: fid to save the figure
         """
         figsize = kwargs.get("figsize", (8, 8))
-        dpi = kwargs.get("dpi", 200)
+        dpi = kwargs.get("dpi", DEFAULT_DPI)
 
         if xaxis == "latitude":
             x_vals = self.sources.latitude.to_numpy()
@@ -175,8 +177,9 @@ class InspectorPlotter:
 
         return f, ax
 
-    def scatter(self, x, y, iteration=None, step_count=None, save=None,
-                show=True, **kwargs):
+    def scatter(self, x, y, iteration=None, step_count=None, event=None,
+                network=None, station=None, channel=None, component=None,
+                save=None, show=True, **kwargs):
         """
         Create a scatter plot between two chosen keys in the windows attribute
 
@@ -191,23 +194,33 @@ class InspectorPlotter:
         :param step_count: chosen step count. If None, defaults to latest
         """
         figsize = kwargs.get("figsize", (8, 8))
-        dpi = kwargs.get("dpi", 200)
+        dpi = kwargs.get("dpi", DEFAULT_DPI)
+        marker = kwargs.get("marker", "o")
+        s = kwargs.get("s", 8)
+        c = kwargs.get("c", "None")
+        edgecolors = kwargs.get("edgecolor", "k")
+        linewidths = kwargs.get("linewidths", 1)
 
         iteration, step_count = self.validate_evaluation(iteration, step_count)
 
         # Ensure we have distance and backazimuth values in the dataframe
-        df = self.isolate(iteration=iteration, step_count=step_count, **kwargs)
+        df = self.isolate(iteration=iteration, step_count=step_count,
+                          network=network, station=station, channel=channel,
+                          component=component)
         df = df.merge(self.srcrcv, on=["event", "network", "station"])
 
         assert(x in df.keys()), f"X value {x} does not match keys {df.keys()}"
         assert(y in df.keys()), f"Y value {y} does not match keys {df.keys()}"
 
         f, ax = plt.subplots(figsize=figsize, dpi=dpi)
-        plt.scatter(df[x].to_numpy(), df[y].to_numpy(), **kwargs)
+        plt.scatter(df[x].to_numpy(), df[y].to_numpy(), zorder=11,
+                    marker=marker, c=c, s=s, edgecolors=edgecolors,
+                    linewidths=linewidths, **kwargs)
         plt.xlabel(x)
         plt.ylabel(y)
-        plt.title(f"{x} vs. {y}; N={len(x)}")
+        plt.title(f"{x} vs. {y}; N={len(df[x].to_numpy())}")
         default_axes(ax, **kwargs)
+        plt.grid(zorder=10)
 
         if save:
             plt.savefig(save)
@@ -250,7 +263,7 @@ class InspectorPlotter:
             the misfit window
         """
         figsize = kwargs.get("figsize", (8, 8))
-        dpi = kwargs.get("dpi", 200)
+        dpi = kwargs.get("dpi", DEFAULT_DPI)
 
         hist_color = kwargs.get("hist_color", "deepskyblue")
         title_plot = kwargs.get("title_plot", None)
@@ -379,7 +392,7 @@ class InspectorPlotter:
         :param save: fid to save the figure
         """
         figsize = kwargs.get("figsize", (8, 8))
-        dpi = kwargs.get("dpi", 200)
+        dpi = kwargs.get("dpi", DEFAULT_DPI)
         cmap = kwargs.get("cmap", "viridis")
         ray_color = kwargs.get("ray_color", "k")
         ray_linewidth = kwargs.get("ray_linewidth", 1)
@@ -493,7 +506,7 @@ class InspectorPlotter:
             contour plot looking feel.
         """
         figsize = kwargs.get("figsize", (8, 8))
-        dpi = kwargs.get("dpi", 200)
+        dpi = kwargs.get("dpi", DEFAULT_DPI)
         event_color = kwargs.get("event_color", "orange")
         station_color = kwargs.get("station_color", "cyan")
         markersize = kwargs.get("markersize", 26)
@@ -596,7 +609,7 @@ class InspectorPlotter:
             of the Inspector `sources` dataframe
         """
         figsize = kwargs.get("figsize", (8, 8))
-        dpi = kwargs.get("dpi", 200)
+        dpi = kwargs.get("dpi", DEFAULT_DPI)
 
         assert choice in self.sources.keys(), \
             f"Choice must be in {self.sources.keys()}"
@@ -643,7 +656,7 @@ class InspectorPlotter:
         :param save: fid to save the given figure
         """
         figsize = kwargs.get("figsize", (8, 8))
-        dpi = kwargs.get("dpi", 200)
+        dpi = kwargs.get("dpi", DEFAULT_DPI)
 
         iteration, step_count = self.validate_evaluation(iteration, step_count)
         f, ax = plt.subplots(figsize=figsize, dpi=dpi)
@@ -700,7 +713,7 @@ class InspectorPlotter:
         :param save: fid to save the given figure
         """
         figsize = kwargs.get("figsize", (8, 8))
-        dpi = kwargs.get("dpi", 200)
+        dpi = kwargs.get("dpi", DEFAULT_DPI)
 
         iteration, step_count = self.validate_evaluation(iteration, step_count)
 
@@ -775,7 +788,7 @@ class InspectorPlotter:
         :param save: fid to save the given figure
         """
         figsize = kwargs.get("figsize", (8, 8))
-        dpi = kwargs.get("dpi", 200)
+        dpi = kwargs.get("dpi", DEFAULT_DPI)
 
         assert (event in self.sources.index), "event name not found"
         iteration, step_count = self.validate_evaluation(iteration, step_count)
@@ -843,7 +856,7 @@ class InspectorPlotter:
         :param save: fid to save the given figure
         """
         figsize = kwargs.get("figsize", (8, 8))
-        dpi = kwargs.get("dpi", 200)
+        dpi = kwargs.get("dpi", DEFAULT_DPI)
         cmap = kwargs.get("cmap", "viridis")
         markersize = kwargs.get("markersize", 20)
         marker = kwargs.get("marker", "o")
@@ -899,8 +912,8 @@ class InspectorPlotter:
             'unscaled_misfit'
         """
         figsize = kwargs.get("figsize", (8, 8))
-        dpi = kwargs.get("dpi", 200)
-        cmap = kwargs.get("cmap", "inferno")
+        dpi = kwargs.get("dpi", DEFAULT_DPI)
+        cmap = kwargs.get("cmap", "plasma")
         iteration, step_count = self.validate_evaluation(iteration, step_count)
 
         if choice == "misfit":
@@ -966,7 +979,7 @@ class InspectorPlotter:
                 merge-two-multiindex-levels-into-one-in-pandas
         """
         figsize = kwargs.get("figsize", (16, 10))
-        dpi = kwargs.get("dpi", 200)
+        dpi = kwargs.get("dpi", DEFAULT_DPI)
         cmap = kwargs.get("cmap", "Blues")
         nstd = kwargs.get("nstd", 3)
         vmax_color = kwargs.get("vmax_color", "lime")
@@ -1090,7 +1103,7 @@ class InspectorPlotter:
         """
         # Optional kwargs for fine tuning figure parameters
         figsize = kwargs.get("figsize", (8, 6))
-        dpi = kwargs.get("dpi", 200)
+        dpi = kwargs.get("dpi", DEFAULT_DPI)
         title = kwargs.get("title", "")
         xlim = kwargs.get("xlim", None)
         color = kwargs.get("color", "darkorange")
@@ -1275,7 +1288,7 @@ class InspectorPlotter:
         misfit characteristics
         """
         figsize = kwargs.get("figsize", (8, 8))
-        dpi = kwargs.get("dpi", 200)
+        dpi = kwargs.get("dpi", DEFAULT_DPI)
 
 
         choices = [

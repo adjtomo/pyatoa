@@ -243,7 +243,8 @@ class Inspector(InspectorPlotter):
 
     def generate_report(self, path_report="./report", iteration=None,
                         step_count=None, geographic=True, outliers=True,
-                        summary=True, histograms=True, nstd=2, dpi=200):
+                        scatter=True, summary=True, histograms=True, nstd=2,
+                        dpi=200):
         """
         An aggregate function that generates a "report" by creating a number
         of figures that summarize the misfit of the inversion. Makes it easier
@@ -284,6 +285,20 @@ class Inspector(InspectorPlotter):
                         dpi=dpi
                     )
                     plt.close()
+
+        # Create a few scatterplots comparing some parameters
+        if scatter:
+            for xy in [
+                ("distance_km", "cc_shift_in_seconds"),
+                ("backazimuth", "cc_shift_in_seconds"),
+                ("length_s", "cc_shift_in_seconds"),
+            ]:
+                x, y = xy
+                self.scatter(x=x, y=y, show=False,
+                             save=f"{x}_v_{y}.png",
+                             **kwargs)
+
+            # Do the same but for each component
 
         # Plot summary that try to show all source receivers together
         if summary:
