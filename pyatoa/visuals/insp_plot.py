@@ -1126,7 +1126,7 @@ class InspectorPlotter:
                                                          choice="initial")
 
         iteration_comp, step_count_comp = self.validate_evaluation(
-            iteration, step_count, choice="final")
+            iteration_comp, step_count_comp, choice="final")
 
         # Try to set a default binsize that may or may not work
         if binsize is None:

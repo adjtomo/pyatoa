@@ -416,12 +416,13 @@ class Inspector(InspectorPlotter):
         # where no step count is given (e.g., iteration == 'default')
         iters, steps = [], []
         for iter_ in misfit_windows.list():
-            iters.append(iter_)
             for step in misfit_windows[iter_].list():
                 # Ensure that step counts are formatted like: 's00'
                 # if not then we DONT have step counts in the dataset
                 if not step.startswith("s") and not len(step) == 3:
                     step = ""
+
+                iters.append(iter_)
                 steps.append(step)
 
         # Pulling out important information from the windows and adj src.
