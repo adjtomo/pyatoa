@@ -1140,7 +1140,7 @@ class InspectorPlotter:
                            "max_cc_value": 0.05,
                            "misfit": 1,
                            "relative_starttime": 50,
-                           "relative_endtime": 25,
+                           "relative_endtime": 50,
                            "length_s": 50,
                            "max_cc_value": 0.1,
                            "nwin": 10,
@@ -1315,7 +1315,8 @@ class InspectorPlotter:
 
         choices = [
             ["cc_shift_in_seconds", "dlnA", "max_cc_value"],
-            [ "relative_starttime", "length_s", "misfit"],
+            [ "relative_starttime", "relative_endtime", "length_s"],
+            ["nwin", "nwin_sta", "misfit"]
         ]
         nrows = len(choices)
         ncols = max([len(_) for _ in choices])
