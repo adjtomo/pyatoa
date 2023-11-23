@@ -244,7 +244,7 @@ class Inspector(InspectorPlotter):
     def generate_report(self, path_report="./report", iteration=None,
                         step_count=None, geographic=True, outliers=True,
                         scatter=True, summary=True, histograms=True, nstd=2,
-                        dpi=200):
+                        dpi=200, **kwargs):
         """
         An aggregate function that generates a "report" by creating a number
         of figures that summarize the misfit of the inversion. Makes it easier
@@ -295,7 +295,7 @@ class Inspector(InspectorPlotter):
             ]:
                 x, y = xy
                 self.scatter(x=x, y=y, show=False,
-                             save=f"{x}_v_{y}.png",
+                             save=os.path.join(path_report, f"{x}_v_{y}.png"),
                              **kwargs)
 
             # Do the same but for each component
@@ -314,7 +314,8 @@ class Inspector(InspectorPlotter):
                                              )
 
         # Generate a text report of poorly performing events and stations
-
+        #with open(os.path.join(path_out, "inspector_report.txt"), "w") as f:
+        
 
     def _get_srcrcv_from_dataset(self, ds):
         """

@@ -19,6 +19,8 @@ common_labels = {"cc_shift_in_seconds": "Time Shift (s)",
                  "max_cc_value": "Peak Cross Correlation",
                  "relative_starttime": "Relative Start Time (s)",
                  "relative_endtime": "Relative End Time (s)",
+                 "nwin": "Number of Windows per Event",
+                 "nwin_sta": "Number of Windows per Station",
                  }
 # Allow quick adjustment of the dots per inch for figures
 DEFAULT_DPI = 150
@@ -1056,7 +1058,6 @@ class InspectorPlotter:
         if show:
             plt.show()
 
-
     def hist(self, iteration=None, step_count=None, compare=True,
              iteration_comp=None, step_count_comp=None, f=None, ax=None,
              event=None, station=None, choice="cc_shift_in_seconds",
@@ -1068,6 +1069,11 @@ class InspectorPlotter:
 
         Choices are any column value in the Inspector.windows attribute
 
+        :type choice: str
+        :param choice: any choice from the keys of Inspector.windows, typical
+            choices are 'cc_shift_in_seconds', 'dlnA', 'max_cc_value', 'misfit',
+            OR to plot the number of windows per event or station, use 'nwin' or
+            'nwin_sta' respectively
         :type iteration: str
         :param iteration: iteration to choose for misfit
         :type step_count: str
@@ -1091,9 +1097,6 @@ class InspectorPlotter:
         :param event: filter for measurements for a given event
         :type station: str
         :param station: filter for measurements for a given station
-        :type choice: str
-        :param choice: choice of 'cc_shift_s' for time shift, or 'dlnA' as
-            amplitude
         :type binsize: float
         :param binsize: size of the histogram bins
         :type show: bool
@@ -1122,6 +1125,7 @@ class InspectorPlotter:
         label = kwargs.get("label", None)
         label_comp = kwargs.get("label_comp", None)
 
+        # Get iteration and step count if User did not specify
         iteration, step_count = self.validate_evaluation(iteration, step_count,
                                                          choice="initial")
 
@@ -1138,19 +1142,37 @@ class InspectorPlotter:
                            "relative_starttime": 50,
                            "relative_endtime": 25,
                            "length_s": 50,
-                           "max_cc_value": 0.1
+                           "max_cc_value": 0.1,
+                           "nwin": 10,
+                           "nwin_sta": 10,
                            }[choice]
             except KeyError:
                 binsize = 1
 
+        # Helper function to get the values and limits of the histogram
         def get_values(m, s, e, sta):
-            """short hand to get the data, and the maximum value in DataFrame"""
-            df_a = self.isolate(iteration=m, step_count=s, event=e, station=sta)
-            try:
-                val_ = df_a.loc[:, choice].to_numpy()
-            except KeyError as e:
-                raise KeyError(f"Inspector.windows has no key {choice}") from e
-            lim_ = max(abs(np.floor(min(val_))), abs(np.ceil(max(val_))))
+            """
+            Short hand to get the data, and the maximum value in DataFrame
+            m: iteration; s: step_count; e: event; sta: station
+            """
+            if "nwin" in choice:
+                assert(m is not None and s is not None), \
+                    "choice `nwin` cannot be used with event or station select"
+                if choice == "nwin":
+                    df_a = self.nwin(level="event").loc[m, s].nwin
+                elif choice == "nwin_sta":
+                    df_a = self.nwin(level="station").loc[m, s].nwin
+                val_ = df_a.to_numpy()
+                lim_ = max(abs(np.floor(min(val_))), abs(np.ceil(max(val_))))
+            # Normal keys in windows, get the values and limits
+            else:
+                df_a = self.isolate(iteration=m, step_count=s, 
+                                    event=e, station=sta)
+                try:
+                    val_ = df_a.loc[:, choice].to_numpy()
+                except KeyError as e:
+                    raise KeyError(f"Inspector has no key {choice}") from e
+                lim_ = max(abs(np.floor(min(val_))), abs(np.ceil(max(val_))))
             return val_, lim_
 
         # Instantiate the plot objects and 'goforyourlifemate'
