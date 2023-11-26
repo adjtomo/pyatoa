@@ -314,8 +314,24 @@ class Inspector(InspectorPlotter):
                                              )
 
         # Generate a text report of poorly performing events and stations
-        #with open(os.path.join(path_out, "inspector_report.txt"), "w") as f:
-        
+        with open(os.path.join(path_report, "inspector_report.txt"), "w") as f:
+            f.write("Inspector Report\n\n")
+            f.write("Event Outliers\n")
+            f.write("---------------\n")
+            f.write(f"{'Event':<15}{'Misfit':<15}{'Std':<15}\n")
+            for event_name in upper_outliers.index.to_list():
+                f.write(f"{event_name:<15}{upper_outliers[event_name]:<15}"
+                        f"{std:<15}\n")
+            f.write("\n")
+            f.write("Station Outliers\n")
+            f.write("----------------\n")
+            f.write(f"{'Station':<15}{'Misfit':<15}{'Std':<15}\n")
+            for station_name in upper_outliers.index.to_list():
+                f.write(f"{station_name:<15}{upper_outliers[station_name]:<15}"
+                        f"{std:<15}\n")
+            
+            
+
 
     def _get_srcrcv_from_dataset(self, ds):
         """

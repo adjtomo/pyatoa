@@ -972,7 +972,7 @@ class Manager:
         return self
 
     def retrieve_windows_from_dataset(self, ds=None, iteration=None,
-                                      step_count=None):
+                                      step_count=None, reject_on_data_fit=True):
         """
         Window selection function that retrieves previously saved windows from a
         PyASDF ASDFDataset, recalculates window criteria using the old windows
@@ -988,6 +988,14 @@ class Manager:
         :param step_count: retrieve windows from the given step count
             in the given dataset. If None, will search for previous evaluation
             to select windows from
+        :type reject_on_data_fit: bool
+        :param reject_on_data_fit: check acceptability of waveform fit in the 
+            retrieved windows, that is, if time shift, dlna or cross correlation
+            fall outside of the accepted values defined in the Config object,
+            then the window will be rejected directly. If `validate` is False,
+            windows will be returned regardless of their newly assessed misfit.
+            It's recommended this is True, otherwise time shifts may be allowed
+            to go off the rails because there is no other check on misfit.
         """
         if ds is None:
             ds = self.ds
@@ -1006,34 +1014,47 @@ class Manager:
             # dataset for windows under the current iteration/step_count
             return_previous = False
 
-        logger.info(f"retrieving windows from dataset "
-                    f"i{iteration:0>2}s{step_count:0>2}")
-
         net, sta, _, _ = self.st_obs[0].get_id().split(".")
         # Function will return empty dictionary if no acceptable windows found
         windows = load_windows(ds=ds, net=net, sta=sta, 
                                components=self.config.component_list,
                                iteration=iteration, step_count=step_count,
-                               return_previous=return_previous
-                               )
+                               return_previous=return_previous)
+
+        logger.info(f"retrieved {len(windows)} windows from evaluation "
+                    f"i{iteration:0>2}s{step_count:0>2}")
 
         # Recalculate window criteria for new values for cc, tshift, dlnA etc...
         logger.debug("recalculating window criteria")
         for comp, windows_ in windows.items():
+            # Use Pyflex machinery to re-evaluate the windows based on the
+            # current setup of waveforms
             try:
-                d = self.st_obs.select(component=comp)[0].data
-                s = self.st_syn.select(component=comp)[0].data
-                for w, win in enumerate(windows_):
-                    # Post the old and new values to the logger for sanity check
-                    logger.debug(f"{comp}{w}_old - "
-                                 f"cc:{win.max_cc_value:.2f} / "
-                                 f"dt:{win.cc_shift:.1f} / "
-                                 f"dlnA:{win.dlnA:.2f}")
-                    win._calc_criteria(d, s)
-                    logger.debug(f"{comp}{w}_new - "
-                                 f"cc:{win.max_cc_value:.2f} / "
-                                 f"dt:{win.cc_shift:.1f} / "
-                                 f"dlnA:{win.dlnA:.2f}")
+                obs = self.st_obs.select(component=comp)[0]
+                syn = self.st_syn.select(component=comp)[0]
+                if reject_on_data_fit:
+                    ws = pyflex.WindowSelector(observed=obs, synthetic=syn,
+                            config=self.config.pyflex_config, event=self.event,
+                            station=self.inv)
+                    ws.windows = windows_
+                    ws.reject_based_on_data_fit_criteria()
+                    windows[comp] = ws.windows
+
+                # If no reject on data fit, simply recalculate the window 
+                # criteria and return all windows to User
+                else:
+                    for w, win in enumerate(windows_):
+                        # Log for double check or manual review of new criteria
+                        logger.debug(f"{comp}{w}_old - "
+                                    f"cc:{win.max_cc_value:.2f} / "
+                                    f"dt:{win.cc_shift:.1f} / "
+                                    f"dlnA:{win.dlnA:.2f}")
+                        win._calc_criteria(obs.data, syn.data)
+                        logger.debug(f"{comp}{w}_new - "
+                                    f"cc:{win.max_cc_value:.2f} / "
+                                    f"dt:{win.cc_shift:.1f} / "
+                                    f"dlnA:{win.dlnA:.2f}")
+
             # IndexError thrown when trying to access an empty Stream
             except IndexError:
                 continue
