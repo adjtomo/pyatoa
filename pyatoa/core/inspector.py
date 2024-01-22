@@ -774,8 +774,6 @@ class Inspector(InspectorPlotter):
         if not os.path.exists(path_out):
             os.mkdir(path_out)
 
-
-
     def isolate(self, iteration=None, step_count=None,  event=None,
                 network=None, station=None, channel=None, component=None,
                 keys=None, exclude=None, unique_key=None):
