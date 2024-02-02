@@ -972,7 +972,7 @@ class Manager:
         return self
 
     def retrieve_windows_from_dataset(self, ds=None, iteration=None,
-                                      step_count=None, reject_on_data_fit=True):
+                                      step_count=None, revalidate=False):
         """
         Window selection function that retrieves previously saved windows from a
         PyASDF ASDFDataset, recalculates window criteria using the old windows
@@ -988,14 +988,12 @@ class Manager:
         :param step_count: retrieve windows from the given step count
             in the given dataset. If None, will search for previous evaluation
             to select windows from
-        :type reject_on_data_fit: bool
-        :param reject_on_data_fit: check acceptability of waveform fit in the 
+        :type revalidate: bool
+        :param revalidate: check acceptability of waveform fit in the 
             retrieved windows, that is, if time shift, dlna or cross correlation
             fall outside of the accepted values defined in the Config object,
-            then the window will be rejected directly. If `validate` is False,
+            then the window will be rejected directly. IfFalse then
             windows will be returned regardless of their newly assessed misfit.
-            It's recommended this is True, otherwise time shifts may be allowed
-            to go off the rails because there is no other check on misfit.
         """
         if ds is None:
             ds = self.ds
@@ -1032,7 +1030,8 @@ class Manager:
             try:
                 obs = self.st_obs.select(component=comp)[0]
                 syn = self.st_syn.select(component=comp)[0]
-                if reject_on_data_fit:
+                if revalidate:
+                    logger.info("revalidating windows against Config criteria")
                     ws = pyflex.WindowSelector(observed=obs, synthetic=syn,
                             config=self.config.pyflex_config, event=self.event,
                             station=self.inv)
