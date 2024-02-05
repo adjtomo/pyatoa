@@ -13,7 +13,6 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 from pyatoa import Manager
 from pyasdf import ASDFDataSet
-from pyatoa.core.config import set_pyflex_config
 from pyatoa.visuals.wave_maker import format_axis
 from pyatoa.visuals.map_maker import MapMaker
 from pyatoa.utils.calculate import vrl
@@ -91,32 +90,10 @@ class CompWave:
             mgmt = Manager(ds=ds)
             mgmt.load(code=self.station, path=model)
 
-            # !!! NZ Temp network skip remove response
-            net, sta = self.station.split(".")
-            remove_response = not bool(net in ["ZX", "Z8"])
-                
             # Overwrite the filter corners stored in the dataset
             mgmt.config.min_period = self.min_period
             mgmt.config.max_period = self.max_period
             mgmt.standardize().preprocess(remove_response=remove_response)
-            # See if windows can be picked for the given load setup
-            if save_windows:
-                pf_cfg = "nznorth_6-30s"
-                mgmt.config.pyflex_preset = pf_cfg
-                mgmt.config.pyflex_config, _ = set_pyflex_config(
-                                                         mgmt.config.min_period,
-                                                         mgmt.config.max_period,
-                                                         pf_cfg)
-                mgmt.window()
-                print(f"{mgmt.stats.nwin} windows for {init_or_final}")
-               
-                if save_windows == "init":
-                    self.init_windows = mgmt.windows
-                elif save_windows == "final":
-                    self.final_windows = mgmt.windows
-                else: 
-                    # Any check that returns no windows will set this False
-                    self.windows = mgmt.windows
 
             # Store data in class attributes, obs waveforms will be the same
             if self._st_obs is None:
