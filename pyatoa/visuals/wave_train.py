@@ -21,6 +21,7 @@ from matplotlib.patches import Rectangle
 
 from pyatoa import Manager
 from pyatoa.utils.calculate import vrl
+from pyatoa.utils.form import format_event_name
 
 
 class WaveTrain:
@@ -210,8 +211,9 @@ class WaveTrain:
 
         return f, axes
 
-    def plot(self, station, models=None, component_list=None, title=None, 
-             xlim=None,  calculate_vrl=True, show=True, save=False, **kwargs):
+    def plot(self, station, min_period=None, max_period=None, models=None,
+             component_list=None, title=None, label_tshift=True, xlim=None, 
+             calculate_vrl=True, show=True, save=False, **kwargs):
         """
         Plot waveforms iterative based on model updates. Calls `_gather`
         to grab preprocessed waveform data from the internal ASDFDataSet `ds`.
@@ -220,6 +222,12 @@ class WaveTrain:
         :type station: str
         :param station: name of the station as listed in the ASDFDataSet, in
             the format NN.SSS (N=network, S=station)
+        :type min_period: float
+        :param min_period: minimum period for the filter corners, if not given
+            no filter applied
+        :type max_period: float
+        :param max_period: maximum period for the filter corners, if not given
+            no filter applied
         :type models: list
         :param models: list of models to plot, if not set, all models plotted
         :type component_list: list
@@ -231,13 +239,16 @@ class WaveTrain:
         :type calculate_vrl: bool
         :param calculate_vrl: calculate the variance reduction for each model 
             and annotate the value in the corner of each figure
+        :type label_tshift: bool
+        :param label_tshift: label the time shift in the top corner of each
+            window in units seconds
         :type show: bool
         :param show: Show the plot or do not
         :type save: str
         :param save: if given, save the figure to this path
         """
-        obs_lw = kwargs.get("obs_lw", 1.3)
-        syn_lw = kwargs.get("syn_lw", 1.7)
+        obs_lw = kwargs.get("obs_lw", 1.)
+        syn_lw = kwargs.get("syn_lw", 1.25)
         fontsize = kwargs.get("fontsize", 12)
         obs_color = kwargs.get("color_obs", "k")
 
@@ -260,13 +271,14 @@ class WaveTrain:
         s_init = []
         for row, model in enumerate(models):
             obs, syn, windows, t_offset = self._gather(
-                station=station, model=model, **kwargs
+                station=station, min_period=min_period, max_period=max_period,
+                model=model, **kwargs
                 )  
             # Loop through waveforms first to get max y value
             max_amp = 0
             for o, s in zip(obs, syn):
                 max_amp = max(max_amp, np.max(np.abs(o.data)), 
-                              np.max(np.abs(s.data)))
+                              np.max(np.abs(s.data))) * 1.05
 
             for col, comp in enumerate(component_list):
                 o = obs.select(component=comp)[0]
@@ -277,28 +289,39 @@ class WaveTrain:
                                     syn_colors[col],  zorder=11, 
                                     linewidth=syn_lw)
                 
-                # Plot the windows as rectangles 
-                for window in windows[comp]:
-                    tleft = window.left * window.dt + t_offset
-                    tright = window.right * window.dt
-                    r = Rectangle(xy=(tleft, -1 * max_amp),  
-                                  width=tright - tleft,
-                                  height=max_amp * 2, fc="orange", 
-                                  ec="k", alpha=0.1, zorder=10
-                                  )
-                    axes[row][col].add_patch(r)
+                # Plot the windows as rectangles if they are available
+                if comp in windows:
+                    for window in windows[comp]:
+                        import pdb;pdb.set_trace()
+                        tleft = window.left * window.dt + t_offset
+                        tright = window.right * window.dt
+                        r = Rectangle(xy=(tleft, -1 * max_amp),  
+                                    width=tright - tleft,
+                                    height=max_amp * 2, fc="orange", 
+                                    ec="k", alpha=0.1, zorder=10
+                                    )
+                        axes[row][col].add_patch(r)
+                        # Add timeshift label in top corner of window
+                        if label_tshift:
+                            tshift_s = window.cc_shift * window.dt
+                            axes[row][col].text(
+                                x=tleft, y=max_amp - max_amp * 0.05, 
+                                s=f"{tshift_s:.2f}s",  verticalalignment="top", 
+                                fontsize=6, 
+                                )
                 
                 # Turn off y-ticks, they carry no information
                 axes[row][col].set_yticks([])
+
                 # Set all y-max values to the maximum amplitude in the row
                 axes[row][col].set_ylim([-1 * max_amp, max_amp])
 
                 # First row gets the component formatted into the corner
                 if row == 0:
                     axes[row][col].text(
-                        x=0.9, y=0.15, s=comp.upper(), fontsize=fontsize, 
-                        horizontalalignment="center", 
-                        verticalalignment="center",
+                        x=0.99, y=0.01, s=comp.upper(), fontsize=fontsize, 
+                        c=syn_colors[col], horizontalalignment="right", 
+                        verticalalignment="bottom", 
                         transform=axes[row][col].transAxes
                         )
                     s_init.append(s)
@@ -307,14 +330,14 @@ class WaveTrain:
                     if calculate_vrl:
                         vrl_val = vrl(o.data, s.data, s_init[col].data)
                         axes[row][col].text(
-                            x=.95, y=0.15, s=f"VRL={vrl_val:.2f}", 
-                            fontsize=fontsize, 
+                            x=1., y=.95, s=f"VRL={vrl_val:.2f}", 
+                            fontsize=8, 
                             horizontalalignment="right", 
-                            verticalalignment="center",
+                            verticalalignment="top",
                             transform=axes[row][col].transAxes
                             )
             
-            # Write the model number in the leftmost column
+            # Write the model number in the y-label of the leftmost column
             axes[row][0].set_ylabel(model, fontsize=fontsize)
                     
         # Finalize plot looks: set time axis label
@@ -328,7 +351,8 @@ class WaveTrain:
 
         # Set title
         if title is None:
-            title = f"{station}"
+            title = (f"{format_event_name(self.ds)} -> {station} "
+                     f"({min_period}-{max_period}s)")
         plt.suptitle(title, fontsize=fontsize)
 
         # Save the generated figure
