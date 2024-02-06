@@ -45,7 +45,25 @@ class WaveTrain:
             last iteration.
         """
         self.ds = ds
-        self.models = self._get_models()
+
+        if models is  None:
+            self.models = self._get_models()
+        else:
+            self.models = models
+
+        self.evaluations = self._get_all_evaluations()
+
+        assert set(self.models).issubset(set(self.evaluations)), \
+               f"Models do not match expected evaluations in the ASDFDataSet"
+    
+    def _get_all_evaluations(self):
+        """Get all available evaluations in the dataset, used for validating
+        model names"""
+        evaluations = []
+        for iteration in self.ds.auxiliary_data.Configs.list():
+            for step in self.ds.auxiliary_data.Configs[iteration].list():
+                evaluations.append(f"{iteration}/{step}")
+        return evaluations  
 
     def _get_models(self):
         """
@@ -80,8 +98,9 @@ class WaveTrain:
         :type max_period: float
         :param max_period: maximum period for the filter corners, if not given
             no filter applied
-        :rtype: (obspy.core.stream.Stream, obspy.core.stream.Stream, dict)
-        :return: observed, synthetic and window data
+        :rtype: (obspy.core.stream.Stream, obspy.core.stream.Stream, dict, 
+                 float)
+        :return: observed, synthetic, windows, time offset [s]
         """
         # Use the Manager class to load in waveform data
         mgmt = Manager(ds=self.ds)
@@ -93,7 +112,8 @@ class WaveTrain:
         mgmt.standardize()
         mgmt.preprocess(**kwargs)
 
-        return mgmt.st_obs, mgmt.st_syn, mgmt.windows
+        return mgmt.st_obs, mgmt.st_syn, mgmt.windows, \
+            mgmt.stats.time_offset_sec
 
     def _setup_plot(self, nrows, ncols, **kwargs):
         """
@@ -239,29 +259,39 @@ class WaveTrain:
         # Plot each component in a different column
         s_init = []
         for row, model in enumerate(models):
-            obs, syn, windows = self._gather(station=station, model=model, 
-                                             **kwargs)  
+            obs, syn, windows, t_offset = self._gather(
+                station=station, model=model, **kwargs
+                )  
+            # Loop through waveforms first to get max y value
+            max_amp = 0
+            for o, s in zip(obs, syn):
+                max_amp = max(max_amp, np.max(np.abs(o.data)), 
+                              np.max(np.abs(s.data)))
+
             for col, comp in enumerate(component_list):
                 o = obs.select(component=comp)[0]
                 s = syn.select(component=comp)[0]
-                axes[row][col].plot(o.times(), o.data, obs_color, zorder=10, 
-                                    linewidth=obs_lw)
-                axes[row][col].plot(s.times(), s.data, syn_colors[col], 
-                                    zorder=11, linewidth=syn_lw)
+                axes[row][col].plot(o.times() + t_offset, o.data, obs_color, 
+                                    zorder=10, linewidth=obs_lw)
+                axes[row][col].plot(s.times() + t_offset, s.data, 
+                                    syn_colors[col],  zorder=11, 
+                                    linewidth=syn_lw)
                 
                 # Plot the windows as rectangles 
-                ymin, ymax = axes[row][col].get_ylim()
                 for window in windows[comp]:
-                    tleft = window.left * window.dt
+                    tleft = window.left * window.dt + t_offset
                     tright = window.right * window.dt
-                    r = Rectangle(xy=(tleft, ymin),  width=tright - tleft,
-                                  height=(ymax + np.abs(ymin)), fc="orange", 
-                                  ec="orange", alpha=0.1, zorder=10
+                    r = Rectangle(xy=(tleft, -1 * max_amp),  
+                                  width=tright - tleft,
+                                  height=max_amp * 2, fc="orange", 
+                                  ec="k", alpha=0.1, zorder=10
                                   )
                     axes[row][col].add_patch(r)
                 
                 # Turn off y-ticks, they carry no information
                 axes[row][col].set_yticks([])
+                # Set all y-max values to the maximum amplitude in the row
+                axes[row][col].set_ylim([-1 * max_amp, max_amp])
 
                 # First row gets the component formatted into the corner
                 if row == 0:
@@ -291,9 +321,9 @@ class WaveTrain:
         middle_column = len(component_list) // 2
         axes[-1][middle_column].set_xlabel("Time [s]", fontsize=fontsize)
 
-        # Set the time axes whichi should be the same for all
+        # Set the time axes which should be the same for all
         if xlim is None:
-            xlim = [o.times()[0], o.times()[-1]]
+            xlim = [_ + t_offset for _ in [o.times()[0], o.times()[-1]]]
         plt.xlim(xlim)
 
         # Set title
