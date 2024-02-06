@@ -972,7 +972,8 @@ class Manager:
         return self
 
     def retrieve_windows_from_dataset(self, ds=None, iteration=None,
-                                      step_count=None, revalidate=False):
+                                      step_count=None, components=None, 
+                                      revalidate=False):
         """
         Window selection function that retrieves previously saved windows from a
         PyASDF ASDFDataset, recalculates window criteria using the old windows
@@ -988,6 +989,10 @@ class Manager:
         :param step_count: retrieve windows from the given step count
             in the given dataset. If None, will search for previous evaluation
             to select windows from
+        :type components: list
+        :param components: if only windows from certain components should be 
+            returned from the dataset. If not given, defaults to Config 
+            `component_list`. Should be the inform of a list, e.g., ['N', 'E']
         :type revalidate: bool
         :param revalidate: check acceptability of waveform fit in the 
             retrieved windows, that is, if time shift, dlna or cross correlation
@@ -1014,10 +1019,11 @@ class Manager:
 
         net, sta, _, _ = self.st_obs[0].get_id().split(".")
         # Function will return empty dictionary if no acceptable windows found
-        windows = load_windows(ds=ds, net=net, sta=sta, 
-                               components=self.config.component_list,
-                               iteration=iteration, step_count=step_count,
-                               return_previous=return_previous)
+        windows = load_windows(
+            ds=ds, net=net, sta=sta, iteration=iteration, step_count=step_count,
+            components=components or self.config.component_list,
+            return_previous=return_previous
+            )
 
         logger.info(f"retrieved {len(windows)} windows from evaluation "
                     f"i{iteration:0>2}s{step_count:0>2}")
@@ -1172,23 +1178,30 @@ class Manager:
         # Run Pyadjoint to retrieve adjoint source objects
         total_misfit, adjoint_sources = 0, {}
         for comp, adj_win in adjoint_windows.items():
-            try:
-                adj_src = pyadjoint.calculate_adjoint_source(
-                    config=self.config.pyadjoint_config,
-                    observed=self.st_obs.select(component=comp)[0],
-                    synthetic=self.st_syn.select(component=comp)[0],
-                    windows=adj_win, plot=False
-                    )
+            # Streams may not have matching components to given windows, e.g.,
+            # during an inversion 
+            observed = self.st_obs.select(component=comp)
+            synthetic = self.st_syn.select(component=comp)
 
-                # Re-format component name to reflect SPECFEM convention
-                adj_src.component = f"{channel_code(adj_src.dt)}X{comp}"
-
-                # Save adjoint sources in dictionary object. Sum total misfit
-                adjoint_sources[comp] = adj_src
-                logger.info(f"{comp}: {adj_src.misfit:.3f} misfit")
-                total_misfit += adj_src.misfit
-            except IndexError:
+            if not observed or not synthetic:
+                logger.warning(f"no matching observed or synthetic data "
+                               f"for component {comp}, cannot measure")
                 continue
+
+            # Assuming that only one trace is available per stream
+            adj_src = pyadjoint.calculate_adjoint_source(
+                config=self.config.pyadjoint_config,
+                observed=observed[0], synthetic=synthetic[0],
+                windows=adj_win, plot=False
+                )
+
+            # Re-format component name to reflect SPECFEM convention
+            adj_src.component = f"{channel_code(adj_src.dt)}X{comp}"
+
+            # Save adjoint sources in dictionary object. Sum total misfit
+            adjoint_sources[comp] = adj_src
+            logger.info(f"{comp}: {adj_src.misfit:.3f} misfit")
+            total_misfit += adj_src.misfit
 
         # Save adjoint source internally and to dataset
         self.adjsrcs = adjoint_sources
