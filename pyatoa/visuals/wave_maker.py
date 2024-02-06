@@ -317,7 +317,8 @@ class WaveMaker:
 
         # Default window annotation string
         if window_anno is None:
-            window_anno = "cc={max_cc:.2f} / dT={cc_shift:.2f} / dA={dlnA:.2f}"
+            window_anno = \
+                "cc={max_cc:.2f} / dT={sign}{cc_shift:.2f} / dA={dlnA:.2f}"
 
         for j, window in enumerate(windows):
             tleft = window.left * window.dt + self.time_axis[0]
@@ -342,7 +343,8 @@ class WaveMaker:
                 s_anno = window_anno.format(
                                 i=j+1,
                                 max_cc=window.max_cc_value,
-                                cc_shift=window.cc_shift * window.dt,
+                                sign="+" if window.cc_shift > 0 else "-",
+                                cc_shift=np.abs(window.cc_shift * window.dt),
                                 dlnA=window.dlnA,
                                 left=tleft,
                                 length=tright - tleft)
