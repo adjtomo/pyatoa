@@ -62,7 +62,7 @@ def add_misfit_windows(windows, ds, path, overwrite=True,
                 try:
                     fullpath = "/".join[_data_type, path, window_tag]
                     del_auxiliary_data_path(ds=ds, path=fullpath)
-                    logger.debug(f"overwriting existing windows {fullpath}")
+                    logger.debug(f"overwriting existing windows: {fullpath}")
                 except KeyError:
                     continue
 
@@ -72,7 +72,8 @@ def add_misfit_windows(windows, ds, path, overwrite=True,
                                   path=f"{path}/{window_tag}")
 
 
-def add_adjoint_sources(adjsrcs, ds, path, time_offset, overwrite=True):
+def add_adjoint_sources(adjsrcs, ds, path, time_offset, overwrite=True,
+                        _data_type="AdjointSources"):
     """
     Writes the adjoint source to an ASDF file.
 
@@ -103,6 +104,11 @@ def add_adjoint_sources(adjsrcs, ds, path, time_offset, overwrite=True):
         already exists in the dataset, deletes the existing adjoint source.
         If False, ASDFWarning will be thrown and new adjoint source will not 
         be written.
+    :type _data_type: str
+    :param _data_type: the main 'directory' under AuxiliaryData that adjoint
+        sources are stored under. By default, Pyatoa expects this to be 
+        'AdjointSources', but it can be changed by advanced users, changing this
+        will likely have unintended downstream consequences.
     """
     # Save adjoint sources per component
     for key, adj_src in adjsrcs.items():
@@ -127,19 +133,27 @@ def add_adjoint_sources(adjsrcs, ds, path, time_offset, overwrite=True):
         # Parameters saved as a dictionary object to match the variables of
         # the AdjointSource object, with additional identifiers
         parameters = {"adj_src_type": adj_src.adjsrc_type,
-                        "misfit": adj_src.misfit,
-                        "dt": adj_src.dt,
-                        "component": adj_src.component,
-                        "min_period": adj_src.min_period or "None",
-                        "max_period": adj_src.max_period or "None",
-                        "network": adj_src.network,
-                        "station": adj_src.station,
-                        "location": adj_src.location,
-                        "starttime": str(adj_src.starttime)
-                        }
-        ds.add_auxiliary_data(data=specfem_adj_source.astype(np.float64),
-                                data_type="AdjointSources",
-                                path=f"{path}/{adj_src_tag}",
-                                parameters=parameters
-                                )
+                      "misfit": adj_src.misfit,
+                      "dt": adj_src.dt,
+                      "component": adj_src.component,
+                      "min_period": adj_src.min_period or "None",
+                      "max_period": adj_src.max_period or "None",
+                      "network": adj_src.network,
+                      "station": adj_src.station,
+                      "location": adj_src.location,
+                      "starttime": str(adj_src.starttime)
+                      }
+        
+        if overwrite:
+            try:
+                fullpath = "/".join[_data_type, path, adj_src_tag]
+                del_auxiliary_data_path(ds=ds, path=fullpath)
+                logger.debug(f"overwriting existing adjsrc: {fullpath}")
+            except KeyError:
+                continue
+
+        ds.add_auxiliary_data(
+            data=specfem_adj_source.astype(np.float64), data_type=_data_type, 
+            path=f"{path}/{adj_src_tag}", parameters=parameters
+            )
 
