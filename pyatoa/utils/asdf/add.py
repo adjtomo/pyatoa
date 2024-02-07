@@ -137,7 +137,7 @@ def add_misfit_windows(windows, ds, path, overwrite=True,
                     logger.debug(f"overwriting existing windows: "
                                  f"{path}/{window_tag}")
                 except KeyError:
-                    continue
+                    pass
 
             # Write windows into dataset
             ds.add_auxiliary_data(data=np.array([win.left, win.right]),
@@ -224,7 +224,7 @@ def add_adjoint_sources(adjsrcs, ds, path, time_offset, overwrite=True,
                 logger.debug(f"overwriting existing adjoint sources: "
                              f"{fullpath}")
             except KeyError:
-                continue
+                pass
 
         ds.add_auxiliary_data(
             data=specfem_adj_source.astype(np.float64), data_type=_data_type, 

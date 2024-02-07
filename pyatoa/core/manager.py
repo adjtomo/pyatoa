@@ -1168,7 +1168,8 @@ class Manager:
             raise ManagerError("cannot measure misfit, not standardized")
         elif self.stats.nwin == 0 and not force:
             raise ManagerError("cannot measure misfit, no windows recovered")
-        logger.debug(f"measure misfit with adjoint source type: "
+        
+        logger.debug(f"measuring misfit with adjoint source type: "
                      f"{self.config.adj_src_type}")
 
         # Create list of windows needed for Pyadjoint
