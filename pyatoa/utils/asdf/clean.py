@@ -1,9 +1,8 @@
 """
 Convenience functions for removing data from Pyasdf ASDFDataSet objects. 
 All functions work with the dataset as an input and act in-place on the 
-dataset so no returns
+dataset so no returns and data are not recoverable. Proceed with caution
 """
-from pyatoa import logger
 from pyatoa.utils.form import format_iter, format_step
 
 
@@ -21,8 +20,10 @@ def clean_dataset(ds, iteration=None, step_count=None, fix_windows=False):
     :type step_count: str or int
     :param step_count: step count e.g. "s00". Will be formatted so int ok.
     """
-    del_waveforms(ds=ds, tag="synthetic", iteration=iteration, 
-                  step_count=step_count)
+    iter_tag = format_iter(iteration)
+    step_tag = format_step(step_count)
+    tag = f"synthetic_{iter_tag}{step_tag}"
+    del_waveforms(ds=ds, station=None, tag=tag)
 
     # Retain misfit windows if windows to  be fixed
     if fix_windows:
@@ -34,44 +35,36 @@ def clean_dataset(ds, iteration=None, step_count=None, fix_windows=False):
                        retain=retain)
 
 
-def del_waveforms(ds, tag=None, iteration=None, step_count=None):
+def del_waveforms(ds, station=None, tag=None):
     """
-    Delete all waveforms for a given evaluation in an ASDFDataSet
-    Remove "{tag}_{iter_tag}{step_tag}" tagged waveforms from an asdf 
-    dataset. If no iter_tag number given, wipes all synthetic data from dataset.   
+    Delete waveform(s) associated with a `station` and a `tag` from an 
+    ASDFDataSet. If `station` not given, deletes waveforms from the entire
+    list (all stations). If `tag` is not given, deletes all tags associated 
+    with `station`.
 
-    Waveform tags look something like 
+    Waveform tags from Pyatoa look something like:
     'XR.SAG..BXR__1999-12-31T23:58:20__2000-01-01T00:10:00__observed'
+    'TA.G25K..BXR__1999-12-31T23:58:20__2000-01-01T00:10:00__synthetic_i01s00'
+
+    `tag` will be used to match any part of the waveform tag for selection,
+    e.g., 'observed' or 'synthetic_i01s00'
  
     :type ds: pyasdf.ASDFDataSet
     :param ds: dataset to be cleaned
+    :type station: str
+    :param station: station used to tag the waveforms with a '_' delimeter,
+        e.g., NN_SSS (network_station)
     :type tag: str
-    :param tag: tag used to save the waveform, either 'observed' or 'synthetic'
-    :type iteration: str or int
-    :param iteration: iteration number, e.g. "i01". Will be formatted so int ok.
-    :type step_count: str or int
-    :param step_count: step count e.g. "s00". Will be formatted so int ok.
+    :param tag: tag used to save the waveform and for selection
     """
-    # BCBC TO DO
-    iter_tag = format_iter(iteration)
-    step_tag = format_step(step_count)
-
     for sta in ds.waveforms.list():
-        for waveform_tag in ds.waveforms[sta].list():
-            if tag == "observed" and waveform_tag.endswith("observed"):
-                del ds.waveforms[sta][tag]
-            elif tag == "synthetic" and "synthetic" in waveform_tag:
-                # stream is e.g. 'synthetic_i00s00'
-                if (iter_tag is not None) and iter_tag in stream:
-                    if (step_tag is not None) and step_tag in stream:
-                        del ds.waveforms[sta][stream]
-                    elif step_tag is None:
-                        del ds.waveforms[sta][stream]
-                elif iter_tag is None:
-                    del ds.waveforms[sta][stream]
-            else:
-                raise NotImplementedError("Pyatoa expects `tag`=='observed' or "
-                                          "'synthetic'")
+        # Delimiter '.' used for listing but '_' for indexing
+        if station and sta.replace(".", "_") != station:
+            continue
+        for station_tag in ds.waveforms[sta].list():
+            if tag and not tag in station_tag:
+                continue
+            del ds.waveforms[sta][station_tag]
 
 
 def del_auxiliary_data(ds, iteration=None, step_count=None, retain=None,
