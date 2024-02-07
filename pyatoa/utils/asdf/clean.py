@@ -35,7 +35,7 @@ def clean_dataset(ds, iteration=None, step_count=None, fix_windows=False):
                        retain=retain)
 
 
-def del_waveforms(ds, station=None, tag=None):
+def del_waveforms(ds, station=None, channel=None, tag=None):
     """
     Delete waveform(s) associated with a `station` and a `tag` from an 
     ASDFDataSet. If `station` not given, deletes waveforms from the entire
@@ -54,6 +54,11 @@ def del_waveforms(ds, station=None, tag=None):
     :type station: str
     :param station: station used to tag the waveforms with a '_' delimeter,
         e.g., NN_SSS (network_station)
+    :type channel: str
+    :param channel: channel code used to match the waveform tag. Examples 
+        include things like 'HHZ', 'BXR'. Used for checking waveform tags. If
+        not given then all waveform tags matching `station` and `tag` will be
+        deleted
     :type tag: str
     :param tag: tag used to save the waveform and for selection
     """
@@ -62,7 +67,10 @@ def del_waveforms(ds, station=None, tag=None):
         if station and sta.replace(".", "_") != station:
             continue
         for station_tag in ds.waveforms[sta].list():
+            # Validate against User chosen tag and channel
             if tag and not tag in station_tag:
+                continue
+            if channel and not channel in station_tag:
                 continue
             del ds.waveforms[sta][station_tag]
 

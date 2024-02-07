@@ -29,7 +29,11 @@ def add_waveforms(st, ds, tag, overwrite=True):
     # Check for and delete any existing waveform data
     station = f"{st[0].stats.network}_{st[0].stats.station}"
     if overwrite:
-        del_waveforms(ds=ds, station=station, tag=tag)
+        for tr in st:
+            # Only delete the components in the Stream, otherwise there is a
+            # change that we delete too much data by accident
+            channel = tr.stats.channel
+            del_waveforms(ds=ds, station=station, channel=channel, tag=tag)
             
     # Redirect PyASDF 'waveforms already present' warnings for cleaner look
     # within the framework of Pyatoa
