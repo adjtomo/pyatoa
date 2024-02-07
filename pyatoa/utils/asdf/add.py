@@ -68,7 +68,10 @@ def add_config(config, ds, path, overwrite=True, _data_type="Configs"):
         will likely have unintended downstream consequences.
     """
     if overwrite:
-        del_auxiliary_data_path(ds, path=f"{_data_type}/{path}")
+        try:
+            del_auxiliary_data_path(ds, path=f"{_data_type}/{path}")
+        except KeyError:
+            pass
 
     with warnings.catch_warnings():
         warnings.filterwarnings("error")
@@ -134,8 +137,7 @@ def add_misfit_windows(windows, ds, path, overwrite=True,
                     # e.g., MisfitWindows/i01/s00/NZ_BFZ_Z_0
                     fullpath = "/".join([_data_type, path, window_tag])
                     del_auxiliary_data_path(ds=ds, path=fullpath)
-                    logger.debug(f"overwriting existing windows: "
-                                 f"{path}/{window_tag}")
+                    logger.debug(f"overwriting existing windows in dataset")
                 except KeyError:
                     pass
 
@@ -143,7 +145,7 @@ def add_misfit_windows(windows, ds, path, overwrite=True,
             ds.add_auxiliary_data(data=np.array([win.left, win.right]),
                                   data_type=_data_type, parameters=wdict,
                                   path=f"{path}/{window_tag}")
-
+            logger.info(f"saving misfit window to: {path}/{window_tag}")
 
 def add_adjoint_sources(adjsrcs, ds, path, time_offset, overwrite=True,
                         _data_type="AdjointSources"):
@@ -221,8 +223,7 @@ def add_adjoint_sources(adjsrcs, ds, path, time_offset, overwrite=True,
             try:
                 fullpath = "/".join([_data_type, path, adj_src_tag])
                 del_auxiliary_data_path(ds=ds, path=fullpath)
-                logger.debug(f"overwriting existing adjoint sources: "
-                             f"{fullpath}")
+                logger.debug(f"overwriting existing adjoint sources in dataset")
             except KeyError:
                 pass
 
@@ -230,4 +231,5 @@ def add_adjoint_sources(adjsrcs, ds, path, time_offset, overwrite=True,
             data=specfem_adj_source.astype(np.float64), data_type=_data_type, 
             path=f"{path}/{adj_src_tag}", parameters=parameters
             )
+        logger.info(f"saving adjoint source to: {path}/{adj_src_tag}")
 

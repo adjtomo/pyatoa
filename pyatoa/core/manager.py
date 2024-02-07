@@ -330,6 +330,8 @@ class Manager:
         if choice is None:
             choice = ["event", "inv", "st_obs", "st_syn", "windows", "adjsrcs",
                       "config"]
+            
+        logger.info(f"saving {len(choice)} Manager attributes to ASDFDataSet")
 
         # Events should only need to be added once to the ASDFDataSet
         if self.event and "event" in choice:
