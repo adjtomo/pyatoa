@@ -155,6 +155,6 @@ def del_auxiliary_data_path(ds, path):
         del ds.auxiliary_data[p[0]][p[1]][p[2]][p[3]][p[4]][p[5]][p[6]]
     else:
         raise IndexError("path length exceeds hardcoded availability. "
-                        "Please open up a GitHub issue and we can extend "
-                        "capabilities")
+                         "Please open up a GitHub issue and we can extend "
+                         "capabilities")
 

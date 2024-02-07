@@ -348,7 +348,7 @@ class Manager:
                 pass
 
         # Observed waveforms only need to be added once to the ASDFDataSet,
-        # do not overwrite existing waveforms
+        # do not overwrite existing waveforms because observed shouldn't change
         if self.st_obs and "st_obs" in choice:
             add_waveforms(st=self.st_obs, ds=ds, tag=self.config.observed_tag,
                           overwrite=False)
@@ -361,8 +361,8 @@ class Manager:
 
         # Windows will overwrite if windows already exist for this evaluation
         if self.windows and "windows" in choice:
-            add_misfit_windows(self.windows, ds, path=self.config.aux_path,
-                               overwrite=True)
+            add_misfit_windows(windows=self.windows, ds=ds, 
+                               path=self.config.aux_path, overwrite=True)
 
         # AdjointSources will overwrite if they already exist for evaluation
         if self.adjsrcs and "adjsrcs" in choice:
@@ -372,7 +372,7 @@ class Manager:
                                 overwrite=True)
 
         if self.config and "config" in choice:
-            add_config(self.config, ds, path=self.config.aux_path)
+            add_config(config=self.config, ds=ds, path=self.config.aux_path)
  
     def write_adjsrcs(self, path="./", write_blanks=True):
         """
@@ -965,11 +965,10 @@ class Manager:
         # Print out some window stats for reference
         for comp, windows_ in enumerate(windows.items()):
             for w, win in enumerate(windows_):
-                logger.debug(f"{comp}_{w} - "
-                    f"cc:{win.max_cc_value:.2f} / "
-                    f"dt:{win.cc_shift * win.dt:.2f} / "
-                    f"dlnA:{win.dlnA:.2f}"
-                    )
+                logger.debug(f"{comp}_{w} = "
+                            f"cc:{win.max_cc_value:.2f} / "
+                            f"dt:{win.cc_shift * win.dt:.2f}s / "
+                            f"dlnA:{win.dlnA:.2f}")
 
         return self
 
@@ -1027,11 +1026,7 @@ class Manager:
             return_previous=return_previous
             )
 
-        logger.info(f"retrieved {len(windows)} windows from evaluation "
-                    f"i{iteration:0>2}s{step_count:0>2}")
-
         # Recalculate window criteria for new values for cc, tshift, dlnA etc...
-        logger.debug("recalculating window criteria")
         for comp, windows_ in windows.items():
             # Use Pyflex machinery to re-evaluate the windows based on the
             # current setup of waveforms
@@ -1050,16 +1045,17 @@ class Manager:
                 # If no reject on data fit, simply recalculate the window 
                 # criteria and return all windows to User
                 else:
+                    logger.debug("recalculating window criteria (comp_#):")
                     for w, win in enumerate(windows_):
                         # Log for double check or manual review of new criteria
-                        logger.debug(f"{comp}_{w}_old - "
+                        logger.debug(f"{comp}_{w} (old) = "
                                     f"cc:{win.max_cc_value:.2f} / "
-                                    f"dt:{win.cc_shift * win.dt:.2f}/ "
+                                    f"dt:{win.cc_shift * win.dt:.2f}s / "
                                     f"dlnA:{win.dlnA:.2f}")
                         win._calc_criteria(obs.data, syn.data)
-                        logger.debug(f"{comp}_{w}_new - "
+                        logger.debug(f"{comp}_{w} (new) = "
                                     f"cc:{win.max_cc_value:.2f} / "
-                                    f"dt:{win.cc_shift * win.dt:.2f} / "
+                                    f"dt:{win.cc_shift * win.dt:.2f}s / "
                                     f"dlnA:{win.dlnA:.2f}")
 
             # IndexError thrown when trying to access an empty Stream
@@ -1172,7 +1168,8 @@ class Manager:
             raise ManagerError("cannot measure misfit, not standardized")
         elif self.stats.nwin == 0 and not force:
             raise ManagerError("cannot measure misfit, no windows recovered")
-        logger.debug(f"measure misfit of type: {self.config.adj_src_type}")
+        logger.debug(f"measure misfit with adjoint source type: "
+                     f"{self.config.adj_src_type}")
 
         # Create list of windows needed for Pyadjoint
         adjoint_windows = self._format_windows()
@@ -1202,7 +1199,7 @@ class Manager:
 
             # Save adjoint sources in dictionary object. Sum total misfit
             adjoint_sources[comp] = adj_src
-            logger.info(f"{comp}: {adj_src.misfit:.3f} misfit")
+            logger.info(f"{comp} component misfit == {adj_src.misfit:.3f}")
             total_misfit += adj_src.misfit
 
         # Save adjoint source internally and to dataset

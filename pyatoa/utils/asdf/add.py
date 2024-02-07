@@ -37,6 +37,7 @@ def add_waveforms(st, ds, tag, overwrite=True):
         warnings.filterwarnings("error")
         try:
             ds.add_waveforms(waveform=st, tag=tag)
+            logger.debug(f"added waveforms for `{station}_{tag}`")
         except ASDFWarning:
             logger.warning(f"waveform already present for `{station}_{tag}`, "
                            f"not added")
@@ -76,6 +77,7 @@ def add_config(config, ds, path, overwrite=True, _data_type="Configs"):
         except ASDFWarning:
             logger.debug(f"Config already present for {path}, not added")
             pass
+
 
 def add_misfit_windows(windows, ds, path, overwrite=True, 
                        _data_type="MisfitWindows"):
@@ -119,7 +121,7 @@ def add_misfit_windows(windows, ds, path, overwrite=True,
             wdict["absolute_starttime"] = str(wdict["absolute_starttime"])
             wdict["time_of_first_sample"] = str(wdict["time_of_first_sample"])
 
-            # Flatten nested dictionary
+            # Flatten nested dictionary so they play nice in the dataset
             phase_arrivals = wdict["phase_arrivals"]
             for phase in phase_arrivals:
                 wdict[f"phase_arrival_{phase['name']}"] = phase["time"]
@@ -132,7 +134,8 @@ def add_misfit_windows(windows, ds, path, overwrite=True,
                     # e.g., MisfitWindows/i01/s00/NZ_BFZ_Z_0
                     fullpath = "/".join([_data_type, path, window_tag])
                     del_auxiliary_data_path(ds=ds, path=fullpath)
-                    logger.debug(f"overwriting existing windows: {fullpath}")
+                    logger.debug(f"overwriting existing windows: "
+                                 f"{path}/{window_tag}")
                 except KeyError:
                     continue
 
@@ -218,7 +221,8 @@ def add_adjoint_sources(adjsrcs, ds, path, time_offset, overwrite=True,
             try:
                 fullpath = "/".join([_data_type, path, adj_src_tag])
                 del_auxiliary_data_path(ds=ds, path=fullpath)
-                logger.debug(f"overwriting existing adjsrc: {fullpath}")
+                logger.debug(f"overwriting existing adjoint sources: "
+                             f"{fullpath}")
             except KeyError:
                 continue
 
