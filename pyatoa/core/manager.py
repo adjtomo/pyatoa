@@ -13,7 +13,6 @@ import warnings
 
 from copy import deepcopy
 from obspy.signal.filter import envelope
-from pyasdf import ASDFWarning
 
 from pyatoa import logger
 from pyatoa.core.config import Config
@@ -332,62 +331,49 @@ class Manager:
             choice = ["event", "inv", "st_obs", "st_syn", "windows", "adjsrcs",
                       "config"]
 
+        # Events should only need to be added once to the ASDFDataSet
         if self.event and "event" in choice:
             try:
                 ds.add_quakeml(self.event)
+                logger.info("Event object added to ASDFDataSet")
             except ValueError:
-                logger.debug("Event already present, not added")
+                pass
+        
+        # StationXML files only need to be added once to the ASDFDataSet
         if self.inv and "inv" in choice:
             try:
                 ds.add_stationxml(self.inv)
+                logger.info("StationXML object added to ASDFDataSet")
             except TypeError:
-                logger.debug("StationXML already present, not added")
-        # Redirect PyASDF 'waveforms already present' warnings for cleaner look
-        # We are assuming the observed waveforms will NOT change during workflow
+                pass
+
+        # Observed waveforms only need to be added once to the ASDFDataSet,
+        # do not overwrite existing waveforms
         if self.st_obs and "st_obs" in choice:
-            add_waveforms(self.st_obs, ds, tag=self.config.observed_tag)
-            # BCBC TO DO
-            with warnings.catch_warnings():
-                warnings.filterwarnings("error")
-                try:
-                    ds.add_waveforms(waveform=self.st_obs,
-                                     tag=self.config.observed_tag)
-                except ASDFWarning:
-                    logger.debug(f"{self.config.observed_tag} waveform already "
-                                 f"present, not added")
-                    pass
-        
+            add_waveforms(st=self.st_obs, ds=ds, tag=self.config.observed_tag,
+                          overwrite=False)
+
+        # Synthetic waveforms should be allowed to overwrite, e.g., in the case
+        # that we are rerunning synthetics or restarting iterations
         if self.st_syn and "st_syn" in choice:
-            with warnings.catch_warnings():
-                warnings.filterwarnings("error")
-                try:
-                    ds.add_waveforms(waveform=self.st_syn,
-                                     tag=self.config.synthetic_tag)
-                except ASDFWarning:
-                    logger.debug(f"{self.config.synthetic_tag} waveform "
-                                 f"already present, not added")
-                    pass
+            add_waveforms(st=self.st_syn, ds=ds, tag=self.config.synthetic_tag,
+                          overwrite=True)
+
         # Windows will overwrite if windows already exist for this evaluation
         if self.windows and "windows" in choice:
-            logger.debug("saving misfit windows to ASDFDataSet")
-            add_misfit_windows(self.windows, ds, path=self.config.aux_path)
+            add_misfit_windows(self.windows, ds, path=self.config.aux_path,
+                               overwrite=True)
 
-        # AdjointSources will overwrite if windows already exist for this evaluation
+        # AdjointSources will overwrite if they already exist for evaluation
         if self.adjsrcs and "adjsrcs" in choice:
-            logger.debug("saving adjoint sources to ASDFDataSet")
             add_adjoint_sources(adjsrcs=self.adjsrcs, ds=ds,
                                 path=self.config.aux_path,
-                                time_offset=self.stats.time_offset_sec)
+                                time_offset=self.stats.time_offset_sec,
+                                overwrite=True)
 
         if self.config and "config" in choice:
-            with warnings.catch_warnings():
-                warnings.filterwarnings("error")
-                try:
-                    self.config.write(write_to=ds, fmt="asdf")
-                except ASDFWarning:
-                    logger.debug(f"config already present, not added")
-                    pass
-
+            add_config(self.config, ds, path=self.config.aux_path)
+ 
     def write_adjsrcs(self, path="./", write_blanks=True):
         """
         Write internally stored adjoint source traces into SPECFEM defined

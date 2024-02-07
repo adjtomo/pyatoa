@@ -4,8 +4,10 @@ event and station information contained. The functions contained in this script
 add new auxiliary data structures to existing ASDF datasets
 """
 import numpy as np
+import warnings
+from pyasdf import ASDFWarning
 from pyatoa import logger
-from pyatoa.utils.asdf.clean import del_auxiliary_data_path
+from pyatoa.utils.asdf.clean import del_auxiliary_data_path, del_waveforms
 
 
 def add_waveforms(st, ds, tag, overwrite=True):
@@ -24,8 +26,56 @@ def add_waveforms(st, ds, tag, overwrite=True):
     :param overwrite: if waveform for the automatically generated path 
         already exists in the dataset, deletes the existing waveforms
     """
-    # BCBC TO DO
+    # Check for and delete any existing waveform data
+    station = f"{st[0].stats.network}_{st[0].stats.station}"
+    if overwrite:
+        del_waveforms(ds=ds, station=station, tag=tag)
+            
+    # Redirect PyASDF 'waveforms already present' warnings for cleaner look
+    # within the framework of Pyatoa
+    with warnings.catch_warnings():
+        warnings.filterwarnings("error")
+        try:
+            ds.add_waveforms(waveform=st, tag=tag)
+        except ASDFWarning:
+            logger.warning(f"waveform already present for `{station}_{tag}`, "
+                           f"not added")
+            pass
 
+
+def add_config(config, ds, path, overwrite=True, _data_type="Configs"):
+    """
+    Simple wrapper over ASDFDataSet.add_waveforms that bypasses PyASDF's 
+    inability to overwrite existing files directly. Waveforms will be saved 
+    into the structure: ASDFDataSet.waveforms.NN_SSS.
+
+    :type config: pyatoa.core.config.Config
+    :param config: Coinfig object to be added to the ASDFDataSet
+    :type ds: pyasdf.ASDFDataSet
+    :param ds: ASDF data set to save waveform to
+    :type path: str
+    :param path: internal pathing to save location of auxiliary data, separated
+        by delimeter '/' for nesting. E.g., i01/s00 will save misfit windows to 
+        ASDFDataSet.auxiliary_data.Configs.i01.s00. Required by PyASDF
+    :type overwrite: bool
+    :param overwrite: if waveform for the automatically generated path 
+        already exists in the dataset, deletes the existing waveforms
+    :type _data_type: str
+    :param _data_type: the main 'directory' under AuxiliaryData that Configss 
+        are stored under. By default, Pyatoa expects this to be 
+        'Configs', but it can be changed by advanced users, changing this
+        will likely have unintended downstream consequences.
+    """
+    if overwrite:
+        del_auxiliary_data_path(ds, path=f"{_data_type}/{path}")
+
+    with warnings.catch_warnings():
+        warnings.filterwarnings("error")
+        try:
+            config.write(write_to=ds, fmt="asdf")
+        except ASDFWarning:
+            logger.debug(f"Config already present for {path}, not added")
+            pass
 
 def add_misfit_windows(windows, ds, path, overwrite=True, 
                        _data_type="MisfitWindows"):
