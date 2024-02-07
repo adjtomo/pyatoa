@@ -969,6 +969,15 @@ class Manager:
 
         logger.info(f"{self.stats.nwin} window(s) total found")
 
+        # Print out some window stats for reference
+        for comp, windows_ in enumerate(windows.items()):
+            for w, win in enumerate(windows_):
+                logger.debug(f"{comp}{w} - "
+                    f"cc:{win.max_cc_value:.2f} / "
+                    f"dt:{win.cc_shift * win.dt:.1f} / "
+                    f"dlnA:{win.dlnA:.2f}"
+                    )
+
         return self
 
     def retrieve_windows_from_dataset(self, ds=None, iteration=None,
@@ -1052,12 +1061,12 @@ class Manager:
                         # Log for double check or manual review of new criteria
                         logger.debug(f"{comp}{w}_old - "
                                     f"cc:{win.max_cc_value:.2f} / "
-                                    f"dt:{win.cc_shift:.1f} / "
+                                    f"dt:{win.cc_shift * win.dt:.1f}/ "
                                     f"dlnA:{win.dlnA:.2f}")
                         win._calc_criteria(obs.data, syn.data)
                         logger.debug(f"{comp}{w}_new - "
                                     f"cc:{win.max_cc_value:.2f} / "
-                                    f"dt:{win.cc_shift:.1f} / "
+                                    f"dt:{win.cc_shift * win.dt:.1f} / "
                                     f"dlnA:{win.dlnA:.2f}")
 
             # IndexError thrown when trying to access an empty Stream
