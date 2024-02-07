@@ -60,7 +60,7 @@ def add_misfit_windows(windows, ds, path, overwrite=True,
             # then delete them so new windows can be written
             if overwrite:
                 try:
-                    fullpath = "/".join[_data_type, path, window_tag]
+                    fullpath = "/".join([_data_type, path, window_tag])
                     del_auxiliary_data_path(ds=ds, path=fullpath)
                     logger.debug(f"overwriting existing windows: {fullpath}")
                 except KeyError:
@@ -146,7 +146,7 @@ def add_adjoint_sources(adjsrcs, ds, path, time_offset, overwrite=True,
         
         if overwrite:
             try:
-                fullpath = "/".join[_data_type, path, adj_src_tag]
+                fullpath = "/".join([_data_type, path, adj_src_tag])
                 del_auxiliary_data_path(ds=ds, path=fullpath)
                 logger.debug(f"overwriting existing adjsrc: {fullpath}")
             except KeyError:
