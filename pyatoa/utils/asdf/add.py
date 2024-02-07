@@ -8,6 +8,25 @@ from pyatoa import logger
 from pyatoa.utils.asdf.clean import del_auxiliary_data_path
 
 
+def add_waveforms(st, ds, tag, overwrite=True):
+    """
+    Simple wrapper over ASDFDataSet.add_waveforms that bypasses PyASDF's 
+    inability to overwrite existing files directly. Waveforms will be saved 
+    into the structure: ASDFDataSet.waveforms.NN_SSS.
+
+    :type st: obspy.core.stream.Stream
+    :param st: waveforms to add to the ASDFDataSet
+    :type ds: pyasdf.ASDFDataSet
+    :param ds: ASDF data set to save waveform to
+    :type tag: str
+    :param tag: tag used to save the waveform, either 'observed' or 'synthetic'
+    :type overwrite: bool
+    :param overwrite: if waveform for the automatically generated path 
+        already exists in the dataset, deletes the existing waveforms
+    """
+    # BCBC TO DO
+
+
 def add_misfit_windows(windows, ds, path, overwrite=True, 
                        _data_type="MisfitWindows"):
     """
@@ -60,6 +79,7 @@ def add_misfit_windows(windows, ds, path, overwrite=True,
             # then delete them so new windows can be written
             if overwrite:
                 try:
+                    # e.g., MisfitWindows/i01/s00/NZ_BFZ_Z_0
                     fullpath = "/".join([_data_type, path, window_tag])
                     del_auxiliary_data_path(ds=ds, path=fullpath)
                     logger.debug(f"overwriting existing windows: {fullpath}")

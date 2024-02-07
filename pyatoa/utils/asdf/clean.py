@@ -21,7 +21,8 @@ def clean_dataset(ds, iteration=None, step_count=None, fix_windows=False):
     :type step_count: str or int
     :param step_count: step count e.g. "s00". Will be formatted so int ok.
     """
-    del_synthetic_waveforms(ds=ds, iteration=iteration, step_count=step_count)
+    del_waveforms(ds=ds, tag="synthetic", iteration=iteration, 
+                  step_count=step_count)
 
     # Retain misfit windows if windows to  be fixed
     if fix_windows:
@@ -33,24 +34,34 @@ def clean_dataset(ds, iteration=None, step_count=None, fix_windows=False):
                        retain=retain)
 
 
-def del_synthetic_waveforms(ds, iteration=None, step_count=None):
+def del_waveforms(ds, tag=None, iteration=None, step_count=None):
     """
-    Remove "synthetic_{iter_tag}{step_tag}" tagged waveforms from an asdf 
+    Delete all waveforms for a given evaluation in an ASDFDataSet
+    Remove "{tag}_{iter_tag}{step_tag}" tagged waveforms from an asdf 
     dataset. If no iter_tag number given, wipes all synthetic data from dataset.   
+
+    Waveform tags look something like 
+    'XR.SAG..BXR__1999-12-31T23:58:20__2000-01-01T00:10:00__observed'
  
     :type ds: pyasdf.ASDFDataSet
     :param ds: dataset to be cleaned
+    :type tag: str
+    :param tag: tag used to save the waveform, either 'observed' or 'synthetic'
+    :type iteration: str or int
     :param iteration: iteration number, e.g. "i01". Will be formatted so int ok.
     :type step_count: str or int
     :param step_count: step count e.g. "s00". Will be formatted so int ok.
     """
+    # BCBC TO DO
     iter_tag = format_iter(iteration)
     step_tag = format_step(step_count)
 
     for sta in ds.waveforms.list():
-        for stream in ds.waveforms[sta].list():
-            # stream is e.g. 'synthetic_i00s00'
-            if "synthetic" in stream:
+        for waveform_tag in ds.waveforms[sta].list():
+            if tag == "observed" and waveform_tag.endswith("observed"):
+                del ds.waveforms[sta][tag]
+            elif tag == "synthetic" and "synthetic" in waveform_tag:
+                # stream is e.g. 'synthetic_i00s00'
                 if (iter_tag is not None) and iter_tag in stream:
                     if (step_tag is not None) and step_tag in stream:
                         del ds.waveforms[sta][stream]
@@ -58,6 +69,9 @@ def del_synthetic_waveforms(ds, iteration=None, step_count=None):
                         del ds.waveforms[sta][stream]
                 elif iter_tag is None:
                     del ds.waveforms[sta][stream]
+            else:
+                raise NotImplementedError("Pyatoa expects `tag`=='observed' or "
+                                          "'synthetic'")
 
 
 def del_auxiliary_data(ds, iteration=None, step_count=None, retain=None,

@@ -17,7 +17,8 @@ from pyasdf import ASDFWarning
 
 from pyatoa import logger
 from pyatoa.core.config import Config
-from pyatoa.utils.asdf.add import add_misfit_windows, add_adjoint_sources
+from pyatoa.utils.asdf.add import (add_misfit_windows, add_adjoint_sources,
+                                   add_waveforms, add_config)
 
 from pyatoa.utils.asdf.load import load_windows, load_adjsrcs
 from pyatoa.utils.form import channel_code
@@ -342,7 +343,10 @@ class Manager:
             except TypeError:
                 logger.debug("StationXML already present, not added")
         # Redirect PyASDF 'waveforms already present' warnings for cleaner look
+        # We are assuming the observed waveforms will NOT change during workflow
         if self.st_obs and "st_obs" in choice:
+            add_waveforms(self.st_obs, ds, tag=self.config.observed_tag)
+            # BCBC TO DO
             with warnings.catch_warnings():
                 warnings.filterwarnings("error")
                 try:
@@ -352,6 +356,7 @@ class Manager:
                     logger.debug(f"{self.config.observed_tag} waveform already "
                                  f"present, not added")
                     pass
+        
         if self.st_syn and "st_syn" in choice:
             with warnings.catch_warnings():
                 warnings.filterwarnings("error")
@@ -362,10 +367,12 @@ class Manager:
                     logger.debug(f"{self.config.synthetic_tag} waveform "
                                  f"already present, not added")
                     pass
+        # Windows will overwrite if windows already exist for this evaluation
         if self.windows and "windows" in choice:
             logger.debug("saving misfit windows to ASDFDataSet")
             add_misfit_windows(self.windows, ds, path=self.config.aux_path)
 
+        # AdjointSources will overwrite if windows already exist for this evaluation
         if self.adjsrcs and "adjsrcs" in choice:
             logger.debug("saving adjoint sources to ASDFDataSet")
             add_adjoint_sources(adjsrcs=self.adjsrcs, ds=ds,
