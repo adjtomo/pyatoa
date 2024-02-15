@@ -965,7 +965,7 @@ class Manager:
         logger.info(f"{self.stats.nwin} window(s) total found")
 
         # Print out some window stats for reference
-        for comp, windows_ in enumerate(windows.items()):
+        for comp, windows_ in self.windows.items():
             for w, win in enumerate(windows_):
                 logger.debug(f"{comp}_{w}: "
                             f"cc={win.max_cc_value:.2f} / "
