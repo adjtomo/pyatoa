@@ -46,16 +46,14 @@ class WaveTrain:
             last iteration.
         """
         self.ds = ds
-
-        if models is  None:
-            self.models = self._get_models()
-        else:
-            self.models = models
-
+        self.models = models
         self.evaluations = self._get_all_evaluations()
 
-        assert set(self.models).issubset(set(self.evaluations)), \
-               f"Models do not match expected evaluations in the ASDFDataSet"
+        if self.models:
+            assert set(self.models).issubset(set(self.evaluations)), \
+                   f"Models don't match expected evaluations in the ASDFDataSet"
+        else:
+            self.models = self.evaluations
     
     def _get_all_evaluations(self):
         """Get all available evaluations in the dataset, used for validating
@@ -65,23 +63,6 @@ class WaveTrain:
             for step in self.ds.auxiliary_data.Configs[iteration].list():
                 evaluations.append(f"{iteration}/{step}")
         return evaluations  
-
-    def _get_models(self):
-        """
-        Get all available models in the dataset assuming that i01/s00 is the
-        first model, that each subsequent model is i0?/s00, and that the final
-        model is the last step of the last iteration.
-        """
-        models = []
-        for iteration in self.ds.auxiliary_data.Configs.list():
-            # We assume that s00 is the accepted model for each iteration
-            models.append(f"{iteration}/s00")
-
-        # The final model is always the last step of the last iteration
-        last_step = self.ds.auxiliary_data.Configs[iteration].list()[-1]
-        models.append( f"{iteration}/{last_step}")
-
-        return models
 
     def _gather(self, station, model, min_period=None, max_period=None,
                **kwargs):
@@ -292,7 +273,6 @@ class WaveTrain:
                 # Plot the windows as rectangles if they are available
                 if comp in windows:
                     for window in windows[comp]:
-                        import pdb;pdb.set_trace()
                         tleft = window.left * window.dt + t_offset
                         tright = window.right * window.dt
                         r = Rectangle(xy=(tleft, -1 * max_amp),  
@@ -304,9 +284,12 @@ class WaveTrain:
                         # Add timeshift label in top corner of window
                         if label_tshift:
                             tshift_s = window.cc_shift * window.dt
+                            sign = "+" if tshift_s > 0 else "-"
+
                             axes[row][col].text(
                                 x=tleft, y=max_amp - max_amp * 0.05, 
-                                s=f"{tshift_s:.2f}s",  verticalalignment="top", 
+                                s=f"{sign}{np.abs(tshift_s):.2f}s",  
+                                verticalalignment="top", 
                                 fontsize=6, 
                                 )
                 
