@@ -243,7 +243,7 @@ class Inspector(InspectorPlotter):
 
     def generate_report(self, path_report="./report", iteration=None,
                         step_count=None, geographic=True, outliers=True,
-                        scatter=True, summary=True, histograms=True, nstd=2,
+                        scatter=True, summary=True, nstd=2,
                         dpi=200, **kwargs):
         """
         An aggregate function that generates a "report" by creating a number
@@ -251,6 +251,31 @@ class Inspector(InspectorPlotter):
         for the User as they don't have to remember each of the functions in
         the Inspector's wheelhouse, all relevant figures will be generated
         automatically.
+
+        :type path_report: str
+        :param path_report: The path where the report will be saved. 
+            Defaults to "./report".
+        :type iteration: int
+        :param iteration: The iteration number.
+        :type step_count: int
+        :param step_count: The step count.
+        :type geographic: bool
+        :param geographic: If True, includes geographic data in the report. 
+            Defaults to True.
+        :type outliers: bool
+        :param outliers: If True, includes outliers in the report. 
+            Defaults to True.
+        :type scatter: bool
+        :param scatter: If True, includes a scatter plot in the report. 
+            Defaults to True.
+        :type summary: bool
+        :param summary: If True, includes a summary in the report. Defaults to True.
+        :type nstd: int
+        :param nstd: The number of standard deviations for outlier detection. Defaults to 2.
+        :type dpi: int
+        :param dpi: The resolution in dots per inch for the figures in the report. Defaults to 200.
+        :type kwargs: dict
+        :param kwargs: Additional keyword arguments.
         """
         if not os.path.exists(path_report):
             os.makedirs(path_report)
