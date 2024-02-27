@@ -234,6 +234,7 @@ def previous_windows(windows, iteration, step_count):
     prev_iter = format_iter(prev_iter)
     prev_step = format_step(prev_step)
 
-    logger.debug(f"most recent windows: {prev_iter}{prev_step}")
+    logger.debug(f"loading misfit windows from evaluation "
+                 f"'{prev_iter}{prev_step}'")
 
     return windows[prev_iter][prev_step]

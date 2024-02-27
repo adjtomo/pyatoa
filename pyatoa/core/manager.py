@@ -13,11 +13,11 @@ import warnings
 
 from copy import deepcopy
 from obspy.signal.filter import envelope
-from pyasdf import ASDFWarning
 
 from pyatoa import logger
 from pyatoa.core.config import Config
-from pyatoa.utils.asdf.add import add_misfit_windows, add_adjoint_sources
+from pyatoa.utils.asdf.add import (add_misfit_windows, add_adjoint_sources,
+                                   add_waveforms, add_config)
 
 from pyatoa.utils.asdf.load import load_windows, load_adjsrcs
 from pyatoa.utils.form import channel_code
@@ -330,56 +330,52 @@ class Manager:
         if choice is None:
             choice = ["event", "inv", "st_obs", "st_syn", "windows", "adjsrcs",
                       "config"]
+            
+        logger.info(f"saving Manager attributes to ASDFDataSet")
 
+        # Events should only need to be added once to the ASDFDataSet
         if self.event and "event" in choice:
             try:
                 ds.add_quakeml(self.event)
+                logger.info("Event object added to ASDFDataSet")
             except ValueError:
-                logger.debug("Event already present, not added")
+                pass
+        
+        # StationXML files only need to be added once to the ASDFDataSet
         if self.inv and "inv" in choice:
             try:
                 ds.add_stationxml(self.inv)
+                logger.info("StationXML object added to ASDFDataSet")
             except TypeError:
-                logger.debug("StationXML already present, not added")
-        # Redirect PyASDF 'waveforms already present' warnings for cleaner look
+                pass
+
+        # Observed waveforms only need to be added once to the ASDFDataSet,
+        # do not overwrite existing waveforms because observed shouldn't change
         if self.st_obs and "st_obs" in choice:
-            with warnings.catch_warnings():
-                warnings.filterwarnings("error")
-                try:
-                    ds.add_waveforms(waveform=self.st_obs,
-                                     tag=self.config.observed_tag)
-                except ASDFWarning:
-                    logger.debug(f"{self.config.observed_tag} waveform already "
-                                 f"present, not added")
-                    pass
+            add_waveforms(st=self.st_obs, ds=ds, tag=self.config.observed_tag,
+                          overwrite=False)
+
+        # Synthetic waveforms should be allowed to overwrite, e.g., in the case
+        # that we are rerunning synthetics or restarting iterations
         if self.st_syn and "st_syn" in choice:
-            with warnings.catch_warnings():
-                warnings.filterwarnings("error")
-                try:
-                    ds.add_waveforms(waveform=self.st_syn,
-                                     tag=self.config.synthetic_tag)
-                except ASDFWarning:
-                    logger.debug(f"{self.config.synthetic_tag} waveform "
-                                 f"already present, not added")
-                    pass
+            add_waveforms(st=self.st_syn, ds=ds, tag=self.config.synthetic_tag,
+                          overwrite=True)
+
+        # Windows will overwrite if windows already exist for this evaluation
         if self.windows and "windows" in choice:
-            logger.debug("saving misfit windows to ASDFDataSet")
-            add_misfit_windows(self.windows, ds, path=self.config.aux_path)
+            add_misfit_windows(windows=self.windows, ds=ds, 
+                               path=self.config.aux_path, overwrite=True)
+
+        # AdjointSources will overwrite if they already exist for evaluation
         if self.adjsrcs and "adjsrcs" in choice:
-            logger.debug("saving adjoint sources to ASDFDataSet")
             add_adjoint_sources(adjsrcs=self.adjsrcs, ds=ds,
                                 path=self.config.aux_path,
-                                time_offset=self.stats.time_offset_sec)
+                                time_offset=self.stats.time_offset_sec,
+                                overwrite=True)
 
         if self.config and "config" in choice:
-            with warnings.catch_warnings():
-                warnings.filterwarnings("error")
-                try:
-                    self.config.write(write_to=ds, fmt="asdf")
-                except ASDFWarning:
-                    logger.debug(f"config already present, not added")
-                    pass
-
+            add_config(config=self.config, ds=ds, path=self.config.aux_path)
+ 
     def write_adjsrcs(self, path="./", write_blanks=True):
         """
         Write internally stored adjoint source traces into SPECFEM defined
@@ -968,10 +964,19 @@ class Manager:
 
         logger.info(f"{self.stats.nwin} window(s) total found")
 
+        # Print out some window stats for reference
+        for comp, windows_ in self.windows.items():
+            for w, win in enumerate(windows_):
+                logger.debug(f"{comp}_{w}: "
+                            f"cc={win.max_cc_value:.2f} / "
+                            f"dt={win.cc_shift * win.dt:.2f}s / "
+                            f"dlnA={win.dlnA:.2f}")
+
         return self
 
     def retrieve_windows_from_dataset(self, ds=None, iteration=None,
-                                      step_count=None):
+                                      step_count=None, components=None, 
+                                      revalidate=False):
         """
         Window selection function that retrieves previously saved windows from a
         PyASDF ASDFDataset, recalculates window criteria using the old windows
@@ -987,6 +992,16 @@ class Manager:
         :param step_count: retrieve windows from the given step count
             in the given dataset. If None, will search for previous evaluation
             to select windows from
+        :type components: list
+        :param components: if only windows from certain components should be 
+            returned from the dataset. If not given, defaults to Config 
+            `component_list`. Should be the inform of a list, e.g., ['N', 'E']
+        :type revalidate: bool
+        :param revalidate: check acceptability of waveform fit in the 
+            retrieved windows, that is, if time shift, dlna or cross correlation
+            fall outside of the accepted values defined in the Config object,
+            then the window will be rejected directly. IfFalse then
+            windows will be returned regardless of their newly assessed misfit.
         """
         if ds is None:
             ds = self.ds
@@ -1005,34 +1020,46 @@ class Manager:
             # dataset for windows under the current iteration/step_count
             return_previous = False
 
-        logger.info(f"retrieving windows from dataset "
-                    f"i{iteration:0>2}s{step_count:0>2}")
-
         net, sta, _, _ = self.st_obs[0].get_id().split(".")
         # Function will return empty dictionary if no acceptable windows found
-        windows = load_windows(ds=ds, net=net, sta=sta, 
-                               components=self.config.component_list,
-                               iteration=iteration, step_count=step_count,
-                               return_previous=return_previous
-                               )
+        windows = load_windows(
+            ds=ds, net=net, sta=sta, iteration=iteration, step_count=step_count,
+            components=components or self.config.component_list,
+            return_previous=return_previous
+            )
 
         # Recalculate window criteria for new values for cc, tshift, dlnA etc...
-        logger.debug("recalculating window criteria")
         for comp, windows_ in windows.items():
+            # Use Pyflex machinery to re-evaluate the windows based on the
+            # current setup of waveforms
             try:
-                d = self.st_obs.select(component=comp)[0].data
-                s = self.st_syn.select(component=comp)[0].data
-                for w, win in enumerate(windows_):
-                    # Post the old and new values to the logger for sanity check
-                    logger.debug(f"{comp}{w}_old - "
-                                 f"cc:{win.max_cc_value:.2f} / "
-                                 f"dt:{win.cc_shift:.1f} / "
-                                 f"dlnA:{win.dlnA:.2f}")
-                    win._calc_criteria(d, s)
-                    logger.debug(f"{comp}{w}_new - "
-                                 f"cc:{win.max_cc_value:.2f} / "
-                                 f"dt:{win.cc_shift:.1f} / "
-                                 f"dlnA:{win.dlnA:.2f}")
+                obs = self.st_obs.select(component=comp)[0]
+                syn = self.st_syn.select(component=comp)[0]
+                if revalidate:
+                    logger.info("revalidating windows against Config criteria")
+                    ws = pyflex.WindowSelector(observed=obs, synthetic=syn,
+                            config=self.config.pyflex_config, event=self.event,
+                            station=self.inv)
+                    ws.windows = windows_
+                    ws.reject_based_on_data_fit_criteria()
+                    windows[comp] = ws.windows
+
+                # If no reject on data fit, simply recalculate the window 
+                # criteria and return all windows to User
+                else:
+                    logger.debug("recalculating window criteria (comp_#):")
+                    for w, win in enumerate(windows_):
+                        # Log for double check or manual review of new criteria
+                        logger.debug(f"{comp}_{w} (old): "
+                                    f"cc={win.max_cc_value:.2f} / "
+                                    f"dt={win.cc_shift * win.dt:.2f}s / "
+                                    f"dlnA={win.dlnA:.2f}")
+                        win._calc_criteria(obs.data, syn.data)
+                        logger.debug(f"{comp}_{w} (new): "
+                                    f"cc={win.max_cc_value:.2f} / "
+                                    f"dt={win.cc_shift * win.dt:.2f}s / "
+                                    f"dlnA={win.dlnA:.2f}")
+
             # IndexError thrown when trying to access an empty Stream
             except IndexError:
                 continue
@@ -1143,7 +1170,9 @@ class Manager:
             raise ManagerError("cannot measure misfit, not standardized")
         elif self.stats.nwin == 0 and not force:
             raise ManagerError("cannot measure misfit, no windows recovered")
-        logger.debug(f"measure misfit of type: {self.config.adj_src_type}")
+        
+        logger.debug(f"measuring misfit with adjoint source type: "
+                     f"{self.config.adj_src_type}")
 
         # Create list of windows needed for Pyadjoint
         adjoint_windows = self._format_windows()
@@ -1151,23 +1180,30 @@ class Manager:
         # Run Pyadjoint to retrieve adjoint source objects
         total_misfit, adjoint_sources = 0, {}
         for comp, adj_win in adjoint_windows.items():
-            try:
-                adj_src = pyadjoint.calculate_adjoint_source(
-                    config=self.config.pyadjoint_config,
-                    observed=self.st_obs.select(component=comp)[0],
-                    synthetic=self.st_syn.select(component=comp)[0],
-                    windows=adj_win, plot=False
-                    )
+            # Streams may not have matching components to given windows, e.g.,
+            # during an inversion 
+            observed = self.st_obs.select(component=comp)
+            synthetic = self.st_syn.select(component=comp)
 
-                # Re-format component name to reflect SPECFEM convention
-                adj_src.component = f"{channel_code(adj_src.dt)}X{comp}"
-
-                # Save adjoint sources in dictionary object. Sum total misfit
-                adjoint_sources[comp] = adj_src
-                logger.info(f"{comp}: {adj_src.misfit:.3f} misfit")
-                total_misfit += adj_src.misfit
-            except IndexError:
+            if not observed or not synthetic:
+                logger.warning(f"no matching observed or synthetic data "
+                               f"for component {comp}, cannot measure")
                 continue
+
+            # Assuming that only one trace is available per stream
+            adj_src = pyadjoint.calculate_adjoint_source(
+                config=self.config.pyadjoint_config,
+                observed=observed[0], synthetic=synthetic[0],
+                windows=adj_win, plot=False
+                )
+
+            # Re-format component name to reflect SPECFEM convention
+            adj_src.component = f"{channel_code(adj_src.dt)}X{comp}"
+
+            # Save adjoint sources in dictionary object. Sum total misfit
+            adjoint_sources[comp] = adj_src
+            logger.info(f"{comp} component misfit == {adj_src.misfit:.3f}")
+            total_misfit += adj_src.misfit
 
         # Save adjoint source internally and to dataset
         self.adjsrcs = adjoint_sources
