@@ -986,9 +986,9 @@ class InspectorPlotter:
         """
         figsize = kwargs.get("figsize", (16, 10))
         dpi = kwargs.get("dpi", DEFAULT_DPI)
-        cmap = kwargs.get("cmap", "Blues")
+        cmap = kwargs.get("cmap", "viridis")
         nstd = kwargs.get("nstd", 3)
-        vmax_color = kwargs.get("vmax_color", "lime")
+        vmax_color = kwargs.get("vmax_color", "red")
         zero_color = kwargs.get("zero_color", "gray")
         iteration, step_count = self.validate_evaluation(iteration, step_count)
 
@@ -1036,7 +1036,7 @@ class InspectorPlotter:
         cmap.set_over(vmax_color)
 
         ims = plt.imshow(data, cmap=cmap, vmin=0, vmax=vmax)
-        cbar = plt.colorbar(label=choice, shrink=0.75, pad=0.025,
+        cbar = plt.colorbar(label=choice, shrink=0.25, pad=0.025,
                             extend="both")
 
         # Grid out every data point
