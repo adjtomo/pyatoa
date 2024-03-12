@@ -269,11 +269,14 @@ class Inspector(InspectorPlotter):
         :param scatter: If True, includes a scatter plot in the report. 
             Defaults to True.
         :type summary: bool
-        :param summary: If True, includes a summary in the report. Defaults to True.
+        :param summary: If True, includes a summary in the report. 
+            Defaults to True.
         :type nstd: int
-        :param nstd: The number of standard deviations for outlier detection. Defaults to 2.
+        :param nstd: The number of standard deviations for outlier detection.  
+            Defaults to 2.
         :type dpi: int
-        :param dpi: The resolution in dots per inch for the figures in the report. Defaults to 200.
+        :param dpi: The resolution in dots per inch for the figures in the 
+            report. Defaults to 200.
         :type kwargs: dict
         :param kwargs: Additional keyword arguments.
         """
@@ -282,8 +285,7 @@ class Inspector(InspectorPlotter):
 
         # Generate some geographic information
         if geographic:
-            geographic_plot_functions = ["map", "travel_times",
-                                         # "raypath_density", "raypaths",
+            geographic_plot_functions = ["map", "travel_times", "raypaths",
                                          "event_depths",]
             for plot_function in geographic_plot_functions:
                 save = os.path.join(path_report, f"{plot_function}.png")
@@ -299,17 +301,21 @@ class Inspector(InspectorPlotter):
         if outliers:
             upper_outliers, lower_outliers, mean ,std = \
                 self.event_outliers(iteration, step_count, nstd=nstd)
-            for outliers, tag in zip([upper_outliers, lower_outliers],
-                                      ["upper_outlier", "lower_outlier"]):
-                for event_name in outliers.index.to_list():
-                    self.event_station_misfit_map(
-                        event=event_name, iteration=iteration,
-                        step_count=step_count, show=False,
-                        save=os.path.join(path_report,
-                                          f"{tag}_{event_name}.png"),
-                        dpi=dpi
-                    )
-                    plt.close()
+            if upper_outliers.empty and lower_outliers.empty:
+                logger.warning("No outliers found, skipping outlier plots, " 
+                               "reduce `nstd` to reevaluate for outliers")
+            else:
+                for outliers, tag in zip([upper_outliers, lower_outliers],
+                                        ["upper_outlier", "lower_outlier"]):
+                    for event_name in outliers.index.to_list():
+                        self.event_station_misfit_map(
+                            event=event_name, iteration=iteration,
+                            step_count=step_count, show=False,
+                            save=os.path.join(path_report,
+                                            f"{tag}_{event_name}.png"),
+                            dpi=dpi
+                        )
+                        plt.close()
 
         # Create a few scatterplots comparing some parameters
         if scatter:
@@ -323,8 +329,6 @@ class Inspector(InspectorPlotter):
                              save=os.path.join(path_report, f"{x}_v_{y}.png"),
                              **kwargs)
 
-            # Do the same but for each component
-
         # Plot summary that try to show all source receivers together
         if summary:
             summary_functions = ["event_station_hist2d", "event_comparison",
@@ -333,11 +337,33 @@ class Inspector(InspectorPlotter):
                 save = os.path.join(path_report, f"{plot_function}.png")
                 if os.path.exists(save):
                     continue
-                getattr(self, plot_function)(iteration=iteration,
-                                             step_count=step_count, show=False,
-                                             save=save, dpi=dpi
-                                             )
+                # We want the histogram summary to be comparative
+                if plot_function == "histogram_summary":
+                    getattr(self, plot_function)(
+                        iteration="i01", step_count="s00", 
+                        iteration_comp=iteration, step_count_comp=step_count,
+                        show=False, save=save, dpi=dpi
+                        )
+                else:
+                    getattr(self, plot_function)(
+                        iteration=iteration, step_count=step_count, show=False,
+                        save=save, dpi=dpi
+                        )
+        plt.close("all")
 
+        self.generate_text_report(iteration, step_count, nstd, path_report)
+            
+    def generate_text_report(self, iteration=None, step_count=None, nstd=2, 
+                             path_report="./", ):
+        """
+        Generate a text report highlighting good/bad performing events and 
+        stations that will provide the User a quickly accessible summary of 
+        their inversion and may motivate looking at some waveforms
+        """            
+
+        upper_outliers, lower_outliers, mean ,std = \
+                self.event_outliers(iteration, step_count, nstd=nstd)
+        
         # Generate a text report of poorly performing events and stations
         with open(os.path.join(path_report, "inspector_report.txt"), "w") as f:
             f.write("Inspector Report\n\n")
@@ -354,9 +380,6 @@ class Inspector(InspectorPlotter):
             for station_name in upper_outliers.index.to_list():
                 f.write(f"{station_name:<15}{upper_outliers[station_name]:<15}"
                         f"{std:<15}\n")
-            
-            
-
 
     def _get_srcrcv_from_dataset(self, ds):
         """

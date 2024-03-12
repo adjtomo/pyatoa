@@ -913,7 +913,7 @@ class InspectorPlotter:
         :param choice: choice of misfit value, either 'misfit' or 'nwin' or
             'unscaled_misfit'
         """
-        figsize = kwargs.get("figsize", (8, 8))
+        figsize = kwargs.get("figsize", (8, 4))
         dpi = kwargs.get("dpi", DEFAULT_DPI)
         cmap = kwargs.get("cmap", "plasma")
         iteration, step_count = self.validate_evaluation(iteration, step_count)
@@ -942,11 +942,15 @@ class InspectorPlotter:
         plt.text(x=0, y=mean, s=f"mean={mean:.2f}", fontsize=12, zorder=96)
         for sign in [1, -1]:
             plt.axhline(mean + sign * std, c="k", ls='--', lw=1.75, zorder=95)
+        plt.text(x=0, y=mean + std, s=f"std={std:.2f}", fontsize=12, zorder=96)
+
         # Plot accoutrements
-        plt.xlim([-2, len(arr)+2])
+        plt.xticks(np.arange(0, len(arr), 1))
+        plt.xlim([-0.5, len(arr)-0.5])
         plt.xlabel("Event Index")
         plt.ylabel(choice)
-        plt.title(f"Event Comparison {iteration}{step_count} N={len(arr)}")
+        plt.title(f"Event Comparison {iteration}{step_count} "
+                  f"(N_events={len(arr)})")
         plt.grid(which="both", axis="both")
         default_axes(ax, cbar=cbar, **kwargs)
 
