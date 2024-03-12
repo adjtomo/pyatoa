@@ -1062,8 +1062,8 @@ class InspectorPlotter:
         if show:
             plt.show()
 
-    def hist(self, iteration=None, step_count=None, compare=True,
-             iteration_comp=None, step_count_comp=None, f=None, ax=None,
+    def hist(self, iteration=None, step_count=None, iteration_comp=None, 
+             step_count_comp=None, compare=True, f=None, ax=None,
              event=None, station=None, choice="cc_shift_in_seconds",
              binsize=None, show=True, save=None, **kwargs):
         """
@@ -1147,7 +1147,7 @@ class InspectorPlotter:
                            "relative_endtime": 50,
                            "length_s": 50,
                            "max_cc_value": 0.1,
-                           "nwin": 10,
+                           "nwin": 50,
                            "nwin_sta": 10,
                            }[choice]
             except KeyError:
@@ -1305,7 +1305,7 @@ class InspectorPlotter:
 
         return f, ax
 
-    def histogram_summary(self, iteration=None, step_count=None, compare=False,
+    def histogram_summary(self, iteration=None, step_count=None,
                           iteration_comp=None, step_count_comp=None,
                           show=True, save=False, **kwargs):
         """
@@ -1315,7 +1315,6 @@ class InspectorPlotter:
         """
         figsize = kwargs.get("figsize", (8, 8))
         dpi = kwargs.get("dpi", DEFAULT_DPI)
-
 
         choices = [
             ["cc_shift_in_seconds", "dlnA", "max_cc_value"],
@@ -1332,12 +1331,14 @@ class InspectorPlotter:
             for col in range(0, ncols):
                 ax = plt.subplot(gs[row, col])
                 self.hist(choice=choices[row][col], iteration=iteration,
-                          step_count=step_count, compare=compare,
-                          iteration_comp=iteration_comp,
+                          step_count=step_count, iteration_comp=iteration_comp, 
+                          compare=True,
                           step_count_comp=step_count_comp, f=f, ax=ax,
                           show=False, figsize=(figsize[0] / nrows,
                                                figsize[1] / ncols),
-                          fontsize=10, title_fontsize=10, **kwargs
+                          fontsize=8, title_fontsize=8, label_fontsize=8, 
+                          tick_fontsize=8,
+                          **kwargs
                           )
 
         if save:
