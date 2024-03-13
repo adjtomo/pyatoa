@@ -286,10 +286,8 @@ class Inspector(InspectorPlotter):
                                                          choice="final")
         if path_report is None:
             path_report = f"./report_{iteration}{step_count}"
-        if os.path.exists(path_report):
+        if not os.path.exists(path_report):
             os.makedirs(path_report)
-
-        kwargs.update(dict(show=False, dpi=dpi))
 
         # Generate some geographic information
         if geographic:
@@ -301,7 +299,7 @@ class Inspector(InspectorPlotter):
                     continue
                 getattr(self, plot_function)(iteration=iteration,
                                              step_count=step_count,
-                                             **kwargs)
+                                             show=False, dpi=dpi)
                 plt.close()
 
         # Plot misfit spider plots of event misfit for events that are outside
@@ -322,7 +320,7 @@ class Inspector(InspectorPlotter):
                             step_count=step_count, 
                             save=os.path.join(path_report,
                                             f"{tag}_{event_name}.png"),
-                            **kwargs
+                            show=False, dpi=dpi
                         )
                         plt.close()
 
@@ -334,15 +332,15 @@ class Inspector(InspectorPlotter):
                 ("length_s", "cc_shift_in_seconds"),
             ]:
                 x, y = xy
-                self.scatter(x=x, y=y, show=False,
-                             save=os.path.join(path_report, f"{x}_v_{y}.png"),
-                             **kwargs)
+                self.scatter(x=x, y=y, show=False, dpi=dpi,
+                             save=os.path.join(path_report, f"{x}_v_{y}.png")
+                             )
 
         # Plot summary figures that show the status of inversion holistically
         if summary:
-            self.convergence(normalize=True, 
-                             save=os.path.join(path_report, "convergence.png"),
-                             **kwargs)
+            self.convergence(normalize=True, show=False, dpi=dpi,
+                             save=os.path.join(path_report, "convergence.png")
+                             )
 
             summary_functions = ["event_station_hist2d", "event_comparison",
                                  "window_stack", "histogram_summary"]
@@ -355,12 +353,12 @@ class Inspector(InspectorPlotter):
                     getattr(self, plot_function)(
                         iteration="i01", step_count="s00", 
                         iteration_comp=iteration, step_count_comp=step_count,
-                        save=save, **kwargs
+                        save=save, show=False, dpi=dpi
                         )
                 else:
                     getattr(self, plot_function)(
                         iteration=iteration, step_count=step_count, save=save, 
-                        **kwargs
+                        show=False, dpi=dpi
                         )
                 plt.close()
 
@@ -378,6 +376,10 @@ class Inspector(InspectorPlotter):
         iter_end, step_end = self.validate_evaluation(
             iteration=None, step_count=None, choice="final"
             )
+        
+        # Get event mean and std for current evaluation
+        _, _, mean ,std = \
+                self.event_outliers(iter_end, step_end, nstd=nstd)
         
         # Get an ascended list of misfit/windows per event
         _windows = self.windows  
@@ -441,8 +443,10 @@ class Inspector(InspectorPlotter):
             win_str += f"- {component}: {nwin_per_comp}\n"
             self.windows = _windows_eval
 
-        self.windows = _windows  # restore to previous state
+        # Restore the original windows, just incase but likely not needed?
+        self.windows = _windows  
 
+        # Compile all the above information into a nice text output to be writ
         srcrcv_summary = (
             f"Avg windows per event:  {avg_win_per_event:.2f}\n"
             f"- Evt w/ max win:       {top_event_by_win} ({_tenwin:.0f})\n"
@@ -459,10 +463,6 @@ class Inspector(InspectorPlotter):
             f"Windows per component:\n"
             f"{win_str}"
             )
-
-        # Get event mean and std for current evaluation
-        _, _, mean ,std = \
-                self.event_outliers(iter_end, step_end, nstd=nstd)
 
         # Header contains general information for understanding inversion
         report = [
@@ -484,8 +484,7 @@ class Inspector(InspectorPlotter):
             f"{f'MISFIT PER STATION':^80}",
             f"{misfit_per_sta_str}", 
         ]
-        
-        # Generate a text report of poorly performing events and stations
+    
         with open(os.path.join(path_report, "inspector_report.txt"), "w") as f:
             f.writelines(f"{line_break}".join(report))
 

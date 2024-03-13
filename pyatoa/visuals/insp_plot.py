@@ -207,8 +207,8 @@ class InspectorPlotter:
 
         # Ensure we have distance and backazimuth values in the dataframe
         df = self.isolate(iteration=iteration, step_count=step_count,
-                          network=network, station=station, channel=channel,
-                          component=component)
+                          event=event, network=network, station=station, 
+                          channel=channel, component=component)
         df = df.merge(self.srcrcv, on=["event", "network", "station"])
 
         assert(x in df.keys()), f"X value {x} does not match keys {df.keys()}"
@@ -217,7 +217,7 @@ class InspectorPlotter:
         f, ax = plt.subplots(figsize=figsize, dpi=dpi)
         plt.scatter(df[x].to_numpy(), df[y].to_numpy(), zorder=11,
                     marker=marker, c=c, s=s, edgecolors=edgecolors,
-                    linewidths=linewidths, **kwargs)
+                    linewidths=linewidths)
         plt.xlabel(x)
         plt.ylabel(y)
         plt.title(f"{x} vs. {y}; N={len(df[x].to_numpy())}")
