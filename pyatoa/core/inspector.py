@@ -918,17 +918,6 @@ class Inspector(InspectorPlotter):
         self.sources = pd.DataFrame()
         self.receivers = pd.DataFrame()
 
-    def report(self, path_out="./insp_report"):
-        """
-        Convenince function that generates a "report" of misfit information for
-        a given inversion. Creates and fills a directory composed of misfit
-        figures and a text file describing important misfit information that a
-        researcher/analyst can quickly browse through to get an idea of
-        inversion health.
-        """
-        if not os.path.exists(path_out):
-            os.mkdir(path_out)
-
     def isolate(self, iteration=None, step_count=None,  event=None,
                 network=None, station=None, channel=None, component=None,
                 keys=None, exclude=None, unique_key=None):

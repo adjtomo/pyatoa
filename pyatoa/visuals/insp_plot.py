@@ -602,7 +602,7 @@ class InspectorPlotter:
 
         plt.close()
 
-    def event_hist(self, choice, show=True, save=None):
+    def event_hist(self, choice, show=True, save=None, **kwargs):
         """
         Make a histogram of event information for a given parameter `choice`.
 
@@ -639,9 +639,58 @@ class InspectorPlotter:
         plt.close()
 
         return f, ax
+    
+    def events_over_inversion(self, choice="misfit", normalize=True, 
+                              show=True, save=None,  **kwargs):
+        """
+        Line plot where the X axis represents iterations in the inversion and
+        the Y axis represents event misfit or window number. Each line 
+        represents a different event.
+
+        :type choice: str
+        :param choice: choice of plot value, either 'misfit' or 'nwin' or 
+            'unscaled_misfit'
+        """
+        # Get the iteration and step counts of evals which contribute models
+        evals = self.good_models[["iteration", "step_count"]].values.tolist()
+        misfit = self.misfit(level="event")
+
+        plot_dict = {}
+        for event in self.events:
+            plot_dict[event] = []
+            for eval_ in evals:
+                iter_, step = eval_
+                val = misfit.loc[iter_, step, event][choice]
+                plot_dict[event].append(val)
+            if normalize:
+                plot_dict[event] /= max(plot_dict[event])
+
+        f, ax = plt.subplots()
+        for i, (event, vals) in enumerate(plot_dict.items()):
+            linestyle = ["-", "--", ":", "-."][i % 9 % 3]
+            plt.plot(vals, ls=linestyle, marker=".", markerfacecolor="None", 
+                     markeredgecolor="k", markeredgewidth=0.5, c=f"C{i}", 
+                     label=event)
+
+        plt.xlabel("Model Number")
+        if normalize:
+            ylabel = "Normalized " + common_labels[choice]
+        else:
+            ylabel = common_labels[choice]
+        plt.ylabel(ylabel)
+        plt.yscale("log")
+        plt.title(f"Event {common_labels[choice]} over Inversion "
+                  f"(N={len(self.events)})")
+        plt.legend()
+        default_axes(ax)
+        
+        if save:
+            plt.savefig(save)
+        if show:
+            plt.show()
 
     def measurement_hist(self, iteration=None, step_count=None, choice="event",
-                         show=True, save=False):
+                         show=True, save=False, **kwargs):
         """
         Make histograms of measurements for stations or events to show the 
         distribution of measurements. 
