@@ -410,7 +410,7 @@ class Inspector(InspectorPlotter):
         win_per_station_str = win_per_station.to_string()
 
         # Event specific misfit information
-        misfit_per_event = self.misfit(level="event")
+        misfit_per_event = self.misfit(level="event", reset=True)
 
         _temsft = misfit_per_event.iloc[0].misfit
         highest_misfit_event = misfit_per_event.iloc[0].name[-1]
@@ -420,9 +420,9 @@ class Inspector(InspectorPlotter):
 
         misfit_per_event_str = misfit_per_event.sort_values(
             "misfit", ascending=False).to_string()
-        
+
         # Station specific misfit information
-        misfit_per_sta = self.misfit(level="station")
+        misfit_per_sta = self.misfit(level="station", reset=True)
 
         _tsmsft = misfit_per_sta.iloc[0].misfit
         highest_misfit_sta = misfit_per_sta.iloc[0].name[-1]
@@ -432,7 +432,7 @@ class Inspector(InspectorPlotter):
 
         misfit_per_sta_str = misfit_per_sta.sort_values(
             "misfit", ascending=False).to_string()
-        
+                
         # Get windows per component for the current evaluation
         _windows_eval = self.windows
         win_str = ""
@@ -918,7 +918,7 @@ class Inspector(InspectorPlotter):
         self.sources = pd.DataFrame()
         self.receivers = pd.DataFrame()
 
-    def isolate(self, iteration=None, step_count=None,  event=None,
+    def isolate(self, iteration=None, step_count=None, event=None,
                 network=None, station=None, channel=None, component=None,
                 keys=None, exclude=None, unique_key=None):
         """
@@ -1192,7 +1192,7 @@ class Inspector(InspectorPlotter):
 
         return minmax_dict
 
-    def compare(self, iteration_a=None, step_count_a=None, iteration_b=None,
+    def compare_events(self, iteration_a=None, step_count_a=None, iteration_b=None,
                 step_count_b=None):
         """
         Compare the misfit and number of windows on an event by event basis
@@ -1314,7 +1314,52 @@ class Inspector(InspectorPlotter):
             df[f"diff_{val}"] = df[f"{val}_{final}"] - df[f"{val}_{initial}"]
 
         return df
+    
+    def compare_misfits(self):
+        """
+        Compare the misfit values between the final and initial model for each
+        source receiver pair
+        """
+        iter_start, step_start = self.validate_evaluation(
+            iteration=None, step_count=None, choice="initial"
+            )
+        iter_end, step_end = self.validate_evaluation(
+            iteration=None, step_count=None, choice="final"
+            )
+        
+        _windows = self.windows  
+        self.windows = self.isolate(iteration=iter_start, step_count=step_start)
+        misfit_start = self.misfit(level="station", reset=True)
 
+        self.windows = _windows
+        self.windows = self.isolate(iteration=iter_end, step_count=step_end)
+        misfit_end = self.misfit(level="station", reset=True)
+
+        # Merge the two making sure they match event and station
+        sfx_start = f"{iter_start}{step_start}"
+        sfx_end = f"{iter_end}{step_end}"
+        df = pd.merge(misfit_start, misfit_end, 
+                      on=["event", "network", "station"], 
+                      suffixes=(f"_{sfx_start}", f"_{sfx_end}")
+                      )
+
+        # Calculate the difference between the two misfits
+        df["diff_misfit"] = \
+            df[f"unscaled_misfit_{sfx_end}"] - df[f"unscaled_misfit_{sfx_start}"]
+        df["diff_nwin"] = df[f"nwin_{sfx_end}"] - df[f"nwin_{sfx_start}"]
+
+        # Drop the original values
+        df.drop([f"unscaled_misfit_{sfx_end}", f"unscaled_misfit_{sfx_start}", 
+                 f"misfit_{sfx_end}", f"misfit_{sfx_start}", 
+                 f"nwin_{sfx_end}", f"nwin_{sfx_start}"], 
+                axis=1, inplace=True)
+
+        df.sort_values(by="diff_misfit")
+
+        self.windows = _windows
+
+        return df
+    
     def filter_sources(self, lat_min=None, lat_max=None, lon_min=None,
                        lon_max=None, depth_min=None, depth_max=None,
                        mag_min=None, mag_max=None, min_start=None,
@@ -1532,6 +1577,7 @@ class Inspector(InspectorPlotter):
 
 
 if __name__ == "__main__":
+
 
     """
     Here we define a simple command-line tool for using the Inspector. Useful 
