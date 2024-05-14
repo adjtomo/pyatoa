@@ -166,8 +166,8 @@ def trim_streams(st_a, st_b, precision=1E-3, force=None):
     :return: trimmed stream objects in the same order as input
     """
     # Check if the times are already the same
-    if st_a[0].stats.starttime - st_b[0].stats.starttime < precision and \
-            st_a[0].stats.endtime - st_b[0].stats.endtime < precision:
+    if abs(st_a[0].stats.starttime - st_b[0].stats.starttime) < precision and \
+            abs(st_a[0].stats.endtime - st_b[0].stats.endtime) < precision:
         logger.debug(f"start and endtimes already match to {precision}")
         return st_a, st_b
 
