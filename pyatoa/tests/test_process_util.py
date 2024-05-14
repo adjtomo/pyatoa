@@ -115,7 +115,32 @@ def test_zero_pad(st_obs):
         assert(st[0].stats.npts - npts == npts_check)
 
 
-def test_trim_streams_and_match_npts(st_obs, st_syn):
+def test_trim_streams(st_obs, st_syn):
+    """
+    Test Stream trimming functionality
+    """
+    st_a = st_obs.copy()
+    st_b = st_syn.copy()
+
+    # Resample first so that we can actually trim the exact same start and 
+    # end times
+    st_a.resample(st_b[0].stats.sampling_rate)
+
+    # Trim A so we know it is different from B
+    st_a.trim(starttime=st_b[0].stats.starttime + 100,
+              endtime=st_b[0].stats.endtime - 100)
+
+    assert(st_a[0].stats.starttime != st_b[0].stats.starttime)
+    assert(st_a[0].stats.endtime != st_b[0].stats.endtime)
+
+    # Trim streams to the same time window
+    st_at, st_bt = process.trim_streams(st_a=st_a, st_b=st_b, force="a")
+
+    assert(st_at[0].stats.starttime == st_bt[0].stats.starttime)
+    assert(st_at[0].stats.endtime == st_bt[0].stats.endtime)
+
+
+def test_match_npts(st_obs, st_syn):
     """
     Ensure that forcing number of points standardization works
     """
@@ -125,10 +150,6 @@ def test_trim_streams_and_match_npts(st_obs, st_syn):
     # Downsample observations to synthetics
     st_a.resample(st_b[0].stats.sampling_rate)
     assert(st_a[0].stats.npts != st_b[0].stats.npts)
-
-    # Trim obs data down to match syn data
-    st_a, st_b = process.trim_streams(st_a=st_a, st_b=st_b, force="b")
-    assert(st_a[0].stats.npts == st_b[0].stats.npts)
 
     # Purposefully mismatch npts and then pad with 0s
     st_a[0].trim(endtime=st_a[0].stats.endtime - 1)

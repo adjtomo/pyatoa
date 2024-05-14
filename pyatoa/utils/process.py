@@ -145,32 +145,23 @@ def zero_pad(st, pad_length_in_seconds, before=True, after=True):
     return st_pad
 
 
-def trim_streams(st_a, st_b, precision=1E-3, force=None):
+def trim_streams(st_a, st_b, force=None):
     """
-    Trim two streams to common start and end times,
-    Do some basic preprocessing before trimming.
-    Allows user to force one stream to conform to another.
-    Assumes all traces in a stream have the same time.
-    Prechecks make sure that the streams are actually different
-
+    Trim two streams to common start and end times, allowing user to `force` 
+    one stream to conform to another. Assumes all traces in a stream have the 
+    same time.
+    
     :type st_a: obspy.stream.Stream
     :param st_a: streams to be trimmed
     :type st_b: obspy.stream.Stream
     :param st_b: streams to be trimmed
-    :type precision: float
-    :param precision: precision to check UTCDateTime differences
     :type force: str
     :param force: "a" or "b"; force trim to the length of "st_a" or to "st_b",
         if not given, trims to the common time
     :rtype: tuple of obspy.stream.Stream
     :return: trimmed stream objects in the same order as input
+    :raises AssertionError: if the streams cannot be trimmed successfully
     """
-    # Check if the times are already the same
-    if st_a[0].stats.starttime - st_b[0].stats.starttime < precision and \
-            st_a[0].stats.endtime - st_b[0].stats.endtime < precision:
-        logger.debug(f"start and endtimes already match to {precision}")
-        return st_a, st_b
-
     # Force the trim to the start and end times of one of the streams
     if force:
         if force.lower() == "a":
@@ -209,6 +200,11 @@ def trim_streams(st_a, st_b, precision=1E-3, force=None):
                 tr.stats.starttime = start_set
             elif dt >= tr.stats.delta:
                 logger.warning(f"{tr.id} starttime is {dt}s greater than delta")
+
+    assert(st_a_out[0].stats.starttime == st_b_out[0].stats.starttime), \
+        "unable to trim streams and match starttimes"
+    assert(st_a_out[0].stats.endtime == st_b_out[0].stats.endtime), \
+        "unable to trim streams and match endtimes"
 
     return st_a_out, st_b_out
 
