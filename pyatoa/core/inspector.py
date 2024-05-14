@@ -1192,8 +1192,8 @@ class Inspector(InspectorPlotter):
 
         return minmax_dict
 
-    def compare_events(self, iteration_a=None, step_count_a=None, iteration_b=None,
-                step_count_b=None):
+    def compare_events(self, iteration_a=None, step_count_a=None, 
+                       iteration_b=None, step_count_b=None):
         """
         Compare the misfit and number of windows on an event by event basis
         between two evaluations. Provides absolute values as well as
@@ -1315,16 +1315,34 @@ class Inspector(InspectorPlotter):
 
         return df
     
-    def compare_misfits(self):
+    def compare_misfits(self, iteration_a=None, step_count_a=None,
+                        iteration_b=None, step_count_b=None):
         """
         Compare the misfit values between the final and initial model for each
-        source receiver pair
+        source receiver pair. Returns differences of unscaled misfit and 
+        difference in number of windows between two evaluations. 
+
+        .. note::
+
+            See also compare_events() for a similar function but for events only
+
+        :type iteration_a: str
+        :param iteration_a: initial iteration to use in comparison
+        :type step_count_a: str
+        :param step_count_a: initial step count to use in comparison
+        :type iteration_b: str
+        :param iteration_b: final iteration to use in comparison
+        :type step_count_b: str
+        :param step_count_b: final step count to use in comparison
+        :rtype: pandas.core.data_frame.DataFrame
+        :return: a data frame containing differences of misfit and number of
+            windows between final and initial models
         """
         iter_start, step_start = self.validate_evaluation(
-            iteration=None, step_count=None, choice="initial"
+            iteration=iteration_a, step_count=step_count_a, choice="initial"
             )
         iter_end, step_end = self.validate_evaluation(
-            iteration=None, step_count=None, choice="final"
+            iteration=iteration_b, step_count=step_count_b, choice="final"
             )
         
         _windows = self.windows  
@@ -1354,11 +1372,11 @@ class Inspector(InspectorPlotter):
                  f"nwin_{sfx_end}", f"nwin_{sfx_start}"], 
                 axis=1, inplace=True)
 
-        df.sort_values(by="diff_misfit")
-
+        # Reset windows so User can still use the Inspector as advertised
         self.windows = _windows
 
-        return df
+        # Isolate the largest misfit offenders
+        return df.sort_values(by="diff_misfit")
     
     def filter_sources(self, lat_min=None, lat_max=None, lon_min=None,
                        lon_max=None, depth_min=None, depth_max=None,
