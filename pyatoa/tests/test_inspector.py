@@ -161,35 +161,12 @@ def test_minmax(seisflows_inspector):
     assert(minmax["dlnA_max"] == pytest.approx(1.03947, .00001))
 
 
-def test_compare(seisflows_inspector):
+def test_compare_events(seisflows_inspector):
     """
     Test inter-event comparisons
     """
     insp = seisflows_inspector.copy()
-    assert(insp.compare().diff_nwin["2013p617227"] == -110)
-
-
-def test_compare_no_data():
-    """
-    Test that compare with no data returns NoneType
-    """
-    insp = Inspector()
-    assert(insp.compare() is None)
-
-
-def test_compare_windows(seisflows_inspector):
-    """
-    TODO Need fixed window inversion results to make this work
-    """
-    pass
-
-
-def test_no_step_information(seisflows_inspector):
-    """
-    TODO Test that when no step information is provided (only iteration),
-    TODO inspector can still handle data
-    """
-    pass
+    assert(insp.compare_events().diff_nwin["2013p617227"] == -110)
 
 
 def test_get_models(seisflows_inspector):
