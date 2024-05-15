@@ -765,13 +765,13 @@ class Manager:
             else:
                 self.st_syn.resample(self.st_obs[0].stats.sampling_rate)
 
-        # Match start and endtimes
+        # Match start/endtimes by trimming the 'obs' waveforms to match 'syn'
         self.st_obs, self.st_syn = trim_streams(
             st_a=self.st_obs, st_b=self.st_syn,
             force={"obs": "a", "syn": "b"}[standardize_to]
             )
 
-        # Match the number of samples 
+        # If 'obs' is not long enough, pad end of 'obs' with 0s
         self.st_obs, self.st_syn = match_npts(
             st_a=self.st_obs, st_b=self.st_syn,
             force={"obs": "a", "syn": "b"}[standardize_to]
