@@ -130,14 +130,20 @@ def test_trim_streams(st_obs, st_syn):
     st_a.trim(starttime=st_b[0].stats.starttime + 100,
               endtime=st_b[0].stats.endtime - 100)
 
-    assert(st_a[0].stats.starttime != st_b[0].stats.starttime)
-    assert(st_a[0].stats.endtime != st_b[0].stats.endtime)
+    for tr_a, tr_b in zip(st_a, st_b):
+        assert(tr_a.stats.starttime != tr_b.stats.starttime)
+        assert(tr_a.stats.endtime != tr_b.stats.endtime)
 
     # Trim streams to the same time window
     st_at, st_bt = process.trim_streams(st_a=st_a, st_b=st_b, force="a")
 
-    assert(st_at[0].stats.starttime == st_bt[0].stats.starttime)
-    assert(st_at[0].stats.endtime == st_bt[0].stats.endtime)
+    for tr_a, tr_b in zip(st_at, st_bt):
+        assert(tr_a.stats.starttime == tr_b.stats.starttime)
+        assert(tr_a.stats.endtime == tr_b.stats.endtime)
+
+    # Make sure this throws an error if it is unable to trim streams
+    with pytest.raises(AssertionError):
+        process.trim_streams(st_a=st_a, st_b=st_b, force="b")
 
 
 def test_match_npts(st_obs, st_syn):
@@ -147,14 +153,27 @@ def test_match_npts(st_obs, st_syn):
     st_a = st_obs.copy()
     st_b = st_syn.copy()
 
-    # Downsample observations to synthetics
+    # Resample A to B and trim A to B
     st_a.resample(st_b[0].stats.sampling_rate)
+
+    # Trim A so we know it is different from B
+    st_a.trim(starttime=st_b[0].stats.starttime + 100,
+              endtime=st_b[0].stats.endtime - 100)
     assert(st_a[0].stats.npts != st_b[0].stats.npts)
 
-    # Purposefully mismatch npts and then pad with 0s
-    st_a[0].trim(endtime=st_a[0].stats.endtime - 1)
-    st_a, st_b = process.match_npts(st_a, st_b, force="b")
-    assert(st_a[0].stats.npts == st_b[0].stats.npts)
+    # Trim streams so that they are the same length
+    st_a, st_b = process.trim_streams(st_a=st_a, st_b=st_b, force="a")
+
+    # Force one stream to be slightly shorter
+    st_a.trim(endtime=st_a[0].stats.endtime - 1)
+    
+    # Check they're different
+    for tr_a, tr_b in zip(st_a, st_b):
+        assert(tr_a.stats.npts != tr_b.stats.npts)
+
+    # Match npts
+    st_at, st_bt = process.match_npts(st_a, st_b, force="b")
+    assert(st_at[0].stats.npts == st_bt[0].stats.npts)
 
 
 def test_is_preprocessed(st_obs):

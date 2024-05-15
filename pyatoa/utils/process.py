@@ -201,10 +201,11 @@ def trim_streams(st_a, st_b, force=None):
             elif dt >= tr.stats.delta:
                 logger.warning(f"{tr.id} starttime is {dt}s greater than delta")
 
-    assert(st_a_out[0].stats.starttime == st_b_out[0].stats.starttime), \
-        "unable to trim streams and match starttimes"
-    assert(st_a_out[0].stats.endtime == st_b_out[0].stats.endtime), \
-        "unable to trim streams and match endtimes"
+    for tr_a, tr_b in zip(st_a_out, st_b_out):
+        assert(tr_a.stats.starttime == tr_b.stats.starttime), \
+            "unable to trim streams and match starttimes"
+        assert(tr_a.stats.endtime == tr_b.stats.endtime), \
+            "unable to trim streams and match endtimes"
 
     return st_a_out, st_b_out
 
@@ -212,13 +213,19 @@ def trim_streams(st_a, st_b, force=None):
 def match_npts(st_a, st_b, force=None):
     """
     Resampling can cause sample number differences which will lead to failure
-    of some preprocessing or processing steps. This function ensures that `npts` 
-    matches between traces by extending one of the traces with zeros. 
-    A small taper is applied to ensure the new values do not cause 
-    discontinuities.
+    of some preprocessing steps. This function ensures that `npts` 
+    matches between traces by extending one of the traces with zeros, or 
+    removing data from the end of the trace. 
 
-    Note:
-        its assumed that all traces within a single stream have the same `npts`
+    This is used for the case where the 'obs' data is too short w.r.t 'syn' 
+    data, so we pad out the end of the 'obs' with 0s. 
+
+    .. warning::
+
+        It is assumed you have resampled and trimmed the streams and that this
+        function is only used to make up sub-second differences in the number of
+        samples. Also assumed you will taper the end of the trace otherwise the
+        appending of zeros will cause issues.
 
     :type st_a: obspy.stream.Stream
     :param st_a: one stream to match samples with
@@ -230,9 +237,16 @@ def match_npts(st_a, st_b, force=None):
     :rtype: tuple (obspy.stream.Stream, obspy.stream.Stream)
     :return: streams that may or may not have adjusted npts, returned in the 
         same order as provided
+    :raises AssertionError: if the number of points cannot be matched
     """
+    # Quick check to make sure all traces have the same length within one stream
+    for st in [st_a, st_b]:
+        for tr in st:
+            assert(tr.stats.npts == st[0].stats.npts), \
+                "all traces in stream must have the same number of samples"
+
     # Assign the number of points, copy to avoid editing in place
-    if not force or force == "a":
+    if force is None or force == "a":
         npts = st_a[0].stats.npts
         st_const = st_a.copy()
         st_change = st_b.copy()
@@ -242,10 +256,21 @@ def match_npts(st_a, st_b, force=None):
         st_change = st_a.copy()
 
     for tr in st_change:
-        diff = abs(tr.stats.npts - npts)
-        if diff:
-            logger.info(f"appending {diff} zeros to {tr.get_id()}")
+        diff = npts - tr.stats.npts 
+        if diff > 0:
+            logger.info(f"appending {diff} zeros ({diff * tr.stats.delta}s) to "
+                        f"{tr.get_id()} to match npts")
             tr.data = np.append(tr.data, np.zeros(diff))
+        elif diff < 0:
+            logger.info(f"removing {diff} zeros ({diff * tr.stats.delta}s) "
+                        f"from {tr.get_id()} to match npts")
+            tr.data = tr.data[:diff]
+        elif diff == 0:
+            continue
+
+    for tr_a, tr_b in zip(st_const, st_change):
+        assert(tr_a.stats.npts == tr_b.stats.npts), \
+            "unable to match npts between streams"
 
     # Ensure streams are returned in the correct order
     if not force or force == "a":
