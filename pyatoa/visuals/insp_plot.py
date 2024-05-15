@@ -207,8 +207,8 @@ class InspectorPlotter:
 
         # Ensure we have distance and backazimuth values in the dataframe
         df = self.isolate(iteration=iteration, step_count=step_count,
-                          network=network, station=station, channel=channel,
-                          component=component)
+                          event=event, network=network, station=station, 
+                          channel=channel, component=component)
         df = df.merge(self.srcrcv, on=["event", "network", "station"])
 
         assert(x in df.keys()), f"X value {x} does not match keys {df.keys()}"
@@ -217,7 +217,7 @@ class InspectorPlotter:
         f, ax = plt.subplots(figsize=figsize, dpi=dpi)
         plt.scatter(df[x].to_numpy(), df[y].to_numpy(), zorder=11,
                     marker=marker, c=c, s=s, edgecolors=edgecolors,
-                    linewidths=linewidths, **kwargs)
+                    linewidths=linewidths)
         plt.xlabel(x)
         plt.ylabel(y)
         plt.title(f"{x} vs. {y}; N={len(df[x].to_numpy())}")
@@ -602,7 +602,7 @@ class InspectorPlotter:
 
         plt.close()
 
-    def event_hist(self, choice, show=True, save=None):
+    def event_hist(self, choice, show=True, save=None, **kwargs):
         """
         Make a histogram of event information for a given parameter `choice`.
 
@@ -639,9 +639,58 @@ class InspectorPlotter:
         plt.close()
 
         return f, ax
+    
+    def events_over_inversion(self, choice="misfit", normalize=True, 
+                              show=True, save=None,  **kwargs):
+        """
+        Line plot where the X axis represents iterations in the inversion and
+        the Y axis represents event misfit or window number. Each line 
+        represents a different event.
+
+        :type choice: str
+        :param choice: choice of plot value, either 'misfit' or 'nwin' or 
+            'unscaled_misfit'
+        """
+        # Get the iteration and step counts of evals which contribute models
+        evals = self.good_models[["iteration", "step_count"]].values.tolist()
+        misfit = self.misfit(level="event")
+
+        plot_dict = {}
+        for event in self.events:
+            plot_dict[event] = []
+            for eval_ in evals:
+                iter_, step = eval_
+                val = misfit.loc[iter_, step, event][choice]
+                plot_dict[event].append(val)
+            if normalize:
+                plot_dict[event] /= max(plot_dict[event])
+
+        f, ax = plt.subplots()
+        for i, (event, vals) in enumerate(plot_dict.items()):
+            linestyle = ["-", "--", ":", "-."][i % 9 % 3]
+            plt.plot(vals, ls=linestyle, marker=".", markerfacecolor="None", 
+                     markeredgecolor="k", markeredgewidth=0.5, c=f"C{i}", 
+                     label=event)
+
+        plt.xlabel("Model Number")
+        if normalize:
+            ylabel = "Normalized " + common_labels[choice]
+        else:
+            ylabel = common_labels[choice]
+        plt.ylabel(ylabel)
+        plt.yscale("log")
+        plt.title(f"Event {common_labels[choice]} over Inversion "
+                  f"(N={len(self.events)})")
+        plt.legend()
+        default_axes(ax)
+        
+        if save:
+            plt.savefig(save)
+        if show:
+            plt.show()
 
     def measurement_hist(self, iteration=None, step_count=None, choice="event",
-                         show=True, save=False):
+                         show=True, save=False, **kwargs):
         """
         Make histograms of measurements for stations or events to show the 
         distribution of measurements. 
@@ -913,7 +962,7 @@ class InspectorPlotter:
         :param choice: choice of misfit value, either 'misfit' or 'nwin' or
             'unscaled_misfit'
         """
-        figsize = kwargs.get("figsize", (8, 8))
+        figsize = kwargs.get("figsize", (8, 4))
         dpi = kwargs.get("dpi", DEFAULT_DPI)
         cmap = kwargs.get("cmap", "plasma")
         iteration, step_count = self.validate_evaluation(iteration, step_count)
@@ -942,11 +991,15 @@ class InspectorPlotter:
         plt.text(x=0, y=mean, s=f"mean={mean:.2f}", fontsize=12, zorder=96)
         for sign in [1, -1]:
             plt.axhline(mean + sign * std, c="k", ls='--', lw=1.75, zorder=95)
+        plt.text(x=0, y=mean + std, s=f"std={std:.2f}", fontsize=12, zorder=96)
+
         # Plot accoutrements
-        plt.xlim([-2, len(arr)+2])
+        plt.xticks(np.arange(0, len(arr), 1))
+        plt.xlim([-0.5, len(arr)-0.5])
         plt.xlabel("Event Index")
         plt.ylabel(choice)
-        plt.title(f"Event Comparison {iteration}{step_count} N={len(arr)}")
+        plt.title(f"Event Comparison {iteration}{step_count} "
+                  f"(N_events={len(arr)})")
         plt.grid(which="both", axis="both")
         default_axes(ax, cbar=cbar, **kwargs)
 
@@ -982,9 +1035,9 @@ class InspectorPlotter:
         """
         figsize = kwargs.get("figsize", (16, 10))
         dpi = kwargs.get("dpi", DEFAULT_DPI)
-        cmap = kwargs.get("cmap", "Blues")
+        cmap = kwargs.get("cmap", "viridis")
         nstd = kwargs.get("nstd", 3)
-        vmax_color = kwargs.get("vmax_color", "lime")
+        vmax_color = kwargs.get("vmax_color", "red")
         zero_color = kwargs.get("zero_color", "gray")
         iteration, step_count = self.validate_evaluation(iteration, step_count)
 
@@ -1032,7 +1085,7 @@ class InspectorPlotter:
         cmap.set_over(vmax_color)
 
         ims = plt.imshow(data, cmap=cmap, vmin=0, vmax=vmax)
-        cbar = plt.colorbar(label=choice, shrink=0.75, pad=0.025,
+        cbar = plt.colorbar(label=choice, shrink=0.25, pad=0.025,
                             extend="both")
 
         # Grid out every data point
@@ -1058,8 +1111,8 @@ class InspectorPlotter:
         if show:
             plt.show()
 
-    def hist(self, iteration=None, step_count=None, compare=True,
-             iteration_comp=None, step_count_comp=None, f=None, ax=None,
+    def hist(self, iteration=None, step_count=None, iteration_comp=None, 
+             step_count_comp=None, compare=True, f=None, ax=None,
              event=None, station=None, choice="cc_shift_in_seconds",
              binsize=None, show=True, save=None, **kwargs):
         """
@@ -1143,7 +1196,7 @@ class InspectorPlotter:
                            "relative_endtime": 50,
                            "length_s": 50,
                            "max_cc_value": 0.1,
-                           "nwin": 10,
+                           "nwin": 50,
                            "nwin_sta": 10,
                            }[choice]
             except KeyError:
@@ -1301,7 +1354,7 @@ class InspectorPlotter:
 
         return f, ax
 
-    def histogram_summary(self, iteration=None, step_count=None, compare=False,
+    def histogram_summary(self, iteration=None, step_count=None,
                           iteration_comp=None, step_count_comp=None,
                           show=True, save=False, **kwargs):
         """
@@ -1311,7 +1364,6 @@ class InspectorPlotter:
         """
         figsize = kwargs.get("figsize", (8, 8))
         dpi = kwargs.get("dpi", DEFAULT_DPI)
-
 
         choices = [
             ["cc_shift_in_seconds", "dlnA", "max_cc_value"],
@@ -1328,12 +1380,14 @@ class InspectorPlotter:
             for col in range(0, ncols):
                 ax = plt.subplot(gs[row, col])
                 self.hist(choice=choices[row][col], iteration=iteration,
-                          step_count=step_count, compare=compare,
-                          iteration_comp=iteration_comp,
+                          step_count=step_count, iteration_comp=iteration_comp, 
+                          compare=True,
                           step_count_comp=step_count_comp, f=f, ax=ax,
                           show=False, figsize=(figsize[0] / nrows,
                                                figsize[1] / ncols),
-                          fontsize=10, title_fontsize=10, **kwargs
+                          fontsize=8, title_fontsize=8, label_fontsize=8, 
+                          tick_fontsize=8,
+                          **kwargs
                           )
 
         if save:

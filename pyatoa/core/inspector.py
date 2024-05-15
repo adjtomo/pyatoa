@@ -70,7 +70,8 @@ class Inspector(InspectorPlotter):
             str_out = (f"{len(self.events):<4} event(s)\n"
                        f"{len(self.stations):<4} station(s)\n"
                        f"{len(self.iterations):<4} iteration(s)\n"
-                       f"{self.evaluations:<4} evaluation(s)")
+                       f"{self.evaluations:<4} evaluation(s)"
+                       )
 
         except KeyError:
             str_out = (f"{0:<4} event(s)\n"
@@ -241,7 +242,7 @@ class Inspector(InspectorPlotter):
         """Return a dictionary of event depths in units of meters"""
         return self._try_print("depth_km")
 
-    def generate_report(self, path_report="./report", iteration=None,
+    def generate_report(self, path_report=None, iteration=None,
                         step_count=None, geographic=True, outliers=True,
                         scatter=True, summary=True, nstd=2,
                         dpi=200, **kwargs):
@@ -269,47 +270,59 @@ class Inspector(InspectorPlotter):
         :param scatter: If True, includes a scatter plot in the report. 
             Defaults to True.
         :type summary: bool
-        :param summary: If True, includes a summary in the report. Defaults to True.
+        :param summary: If True, includes a summary in the report. 
+            Defaults to True.
         :type nstd: int
-        :param nstd: The number of standard deviations for outlier detection. Defaults to 2.
+        :param nstd: The number of standard deviations for outlier detection.  
+            Defaults to 2.
         :type dpi: int
-        :param dpi: The resolution in dots per inch for the figures in the report. Defaults to 200.
+        :param dpi: The resolution in dots per inch for the figures in the 
+            report. Defaults to 200.
         :type kwargs: dict
         :param kwargs: Additional keyword arguments.
         """
+        # By default we generate a report for the final model 
+        iteration, step_count = self.validate_evaluation(iteration, step_count,
+                                                         choice="final")
+        if path_report is None:
+            path_report = f"./report_{iteration}{step_count}"
         if not os.path.exists(path_report):
             os.makedirs(path_report)
 
         # Generate some geographic information
         if geographic:
-            geographic_plot_functions = ["map", "travel_times",
-                                         # "raypath_density", "raypaths",
-                                         "event_depths",]
+            geographic_plot_functions = ["map", "travel_times", "raypaths",
+                                         "event_depths"]
             for plot_function in geographic_plot_functions:
                 save = os.path.join(path_report, f"{plot_function}.png")
                 if os.path.exists(save):
                     continue
                 getattr(self, plot_function)(iteration=iteration,
-                                             step_count=step_count, show=False,
-                                             save=save, dpi=dpi
-                                             )
+                                             step_count=step_count,
+                                             show=False, dpi=dpi)
+                plt.close()
 
         # Plot misfit spider plots of event misfit for events that are outside
         # N standard deviations of the mean w.r.t misfit value
         if outliers:
             upper_outliers, lower_outliers, mean ,std = \
                 self.event_outliers(iteration, step_count, nstd=nstd)
-            for outliers, tag in zip([upper_outliers, lower_outliers],
-                                      ["upper_outlier", "lower_outlier"]):
-                for event_name in outliers.index.to_list():
-                    self.event_station_misfit_map(
-                        event=event_name, iteration=iteration,
-                        step_count=step_count, show=False,
-                        save=os.path.join(path_report,
-                                          f"{tag}_{event_name}.png"),
-                        dpi=dpi
-                    )
-                    plt.close()
+            
+            if upper_outliers.empty and lower_outliers.empty:
+                logger.warning("No outliers found, skipping outlier plots, " 
+                               "reduce `nstd` to reevaluate for outliers")
+            else:
+                for outliers, tag in zip([upper_outliers, lower_outliers],
+                                        ["upper_outlier", "lower_outlier"]):
+                    for event_name in outliers.index.to_list():
+                        self.event_station_misfit_map(
+                            event=event_name, iteration=iteration,
+                            step_count=step_count, 
+                            save=os.path.join(path_report,
+                                            f"{tag}_{event_name}.png"),
+                            show=False, dpi=dpi
+                        )
+                        plt.close()
 
         # Create a few scatterplots comparing some parameters
         if scatter:
@@ -319,44 +332,161 @@ class Inspector(InspectorPlotter):
                 ("length_s", "cc_shift_in_seconds"),
             ]:
                 x, y = xy
-                self.scatter(x=x, y=y, show=False,
-                             save=os.path.join(path_report, f"{x}_v_{y}.png"),
-                             **kwargs)
+                self.scatter(x=x, y=y, show=False, dpi=dpi,
+                             save=os.path.join(path_report, f"{x}_v_{y}.png")
+                             )
 
-            # Do the same but for each component
-
-        # Plot summary that try to show all source receivers together
+        # Plot summary figures that show the status of inversion holistically
         if summary:
+            self.convergence(normalize=True, show=False, dpi=dpi,
+                             save=os.path.join(path_report, "convergence.png")
+                             )
+
             summary_functions = ["event_station_hist2d", "event_comparison",
                                  "window_stack", "histogram_summary"]
             for plot_function in summary_functions:
                 save = os.path.join(path_report, f"{plot_function}.png")
                 if os.path.exists(save):
                     continue
-                getattr(self, plot_function)(iteration=iteration,
-                                             step_count=step_count, show=False,
-                                             save=save, dpi=dpi
-                                             )
+                # We want the histogram summary to be comparative
+                if plot_function == "histogram_summary":
+                    getattr(self, plot_function)(
+                        iteration="i01", step_count="s00", 
+                        iteration_comp=iteration, step_count_comp=step_count,
+                        save=save, show=False, dpi=dpi
+                        )
+                else:
+                    getattr(self, plot_function)(
+                        iteration=iteration, step_count=step_count, save=save, 
+                        show=False, dpi=dpi
+                        )
+                plt.close()
 
-        # Generate a text report of poorly performing events and stations
+        plt.close("all")
+
+        self.generate_report_text(path_report, nstd)
+            
+    def generate_report_text(self, path_report="./", nstd=1):
+        """
+        Generate a text report highlighting good/bad performing events and 
+        stations that will provide the User a quickly accessible summary of 
+        their inversion and may motivate looking at some waveforms
+        """       
+        line_break = "\n" + "=" * 80 +"\n"     
+        iter_end, step_end = self.validate_evaluation(
+            iteration=None, step_count=None, choice="final"
+            )
+        
+        # Get event mean and std for current evaluation
+        _, _, mean ,std = \
+                self.event_outliers(iter_end, step_end, nstd=nstd)
+        
+        # Get an ascended list of misfit/windows per event
+        _windows = self.windows  
+        self.windows = self.isolate(iteration=iter_end, step_count=step_end)
+
+        # Event specific window information
+        win_per_event = self.nwin(level="event")
+        avg_win_per_event = win_per_event.nwin.mean()
+
+        _tenwin = win_per_event.iloc[0].nwin
+        top_event_by_win = win_per_event.iloc[0].name[-1]
+
+        _benwin = win_per_event.iloc[-1].nwin
+        bot_event_by_win = win_per_event.iloc[-1].name[-1]
+
+        win_per_event_str = win_per_event.to_string()
+        
+        # Station specific window information
+        win_per_station = self.nwin(level="station")
+        avg_win_per_station = win_per_station.nwin.mean()
+
+        _tsnwin = win_per_station.iloc[0].nwin
+        top_sta_by_win = win_per_station.iloc[0].name[-1]
+
+        _bsnwin = win_per_station.iloc[-1].nwin
+        bot_sta_by_win = win_per_station.iloc[-1].name[-1]
+
+        win_per_station_str = win_per_station.to_string()
+
+        # Event specific misfit information
+        misfit_per_event = self.misfit(level="event", reset=True)
+
+        _temsft = misfit_per_event.iloc[0].misfit
+        highest_misfit_event = misfit_per_event.iloc[0].name[-1]
+        
+        _bemsft = misfit_per_event.iloc[-1].misfit
+        lowest_misfit_event = misfit_per_event.iloc[-1].name[-1]
+
+        misfit_per_event_str = misfit_per_event.sort_values(
+            "misfit", ascending=False).to_string()
+
+        # Station specific misfit information
+        misfit_per_sta = self.misfit(level="station", reset=True)
+
+        _tsmsft = misfit_per_sta.iloc[0].misfit
+        highest_misfit_sta = misfit_per_sta.iloc[0].name[-1]
+        
+        _bsmsft = misfit_per_sta.iloc[-1].misfit
+        lowest_misfit_sta = misfit_per_sta.iloc[-1].name[-1]
+
+        misfit_per_sta_str = misfit_per_sta.sort_values(
+            "misfit", ascending=False).to_string()
+                
+        # Get windows per component for the current evaluation
+        _windows_eval = self.windows
+        win_str = ""
+        for component in self.windows.component.unique():
+            self.windows = self.isolate(component=component)
+            # Sort of a hacky way of getting what we know is a single value
+            nwin_per_comp = self.nwin().nwin.to_list()[0]
+            win_str += f"- {component}: {nwin_per_comp}\n"
+            self.windows = _windows_eval
+
+        # Restore the original windows, just incase but likely not needed?
+        self.windows = _windows  
+
+        # Compile all the above information into a nice text output to be writ
+        srcrcv_summary = (
+            f"Avg windows per event:  {avg_win_per_event:.2f}\n"
+            f"- Evt w/ max win:       {top_event_by_win} ({_tenwin:.0f})\n"
+            f"- Evt w/ min win:       {bot_event_by_win} ({_benwin:.0f})\n"
+            f"- Evt w/ max msft:      {highest_misfit_event} ({_temsft:.2f})\n"
+            f"- Evt w/ min msft:      {lowest_misfit_event} ({_bemsft:.2f})\n"
+            "\n"
+            f"Avg windows per sta:    {avg_win_per_station:.2f}\n"
+            f"- Sta w/ max win:       {top_sta_by_win} ({_tsnwin:.0f})\n"
+            f"- Sta w/ min win:       {bot_sta_by_win} ({_bsnwin:.0f})\n"
+            f"- Sta w/ max msft:      {highest_misfit_sta} ({_tsmsft:.2f})\n"
+            f"- Sta w/ min msft:      {lowest_misfit_sta}  ({_bsmsft:.2f})\n"
+            "\n"
+            f"Windows per component:\n"
+            f"{win_str}"
+            )
+
+        # Header contains general information for understanding inversion
+        report = [
+            f"{'INSPECTOR REPORT':^80}",
+            f"{'SUMMARY':^80}",
+            f"{self._get_str()}", 
+            f"{f'SRCRCV SUMMARY [{iter_end}{step_end}]':^80}",
+            f"{srcrcv_summary}",
+            f"{'TOTAL WINDOWS':^80}",
+            f"{self.nwin().to_string()}",  
+            f"{'TOTAL MISFIT':^80}",
+            f"{self.misfit().to_string()}", 
+            f"{'WINDOWS PER EVENT':^80}",
+            f"{win_per_event_str}",  
+            f"{f'MISFIT PER EVENT (MEAN={mean:.2f}, {nstd}STD={std:.2f})':^80}",
+            f"{misfit_per_event_str}", 
+            f"{'WINDOWS PER STATION':^80}",
+            f"{win_per_station_str}",
+            f"{f'MISFIT PER STATION':^80}",
+            f"{misfit_per_sta_str}", 
+        ]
+    
         with open(os.path.join(path_report, "inspector_report.txt"), "w") as f:
-            f.write("Inspector Report\n\n")
-            f.write("Event Outliers\n")
-            f.write("---------------\n")
-            f.write(f"{'Event':<15}{'Misfit':<15}{'Std':<15}\n")
-            for event_name in upper_outliers.index.to_list():
-                f.write(f"{event_name:<15}{upper_outliers[event_name]:<15}"
-                        f"{std:<15}\n")
-            f.write("\n")
-            f.write("Station Outliers\n")
-            f.write("----------------\n")
-            f.write(f"{'Station':<15}{'Misfit':<15}{'Std':<15}\n")
-            for station_name in upper_outliers.index.to_list():
-                f.write(f"{station_name:<15}{upper_outliers[station_name]:<15}"
-                        f"{std:<15}\n")
-            
-            
-
+            f.writelines(f"{line_break}".join(report))
 
     def _get_srcrcv_from_dataset(self, ds):
         """
@@ -788,18 +918,7 @@ class Inspector(InspectorPlotter):
         self.sources = pd.DataFrame()
         self.receivers = pd.DataFrame()
 
-    def report(self, path_out="./insp_report"):
-        """
-        Convenince function that generates a "report" of misfit information for
-        a given inversion. Creates and fills a directory composed of misfit
-        figures and a text file describing important misfit information that a
-        researcher/analyst can quickly browse through to get an idea of
-        inversion health.
-        """
-        if not os.path.exists(path_out):
-            os.mkdir(path_out)
-
-    def isolate(self, iteration=None, step_count=None,  event=None,
+    def isolate(self, iteration=None, step_count=None, event=None,
                 network=None, station=None, channel=None, component=None,
                 keys=None, exclude=None, unique_key=None):
         """
@@ -1073,8 +1192,8 @@ class Inspector(InspectorPlotter):
 
         return minmax_dict
 
-    def compare(self, iteration_a=None, step_count_a=None, iteration_b=None,
-                step_count_b=None):
+    def compare_events(self, iteration_a=None, step_count_a=None, 
+                       iteration_b=None, step_count_b=None):
         """
         Compare the misfit and number of windows on an event by event basis
         between two evaluations. Provides absolute values as well as
@@ -1195,7 +1314,70 @@ class Inspector(InspectorPlotter):
             df[f"diff_{val}"] = df[f"{val}_{final}"] - df[f"{val}_{initial}"]
 
         return df
+    
+    def compare_misfits(self, iteration_a=None, step_count_a=None,
+                        iteration_b=None, step_count_b=None):
+        """
+        Compare the misfit values between the final and initial model for each
+        source receiver pair. Returns differences of unscaled misfit and 
+        difference in number of windows between two evaluations. 
 
+        .. note::
+
+            See also compare_events() for a similar function but for events only
+
+        :type iteration_a: str
+        :param iteration_a: initial iteration to use in comparison
+        :type step_count_a: str
+        :param step_count_a: initial step count to use in comparison
+        :type iteration_b: str
+        :param iteration_b: final iteration to use in comparison
+        :type step_count_b: str
+        :param step_count_b: final step count to use in comparison
+        :rtype: pandas.core.data_frame.DataFrame
+        :return: a data frame containing differences of misfit and number of
+            windows between final and initial models
+        """
+        iter_start, step_start = self.validate_evaluation(
+            iteration=iteration_a, step_count=step_count_a, choice="initial"
+            )
+        iter_end, step_end = self.validate_evaluation(
+            iteration=iteration_b, step_count=step_count_b, choice="final"
+            )
+        
+        _windows = self.windows  
+        self.windows = self.isolate(iteration=iter_start, step_count=step_start)
+        misfit_start = self.misfit(level="station", reset=True)
+
+        self.windows = _windows
+        self.windows = self.isolate(iteration=iter_end, step_count=step_end)
+        misfit_end = self.misfit(level="station", reset=True)
+
+        # Merge the two making sure they match event and station
+        sfx_start = f"{iter_start}{step_start}"
+        sfx_end = f"{iter_end}{step_end}"
+        df = pd.merge(misfit_start, misfit_end, 
+                      on=["event", "network", "station"], 
+                      suffixes=(f"_{sfx_start}", f"_{sfx_end}")
+                      )
+
+        # Calculate the difference between the two misfits
+        df["diff_misfit"] = \
+            df[f"unscaled_misfit_{sfx_end}"] - df[f"unscaled_misfit_{sfx_start}"]
+        df["diff_nwin"] = df[f"nwin_{sfx_end}"] - df[f"nwin_{sfx_start}"]
+
+        # Drop the original values
+        df.drop([f"unscaled_misfit_{sfx_end}", f"unscaled_misfit_{sfx_start}", 
+                 f"misfit_{sfx_end}", f"misfit_{sfx_start}", 
+                 f"nwin_{sfx_end}", f"nwin_{sfx_start}"], 
+                axis=1, inplace=True)
+
+        # Reset windows so User can still use the Inspector as advertised
+        self.windows = _windows
+
+        # Isolate the largest misfit offenders
+        return df.sort_values(by="diff_misfit")
+    
     def filter_sources(self, lat_min=None, lat_max=None, lon_min=None,
                        lon_max=None, depth_min=None, depth_max=None,
                        mag_min=None, mag_max=None, min_start=None,
@@ -1413,6 +1595,8 @@ class Inspector(InspectorPlotter):
 
 
 if __name__ == "__main__":
+
+
     """
     Here we define a simple command-line tool for using the Inspector. Useful 
     for Users who have already generated the inspector, and want to quickly 
