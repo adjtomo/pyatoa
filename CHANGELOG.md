@@ -1,5 +1,22 @@
 # CHANGELOG
 
+## v0.4.0
+
+>__Note__: Mainly improvements to the Inspector class and its ability to
+> generate 'reports' that automatically summarize SeisFlows inversion results.
+
+
+- #41 Made Manager window selection function calls more explicit; removed 
+  simple detrend from preprocessing steps which adversely affected
+  non-tapered data
+- #42 Introduce `Inspector.generate_report()` function; introduce `revalidate`
+  feature in Manager.window() that re-calculates window criteria for updated
+  waveforms and drops windows if they do not meet the original criteria; 
+  improves `comp_wave` function to plot waveform updates through inversion
+- #43 Bugfixes `trim_streams` failing silently causing waveform data to not be
+  trimmed but returned as if they were
+- #44 Further improves `Inspector.generate_report()` functionality
+
 ## v0.3.0
 
 >__Note__: The motivation behind the changes in v0.3.0 were that the original 
