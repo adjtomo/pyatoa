@@ -8,6 +8,7 @@ into the correct formats.
 """
 from pyasdf import ASDFDataSet
 from obspy.core.event import Event
+from pyatoa import logger
 
 
 def channel_code(dt):
@@ -90,7 +91,10 @@ def format_step(count):
 
 def format_event_name(ds_or_event):
     """
-    Formalize the definition of Event ID in Pyatoa
+    Formalize the definition of Event ID in Pyatoa by parsing it out of the 
+    resource_id attribute of the ObsPy Event object. Different data centers
+    will tag their resource IDs differently, so this function can parse some 
+    of the more popular ones.
 
     :type ds_or_event: pyasdf.ASDFDataSet or obspy.core.event.Event or str
     :param ds_or_event: get dataset event name from the event resource_id
@@ -109,26 +113,32 @@ def format_event_name(ds_or_event):
                         "or obspy.core.event.Event objects")
 
     rid_up = rid.upper()
+
     # GeoNet Client: smi:nz.org.geonet/2018p130600
     if "GEONET" in rid_up:
-        return rid.split("/")[-1]
+        event_name = rid.split("/")[-1]
     # IRIS Client: smi:service.iris.edu/fdsnws/event/1/query?eventid=5197722
     elif "IRIS" in rid_up:
-        return rid.split("eventid=")[-1]
+        event_name = rid.split("eventid=")[-1]
     # SPUD, GCMT: smi:local/ndk/C202005010101A/event
     # or CMTSOLUTION: smi:local/cmtsolution/2013p617227/event
     elif ("NDK" in rid_up) or ("CMTSOLUTION" in rid_up):
-        return rid.split("/")[-2]
+        event_name = rid.split("/")[-2]
     # USGS Client: quakeml:earthquake.usgs.gov/fdsnws/event/1/...
     #                          ...query?eventid=ak0198gdhuwa&format=quakeml
     elif "USGS" in rid_up:
-        rid_ = rid.split("eventid=")[-1]
-        return rid_.split("&")[0]
+        parts = rid.split("eventid=")[-1]
+        event_name = parts.split("&")[0]
     # USGS ANSS ComCat: quakeml:us.anss.org/event/20005ysu
     elif "ANSS" in rid_up:
-        return rid.split("event/")[-1]
+        event_name = rid.split("event/")[-1]
+    # PySEP reads SPECFEM source files and tags them 'SOURCE'
+    # smi:local/source/<SOURCE_NAME>/event
+    elif "SOURCE" in rid_up:
+        event_name = rid_up.split("/")[2]
     else:
-        raise NotImplementedError(f"Unexpected resource id format '{rid}', "
-                                  "Please raise a GitHub issue and the "
-                                  "developers will address this")
+        logger.warning("unknown resource ID type, tagging event with entire ID")
+        event_name = rid_up
+
+    return event_name
 

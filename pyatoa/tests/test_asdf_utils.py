@@ -110,7 +110,7 @@ def test_add_misfit_windows(empty_dataset, mgmt_post):
                            path=path)
 
     windows = empty_dataset.auxiliary_data.MisfitWindows[path]
-    assert(len(windows.list()) == 2)
+    assert(len(windows.list()) == 3)
 
     for comp, window_list in mgmt_post.windows.items():
         assert(len(window_list) == 1)
@@ -146,7 +146,7 @@ def test_add_adjoint_sources(empty_dataset, mgmt_post):
                             )
 
     adjsrcs = empty_dataset.auxiliary_data.AdjointSources[path]
-    assert(len(adjsrcs.list()) == 2)
+    assert(len(adjsrcs.list()) == 3)
 
     # Just check misfit value is correct
     for comp, adjsrc in mgmt_post.adjsrcs.items():
