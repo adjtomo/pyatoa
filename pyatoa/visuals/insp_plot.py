@@ -3,6 +3,7 @@
 The plotting functionality of the Inspector class. Used to generate statistics
 and basemap like plots from the Inspector DataFrame objects.
 """
+import os
 import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
@@ -1019,7 +1020,8 @@ class InspectorPlotter:
 
     def event_station_hist2d(self, iteration=None, step_count=None,
                              choice="misfit", minval=None, maxval=None,
-                             show=True, save=None, **kwargs):
+                             show=True, save=None, save_lookup_table=False,
+                             **kwargs):
         """
         2D histogram of misfit or window number where one axis represents
         event indices, and the other axis represents station indices. That way
@@ -1082,6 +1084,7 @@ class InspectorPlotter:
                     continue
                 data[i, j] = val
 
+
         n = len(data[np.where(data!=0)])
         data[np.where(data==0)] = -999
         # Create a colormap that highlights over and under values
@@ -1098,8 +1101,17 @@ class InspectorPlotter:
         ax.set_yticks(np.arange(0, ny, 5), minor=False)
         ax.set_xticks(np.arange(0.5, nx, 1), minor=True)
         ax.set_yticks(np.arange(0.5, ny, 1), minor=True)
-        plt.xticks(rotation=90)
         plt.grid(c="k", alpha=0.5, which="minor")
+        
+        # Replace axis tick values with names of stations and events
+        x_axis = np.arange(0, nx, 1)
+        x_values = sorted(netstas)
+        plt.xticks(x_axis, x_values)
+        plt.xticks(rotation=90)
+
+        y_axis = np.arange(0, ny, 1)
+        y_values = sorted(self.events)
+        plt.yticks(y_axis, y_values)
 
         # Labels and such
         plt.xlim([-0.5, nx-0.5])
@@ -1109,12 +1121,23 @@ class InspectorPlotter:
         plt.title(f"N={n}; mean={mean:.2f}; std={std:.2f}; vmax={nstd}*std")
         ax.set_aspect("equal")
 
-        default_axes(ax, tick_length=0, cbar=cbar)
+        default_axes(ax, tick_length=0, cbar=cbar, tick_fontsize=6)
 
         if save:
             plt.savefig(save)
         if show:
             plt.show()
+
+        # Write the lookup table so User can figure out which station/event by #
+        if save_lookup_table:
+            with open(save_lookup_table, "w") as f:
+                f.write("STATIONS\n")
+                for i, netsta in enumerate(sorted(netstas)):
+                   f.write(f"{i:<3}: {netsta}\n")
+
+                f.write("SOURCES\n")
+                for i, src in enumerate(sorted(self.events)):
+                    f.write(f"{i:<3}: {src}\n")
 
     def hist(self, iteration=None, step_count=None, iteration_comp=None, 
              step_count_comp=None, compare=True, f=None, ax=None,
