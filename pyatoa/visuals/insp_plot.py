@@ -767,17 +767,13 @@ class InspectorPlotter:
         dpi = kwargs.get("dpi", DEFAULT_DPI)
 
         iteration, step_count = self.validate_evaluation(iteration, step_count)
-
         assert (station in self.stations), f"station not found: {self.stations}"
-        sta = self.receivers.droplevel(0).loc[station]
 
-        # Deal with the case where we have repeat station names. Making the 
-        # assumption that these are the same station with different networks,
-        # e.g., TA -> AK in Alaska
-        if len(sta) > 1:
-            logger.warning(f"{sta.index[0]} has multiple lat/lon entries, "
-                           f"only taking first")
-            sta = sta.iloc[0]
+        # Match by station name ONLY. Assuming unique station names and if 
+        # multiple stations match but have the same network, we drop the rest 
+        # assuming they are the same (e.g., AK -> TA networks). This might be
+        # an issue in the future
+        sta = self.receivers.droplevel(0).drop_duplicates().loc[station]
 
         # Get misfit on a per-station basis 
         df = self.misfit(level="station").loc[

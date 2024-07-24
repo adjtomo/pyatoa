@@ -346,15 +346,19 @@ class Inspector(InspectorPlotter):
                 plt.close()
 
             for station_name in self.stations:
-                self.station_event_misfit_map(
-                    station=station_name, iteration=iteration,
-                    step_count=step_count, choice=choice,
-                    vmin=vmin, vmax=vmax, cmap=cmap,
-                    save=os.path.join(path_report, 
-                                    f"spider_station_{station_name}.png"),
-                    show=False, dpi=dpi
-                )
-                plt.close()
+                try:
+                    self.station_event_misfit_map(
+                        station=station_name, iteration=iteration,
+                        step_count=step_count, choice=choice,
+                        vmin=vmin, vmax=vmax, cmap=cmap,
+                        save=os.path.join(path_report, 
+                                        f"spider_station_{station_name}.png"),
+                        show=False, dpi=dpi
+                    )
+                    plt.close()
+                except Exception as e:
+                    print(station_name, e)
+                    plt.close()
 
         # Create a few scatterplots comparing some parameters
         if scatter:
