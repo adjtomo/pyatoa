@@ -742,8 +742,8 @@ class InspectorPlotter:
             plt.close()
 
     def station_event_misfit_map(self, station, iteration=None, step_count=None,
-                                 choice="misfit", cmap="viridis", show=True,
-                                 save=False, **kwargs):
+                                 choice="misfit", cmap="viridis", vmin=None, 
+                                 vmax=None, show=True, save=False, **kwargs):
         """
         Plot a single station and all events that it has measurements for.
         Events will be colored by choice of value: misfit or nwin (num windows)
@@ -795,8 +795,8 @@ class InspectorPlotter:
                     c=df[choice].to_numpy(), marker="o", s=50, zorder=99,
                     cmap=cmap, ec="k", linewidth=1.5)
         # Plot connecting lines for source to receiver with the same color
-        norm = mpl.colors.Normalize(vmin=df[choice].min(),
-                                    vmax=df[choice].max(), clip=True)
+        norm = mpl.colors.Normalize(vmin=vmin or df[choice].min(),
+                                    vmax=vmax or df[choice].max(), clip=True)
         mapper = mpl.cm.ScalarMappable(norm=norm, cmap=cmap)
         for lon, lat, val in zip(df.longitude.to_numpy(),
                                  df.latitude.to_numpy(),
@@ -808,8 +808,9 @@ class InspectorPlotter:
         plt.ylabel("Latitude")
         plt.title(f"{station} {iteration}{step_count}; {len(df)} events")
 
-        _, _, cbar = colormap_colorbar(cmap, vmin=df[choice].to_numpy().min(),
-                                       vmax=df[choice].to_numpy().max(), 
+        _, _, cbar = colormap_colorbar(cmap, 
+                                       vmin=vmin or df[choice].to_numpy().min(),
+                                       vmax=vmax or df[choice].to_numpy().max(), 
                                        cbar_label=choice)
 
         default_axes(ax, cbar, **kwargs)
