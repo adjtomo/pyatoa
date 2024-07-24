@@ -771,6 +771,14 @@ class InspectorPlotter:
         assert (station in self.stations), f"station not found: {self.stations}"
         sta = self.receivers.droplevel(0).loc[station]
 
+        # Deal with the case where we have repeat station names. Making the 
+        # assumption that these are the same station with different networks,
+        # e.g., TA -> AK in Alaska
+        if len(sta) > 1:
+            logger.warning(f"{sta.index[0]} has multiple lat/lon entries, "
+                           f"only taking first")
+            sta = sta.iloc[0]
+
         # Get misfit on a per-station basis 
         df = self.misfit(level="station").loc[
             iteration, step_count].swaplevel(0, 2)
