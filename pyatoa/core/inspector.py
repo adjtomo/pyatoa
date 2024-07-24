@@ -242,7 +242,7 @@ class Inspector(InspectorPlotter):
         """Return a dictionary of event depths in units of meters"""
         return self._try_print("depth_km")
 
-    def generate_report(self, path_report=None, iteration=None,
+    def generate_report(self, path_report=None, iteration=None, spider=True,
                         step_count=None, geographic=True, outliers=True,
                         scatter=True, summary=True, nstd=2,
                         dpi=200, **kwargs):
@@ -323,6 +323,38 @@ class Inspector(InspectorPlotter):
                             show=False, dpi=dpi
                         )
                         plt.close()
+
+        # Generate Spider plots for all sources and stations
+        if spider:
+            # User can set the colormap and what the colors represent here
+            cmap = "viridis"
+            choice = "misfit"
+            vmin = self.misfit(
+                    level="station").loc[iteration, step_count].misfit.min()
+            vmax = self.misfit(
+                    level="station").loc[iteration, step_count].misfit.max()
+
+            for event_name in self.events:
+                self.event_station_misfit_map(
+                    event=event_name, iteration=iteration,
+                    step_count=step_count, choice=choice,
+                    vmin=vmin, vmax=vmax, cmap=cmap,
+                    save=os.path.join(path_report, 
+                                    f"spider_event_{event_name}.png"),
+                    show=False, dpi=dpi
+                )
+                plt.close()
+
+            for station_name in self.stations:
+                self.station_event_misfit_map(
+                    station=station_name, iteration=iteration,
+                    step_count=step_count, choice=choice,
+                    vmin=vmin, vmax=vmax, cmap=cmap,
+                    save=os.path.join(path_report, 
+                                    f"spider_station_{station_name}.png"),
+                    show=False, dpi=dpi
+                )
+                plt.close()
 
         # Create a few scatterplots comparing some parameters
         if scatter:

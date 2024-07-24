@@ -773,7 +773,7 @@ class InspectorPlotter:
 
         # Get misfit on a per-station basis 
         df = self.misfit(level="station").loc[
-            iteration, step_count].swaplevel(0, 1)
+            iteration, step_count].swaplevel(0, 2)
         df = df.sort_values(by="station").loc[station]
 
         # Get source lat/lon values as a single dataframe with same index name
