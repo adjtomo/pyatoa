@@ -1239,7 +1239,8 @@ class Manager:
         else:
             logger.debug("no windows given, adjoint sources will be "
                          "calculated on full trace")
-            for comp in self.config.component_list:
+            component_list = list(set(_.stats.component for _ in self.st_syn))
+            for comp in component_list:
                 dt = self.st_obs.select(component=comp)[0].stats.delta
                 npts = self.st_obs.select(component=comp)[0].stats.npts
                 # We offset the bounds of the entire trace by 1s to play nice
