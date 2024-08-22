@@ -242,8 +242,8 @@ class Inspector(InspectorPlotter):
         """Return a dictionary of event depths in units of meters"""
         return self._try_print("depth_km")
 
-    def generate_report(self, path_report=None, iteration=None, spider=True,
-                        step_count=None, geographic=True, outliers=True,
+    def generate_report(self, iteration=None, step_count=None, path_report=None,
+                        spider=True, geographic=True, outliers=True,
                         scatter=True, summary=True, nstd=2,
                         dpi=200, **kwargs):
         """
@@ -400,18 +400,18 @@ class Inspector(InspectorPlotter):
 
         plt.close("all")
 
-        self.generate_report_text(path_report, nstd)
+        self.generate_report_text(iteration, step_count, path_report, nstd)
             
-    def generate_report_text(self, path_report="./", nstd=1):
+    def generate_report_text(self, iteration=None, step_count=None,  
+                             path_report="./", nstd=1):
         """
         Generate a text report highlighting good/bad performing events and 
         stations that will provide the User a quickly accessible summary of 
         their inversion and may motivate looking at some waveforms
         """       
         line_break = "\n" + "=" * 80 +"\n"     
-        iter_end, step_end = self.validate_evaluation(
-            iteration=None, step_count=None, choice="final"
-            )
+        iter_end, step_end = self.validate_evaluation(iteration=iteration, 
+                                                      step_count=step_count)
         
         # Get event mean and std for current evaluation
         _, _, mean ,std = \
