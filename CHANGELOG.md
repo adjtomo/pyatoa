@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## v0.4.1
+
+- Bugfix: no window selection did not allow measure to be called due to some
+  incorrect referencing
+
 ## v0.3.0
 
 >__Note__: The motivation behind the changes in v0.3.0 were that the original 
