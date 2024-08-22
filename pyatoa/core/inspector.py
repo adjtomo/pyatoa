@@ -411,7 +411,8 @@ class Inspector(InspectorPlotter):
         """       
         line_break = "\n" + "=" * 80 +"\n"     
         iter_end, step_end = self.validate_evaluation(iteration=iteration, 
-                                                      step_count=step_count)
+                                                      step_count=step_count,
+                                                      choice="final")
         
         # Get event mean and std for current evaluation
         _, _, mean ,std = \
