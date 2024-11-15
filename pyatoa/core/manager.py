@@ -491,12 +491,15 @@ class Manager:
             self.__init__(config=self.config, ds=ds, event=ds.events[0])
             net, sta = code.split('.')
             sta_tag = f"{net}.{sta}"
-            if sta_tag in ds.waveforms.list():
-                self.inv = ds.waveforms[sta_tag].StationXML
+            if sta_tag in ds.waveforms.list():S
                 self.st_syn = ds.waveforms[sta_tag][synthetic_tag or
                                                     self.config.synthetic_tag]
                 self.st_obs = ds.waveforms[sta_tag][observed_tag or
                                                     self.config.observed_tag]
+                try:
+                    self.inv = ds.waveforms[sta_tag].StationXML
+                except AttributeError:
+                    logger.warning("no StationXML attribute found for station")
                 if windows:
                     self.windows = load_windows(ds, net, sta, iter_, step, 
                                                 return_previous=False)
