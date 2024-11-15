@@ -228,7 +228,7 @@ class WaveMaker:
                       label=f"{obs.id} ({self.config.st_obs_type.upper()})",
                       linewidth=linewidth)
         a2, = ax.plot(self.time_axis, syn.data, syn_color, zorder=10, 
-                      label=f"{syn.id} ({self.config.st_obs_type.upper()})",
+                      label=f"{syn.id} ({self.config.st_syn_type.upper()})",
                       linewidth=linewidth)
 
         return [a1, a2]
