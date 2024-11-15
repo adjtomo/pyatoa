@@ -491,7 +491,7 @@ class Manager:
             self.__init__(config=self.config, ds=ds, event=ds.events[0])
             net, sta = code.split('.')
             sta_tag = f"{net}.{sta}"
-            if sta_tag in ds.waveforms.list():S
+            if sta_tag in ds.waveforms.list():
                 self.st_syn = ds.waveforms[sta_tag][synthetic_tag or
                                                     self.config.synthetic_tag]
                 self.st_obs = ds.waveforms[sta_tag][observed_tag or
