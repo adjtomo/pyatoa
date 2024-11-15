@@ -486,7 +486,7 @@ class WaveMaker:
         b1, = ax.plot(self.time_axis, adjsrc.adjoint_source[::-1], color, 
                       alpha=alpha, linewidth=linewidth, linestyle=linestyle, 
                       zorder=9,
-                      label=fr"Adjoint Source ($\chi$={adjsrc.misfit:.2f})"
+                      label=fr"Adjoint Source ($\chi$={adjsrc.misfit:.3E})"
                       )
         return [b1]
 
