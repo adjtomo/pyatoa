@@ -1,5 +1,18 @@
 # CHANGELOG
 
+
+## v0.4.2 (#48)
+
+- Remove plot axis formatter which forced axis bounds [0,1] in some instances
+- Bugfix synthetic waveform label was being incorrectly set
+- Changed misfit label $\chi$ format from float to scientific notation as misfit can be << 1
+- Allow Manager.load() to work even without valid StationXML attribute in ASFDataSet
+
+## v0.4.1
+
+- Bugfix: no window selection did not allow measure to be called due to some
+  incorrect referencing
+
 ## v0.4.0
 
 >__Note__: Mainly improvements to the Inspector class and its ability to

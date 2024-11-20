@@ -6,6 +6,7 @@ outputted by Pyflex as well as adjoint sources from Pyadjoint.
 Flexible to allow for only waveform plots, or for the addition of objects
 based on inputs.
 """
+from re import I
 import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
@@ -227,7 +228,7 @@ class WaveMaker:
                       label=f"{obs.id} ({self.config.st_obs_type.upper()})",
                       linewidth=linewidth)
         a2, = ax.plot(self.time_axis, syn.data, syn_color, zorder=10, 
-                      label=f"{syn.id} ({self.config.st_obs_type.upper()})",
+                      label=f"{syn.id} ({self.config.st_syn_type.upper()})",
                       linewidth=linewidth)
 
         return [a1, a2]
@@ -485,7 +486,7 @@ class WaveMaker:
         b1, = ax.plot(self.time_axis, adjsrc.adjoint_source[::-1], color, 
                       alpha=alpha, linewidth=linewidth, linestyle=linestyle, 
                       zorder=9,
-                      label=fr"Adjoint Source ($\chi$={adjsrc.misfit:.2f})"
+                      label=fr"Adjoint Source ($\chi$={adjsrc.misfit:.3E})"
                       )
         return [b1]
 
@@ -773,13 +774,11 @@ def format_axis(input_ax, percent_over=0.125):
     :param percent_over: the percentage above the peak value that the bounds
         of the axis will be set
     """
-    ymin, ymax = input_ax.get_ylim()
     maxvalue = max([abs(_) for _ in input_ax.get_ylim()])
     percent_over = maxvalue * percent_over
-    if abs(round(ymin / ymax)) != 0:
-        # Set bounds to be the same positive and negative
-        bounds = (-1 * (maxvalue + percent_over), (maxvalue + percent_over))
-    else: 
-        bounds = (-0.05, 1.05)
+
+    # Set bounds to be the same positive and negative
+    bounds = (-1 * (maxvalue + percent_over), (maxvalue + percent_over))
+
     input_ax.set_ylim(bounds)
 

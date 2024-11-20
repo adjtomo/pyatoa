@@ -492,11 +492,14 @@ class Manager:
             net, sta = code.split('.')
             sta_tag = f"{net}.{sta}"
             if sta_tag in ds.waveforms.list():
-                self.inv = ds.waveforms[sta_tag].StationXML
                 self.st_syn = ds.waveforms[sta_tag][synthetic_tag or
                                                     self.config.synthetic_tag]
                 self.st_obs = ds.waveforms[sta_tag][observed_tag or
                                                     self.config.observed_tag]
+                try:
+                    self.inv = ds.waveforms[sta_tag].StationXML
+                except AttributeError:
+                    logger.warning("no StationXML attribute found for station")
                 if windows:
                     self.windows = load_windows(ds, net, sta, iter_, step, 
                                                 return_previous=False)
@@ -1239,7 +1242,8 @@ class Manager:
         else:
             logger.debug("no windows given, adjoint sources will be "
                          "calculated on full trace")
-            for comp in self.config.component_list:
+            component_list = list(set(_.stats.component for _ in self.st_syn))
+            for comp in component_list:
                 dt = self.st_obs.select(component=comp)[0].stats.delta
                 npts = self.st_obs.select(component=comp)[0].stats.npts
                 # We offset the bounds of the entire trace by 1s to play nice
