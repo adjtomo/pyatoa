@@ -1,5 +1,8 @@
 # CHANGELOG
 
+## v0.4.3
+- Bugfixing stream trimming being too strict and dropping valid waveforms
+
 
 ## v0.4.2 (#48)
 

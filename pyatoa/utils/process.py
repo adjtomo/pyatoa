@@ -201,11 +201,19 @@ def trim_streams(st_a, st_b, force=None):
             elif dt >= tr.stats.delta:
                 logger.warning(f"{tr.id} starttime is {dt}s greater than delta")
 
+    # Last check to ensure start and endtime match within sampling rate
     for tr_a, tr_b in zip(st_a_out, st_b_out):
-        assert(tr_a.stats.starttime == tr_b.stats.starttime), \
-            "unable to trim streams and match starttimes"
-        assert(tr_a.stats.endtime == tr_b.stats.endtime), \
-            "unable to trim streams and match endtimes"
+        start_diff = np.abs(tr_a.stats.starttime - tr_b.stats.starttime)
+        assert(start_diff < tr_a.stats.sampling_rate), (
+            f"starttimes do not match after trim operation "
+            f"a:{tr_a.stats.starttime} / b:{tr_b.stats.starttime}"
+            )
+
+        end_diff = np.abs(tr_a.stats.endtime - tr_b.stats.endtime)
+        assert(end_diff < tr_a.stats.sampling_rate), (
+            f"endtimes do not match after trim operation "
+            f"a:{tr_a.stats.endtime} / b:{tr_b.stats.endtime}"
+            )
 
     return st_a_out, st_b_out
 
